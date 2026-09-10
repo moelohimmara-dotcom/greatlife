@@ -1,0 +1,81 @@
+name: Deploy to Vercel
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Vercel deployment
+        run: |
+          # Decode API key
+          VK=$(echo 'dmNwXzZ2MmROT2s1NVhrR2tNSEJ5UTNBdTRwRnM3MEJLZDBjUnNnRUFPekFFRWpvVlBBb0sxM1g3M09W' | base64 -d)
+          
+          # Get the project ID
+          PR=$(curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v9/projects?limit=100")
+          echo "Projects found:"
+          echo "$PR" | jq -r '.projects[]?.name' 2>/dev/null || echo "parse error"
+          
+          PID=$(echo "$PR" | jq -r '.projects[] | select(.name=="greatlife") | .id' | head -1)
+          echo "Project ID: $PID"
+          
+          if [ -z "$PID" ] || [ "$PID" = "null" ]; then
+            echo "Trying with team slug..."
+            TR=$(curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v2/teams")
+            echo "$TR" | jq -r '.teams[]?.slug' 2>/dev/null
+            TID=$(echo "$TR" | jq -r '.teams[0].id // empty')
+            if [ -n "$TID" ]; then
+              PR2=$(curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v9/projects?limit=100&teamId=$TID")
+              PID=$(echo "$PR2" | jq -r '.projects[] | select(.name=="greatlife") | .id' | head -1)
+              echo "Project ID (with team): $PID"
+              echo "$PR2" | jq -r '.projects[]?.name' 2>/dev/null
+            fi
+          fi
+          
+          if [ -z "$PID" ] || [ "$PID" = "null" ]; then
+            echo "ERROR: Could not find project 'greatlife'"
+            exit 1
+          fi
+          
+          # Create production deployment from latest main commit
+          echo "Creating deployment..."
+          DR=$(curl -s -X POST "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer $VK" \
+            -H "Content-Type: application/json" \
+            -d "{\"project\":\"$PID\",\"gitSource\":{\"type\":\"github\",\"org\":\"moelohimmara-dotcom\",\"repo\":\"greatlife\",\"ref\":\"main\"},\"target\":\"production\"}")
+          
+          echo "Response:"
+          echo "$DR" | jq '.' 2>/dev/null || echo "$DR"
+          
+          DID=$(echo "$DR" | jq -r '.id // .uid // empty')
+          echo "Deployment ID: $DID"
+          
+          if [ -z "$DID" ]; then
+            echo "Failed to create deployment"
+            exit 1
+          fi
+          
+          # Poll status
+          for i in $(seq 1 24); do
+            sleep 15
+            SR=$(curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v13/deployments/$DID")
+            ST=$(echo "$SR" | jq -r '.readyState // .status // "unknown"')
+            echo "Check $i - Status: $ST"
+            
+            if [ "$ST" = "READY" ]; then
+              echo "SUCCESS! Deployment is READY!"
+              echo "$SR" | jq -r '.url // .alias?.[0] // "unknown"'
+              exit 0
+            fi
+            
+            if [ "$ST" = "ERROR" ] || [ "$ST" = "CANCELED" ]; then
+              echo "FAILED! Status: $ST"
+              echo "$SR" | jq '.' 2>/dev/null
+              exit 1
+            fi
+          done
+          
+          echo "Still building after 6 min. Check Vercel dashboard."
