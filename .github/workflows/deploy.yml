@@ -12,21 +12,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Debug Vercel API and deploy
+      - name: Trigger Vercel deployment
         run: |
           VK=$(echo 'dmNwXzZ2MmROT2s1NVhrR2tNSEJ5UTNBdTRwRnM3MEJLZDBjUnNnRUFPekFFRWpvVlBBb0sxM1g3M09W' | base64 -d)
-          {
-            echo "=== USER ==="
-            curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v2/user"
-            echo ""
-            echo "=== PROJECTS ==="
-            curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v9/projects?limit=100"
-            echo ""
-            echo "=== TEAMS ==="
-            curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v2/teams"
-          } > vercel-debug.txt
+          PID="prj_Non4T3iS5DO9Tvf12h25y1sTfZ8J"
+          TID="team_Ho3m52mA88kIRf7aQYUrHmsL"
+          
+          echo "Creating production deployment for project $PID (team $TID)..."
+          DR=$(curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=$TID" \
+            -H "Authorization: Bearer $VK" \
+            -H "Content-Type: application/json" \
+            -d "{\"project\":\"$PID\",\"gitSource\":{\"type\":\"github\",\"org\":\"moelohimmara-dotcom\",\"repo\":\"greatlife\",\"ref\":\"main\"},\"target\":\"production\"}")
+          
+          echo "$DR" > vercel-deploy-response.txt
+          echo "Response saved. Deployment ID:"
+          echo "$DR" | jq -r '.id // .uid // "NOT FOUND"' 2>/dev/null || echo "jq parse failed"
+          
+          DID=$(echo "$DR" | jq -r '.id // .uid // empty' 2>/dev/null)
+          
+          if [ -z "$DID" ]; then
+            echo "ERROR: No deployment ID in response"
+            cat vercel-deploy-response.txt
+          fi
+          
+          # Poll status for up to 5 minutes
+          for i in $(seq 1 20); do
+            sleep 15
+            SR=$(curl -s -H "Authorization: Bearer $VK" "https://api.vercel.com/v13/deployments/$DID?teamId=$TID")
+            ST=$(echo "$SR" | jq -r '.readyState // .status // "unknown"' 2>/dev/null)
+            echo "Check $i - Status: $ST"
+            
+            if [ "$ST" = "READY" ]; then
+              echo "SUCCESS! Deployment is READY!"
+              echo "$SR" | jq -r '.url // .alias[0] // "unknown"' 2>/dev/null
+              break
+            fi
+            
+            if [ "$ST" = "ERROR" ] || [ "$ST" = "CANCELED" ]; then
+              echo "FAILED! Status: $ST"
+              echo "$SR" | jq '.' 2>/dev/null || cat vercel-deploy-response.txt
+              break
+            fi
+          done
+          
+          # Save results
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add vercel-debug.txt
-          git commit -m "debug: Vercel API response [skip ci]"
-          git push
+          git add vercel-deploy-response.txt
+          git commit -m "debug: Vercel deployment response [skip ci]" || echo "Nothing to commit"
+          git push || echo "Push failed"
