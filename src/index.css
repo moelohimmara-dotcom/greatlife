@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+section[id] {
+  scroll-margin-top: 80px;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--c-primary, #2D5A27);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--c-primary, #2D5A27);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(45, 90, 39, 0.2);
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 90, 39, 0.35);
+}
+
+@media (max-width: 768px) {
+  .desktop-nav { display: none !important; }
+  .mobile-nav-toggle { display: flex !important; }
+  .hero-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .story-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .loca-grid { grid-template-columns: 1fr !important; }
+  .contact-grid { grid-template-columns: 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
+  .section-pad { padding: 60px 20px !important; }
+  .section-pad-top { padding: 30px 20px 60px !important; }
+}
