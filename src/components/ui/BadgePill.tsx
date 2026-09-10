@@ -1,4 +1,3 @@
-import React from 'react'
 import { BADGE_DEFS } from '@/config/badges'
 
 export function BadgePill({ b, dark }: { b: string; dark?: boolean }) {

@@ -1,5 +1,4 @@
 import { useSite } from '@/contexts/SiteContext'
-import { Icon } from '@/lib/icons'
 
 export function Footer() {
   const { theme: t, content } = useSite()
@@ -26,7 +25,8 @@ export function Footer() {
           </div>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, opacity: 0.6, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact</div>
-            <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: 1.8 }}>
+            <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: 1
+.8 }}>
               Kaloum, Conakry<br />+224 620 00 00 00<br />contact@greatlife.gn
             </div>
           </div>

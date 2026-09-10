@@ -1,3 +1,4 @@
+import React from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
@@ -23,7 +24,8 @@ export function Engagements() {
             <OrganicCard style={{ padding: '28px' }}>
               <div style={{ width: '52px', height: '52px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${t.primary}0d`, marginBottom: '18px' }}>{ic}</div>
               <h4 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{title}</h4>
-              <p style={{ fontSize: '14px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{desc}</p>
+           
+   <p style={{ fontSize: '14px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{desc}</p>
             </OrganicCard>
           </Reveal>
         ))}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
@@ -36,7 +36,8 @@ export function LoginScreen() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} style={{ width: '100%', maxWidth: '420px', position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontFamily: 'var(--f-heading)', fontSize: '36px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em' }}>Great<span style={{ color: t.accent }}>life</span></div>
-          <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '6px' }}>Espace de pilotage</div>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpaci
+ng: '0.08em', textTransform: 'uppercase', marginTop: '6px' }}>Espace de pilotage</div>
         </div>
         <OrganicCard style={{ padding: '36px' }}>
           <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Connexion</h2>
@@ -57,7 +58,8 @@ export function LoginScreen() {
               background: t.primary, color: '#fff', fontWeight: 600,
               padding: '13px 28px', borderRadius: '100px', fontSize: '15px',
               border: 'none', cursor: loading ? 'wait' : 'pointer',
-              boxShadow: `0 4px 16px ${t.shadowDeep}`,
+              boxShadow: `0 4px 16px ${t.shadowDe
+ep}`,
               display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
             }}>
               {loading ? 'Vérification…' : 'Se connecter'} {!loading && Icon.arrow(16)}
