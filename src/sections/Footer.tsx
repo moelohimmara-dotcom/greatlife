@@ -7,7 +7,8 @@ export function Footer() {
       background: t.primaryDark, color: '#fff', padding: '56px 24px 32px',
       position: 'relative', overflow: 'hidden',
     }}>
-      <svg viewBox="0 0 1200 40' style={{ position: 'absolute', top: 0, left: 0, width: '100%' }} preserveAspectRatio="none">
+      {/* Organic top curve */}
+      <svg viewBox="0 0 1200 40" style={{ position: 'absolute', top: 0, left: 0, width: '100%' }} preserveAspectRatio="none">
         <path d="M 0 20 Q 600 0 1200 20 L 1200 0 L 0 0 Z" fill={t.bg} />
       </svg>
       <div style={{ maxWidth: '1200px', margin: '0 auto', paddingTop: '20px' }}>

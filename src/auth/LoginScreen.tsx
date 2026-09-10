@@ -17,19 +17,16 @@ export function LoginScreen() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
+    setError(''); setLoading(true)
     setTimeout(() => {
       const result = login(email, password)
       setLoading(false)
       if (result.ok) navigate('/admin')
-      else setError(result.error || 'Erreur')
+      else setError(result.error)
     }, 500)
   }
-
   return (
     <div style={{ ...rootStyle, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '400px', height: '400px', borderRadius: '50%', background: `radial-gradient(circle, ${t.primary}20, transparent 70%)`, pointerEvents: 'none' }} />

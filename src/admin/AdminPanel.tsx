@@ -64,15 +64,19 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   )
 }
 
-function Dashboard() {
-  const { menu, messages, theme: t } = useSite()
-  const DashCard = ({ label, value, sub }: { label: string; value: React.ReactNode; sub: string }) => (
+function DashCard({ label, value, sub }: { label: string; value: React.ReactNode; sub: string }) {
+  const { theme: t } = useSite()
+  return (
     <OrganicCard style={{ padding: '24px' }}>
       <div style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{label}</div>
       <div style={{ fontFamily: 'var(--f-heading)', fontSize: '32px', fontWeight: 700, color: t.heading, margin: '4px 0', letterSpacing: '-0.03em' }}>{value}</div>
       <div style={{ fontSize: '12px', color: t.muted }}>{sub}</div>
     </OrganicCard>
   )
+}
+
+function Dashboard() {
+  const { menu, messages, theme: t } = useSite()
   return (
     <div>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '28px', fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Tableau de bord</h2>
@@ -124,7 +128,7 @@ function MenuEditor() {
   const { menu, setMenu, theme: t } = useSite()
   const [sel, setSel] = useState(menu[0].name)
   const item = menu.find(m => m.name === sel)!
-  const update = (k: string, v: any) => setMenu(menu.map(m => m.name === sel ? { ...m, [k]: v } : m))
+  const update = (k: string, v: string | boolean | string[]) => setMenu(menu.map(m => m.name === sel ? { ...m, [k]: v } : m))
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px' }}>
@@ -156,7 +160,7 @@ function MenuEditor() {
             <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginRight: 4 }}>Badges :</Label>
             {['omni', 'vege', 'gluten', 'arachide', 'lactose'].map(b => (
               <button key={b} onClick={() => update('badges', item.badges.includes(b) ? item.badges.filter(x => x !== b) : [...item.badges, b])}
-                style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer', border: `1px solid ${t.primary}33`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text }}>{BADGE_DEFS[b].label}</button>
+                style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer', border: `1px solid ${t.primary}33`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text }}>{BADGE_DEFS[b]?.label}</button>
             ))}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
@@ -221,7 +225,7 @@ function MediaManager() {
         {media.map((m, i) => (
           <OrganicCard key={i} style={{ padding: '16px', display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: '14px', alignItems: 'center' }}>
             <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: `${t.primary}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.5"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
             </div>
             <div>
               <div style={{ fontWeight: 600, color: t.heading, fontSize: '15px' }}>{m.slot}</div>
@@ -241,7 +245,7 @@ function MediaManager() {
 function VisibilityEditor() {
   const { visibility, setVisibility, theme: t } = useSite()
   const toggle = (k: string) => setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } })
-  const toggleExtra = (k: string) => setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as any)
+  const toggleExtra = (k: string) => setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as typeof visibility)
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -258,10 +262,10 @@ function VisibilityEditor() {
       </div>
       <div style={{ marginTop: '22px' }}>
         <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '10px' }}>Éléments</div>
-        {[['vertusPanel', 'Panneau « Vertus » dépliable'], ['suggestions', 'Suggestions du moment'], ['testimonials', 'Témoignages'], ['badges', 'Badges régime & allergènes']].map(([k, l]) => (
+        {(['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const).map(k => (
           <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{l}</span>
-            <Switch checked={(visibility as any)[k]} onCheckedChange={() => toggleExtra(k)} />
+            <span style={{ fontSize: '14px', fontWeight: 500 }}>{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
+            <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
           </div>
         ))}
       </div>
