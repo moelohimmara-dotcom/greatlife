@@ -7,7 +7,7 @@ export function Footer() {
       background: t.primaryDark, color: '#fff', padding: '56px 24px 32px',
       position: 'relative', overflow: 'hidden',
     }}>
-      <svg viewBox="0 0 1200 40" style={{ position: 'absolute', top: 0, left: 0, width: '100%' }} preserveAspectRatio="none">
+      <svg viewBox="0 0 1200 40' style={{ position: 'absolute', top: 0, left: 0, width: '100%' }} preserveAspectRatio="none">
         <path d="M 0 20 Q 600 0 1200 20 L 1200 0 L 0 0 Z" fill={t.bg} />
       </svg>
       <div style={{ maxWidth: '1200px', margin: '0 auto', paddingTop: '20px' }}>
@@ -20,13 +20,12 @@ export function Footer() {
             <div style={{ fontSize: '13px', fontWeight: 600, opacity: 0.6, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Navigation</div>
             {['La carte', 'Histoire', 'Engagements', 'Équipe', 'Blog'].map(l => (
               <a key={l} href={`#${l.toLowerCase().replace(/ /g, '')}`} style={{ display: 'block', fontSize: '14px', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', marginBottom: '6px', transition: 'color 0.2s' }}
-                onMouseEnter={e => (e.currentTarget.style.color = t.gold)} onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}>{l}</a>
+                onMouseEnter={e => e.currentTarget.style.color = t.gold} onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.8)'}>{l}</a>
             ))}
           </div>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, opacity: 0.6, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact</div>
-            <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: 1
-.8 }}>
+            <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: 1.8 }}>
               Kaloum, Conakry<br />+224 620 00 00 00<br />contact@greatlife.gn
             </div>
           </div>
