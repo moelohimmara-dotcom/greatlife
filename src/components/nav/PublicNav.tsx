@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite } from '@/contexts/SiteContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useScrollSpy } from '@/hooks/useScrollSpy'
-import { softShadow, softShadowSm } from '@/components/ui/shadows'
+import { softShadowSm } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 
 export function PublicNav() {
@@ -40,7 +39,8 @@ export function PublicNav() {
       transition: 'all 0.3s ease',
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <a href="#home" aria-label="Greatlife — accueil" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '24px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em' }}>
+        <a href="#home" aria-label="Greatlife — accueil" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '24px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02e
+m' }}>
           Great<span style={{ color: t.accent }}>life</span>
         </a>
         <nav className="desktop-nav" aria-label="Navigation principale" style={{ display: 'flex', gap: '28px', alignItems: 'center' }}>
@@ -74,7 +74,8 @@ export function PublicNav() {
               display: isMobile ? 'flex' : 'none',
               flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
               width: '40px', height: '40px', borderRadius: '12px',
-              background: t.surface, border: `1px solid ${t.shadow}`,
+              background: 
+t.surface, border: `1px solid ${t.shadow}`,
               cursor: 'pointer', gap: drawerOpen ? 0 : 5, transition: 'gap 0.2s',
             }}>
             <span style={{ width: '18px', height: '2px', background: t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(45deg) translate(2px,2px)' : 'none', transition: 'transform 0.2s' }} />
@@ -98,7 +99,8 @@ export function PublicNav() {
             {links.map(([l, id], i) => (
               <motion.a key={l} href={`#${id}`} onClick={() => setDrawerOpen(false)}
                 aria-current={active === id ? 'true' : undefined}
-                initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                initial={{ opacity: 
+0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 style={{ fontFamily: 'var(--f-heading)', fontSize: '18px', fontWeight: 600, color: active === id ? t.accent : t.text, textDecoration: 'none', padding: '14px 16px', borderRadius: '12px', background: active === id ? `${t.primary}0a` : 'transparent', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {l}
                 {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.accent }} />}
