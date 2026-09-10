@@ -32,8 +32,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', minHeight: '100vh', background: t.bg }}>
       <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '24px 16px', display: 'flex', flexDirection: 'column' }}>
-        <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWei
-ght: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em' }}>
+        <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em' }}>
           Great<span style={{ color: t.accent }}>life</span> <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500 }}>admin</span>
         </Link>
         <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
@@ -42,7 +41,8 @@ ght: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpac
               textAlign: 'left', padding: '11px 14px', borderRadius: '12px',
               fontSize: '14px', fontWeight: 500, cursor: 'pointer', border: 'none',
               background: active === k ? t.primary : 'transparent',
-              color: active === k ? '#fff' : t.text, transition: 'background 0.2s',
+              color: active === k ? '#fff' : t.text,
+              transition: 'background 0.2s',
             }}>{l}</button>
           ))}
         </div>
@@ -59,15 +59,14 @@ ght: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpac
           <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
         </div>
       </aside>
-      <main style={{ padding: '32px 36px', overflow: 'auto' }}>{children}</main
->
+      <main style={{ padding: '32px 36px', overflow: 'auto' }}>{children}</main>
     </div>
   )
 }
 
 function Dashboard() {
   const { menu, messages, theme: t } = useSite()
-  const DashCard = ({ label, value, sub }: { label: string; value: any; sub: string }) => (
+  const DashCard = ({ label, value, sub }: { label: string; value: React.ReactNode; sub: string }) => (
     <OrganicCard style={{ padding: '24px' }}>
       <div style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{label}</div>
       <div style={{ fontFamily: 'var(--f-heading)', fontSize: '32px', fontWeight: 700, color: t.heading, margin: '4px 0', letterSpacing: '-0.03em' }}>{value}</div>
@@ -88,8 +87,7 @@ function Dashboard() {
       {messages.length === 0 ? <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant. Les soumissions du formulaire de contact apparaissent ici.</p> :
         messages.map((m, i) => (
           <OrganicCard key={i} style={{ padding: '16px', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeigh
-t: 600, color: t.heading }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600, color: t.heading }}>
               <span>{m.nom} — {m.email}</span><span style={{ color: t.muted, fontWeight: 400 }}>{m.date}</span>
             </div>
             <div style={{ fontSize: '11px', color: t.accent, fontWeight: 600, marginTop: '3px' }}>{m.sujet}</div>
@@ -112,8 +110,7 @@ function ContentEditor() {
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Slogan</Label><Input value={content.slogan} onChange={e => set('slogan', e.target.value)} style={inputStyle} /></div>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Titre Hero</Label><Input value={content.heroTitle} onChange={e => set('heroTitle', e.target.value)} style={inputStyle} /></div>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Sous-titre Hero</Label><Textarea rows={3} value={content.heroSub} onChange={e => set('heroSub', e.target.value)} style={inputStyle} /></div>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Notre hist
-oire</Label><Textarea rows={4} value={content.story} onChange={e => set('story', e.target.value)} style={inputStyle} /></div>
+        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Notre histoire</Label><Textarea rows={4} value={content.story} onChange={e => set('story', e.target.value)} style={inputStyle} /></div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email contact</Label><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inputStyle} /></div>
           <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email réservation</Label><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inputStyle} /></div>
@@ -139,9 +136,9 @@ function MenuEditor() {
             <button key={m.name} onClick={() => setSel(m.name)} style={{
               display: 'block', width: '100%', textAlign: 'left', padding: '11px 14px',
               fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
-         
-     background: sel === m.name ? `${t.primary}0d` : 'transparent',
-              color: sel === m.name ? t.primary : t.text, borderBottom: `1px solid ${t.shadow}`,
+              background: sel === m.name ? `${t.primary}0d` : 'transparent',
+              color: sel === m.name ? t.primary : t.text,
+              borderBottom: `1px solid ${t.shadow}`,
             }}>
               {m.sig ? '★ ' : ''}{m.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {m.price}</span>
             </button>
@@ -159,8 +156,7 @@ function MenuEditor() {
             <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginRight: 4 }}>Badges :</Label>
             {['omni', 'vege', 'gluten', 'arachide', 'lactose'].map(b => (
               <button key={b} onClick={() => update('badges', item.badges.includes(b) ? item.badges.filter(x => x !== b) : [...item.badges, b])}
-                styl
-e={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer', border: `1px solid ${t.primary}33`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text }}>{BADGE_DEFS[b].label}</button>
+                style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer', border: `1px solid ${t.primary}33`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text }}>{BADGE_DEFS[b].label}</button>
             ))}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
@@ -188,8 +184,7 @@ function ThemeEditor() {
               {[th.primary, th.accent, th.gold, th.bg].map((c, i) => <div key={i} style={{ width: '24px', height: '24px', borderRadius: '7px', background: c, border: `1px solid ${th.shadow}` }} />)}
             </div>
             <div style={{ fontWeight: 700, fontSize: '14px', color: th.heading }}>{th.label}</div>
-            {themeId === th.id && <div style={{ fontSize: '11px', color: th.accent
-, fontWeight: 600, marginTop: 2 }}>✓ Actif</div>}
+            {themeId === th.id && <div style={{ fontSize: '11px', color: th.accent, fontWeight: 600, marginTop: 2 }}>✓ Actif</div>}
           </button>
         ))}
       </div>
@@ -220,8 +215,7 @@ function MediaManager() {
   const { media, theme: t } = useSite()
   return (
     <div style={{ maxWidth: '820px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Médias & dimen
-sions</h2>
+      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Médias & dimensions</h2>
       <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Uploadez images/vidéos, recadrez et assignez aux emplacements.</p>
       <div style={{ display: 'grid', gap: '12px', marginTop: '20px' }}>
         {media.map((m, i) => (
@@ -248,8 +242,7 @@ function VisibilityEditor() {
   const { visibility, setVisibility, theme: t } = useSite()
   const toggle = (k: string) => setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } })
   const toggleExtra = (k: string) => setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as any)
-  const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation
-', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
+  const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
     <div style={{ maxWidth: '640px' }}>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Visibilité</h2>
@@ -265,7 +258,7 @@ function VisibilityEditor() {
       </div>
       <div style={{ marginTop: '22px' }}>
         <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '10px' }}>Éléments</div>
-        {(['vertusPanel', 'Panneau « Vertus » dépliable'], ['suggestions', 'Suggestions du moment'], ['testimonials', 'Témoignages'], ['badges', 'Badges régime & allergènes']).map(([k, l]) => (
+        {[['vertusPanel', 'Panneau « Vertus » dépliable'], ['suggestions', 'Suggestions du moment'], ['testimonials', 'Témoignages'], ['badges', 'Badges régime & allergènes']].map(([k, l]) => (
           <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px', marginBottom: '8px' }}>
             <span style={{ fontSize: '14px', fontWeight: 500 }}>{l}</span>
             <Switch checked={(visibility as any)[k]} onCheckedChange={() => toggleExtra(k)} />
@@ -278,8 +271,7 @@ function VisibilityEditor() {
 
 function UsersRoles() {
   const { theme: t } = useSite()
-  const cellStyl
-e: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
+  const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
   const permColor = (p: string) => p === 'écrire' ? t.accent : p === 'lecture' || p === 'carte' || p === 'blog' ? t.primary : t.muted
   const permIcon = (p: string) => p === 'écrire' ? Icon.write(13, t.accent) : p === 'lecture' ? Icon.eye(13, t.primary) : p === 'carte' ? Icon.leaf(13, t.gold) : p === 'blog' ? Icon.write(13, t.primary) : '—'
   return (
@@ -300,8 +292,7 @@ e: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 5
       <div style={{ overflowX: 'auto', borderRadius: '14px', border: `1px solid ${t.shadow}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface }}>
           <thead>
-        
-    <tr style={{ background: t.surfaceAlt }}>
+            <tr style={{ background: t.surfaceAlt }}>
               <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading }}>Rôle</th>
               {MODULES.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{m}</th>)}
             </tr>
@@ -330,8 +321,7 @@ function FormsConfig() {
       <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Configurez les destinataires et l'auto-réponse envoyée au client.</p>
       <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — messages généraux</Label><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inputStyle} /></div>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — réservations</Label><Input value={content.emailReservation} onC
-hange={e => set('emailReservation', e.target.value)} style={inputStyle} /></div>
+        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — réservations</Label><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inputStyle} /></div>
         <div>
           <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Template d'auto-réponse (variable : {`{nom}`})</Label>
           <Textarea rows={4} value={content.autoReply} onChange={e => set('autoReply', e.target.value)} style={inputStyle} />

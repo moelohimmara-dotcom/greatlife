@@ -41,8 +41,7 @@ export function ContactForm() {
     }, 800)
   }
 
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', tra
-nsition: 'border 0.2s' }
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
 
   return (
@@ -66,8 +65,7 @@ nsition: 'border 0.2s' }
               </div>
               <div>
                 <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Type de demande</Label>
-                <Select value={form.sujet} onValueChange
-={v => setForm({ ...form, sujet: v })}>
+                <Select value={form.sujet} onValueChange={v => setForm({ ...form, sujet: v })}>
                   <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="contact">Message général</SelectItem>
@@ -83,21 +81,26 @@ nsition: 'border 0.2s' }
                 {errors.message && <div style={errStyle}>{errors.message}</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <Button type="submit" disabled={loading} aria-label="Envoyer le message" style={{
+                <Button type="submit" disabled={loading} aria-label="Envoyer le message"
+                  style={{
                   background: loading ? t.muted : t.primary, color: '#fff', fontWeight: 600,
                   padding: '12px 28px', borderRadius: '100px', fontSize: '15px',
-                  border: 'none', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
-                  boxShadow: `0 4px 16px ${t.shadowDeep}`, display: 'inline-flex', alignItems: 'center', gap: 8,
+                  border: 'none', cursor: loading ? 'wait' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  boxShadow: `0 4px 16px ${t.shadowDeep}`,
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
                   {loading ? 'Envoi en cours…' : 'Envoyer'}
                   {!loading && Icon.arrow(16)}
                 </Button>
-                <Button type="button" onClick={() => { setForm({ nom: '', email: '', sujet: 'contact', message: '' }); setErrors({}) }} aria-label="Effacer le formul
-aire" style={{
+                <Button type="button" onClick={() => { setForm({ nom: '', email: '', sujet: 'contact', message: '' }); setErrors({}) }}
+                  aria-label="Effacer le formulaire"
+                  style={{
                   background: 'transparent', color: t.muted, fontWeight: 600,
                   padding: '12px 20px', borderRadius: '100px', fontSize: '14px',
                   border: `1px solid ${t.shadow}`, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 0.2s',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.2s',
                 }} onMouseEnter={e => { e.currentTarget.style.color = t.text; e.currentTarget.style.borderColor = t.primary + '40' }}
                   onMouseLeave={e => { e.currentTarget.style.color = t.muted; e.currentTarget.style.borderColor = t.shadow }}>
                   Effacer
