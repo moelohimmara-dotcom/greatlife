@@ -11,20 +11,17 @@ export function PublicNav() {
   const isMobile = useIsMobile()
   const [scrolled, setScrolled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
-
   const linkIds = ['carte', 'histoire', 'engagements', 'equipe', 'loca', 'contact', 'blog']
   const active = useScrollSpy(linkIds)
   const links: [string, string][] = [
     ['La carte', 'carte'], ['Histoire', 'histoire'], ['Engagements', 'engagements'],
     ['Équipe', 'equipe'], ['Nous trouver', 'loca'], ['Contact', 'contact'], ['Blog', 'blog'],
   ]
-
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }

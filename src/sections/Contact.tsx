@@ -11,15 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
-export function ContactForm() {
+export function Contact() {
   const { theme: t, content, setMessages } = useSite()
   const [form, setForm] = useState({ nom: '', email: '', sujet: 'contact', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   const validate = () => {
-    const e: Record<string, string> = {}
+    const e: Record<string, string | undefined> = {}
     if (!form.nom.trim()) e.nom = 'Votre nom est requis'
     if (!form.email.trim()) e.email = 'Votre email est requis'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide'
@@ -27,23 +26,20 @@ export function ContactForm() {
     setErrors(e)
     return Object.keys(e).length === 0
   }
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
     setTimeout(() => {
-      setMessages((prev: ContactMessage[]) => [{ ...form, date: new Date().toLocaleString('fr-FR') }, ...prev])
+      setMessages(prev => [{ ...form, date: new Date().toLocaleString('fr-FR') }, ...prev])
       setSent(true)
       setLoading(false)
       setForm({ nom: '', email: '', sujet: 'contact', message: '' })
       setTimeout(() => setSent(false), 4000)
     }, 800)
   }
-
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
-
   return (
     <section id="contact" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: '680px', margin: '0 auto' }}>
@@ -54,12 +50,12 @@ export function ContactForm() {
               <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Nom</Label>
-                  <Input value={form.nom} onChange={e => { setForm({ ...form, nom: e.target.value }); setErrors({ ...errors, nom: '' }) }} style={{ ...inputStyle, border: `1px solid ${errors.nom ? t.accent : t.shadow}` }} required aria-invalid={!!errors.nom} />
+                  <Input value={form.nom} onChange={e => { setForm({ ...form, nom: e.target.value }); setErrors({ ...errors, nom: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.nom ? t.accent : t.shadow}` }} required aria-invalid={!!errors.nom} />
                   {errors.nom && <div style={errStyle}>{errors.nom}</div>}
                 </div>
                 <div>
                   <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email</Label>
-                  <Input type="email" value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: '' }) }} style={{ ...inputStyle, border: `1px solid ${errors.email ? t.accent : t.shadow}` }} required aria-invalid={!!errors.email} />
+                  <Input type="email" value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.email ? t.accent : t.shadow}` }} required aria-invalid={!!errors.email} />
                   {errors.email && <div style={errStyle}>{errors.email}</div>}
                 </div>
               </div>
@@ -77,7 +73,7 @@ export function ContactForm() {
               </div>
               <div>
                 <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Message</Label>
-                <Textarea rows={4} value={form.message} onChange={e => { setForm({ ...form, message: e.target.value }); setErrors({ ...errors, message: '' }) }} style={{ ...inputStyle, border: `1px solid ${errors.message ? t.accent : t.shadow}` }} required aria-invalid={!!errors.message} />
+                <Textarea rows={4} value={form.message} onChange={e => { setForm({ ...form, message: e.target.value }); setErrors({ ...errors, message: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.message ? t.accent : t.shadow}` }} required aria-invalid={!!errors.message} />
                 {errors.message && <div style={errStyle}>{errors.message}</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
