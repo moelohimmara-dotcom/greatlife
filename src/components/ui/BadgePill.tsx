@@ -1,7 +1,7 @@
 import { BADGE_DEFS } from '@/config/badges'
 
-export function BadgePill({ b, dark }: { b: string; dark?: boolean }) {
-  const def = BADGE_DEFS[b]
+export function BadgePill({ b, dark = false }: { b: string; dark?: boolean }) {
+  const def = BADGE_DEFS[b as keyof typeof BADGE_DEFS]
   if (!def) return null
   return (
     <span style={{
@@ -12,8 +12,6 @@ export function BadgePill({ b, dark }: { b: string; dark?: boolean }) {
       color: dark ? 'rgba(255,255,255,0.8)' : def.fg,
       whiteSpace: 'nowrap', lineHeight: 1.4,
       border: dark ? '1px solid rgba(255,255,255,0.15)' : 'none',
-    }}>
-      {def.label}
-    </span>
+    }}>{def.label}</span>
   )
 }

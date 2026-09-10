@@ -1,13 +1,13 @@
-import React from 'react'
+import type { ReactNode } from 'react'
 import { useSite } from '@/contexts/SiteContext'
-import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
+import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 
 export function Engagements() {
   const { theme: t } = useSite()
-  const items: [React.ReactNode, string, string][] = [
+  const items: [ReactNode, string, string][] = [
     [Icon.leaf(28, t.primary), 'Produits 100% bio', 'Circuit court, fournisseurs locaux de Guinée, labels vérifiés.'],
     [Icon.recycle(28, t.accent), 'Emballages écologiques', 'Compostables et recyclables, zéro plastique à usage unique.'],
     [Icon.fire(28, t.gold), 'Cuisson saine', 'Modes de cuisson légers, gras maîtrisé, nutriments préservés.'],
@@ -22,10 +22,11 @@ export function Engagements() {
         {items.map(([ic, title, desc], i) => (
           <Reveal key={i} delay={(i % 3) * 0.06}>
             <OrganicCard style={{ padding: '28px' }}>
-              <div style={{ width: '52px', height: '52px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${t.primary}0d`, marginBottom: '18px' }}>{ic}</div>
+              <div style={{ width: '52px', height: '52px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${t.primary}0d`, marginBottom: '18px' }}>
+                {ic}
+              </div>
               <h4 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{title}</h4>
-           
-   <p style={{ fontSize: '14px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{desc}</p>
+              <p style={{ fontSize: '14px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{desc}</p>
             </OrganicCard>
           </Reveal>
         ))}
