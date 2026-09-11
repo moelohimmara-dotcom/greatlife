@@ -62,6 +62,8 @@ interface SiteContextValue {
   dataSource: 'loading' | 'supabase' | 'local'
   dataLoading: boolean
   saveContentToDb: () => Promise<boolean>
+  refreshMessages: () => Promise<number>
+  lastMessageCount: number
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -100,6 +102,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
+  const [lastMessageCount, setLastMessageCount] = useState(0)
 
   const theme = THEMES[themeId]
   const font = FONTS[fontId]
@@ -150,6 +153,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: rgba(45,90,39,0.2); border-radius: 100px; }
       ::-webkit-scrollbar-thumb:hover { background: rgba(45,90,39,0.35); }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     `
     document.head.appendChild(style)
   }, [])
@@ -172,6 +176,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (messagesRes.fromDb && messagesRes.data.length > 0) {
         setMessages(messagesRes.data)
       }
+      setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
     }
     load()
@@ -182,11 +187,22 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const saveContentToDb = async () => saveContent(content)
 
+  const refreshMessages = async (): Promise<number> => {
+    const res = await fetchMessages()
+    if (res.fromDb) {
+      setMessages(res.data)
+      setLastMessageCount(res.data.length)
+      return res.data.length
+    }
+    return lastMessageCount
+  }
+
   const value: SiteContextValue = {
     themeId, setThemeId, theme, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
     menu, setMenu, media, setMedia, messages, setMessages,
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
+    refreshMessages, lastMessageCount,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
