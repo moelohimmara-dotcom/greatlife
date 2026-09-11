@@ -6,7 +6,7 @@ import { Story } from './Story'
 import { Engagements } from './Engagements'
 import { Team } from './Team'
 import { Localisation } from './Localisation'
-import { ContactForm } from './Contact'
+import { Contact } from './Contact'
 import { Blog } from './Blog'
 import { Footer } from './Footer'
 
@@ -21,7 +21,7 @@ export function PublicSite() {
       {visibility.sections.engagements && <Engagements />}
       {visibility.sections.equipe && <Team />}
       {visibility.sections.localisation && <Localisation />}
-      {visibility.sections.contact && <ContactForm />}
+      {visibility.sections.contact && <Contact />}
       {visibility.sections.blog && <Blog />}
       <Footer />
     </div>

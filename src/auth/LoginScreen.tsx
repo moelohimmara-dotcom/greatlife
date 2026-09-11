@@ -24,7 +24,7 @@ export function LoginScreen() {
       const result = login(email, password)
       setLoading(false)
       if (result.ok) navigate('/admin')
-      else setError(result.error)
+      else setError(result.error ?? 'Erreur inconnue')
     }, 500)
   }
   return (
