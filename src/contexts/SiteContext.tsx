@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 
 export interface SiteContent {
@@ -79,6 +79,7 @@ interface SiteContextValue {
   refreshMedia: () => Promise<void>
   adminUsers: AdminUser[]
   refreshAdminUsers: () => Promise<void>
+  ordersCount: number
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -135,6 +136,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [ordersCount, setOrdersCount] = useState(0)
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -196,16 +198,17 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function load() {
-      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
         fetchBlogPosts(),
         fetchMedia(),
         fetchAdminUsers(),
+        fetchOrders(),
       ])
       if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb
       setDataSource(anyDb ? 'supabase' : 'local')
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
@@ -225,6 +228,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         setMedia(mediaRes.data.map(mediaAssetToSlot))
       }
       if (adminRes.fromDb) setAdminUsers(adminRes.data)
+      if (ordersRes.fromDb) setOrdersCount(ordersRes.data.length)
       setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
     }
@@ -293,6 +297,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     if (res.fromDb) setBlogPosts(res.data)
   }
 
+  const refreshOrders = async () => {
+    const res = await fetchOrders()
+    if (res.fromDb) setOrdersCount(res.data.length)
+  }
+
   useEffect(() => {
     const sb = getSupabase()
     if (!sb) return
@@ -303,6 +312,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'site_content' }, () => { if (active) refreshContent() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blog_posts' }, () => { if (active) refreshBlogPosts() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'media_assets' }, () => { if (active) refreshMedia() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { if (active) refreshOrders() })
       .subscribe()
     return () => {
       active = false
@@ -318,7 +328,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
-    refreshMedia, adminUsers, refreshAdminUsers,
+    refreshMedia, adminUsers, refreshAdminUsers, ordersCount,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>

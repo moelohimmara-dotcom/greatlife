@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, useMedia } from '@/contexts/SiteContext'
+import { useCart } from '@/contexts/CartContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { BadgePill } from '@/components/ui/BadgePill'
 import { Reveal } from '@/components/ui/Reveal'
@@ -12,9 +13,16 @@ import type { MenuItem } from '@/data/menu'
 
 function MenuCard({ item }: { item: MenuItem }) {
   const { theme: t, visibility } = useSite()
+  const { add } = useCart()
   const [open, setOpen] = useState(false)
+  const [added, setAdded] = useState(false)
   const slotId = `produit-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
   const prodImg = useMedia(slotId)
+  const handleAdd = () => {
+    add(item.name, item.price)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1400)
+  }
   return (
     <OrganicCard hover style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{
@@ -42,20 +50,33 @@ function MenuCard({ item }: { item: MenuItem }) {
         {visibility.badges && item.badges.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{item.badges.map(b => <BadgePill key={b} b={b} />)}</div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, color: t.accent, fontSize: '18px', letterSpacing: '-0.01em' }}>
             {item.price}<span style={{ fontSize: '11px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span>
           </span>
-          {visibility.vertusPanel && (
-            <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Vertus nutritionnelles de ${item.name}`}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {visibility.vertusPanel && (
+              <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Vertus nutritionnelles de ${item.name}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: '12px', fontWeight: 600, color: t.primary,
+                  background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
+                }}>
+                {open ? 'Fermer' : 'Vertus'} {open ? '−' : Icon.plus(12, t.primary)}
+              </button>
+            )}
+            <button onClick={handleAdd} aria-label={`Ajouter ${item.name} à ma commande`}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: '12px', fontWeight: 600, color: t.primary,
-                background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: '12.5px', fontWeight: 700,
+                padding: '7px 14px', borderRadius: '100px', cursor: 'pointer',
+                border: `1px solid ${t.primary}55`,
+                background: added ? t.primary : 'transparent',
+                color: added ? '#fff' : t.primary, transition: 'all 0.2s',
               }}>
-              {open ? 'Fermer' : 'Vertus'} {open ? '−' : Icon.plus(12, t.primary)}
+              {added ? Icon.check(14, '#fff') : Icon.plus(14, t.primary)} {added ? 'Ajouté' : 'Ajouter'}
             </button>
-          )}
+          </div>
         </div>
         <AnimatePresence>
           {open && visibility.vertusPanel && (

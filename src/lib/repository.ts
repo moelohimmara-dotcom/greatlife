@@ -390,6 +390,99 @@ export async function updateReservationStatus(id: string, status: string): Promi
   }
 }
 
+const ORDERS_TABLE = 'orders'
+
+export interface OrderItem {
+  name: string
+  price: string
+  qty: number
+}
+
+export interface Order {
+  id?: string
+  ref: string
+  nom: string
+  email: string
+  phone: string
+  items: OrderItem[]
+  total: string
+  pickup_time: string
+  notes: string
+  status: string
+  created_at?: string
+}
+
+export async function insertOrder(
+  o: Omit<Order, 'id' | 'status' | 'created_at'>
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { error } = await sb.from(ORDERS_TABLE).insert({
+      ref: o.ref,
+      nom: o.nom,
+      email: o.email,
+      phone: o.phone,
+      items: o.items,
+      total: o.total,
+      pickup_time: o.pickup_time,
+      notes: o.notes,
+    })
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
+export async function fetchOrders(): Promise<{ data: Order[]; fromDb: boolean }> {
+  const sb = getSupabase()
+  if (!sb) return { data: [], fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(ORDERS_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error || !data) return { data: [], fromDb: false }
+    return {
+      data: (data as Array<Record<string, unknown>>).map(o => {
+        const rawItems = o.items
+        let items: OrderItem[] = []
+        if (Array.isArray(rawItems)) items = rawItems as OrderItem[]
+        return {
+          id: String(o.id ?? ''),
+          ref: String(o.ref ?? ''),
+          nom: String(o.nom ?? ''),
+          email: String(o.email ?? ''),
+          phone: String(o.phone ?? ''),
+          items,
+          total: String(o.total ?? '0'),
+          pickup_time: String(o.pickup_time ?? ''),
+          notes: String(o.notes ?? ''),
+          status: String(o.status ?? 'pending'),
+          created_at: String(o.created_at ?? ''),
+        }
+      }),
+      fromDb: true,
+    }
+  } catch {
+    return { data: [], fromDb: false }
+  }
+}
+
+export async function updateOrderStatus(id: string, status: string): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { error } = await sb.from(ORDERS_TABLE).update({ status }).eq('id', id)
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
 const MEDIA_TABLE = 'media_assets'
 const MEDIA_BUCKET = 'media'
 
