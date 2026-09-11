@@ -12,7 +12,7 @@ import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, type BlogPost, type Reservation } from '@/lib/repository'
-import { invokeReplyEmail, getSupabase } from '@/lib/supabase'
+import { invokeReplyEmail, invokeReservationStatusEmail, getSupabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -738,9 +738,24 @@ function ReservationsManager() {
   }, [dataSource])
   const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
   const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const [statusSending, setStatusSending] = useState(false)
   const updateStatus = async (id: string, status: string) => {
     const ok = await updateReservationStatus(id, status)
-    if (ok) setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+    if (!ok) return
+    setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+    const r = reservations.find(x => x.id === id)
+    if (r) {
+      setStatusSending(true)
+      await invokeReservationStatusEmail({
+        to: r.email,
+        nom: r.nom,
+        status,
+        resaDate: r.date,
+        resaTime: r.time,
+        resaGuests: String(r.guests),
+      })
+      setStatusSending(false)
+    }
   }
   if (dataSource !== 'supabase') {
     return (
@@ -771,7 +786,8 @@ function ReservationsManager() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status]}</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
                     {r.status !== 'confirmed' && <button onClick={() => updateStatus(r.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
                     {r.status !== 'cancelled' && <button onClick={() => updateStatus(r.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
                   </div>
