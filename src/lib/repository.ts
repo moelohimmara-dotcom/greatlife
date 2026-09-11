@@ -372,4 +372,134 @@ export async function updateReservationStatus(id: string, status: string): Promi
   }
 }
 
+const MEDIA_TABLE = 'media_assets'
+const MEDIA_BUCKET = 'media'
+
+export interface MediaAsset {
+  id: string
+  slot: string
+  filename: string
+  storage_path: string
+  public_url: string
+  content_type: string | null
+  size_bytes: number | null
+  created_at: string
+  updated_at: string
+}
+
+export async function fetchMedia(): Promise<{ data: MediaAsset[]; fromDb: boolean }> {
+  const sb = getSupabase()
+  if (!sb) return { data: [], fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(MEDIA_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error || !data) return { data: [], fromDb: false }
+    return {
+      data: (data as Array<Record<string, unknown>>).map(a => ({
+        id: String(a.id ?? ''),
+        slot: String(a.slot ?? 'general'),
+        filename: String(a.filename ?? ''),
+        storage_path: String(a.storage_path ?? ''),
+        public_url: String(a.public_url ?? ''),
+        content_type: a.content_type == null ? null : String(a.content_type),
+        size_bytes: a.size_bytes == null ? null : Number(a.size_bytes),
+        created_at: String(a.created_at ?? ''),
+        updated_at: String(a.updated_at ?? ''),
+      })),
+      fromDb: true,
+    }
+  } catch {
+    return { data: [], fromDb: false }
+  }
+}
+
+export interface UploadedMedia {
+  id: string
+  slot: string
+  filename: string
+  public_url: string
+  content_type: string | null
+  size_bytes: number | null
+}
+
+export async function uploadMedia(
+  file: File,
+  slot: string
+): Promise<{ data: UploadedMedia | null; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { data: null, error: 'not-configured' }
+  try {
+    const ext = file.name.split('.').pop() || 'bin'
+    const safeName = file.name
+      .toLowerCase()
+      .replace(/[^a-z0-9.]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    const path = `${slot}/${Date.now()}-${safeName || `file.${ext}`}`
+    const { error: upErr } = await sb.storage
+      .from(MEDIA_BUCKET)
+      .upload(path, file, { contentType: file.type || undefined, upsert: false })
+    if (upErr) return { data: null, error: upErr.message }
+    const { data: pub } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path)
+    const publicUrl = pub.publicUrl
+    const { data: row, error: insErr } = await sb
+      .from(MEDIA_TABLE)
+      .insert({
+        slot,
+        filename: file.name,
+        storage_path: path,
+        public_url: publicUrl,
+        content_type: file.type || null,
+        size_bytes: file.size,
+      })
+      .select('id,slot,filename,public_url,content_type,size_bytes')
+      .single()
+    if (insErr || !row) {
+      await sb.storage.from(MEDIA_BUCKET).remove([path])
+      return { data: null, error: insErr?.message || 'insert-failed' }
+    }
+    const r = row as Record<string, unknown>
+    return {
+      data: {
+        id: String(r.id ?? ''),
+        slot: String(r.slot ?? slot),
+        filename: String(r.filename ?? file.name),
+        public_url: String(r.public_url ?? publicUrl),
+        content_type: r.content_type == null ? null : String(r.content_type),
+        size_bytes: r.size_bytes == null ? null : Number(r.size_bytes),
+      },
+    }
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
+export async function deleteMedia(id: string, storagePath: string): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error: delErr } = await sb.from(MEDIA_TABLE).delete().eq('id', id)
+    if (delErr) return false
+    if (storagePath) await sb.storage.from(MEDIA_BUCKET).remove([storagePath])
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function updateMediaSlot(id: string, slot: string): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb
+      .from(MEDIA_TABLE)
+      .update({ slot, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    return !error
+  } catch {
+    return false
+  }
+}
+
 export const supabaseReady = isSupabaseConfigured

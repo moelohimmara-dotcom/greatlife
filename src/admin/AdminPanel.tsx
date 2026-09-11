@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSite } from '@/contexts/SiteContext'
+import { useSite, type MediaSlot } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
@@ -11,7 +11,7 @@ import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, type BlogPost, type Reservation } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, uploadMedia, deleteMedia, updateMediaSlot, type BlogPost, type Reservation } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, getSupabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -302,28 +302,206 @@ function ThemeEditor() {
   )
 }
 
+const MEDIA_SLOTS: string[] = ['hero', 'logo', 'histoire', 'greatlife', 'general']
+const SLOT_LABELS: Record<string, string> = {
+  hero: 'Hero principal',
+  logo: 'Logo / favicon',
+  histoire: 'Fond section histoire',
+  greatlife: 'Photo — Le Greatlife',
+  general: 'Général / divers',
+}
+
+function formatSize(n: number | null | undefined): string {
+  if (!n) return ''
+  if (n < 1024) return `${n} o`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} Ko`
+  return `${(n / (1024 * 1024)).toFixed(1)} Mo`
+}
+
 function MediaManager() {
-  const { media, theme: t } = useSite()
+  const { media, theme: t, dataSource, refreshMedia } = useSite()
+  const [slot, setSlot] = useState('hero')
+  const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [editSlotId, setEditSlotId] = useState<string | null>(null)
+  const [editSlotValue, setEditSlotValue] = useState('general')
+  const fileRef = React.useRef<HTMLInputElement>(null)
+
+  const isSupabase = dataSource === 'supabase'
+  const dbAssets = media.filter(m => m.id)
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return
+    if (!isSupabase) {
+      setStatus({ kind: 'err', msg: 'Connexion Supabase requise pour téléverser.' })
+      return
+    }
+    setUploading(true)
+    setStatus({ kind: 'busy', msg: `Téléversement de ${file.name}…` })
+    const res = await uploadMedia(file, slot)
+    setUploading(false)
+    if (res.data) {
+      setStatus({ kind: 'ok', msg: `${res.data.filename} téléversé dans « ${SLOT_LABELS[res.data.slot] || res.data.slot} ».` })
+      await refreshMedia()
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec du téléversement.' })
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleDelete = async (m: MediaSlot) => {
+    if (!m.id) return
+    setRemovingId(m.id)
+    const ok = await deleteMedia(m.id, '')
+    setRemovingId(null)
+    if (ok) {
+      setStatus({ kind: 'ok', msg: `${m.filename || 'Fichier'} supprimé.` })
+      await refreshMedia()
+    } else {
+      setStatus({ kind: 'err', msg: 'Échec de la suppression.' })
+    }
+  }
+
+  const handleSaveSlot = async (m: MediaSlot) => {
+    if (!m.id) return
+    const ok = await updateMediaSlot(m.id, editSlotValue)
+    if (ok) {
+      setEditSlotId(null)
+      await refreshMedia()
+      setStatus({ kind: 'ok', msg: 'Emplacement mis à jour.' })
+    } else {
+      setStatus({ kind: 'err', msg: 'Échec de la mise à jour.' })
+    }
+  }
+
   return (
-    <div style={{ maxWidth: '820px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Médias & dimensions</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Uploadez images/vidéos, recadrez et assignez aux emplacements.</p>
-      <div style={{ display: 'grid', gap: '12px', marginTop: '20px' }}>
-        {media.map((m, i) => (
-          <OrganicCard key={i} style={{ padding: '16px', display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: '14px', alignItems: 'center' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: `${t.primary}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.5"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, color: t.heading, fontSize: '15px' }}>{m.slot}</div>
-              <div style={{ fontSize: '12px', color: t.muted, marginTop: '2px' }}>Dimensions : {m.dims} · {m.status}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button size="sm" variant="outline" style={{ borderColor: t.primary + '44', color: t.primary, borderRadius: '10px' }}>Redimensionner</Button>
-              <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: '10px' }}>Remplacer</Button>
-            </div>
-          </OrganicCard>
-        ))}
+    <div style={{ maxWidth: '860px' }}>
+      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Médias</h2>
+      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Téléversez images/vidéos dans le bucket Supabase « media » et assignez-les aux emplacements du site.</p>
+
+      {!isSupabase && (
+        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
+          Mode local — la connexion Supabase n'est pas active. Les téléversements sont désactivés.
+        </div>
+      )}
+
+      <OrganicCard style={{ marginTop: 18, padding: 18, display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14, alignItems: 'end' }}>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <Label style={{ color: t.heading, fontSize: 13, fontWeight: 600 }}>Emplacement cible</Label>
+            <Select value={slot} onValueChange={setSlot}>
+              <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10 }}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MEDIA_SLOTS.map(s => (
+                  <SelectItem key={s} value={s}>{SLOT_LABELS[s] || s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,video/*"
+              style={{ display: 'none' }}
+              onChange={e => handleFile(e.target.files?.[0])}
+            />
+            <Button
+              size="md"
+              disabled={uploading || !isSupabase}
+              style={{ background: t.primary, color: '#fff', borderRadius: 10, padding: '9px 18px', opacity: uploading || !isSupabase ? 0.6 : 1 }}
+              onClick={() => fileRef.current?.click()}
+            >
+              {uploading ? 'Téléversement…' : 'Téléverser un fichier'}
+            </Button>
+          </div>
+        </div>
+        {status.kind !== 'idle' && (
+          <div style={{
+            fontSize: 13,
+            padding: '9px 12px',
+            borderRadius: 10,
+            background: status.kind === 'ok' ? `${t.primary}12` : status.kind === 'err' ? '#dc262612' : `${t.primary}08`,
+            color: status.kind === 'err' ? '#dc2626' : t.heading,
+            border: `1px solid ${status.kind === 'err' ? '#dc262633' : t.primary + '22'}`,
+          }}>
+            {status.kind === 'busy' && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: t.primary, marginRight: 8, animation: 'pulse 1s infinite' }} />}
+            {status.msg}
+          </div>
+        )}
+      </OrganicCard>
+
+      <div style={{ marginTop: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: t.heading, marginBottom: 12 }}>
+          Fichiers téléversés ({dbAssets.length})
+        </div>
+        {dbAssets.length === 0 ? (
+          <div style={{ color: t.muted, fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
+            Aucun fichier téléversé pour le moment.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {dbAssets.map((m, i) => {
+              const isImg = m.content_type?.startsWith('image/')
+              const editing = editSlotId === m.id
+              return (
+                <OrganicCard key={m.id || i} style={{ padding: 14, display: 'grid', gridTemplateColumns: '64px 1fr auto', gap: 14, alignItems: 'center' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', background: `${t.primary}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isImg && m.url ? (
+                      <img src={m.url} alt={m.filename} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.5"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: t.heading, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.filename}</div>
+                    <div style={{ fontSize: 12, color: t.muted, marginTop: 2 }}>
+                      {SLOT_LABELS[m.slot] || m.slot} · {m.content_type || 'fichier'} {formatSize(m.size_bytes) ? `· ${formatSize(m.size_bytes)}` : ''}
+                    </div>
+                    {m.url && (
+                      <a href={m.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: t.primary, textDecoration: 'underline' }}>Voir le fichier</a>
+                    )}
+                    {editing && (
+                      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <Select value={editSlotValue} onValueChange={setEditSlotValue}>
+                          <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 8, height: 32, fontSize: 12 }}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MEDIA_SLOTS.map(s => (
+                              <SelectItem key={s} value={s}>{SLOT_LABELS[s] || s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: 8 }} onClick={() => handleSaveSlot(m)}>OK</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditSlotId(null)}>Annuler</Button>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {!editing && (
+                      <Button size="sm" variant="outline" style={{ borderColor: t.primary + '44', color: t.primary, borderRadius: 10 }} onClick={() => { setEditSlotId(m.id || null); setEditSlotValue(m.slot) }}>
+                        Emplacement
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={removingId === m.id}
+                      style={{ borderColor: '#dc262644', color: '#dc2626', borderRadius: 10, opacity: removingId === m.id ? 0.6 : 1 }}
+                      onClick={() => handleDelete(m)}
+                    >
+                      {removingId === m.id ? '…' : 'Supprimer'}
+                    </Button>
+                  </div>
+                </OrganicCard>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
