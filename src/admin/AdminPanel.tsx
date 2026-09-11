@@ -6,12 +6,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 import { CATEGORY_ORDER } from '@/data/menu'
-import { USERS } from '@/data/users'
 import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, uploadMedia, deleteMedia, updateMediaSlot, type BlogPost, type Reservation } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, getSupabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -78,7 +77,7 @@ function DashCard({ label, value, sub }: { label: string; value: React.ReactNode
 }
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
   return (
@@ -92,7 +91,7 @@ function Dashboard() {
         <DashCard label="Produits dans la carte" value={menu.length} sub="toutes catégories" />
         <DashCard label="Messages reçus" value={messages.length} sub="via formulaires" />
         <DashCard label="Catégories actives" value={CATEGORY_ORDER.length} sub="burgers, wraps, salades…" />
-        <DashCard label="Utilisateurs" value={USERS.length} sub="avec rôles attribués" />
+        <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles attribués" />
       </div>
       <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: '28px 0 12px', letterSpacing: '-0.02em' }}>Messages récents</h3>
       {messages.length === 0 ? <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant. Les soumissions du formulaire de contact apparaissent ici.</p> :
@@ -550,27 +549,134 @@ function VisibilityEditor() {
   )
 }
 
+const ROLE_OPTIONS = ROLES.map(r => ({ id: r.id, name: r.name }))
+
 function UsersRoles() {
-  const { theme: t } = useSite()
+  const { theme: t, dataSource, adminUsers, refreshAdminUsers } = useSite()
+  const { user: currentUser } = useAuth()
   const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
   const permColor = (p: string) => p === 'écrire' ? t.accent : p === 'lecture' || p === 'carte' || p === 'blog' ? t.primary : t.muted
   const permIcon = (p: string) => p === 'écrire' ? Icon.write(13, t.accent) : p === 'lecture' ? Icon.eye(13, t.primary) : p === 'carte' ? Icon.leaf(13, t.gold) : p === 'blog' ? Icon.write(13, t.primary) : '—'
+
+  const isSupabase = dataSource === 'supabase'
+  const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
+  const [editing, setEditing] = useState<{ id?: string; email: string; name: string; role: string } | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: t.text, width: '100%' }
+
+  const startAdd = () => setEditing({ email: '', name: '', role: 'guest' })
+  const startEdit = (u: { id: string; email: string; name: string; role: string }) =>
+    setEditing({ id: u.id, email: u.email, name: u.name, role: u.role })
+
+  const saveEdit = async () => {
+    if (!editing) return
+    if (!editing.email.trim() || !editing.name.trim()) {
+      setStatus({ kind: 'err', msg: 'Email et nom requis.' }); return
+    }
+    setStatus({ kind: 'busy', msg: 'Enregistrement…' })
+    const res = await upsertAdminUser({
+      id: editing.id,
+      email: editing.email.trim().toLowerCase(),
+      name: editing.name.trim(),
+      role: editing.role,
+    })
+    if (res.ok) {
+      setEditing(null)
+      await refreshAdminUsers()
+      setStatus({ kind: 'ok', msg: editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.' })
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec.' })
+    }
+  }
+
+  const remove = async (id: string, name: string) => {
+    setBusyId(id)
+    const res = await deleteAdminUser(id)
+    setBusyId(null)
+    if (res.ok) {
+      await refreshAdminUsers()
+      setStatus({ kind: 'ok', msg: `${name} supprimé.` })
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec de la suppression.' })
+    }
+  }
+
+  const currentEmail = currentUser?.email?.toLowerCase()
+
   return (
     <div style={{ maxWidth: '920px' }}>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Utilisateurs & rôles</h2>
       <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Permissions granulaires par module (voir / écrire / désactivé).</p>
-      <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: '20px 0 10px' }}>Équipe</h3>
-      {USERS.map(u => {
-        const role = ROLES.find(r => r.id === u.role)!
-        return (
-          <div key={u.email} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}</span></span>
-            <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '100px', background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
+
+      {!isSupabase && (
+        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
+          Mode local — la gestion des utilisateurs nécessite une connexion Supabase.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 10px' }}>
+        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: 0 }}>Équipe</h3>
+        <Button size="sm" disabled={!isSupabase || !!editing} style={{ background: t.primary, color: '#fff', borderRadius: 10, opacity: !isSupabase || editing ? 0.6 : 1 }} onClick={startAdd}>+ Ajouter</Button>
+      </div>
+
+      {status.kind !== 'idle' && (
+        <div style={{
+          fontSize: 13, padding: '9px 12px', borderRadius: 10, marginBottom: 12,
+          background: status.kind === 'ok' ? `${t.primary}12` : status.kind === 'err' ? '#dc262612' : `${t.primary}08`,
+          color: status.kind === 'err' ? '#dc2626' : t.heading,
+          border: `1px solid ${status.kind === 'err' ? '#dc262633' : t.primary + '22'}`,
+        }}>{status.msg}</div>
+      )}
+
+      {editing && (
+        <OrganicCard style={{ padding: 16, marginBottom: 12, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Nom</Label>
+              <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inputStyle} placeholder="Nom complet" />
+            </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Email</Label>
+              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inputStyle} placeholder="email@greatlife.gn" disabled={!!editing.id} />
+            </div>
           </div>
-        )
-      })}
+          <div style={{ display: 'grid', gap: 6, maxWidth: 260 }}>
+            <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Rôle</Label>
+            <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
+              <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px' }}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: 10 }} onClick={saveEdit}>Enregistrer</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
+          </div>
+        </OrganicCard>
+      )}
+
+      {adminUsers.length === 0 ? (
+        <p style={{ color: t.muted, fontSize: 14, padding: '16px 0' }}>Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Ajouter ».' : ''}</p>
+      ) : (
+        adminUsers.map(u => {
+          const role = ROLES.find(r => r.id === u.role) || ROLES.find(r => r.id === 'guest')!
+          const isSelf = u.email.toLowerCase() === currentEmail
+          return (
+            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
+                <Button size="sm" variant="outline" disabled={!isSupabase || busyId === u.id} style={{ borderColor: t.primary + '44', color: t.primary, borderRadius: 10 }} onClick={() => startEdit(u)}>Modifier</Button>
+                <Button size="sm" variant="outline" disabled={!isSupabase || isSelf || busyId === u.id} style={{ borderColor: '#dc262644', color: '#dc2626', borderRadius: 10, opacity: isSelf || busyId === u.id ? 0.5 : 1 }} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</Button>
+              </div>
+            </div>
+          )
+        })
+      )}
+
       <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: '24px 0 10px' }}>Matrice des permissions</h3>
-      <div style={{ overflowX: 'auto', borderRadius: '14px', border: `1px solid ${t.shadow}` }}>
+      <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${t.shadow}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface }}>
           <thead>
             <tr style={{ background: t.surfaceAlt }}>

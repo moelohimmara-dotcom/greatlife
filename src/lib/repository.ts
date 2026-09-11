@@ -502,4 +502,73 @@ export async function updateMediaSlot(id: string, slot: string): Promise<boolean
   }
 }
 
+const ADMIN_USERS_TABLE = 'admin_users'
+
+export interface AdminUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  created_at?: string
+}
+
+export async function fetchAdminUsers(): Promise<{ data: AdminUser[]; fromDb: boolean }> {
+  const sb = getSupabase()
+  if (!sb) return { data: [], fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(ADMIN_USERS_TABLE)
+      .select('*')
+      .order('created_at', { ascending: true })
+    if (error || !data) return { data: [], fromDb: false }
+    return {
+      data: (data as Array<Record<string, unknown>>).map(u => ({
+        id: String(u.id ?? ''),
+        email: String(u.email ?? ''),
+        name: String(u.name ?? ''),
+        role: String(u.role ?? 'guest'),
+        created_at: u.created_at ? String(u.created_at) : undefined,
+      })),
+      fromDb: true,
+    }
+  } catch {
+    return { data: [], fromDb: false }
+  }
+}
+
+export async function upsertAdminUser(
+  user: { id?: string; email: string; name: string; role: string }
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    if (user.id) {
+      const { error } = await sb
+        .from(ADMIN_USERS_TABLE)
+        .update({ email: user.email, name: user.name, role: user.role })
+        .eq('id', user.id)
+      return { ok: !error, error: error?.message }
+    }
+    const { error } = await sb.from(ADMIN_USERS_TABLE).insert({
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    })
+    return { ok: !error, error: error?.message }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
+export async function deleteAdminUser(id: string): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb.from(ADMIN_USERS_TABLE).delete().eq('id', id)
+    return { ok: !error, error: error?.message }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
 export const supabaseReady = isSupabaseConfigured
