@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSite } from '@/contexts/SiteContext'
+import { useSite, useMedia } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { BadgePill } from '@/components/ui/BadgePill'
 import { Reveal } from '@/components/ui/Reveal'
@@ -13,16 +13,20 @@ import type { MenuItem } from '@/data/menu'
 function MenuCard({ item }: { item: MenuItem }) {
   const { theme: t, visibility } = useSite()
   const [open, setOpen] = useState(false)
+  const slotId = `produit-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+  const prodImg = useMedia(slotId)
   return (
     <OrganicCard hover style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{
         height: '140px', position: 'relative', overflow: 'hidden',
-        background: item.sig
-          ? `linear-gradient(135deg, ${t.gold}25, ${t.accent}18)`
-          : `linear-gradient(135deg, ${t.primary}12, ${t.primary}06)`,
+        background: prodImg
+          ? `url(${prodImg}) center/cover`
+          : item.sig
+            ? `linear-gradient(135deg, ${t.gold}25, ${t.accent}18)`
+            : `linear-gradient(135deg, ${t.primary}12, ${t.primary}06)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <FoodIcon cat={item.cat} size={56} color={t.heading} />
+        {!prodImg && <FoodIcon cat={item.cat} size={56} color={t.heading} />}
         {item.sig && (
           <div style={{
             position: 'absolute', top: '12px', right: '12px',
@@ -97,7 +101,7 @@ export function Carte() {
                 <span style={{ flex: 1, height: '1px', background: t.shadow }} />
               </h3>
             </Reveal>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+            <div className="menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
               {items.map((it, i) => (
                 <Reveal key={it.name} delay={(i % 4) * 0.06}>
                   <MenuCard item={it} />
