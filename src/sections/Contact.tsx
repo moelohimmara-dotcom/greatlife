@@ -17,6 +17,7 @@ export function Contact() {
   const [form, setForm] = useState({ nom: '', email: '', sujet: 'contact', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   const validate = () => {
     const e: Record<string, string | undefined> = {}
@@ -31,13 +32,20 @@ export function Contact() {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
-    const record = { ...form, date: new Date().toLocaleString('fr-FR') }
+    setError(false)
     const sb = getSupabase()
     if (sb) {
-      await insertMessage({ ...form, date: record.date })
-      await invokeContactEmail(form)
+      const insertOk = await insertMessage(form)
+      const emailResult = await invokeContactEmail(form)
+      if (!insertOk || !emailResult.ok) {
+        setError(true)
+        setLoading(false)
+        return
+      }
+    } else {
+      await new Promise(r => setTimeout(r, 600))
     }
-    setMessages(prev => [record, ...prev])
+    setMessages(prev => [{ ...form, date: new Date().toISOString(), id: undefined }, ...prev])
     setSent(true)
     setLoading(false)
     setForm({ nom: '', email: '', sujet: 'contact', message: '' })
@@ -111,6 +119,11 @@ export function Contact() {
                 {sent && (
                   <span style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {Icon.check(16, t.primary)} Envoyé ! Auto-réponse transmise au client.
+                  </span>
+                )}
+                {error && (
+                  <span style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ✗ Échec de l'envoi — veuillez réessayer.
                   </span>
                 )}
               </div>

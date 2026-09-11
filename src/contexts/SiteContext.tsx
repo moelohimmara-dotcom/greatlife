@@ -38,7 +38,7 @@ export interface ContactMessage {
   email: string
   sujet: string
   message: string
-  date: string
+  date?: string
   handled?: boolean
 }
 
