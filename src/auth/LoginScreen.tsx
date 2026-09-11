@@ -17,15 +17,18 @@ export function LoginScreen() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setLoading(true)
-    setTimeout(() => {
-      const result = login(email, password)
-      setLoading(false)
+    try {
+      const result = await login(email, password)
       if (result.ok) navigate('/admin')
       else setError(result.error ?? 'Erreur inconnue')
-    }, 500)
+    } catch {
+      setError('Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
   }
   return (
     <div style={{ ...rootStyle, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
@@ -42,7 +45,7 @@ export function LoginScreen() {
           <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
             <div>
               <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="owner@greatlife.gn" required
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="owner@greatlife.com" required
                 style={{ background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }} />
             </div>
             <div>
@@ -67,8 +70,8 @@ export function LoginScreen() {
           </form>
           <div style={{ marginTop: '20px', padding: '14px', borderRadius: '14px', background: t.surfaceAlt, border: `1px dashed ${t.shadow}`, fontSize: '12px', color: t.muted, lineHeight: 1.7 }}>
             <strong style={{ color: t.heading }}>Comptes de démonstration</strong><br />
-            Propriétaire : owner@greatlife.gn<br />
-            Gérant : gerant@greatlife.gn<br />
+            Propriétaire : owner@greatlife.com<br />
+            Gérant : gerant@greatlife.com<br />
             Mot de passe : greatlife2026
           </div>
         </OrganicCard>

@@ -1,21 +1,41 @@
+import { useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { Icon } from '@/lib/icons'
+import type { BlogPost } from '@/lib/repository'
+
+const FALLBACK_POSTS: BlogPost[] = [
+  { title: 'Pourquoi le corossol mérite sa place dans votre assiette', excerpt: 'Découverte d\'un superfruit guinéen aux vertus digestives reconnues.', body: '', category: 'Découverte', published: true },
+  { title: '5 façons de rendre le fast-food sain (sans le rendre triste)', excerpt: 'Notre approche pour réconcilier gourmandise et santé.', body: '', category: 'Santé', published: true },
+  { title: 'Circuit court en Guinée : rencontre avec nos producteurs', excerpt: 'Derrière chaque burger, des femmes et des hommes de la Fouta-Djallon.', body: '', category: 'Producteurs', published: true },
+]
 
 export function Blog() {
-  const { theme: t } = useSite()
-  const posts: [string, string, string][] = [
-    ['Pourquoi le corossol mérite sa place dans votre assiette', 'Découverte d\'un superfruit guinéen aux vertus digestives reconnues.', 'corossol'],
-    ['5 façons de rendre le fast-food sain (sans le rendre triste)', 'Notre approche pour réconcilier gourmandise et santé.', 'sain'],
-    ['Circuit court en Guinée : rencontre avec nos producteurs', 'Derrière chaque burger, des femmes et des hommes de la Fouta-Djallon.', 'producteurs'],
-  ]
+  const { theme: t, blogPosts } = useSite()
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const posts = blogPosts.length > 0
+    ? blogPosts.filter(p => p.published)
+    : FALLBACK_POSTS
+  const illusMap: Record<string, string> = {
+    'corossol': 'corossol', 'sain': 'sain', 'producteurs': 'producteurs',
+    'découverte': 'corossol', 'santé': 'sain', 'producteur': 'producteurs',
+  }
+  const getIllus = (title: string, category: string) => {
+    const key = (category + ' ' + title).toLowerCase()
+    for (const [k, v] of Object.entries(illusMap)) {
+      if (key.includes(k)) return v
+    }
+    return 'sain'
+  }
   return (
     <section id="blog" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Reveal><SectionHead title="Le journal Greatlife" sub="Recettes, coulisses et rencontres avec nos producteurs." align="center" /></Reveal>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
-        {posts.map(([title, desc, illus], i) => (
+        {posts.map((post, i) => {
+          const illus = getIllus(post.title, post.category)
+          return (
           <Reveal key={i} delay={(i % 3) * 0.06}>
             <OrganicCard hover style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ height: '160px', background: `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -67,13 +87,24 @@ export function Blog() {
                 )}
               </div>
               <div style={{ padding: '20px 22px' }}>
-                <h4 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{title}</h4>
-                <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{desc}</p>
-                <div style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '13px', fontWeight: 600, color: t.primary }}>Lire {Icon.arrow(14, t.primary)}</div>
+                <h4 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
+                <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.excerpt}</p>
+                {post.body && (
+                  <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    {expanded === post.title ? 'Réduire' : 'Lire la suite'}
+                  </button>
+                )}
+                {expanded === post.title && post.body && (
+                  <div style={{ marginTop: '12px', fontSize: '13.5px', color: t.text, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{post.body}</div>
+                )}
+                {!post.body && (
+                  <div style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '13px', fontWeight: 600, color: t.primary }}>Lire {Icon.arrow(14, t.primary)}</div>
+                )}
               </div>
             </OrganicCard>
           </Reveal>
-        ))}
+          )
+        })}
       </div>
     </section>
   )

@@ -5,6 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, type BlogPost, type SiteConfig } from '@/lib/repository'
 
 export interface SiteContent {
   slogan: string
@@ -32,11 +33,13 @@ export interface MediaSlot {
 }
 
 export interface ContactMessage {
+  id?: string
   nom: string
   email: string
   sujet: string
   message: string
-  date: string
+  date?: string
+  handled?: boolean
 }
 
 interface SiteContextValue {
@@ -58,6 +61,15 @@ interface SiteContextValue {
   setMessages: React.Dispatch<React.SetStateAction<ContactMessage[]>>
   rootStyle: React.CSSProperties
   isDark: boolean
+  dataSource: 'loading' | 'supabase' | 'local'
+  dataLoading: boolean
+  saveContentToDb: () => Promise<boolean>
+  refreshMessages: () => Promise<number>
+  lastMessageCount: number
+  blogPosts: BlogPost[]
+  setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
+  saveSiteConfigToDb: () => Promise<boolean>
+  markMessageHandled: (id: string, handled: boolean) => Promise<boolean>
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -94,6 +106,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [menu, setMenu] = useState(MENU)
   const [media, setMedia] = useState(DEFAULT_MEDIA)
   const [messages, setMessages] = useState<ContactMessage[]>([])
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
+  const [dataLoading, setDataLoading] = useState(true)
+  const [lastMessageCount, setLastMessageCount] = useState(0)
 
   const theme = THEMES[themeId]
   const font = FONTS[fontId]
@@ -144,15 +160,80 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: rgba(45,90,39,0.2); border-radius: 100px; }
       ::-webkit-scrollbar-thumb:hover { background: rgba(45,90,39,0.35); }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     `
     document.head.appendChild(style)
   }, [])
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      const [menuRes, contentRes, messagesRes, blogRes] = await Promise.all([
+        fetchMenu(),
+        fetchContent(),
+        fetchMessages(),
+        fetchBlogPosts(),
+      ])
+      if (!active) return
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb
+      setDataSource(anyDb ? 'supabase' : 'local')
+      if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
+      if (contentRes.fromDb && contentRes.data) {
+        const cfg = contentRes.data as Partial<SiteConfig>
+        if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
+        if (cfg.themeId) setThemeId(cfg.themeId)
+        if (cfg.fontId) setFontId(cfg.fontId)
+        if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+      }
+      if (messagesRes.fromDb && messagesRes.data.length > 0) {
+        setMessages(messagesRes.data)
+      }
+      if (blogRes.fromDb && blogRes.data.length > 0) {
+        setBlogPosts(blogRes.data)
+      }
+      setLastMessageCount(messagesRes.data.length)
+      setDataLoading(false)
+    }
+    load()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const saveContentToDb = async () => saveContent(content)
+
+  const saveSiteConfigToDb = async () => {
+    const config: SiteConfig = { content, themeId, fontId, visibility }
+    return saveSiteConfig(config)
+  }
+
+  const handleMarkMessageHandled = async (id: string, handled: boolean) => {
+    const ok = await markMessageHandled(id, handled)
+    if (ok) {
+      setMessages(prev => prev.map(m =>
+        m.id === id ? { ...m, handled } : m
+      ))
+    }
+    return ok
+  }
+
+  const refreshMessages = async (): Promise<number> => {
+    const res = await fetchMessages()
+    if (res.fromDb) {
+      setMessages(res.data)
+      setLastMessageCount(res.data.length)
+      return res.data.length
+    }
+    return lastMessageCount
+  }
 
   const value: SiteContextValue = {
     themeId, setThemeId, theme, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
     menu, setMenu, media, setMedia, messages, setMessages,
-    rootStyle, isDark,
+    rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
+    refreshMessages, lastMessageCount,
+    blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>

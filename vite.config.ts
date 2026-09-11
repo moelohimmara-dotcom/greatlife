@@ -12,5 +12,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'animation': ['framer-motion'],
+        },
+      },
+    },
   },
 })
