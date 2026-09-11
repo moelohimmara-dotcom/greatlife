@@ -41,7 +41,7 @@ const SMTP_HOST = "smtp.gmail.com";
 const SMTP_PORT = 465;
 
 interface ContactPayload {
-  action?: "contact" | "reply" | "reservation-status" | "order-status";
+  action?: "contact" | "reply" | "reservation-status" | "order-status" | "create-order";
   nom: string;
   email: string;
   sujet: string;
@@ -62,6 +62,12 @@ interface ContactPayload {
   items?: string;
   total?: string;
   pickupTime?: string;
+  // Champs utilisés pour le mode "create-order" (insertion commande cote serveur)
+  phone?: string;
+  orderItems?: Array<{ name: string; price: string; qty: number }>;
+  orderTotal?: string;
+  pickupTimeSlot?: string;
+  notes?: string;
 }
 
 async function sendMail(
@@ -311,6 +317,80 @@ async function handleOrderStatus(body: ContactPayload): Promise<Response> {
   return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
+async function handleCreateOrder(body: ContactPayload): Promise<Response> {
+  const { nom, email, ref, orderItems, orderTotal, pickupTimeSlot, notes, phone } = body;
+
+  if (!nom || !email || !ref || !orderItems || orderItems.length === 0) {
+    return corsResponse(
+      JSON.stringify({ ok: false, error: "Champs requis manquants pour la commande" }),
+      400,
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const { error: insertErr } = await supabase.from("orders").insert({
+    ref,
+    nom,
+    email,
+    phone: phone || "",
+    items: orderItems,
+    total: orderTotal || "0",
+    pickup_time: pickupTimeSlot || "",
+    notes: notes || "",
+    status: "pending",
+  });
+
+  if (insertErr) {
+    console.error("Order insert error:", insertErr);
+    return corsResponse(
+      JSON.stringify({ ok: false, error: "Impossible d'enregistrer la commande" }),
+      500,
+    );
+  }
+
+  const errors: string[] = [];
+  if (SMTP_USER && SMTP_PASS) {
+    const itemsLabel = orderItems.map((i) => `${i.qty}x ${i.name}`).join(", ");
+    const destEmail = "moelohimmara@gmail.com";
+    try {
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, ">");
+      await sendMail(
+        destEmail,
+        `Nouvelle commande - ${ref}`,
+        `Nom: ${nom}\nEmail: ${email}${phone ? `\nTel: ${phone}` : ""}\nRef: ${ref}\nRetrait: ${pickupTimeSlot || ""}\nArticles: ${itemsLabel}\nTotal: ${orderTotal || ""} FG${notes ? `\nNotes: ${notes}` : ""}`,
+        `<p><strong>${esc(nom)}</strong> (${esc(email)}${phone ? " / " + esc(phone) : ""})</p><p><em>Ref: ${esc(ref)}</em></p><p>Retrait: ${esc(pickupTimeSlot || "")}</p><p>Articles: ${esc(itemsLabel)}</p><p>Total: ${esc(orderTotal || "")} FG</p>${notes ? `<p>Notes: ${esc(notes)}</p>` : ""}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("notif:" + msg);
+      console.error("Order notif email error:", err);
+    }
+
+    try {
+      const autoReply =
+        `Bonjour ${nom}, merci pour votre commande chez Greatlife ! Votre commande ${ref} a bien ete recue. Nous vous recontactons rapidement pour confirmer les details. - L'equipe Greatlife`;
+      await sendMail(
+        email,
+        "Greatlife - Nous avons bien recu votre commande",
+        autoReply,
+        `<p>${autoReply.replace(/\n/g, "<br>")}</p>`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("autoreply:" + msg);
+      console.error("Order auto-reply error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, ref, errors }));
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -322,6 +402,10 @@ serve(async (req: Request) => {
   try {
     const body: ContactPayload = await req.json();
     const action = body.action || "contact";
+
+    if (action === "create-order") {
+      return await handleCreateOrder(body);
+    }
 
     if (action === "reply" || action === "reservation-status" || action === "order-status") {
       const authHeader = req.headers.get("Authorization") || "";

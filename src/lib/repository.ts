@@ -1,4 +1,4 @@
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import { getSupabase, isSupabaseConfigured, invokeCreateOrder } from '@/lib/supabase'
 import { MENU, type MenuItem } from '@/data/menu'
 import type { SiteContent, ContactMessage } from '@/contexts/SiteContext'
 
@@ -418,17 +418,17 @@ export async function insertOrder(
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(ORDERS_TABLE).insert({
-      ref: o.ref,
+    const res = await invokeCreateOrder({
       nom: o.nom,
       email: o.email,
       phone: o.phone,
-      items: o.items,
-      total: o.total,
-      pickup_time: o.pickup_time,
+      ref: o.ref,
+      orderItems: o.items,
+      orderTotal: o.total,
+      pickupTimeSlot: o.pickup_time,
       notes: o.notes,
     })
-    if (error) return { ok: false, error: errMsg(error) }
+    if (!res.ok) return { ok: false, error: res.error || 'Échec de la commande' }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }

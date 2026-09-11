@@ -102,6 +102,32 @@ export async function invokeOrderStatusEmail(payload: {
   }
 }
 
+export async function invokeCreateOrder(payload: {
+  nom: string
+  email: string
+  phone: string
+  ref: string
+  orderItems: Array<{ name: string; price: string; qty: number }>
+  orderTotal: string
+  pickupTimeSlot: string
+  notes: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb || !EDGE_FUNCTION_URL) return { ok: false, error: 'not-configured' }
+  try {
+    const { data, error } = await sb.functions.invoke('send-contact-email', {
+      body: { action: 'create-order', ...payload },
+    })
+    if (error) return { ok: false, error: error.message }
+    if (data && (data as { error?: string }).error) {
+      return { ok: false, error: (data as { error: string }).error }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
 export async function invokeReservationStatusEmail(payload: {
   to: string
   nom: string

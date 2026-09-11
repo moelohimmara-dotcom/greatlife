@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { insertOrder } from '@/lib/repository'
-import { invokeContactEmail, getSupabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 
 const PICKUP_TIMES = ['12:00', '12:30', '13:00', '13:30', '14:00', '19:00', '19:30', '20:00', '20:30', '21:00']
 
@@ -43,7 +43,6 @@ export function OrderCart() {
     setResult('idle')
     setErrMsg('')
     const ref = genRef()
-    const itemsLabel = items.map(i => `${i.qty}× ${i.name}`).join(', ')
     const sb = getSupabase()
     if (sb) {
       const res = await insertOrder({
@@ -57,12 +56,6 @@ export function OrderCart() {
         notes: form.notes,
       })
       if (!res.ok) { setErrMsg(res.error || 'Échec de la commande'); setResult('err'); setSubmitting(false); return }
-      await invokeContactEmail({
-        nom: form.nom,
-        email: form.email,
-        sujet: 'commande',
-        message: `Commande ${ref} — retrait à ${form.pickup_time}\nArticles: ${itemsLabel}\nTotal: ${totalLabel} FG${form.phone ? `\nTél: ${form.phone}` : ''}${form.notes ? `\nNotes: ${form.notes}` : ''}`,
-      })
     } else {
       await new Promise(r => setTimeout(r, 600))
     }
