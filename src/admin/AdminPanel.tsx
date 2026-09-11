@@ -11,6 +11,7 @@ import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
+import { upsertMenuItem } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -76,11 +77,16 @@ function DashCard({ label, value, sub }: { label: string; value: React.ReactNode
 }
 
 function Dashboard() {
-  const { menu, messages, theme: t } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading } = useSite()
+  const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
+  const dsColor = dataSource === 'supabase' ? t.primary : t.muted
   return (
     <div>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '28px', fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Tableau de bord</h2>
       <p style={{ color: t.muted, marginTop: 0, fontSize: '14px' }}>Bienvenue Mister Marcket. Pilotez votre site en toute liberté.</p>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: '100px', background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor, marginTop: 4 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '24px' }}>
         <DashCard label="Produits dans la carte" value={menu.length} sub="toutes catégories" />
         <DashCard label="Messages reçus" value={messages.length} sub="via formulaires" />
@@ -102,14 +108,39 @@ function Dashboard() {
   )
 }
 
+function SaveBar({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
+  const { theme: t } = useSite()
+  const label = status === 'saving' ? 'Enregistrement…' : status === 'saved' ? 'Enregistré ✓' : status === 'error' ? 'Échec de l\'enregistrement' : ''
+  if (!label && status === 'idle') return null
+  return (
+    <span style={{ fontSize: '13px', fontWeight: 600, color: status === 'error' ? t.accent : status === 'saved' ? t.primary : t.muted }}>
+      {label}
+    </span>
+  )
+}
+
 function ContentEditor() {
-  const { content, setContent, theme: t } = useSite()
-  const set = (k: string, v: string) => setContent({ ...content, [k]: v })
+  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle') }
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const save = async () => {
+    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
+    setSaveStatus('saving')
+    const ok = await saveContentToDb()
+    setSaveStatus(ok ? 'saved' : 'error')
+    setTimeout(() => setSaveStatus('idle'), 3000)
+  }
   return (
     <div style={{ maxWidth: '720px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Contenu du site</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Modifiez tous les textes. Les changements sont appliqués en direct.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Contenu du site</h2>
+          <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Modifiez tous les textes. Les changements sont appliqués en direct.</p>
+        </div>
+        <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
+      </div>
+      {saveStatus !== 'idle' && <div style={{ marginTop: 8 }}><SaveBar status={saveStatus} /></div>}
       <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Slogan</Label><Input value={content.slogan} onChange={e => set('slogan', e.target.value)} style={inputStyle} /></div>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Titre Hero</Label><Input value={content.heroTitle} onChange={e => set('heroTitle', e.target.value)} style={inputStyle} /></div>
@@ -125,11 +156,31 @@ function ContentEditor() {
 }
 
 function MenuEditor() {
-  const { menu, setMenu, theme: t } = useSite()
-  const [sel, setSel] = useState(menu[0].name)
-  const item = menu.find(m => m.name === sel)!
-  const update = (k: string, v: string | boolean | string[]) => setMenu(menu.map(m => m.name === sel ? { ...m, [k]: v } : m))
+  const { menu, setMenu, theme: t, dataSource } = useSite()
+  const [sel, setSel] = useState(menu[0]?.name ?? '')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const item = menu.find(m => m.name === sel)
+  const update = (k: string, v: string | boolean | string[]) => {
+    const next = menu.map(m => m.name === sel ? { ...m, [k]: v } : m)
+    setMenu(next)
+    const updated = next.find(m => m.name === sel)
+    if (updated && dataSource === 'supabase') {
+      setSaveStatus('saving')
+      upsertMenuItem(updated).then(ok => {
+        setSaveStatus(ok ? 'saved' : 'error')
+        setTimeout(() => setSaveStatus('idle'), 2000)
+      })
+    }
+  }
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  if (!item) {
+    return (
+      <div>
+        <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em' }}>Carte & prix</h2>
+        <p style={{ color: t.muted, fontSize: '14px' }}>Aucun produit à afficher pour le moment.</p>
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px' }}>
       <div>
@@ -151,6 +202,7 @@ function MenuEditor() {
       </div>
       <div>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: '0 0 16px', letterSpacing: '-0.02em' }}>{item.name}</h3>
+        {saveStatus !== 'idle' && <div style={{ marginBottom: 12 }}><SaveBar status={saveStatus} /></div>}
         <div style={{ display: 'grid', gap: '14px', maxWidth: '560px' }}>
           <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Nom</Label><Input value={item.name} onChange={e => update('name', e.target.value)} style={inputStyle} /></div>
           <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Prix (FG)</Label><Input value={item.price} onChange={e => update('price', e.target.value)} style={inputStyle} /></div>
@@ -316,13 +368,27 @@ function UsersRoles() {
 }
 
 function FormsConfig() {
-  const { content, setContent, theme: t } = useSite()
-  const set = (k: string, v: string) => setContent({ ...content, [k]: v })
+  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle') }
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const save = async () => {
+    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
+    setSaveStatus('saving')
+    const ok = await saveContentToDb()
+    setSaveStatus(ok ? 'saved' : 'error')
+    setTimeout(() => setSaveStatus('idle'), 3000)
+  }
   return (
     <div style={{ maxWidth: '680px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Formulaires & emails</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Configurez les destinataires et l'auto-réponse envoyée au client.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Formulaires & emails</h2>
+          <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Configurez les destinataires et l'auto-réponse envoyée au client.</p>
+        </div>
+        <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
+      </div>
+      {saveStatus !== 'idle' && <div style={{ marginTop: 8 }}><SaveBar status={saveStatus} /></div>}
       <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — messages généraux</Label><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inputStyle} /></div>
         <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — réservations</Label><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inputStyle} /></div>

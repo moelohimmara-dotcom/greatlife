@@ -47,11 +47,21 @@ supabase/
 └── functions/      # send-contact-email (Edge Function)
 ```
 
+## Modes de fonctionnement
+
+Le site fonctionne dans deux modes selon la configuration Supabase :
+
+- **Mode Supabase (recommandé)** : si `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` sont définis, le site charge les données depuis Supabase (menu, contenu, messages), persiste les modifications de l'admin, authentifie via Supabase Auth (avec repli local) et envoie les emails du formulaire via l'Edge Function.
+- **Mode démo (local)** : sans variables d'environnement, le site reste utilisable (auth locale, données en mémoire, faux envoi de formulaire). Aucune donnée n'est persistée.
+
+L'indicateur de connexion est visible sur le tableau de bord admin.
+
 ## Accès admin
 
 - **URL** : `/login` puis `/admin`
 - **Propriétaire** : `owner@greatlife.gn` / `greatlife2026`
 - **Gérant** : `gerant@greatlife.gn` / `greatlife2026`
+- Pour l'auth Supabase, créez ces comptes dans *Supabase → Authentication → Users* et renseignez leur rôle dans la table `admin_users`.
 
 ## Supabase
 

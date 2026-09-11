@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { getSupabase, invokeContactEmail } from '@/lib/supabase'
+import { insertMessage } from '@/lib/repository'
 
 export function Contact() {
   const { theme: t, setMessages } = useSite()
@@ -25,17 +27,21 @@ export function Contact() {
     setErrors(e)
     return Object.keys(e).length === 0
   }
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
-    setTimeout(() => {
-      setMessages(prev => [{ ...form, date: new Date().toLocaleString('fr-FR') }, ...prev])
-      setSent(true)
-      setLoading(false)
-      setForm({ nom: '', email: '', sujet: 'contact', message: '' })
-      setTimeout(() => setSent(false), 4000)
-    }, 800)
+    const record = { ...form, date: new Date().toLocaleString('fr-FR') }
+    const sb = getSupabase()
+    if (sb) {
+      await insertMessage({ ...form, date: record.date })
+      await invokeContactEmail(form)
+    }
+    setMessages(prev => [record, ...prev])
+    setSent(true)
+    setLoading(false)
+    setForm({ nom: '', email: '', sujet: 'contact', message: '' })
+    setTimeout(() => setSent(false), 4000)
   }
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }

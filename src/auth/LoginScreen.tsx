@@ -17,15 +17,18 @@ export function LoginScreen() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(''); setLoading(true)
-    setTimeout(() => {
-      const result = login(email, password)
-      setLoading(false)
+    try {
+      const result = await login(email, password)
       if (result.ok) navigate('/admin')
       else setError(result.error ?? 'Erreur inconnue')
-    }, 500)
+    } catch {
+      setError('Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
   }
   return (
     <div style={{ ...rootStyle, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
