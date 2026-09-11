@@ -16,6 +16,14 @@ export interface SiteConfig {
   visibility: unknown
 }
 
+export type SaveResult = { ok: boolean; error?: string }
+function errMsg(error: unknown): string {
+  if (!error) return ''
+  if (error instanceof Error) return error.message
+  const any = error as { message?: string; code?: string; details?: string }
+  return any.message || any.code || 'Erreur inconnue'
+}
+
 interface MenuRow {
   id: string
   cat: string
@@ -59,9 +67,9 @@ export async function fetchMenu(): Promise<{ data: MenuItem[]; fromDb: boolean }
   }
 }
 
-export async function upsertMenuItem(item: MenuItem): Promise<boolean> {
+export async function upsertMenuItem(item: MenuItem): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb.from(MENU_TABLE).upsert(
       {
@@ -75,20 +83,22 @@ export async function upsertMenuItem(item: MenuItem): Promise<boolean> {
       },
       { onConflict: 'name' }
     )
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
-export async function deleteMenuItem(name: string): Promise<boolean> {
+export async function deleteMenuItem(name: string): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb.from(MENU_TABLE).delete().eq('name', name)
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
@@ -112,15 +122,16 @@ export async function fetchContent(): Promise<{
   }
 }
 
-export async function saveContent(content: SiteContent): Promise<boolean> {
+export async function saveContent(content: SiteContent): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { data: existing } = await sb
+    const { data: existing, error: readErr } = await sb
       .from(CONTENT_TABLE)
       .select('value')
       .eq('key', CONTENT_KEY)
       .maybeSingle()
+    if (readErr) return { ok: false, error: errMsg(readErr) }
     const currentValue = (existing?.value ?? {}) as Record<string, unknown>
     const merged = {
       ...currentValue,
@@ -137,23 +148,25 @@ export async function saveContent(content: SiteContent): Promise<boolean> {
       { key: CONTENT_KEY, value: merged, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     )
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
-export async function saveSiteConfig(config: SiteConfig): Promise<boolean> {
+export async function saveSiteConfig(config: SiteConfig): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb.from(CONTENT_TABLE).upsert(
       { key: CONTENT_KEY, value: config, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     )
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
@@ -216,17 +229,18 @@ export interface MessageRecord {
 export async function markMessageHandled(
   id: string,
   handled: boolean
-): Promise<boolean> {
+): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb
       .from(MESSAGES_TABLE)
       .update({ handled })
       .eq('id', id)
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
@@ -266,9 +280,9 @@ export async function fetchBlogPosts(): Promise<{ data: BlogPost[]; fromDb: bool
   }
 }
 
-export async function upsertBlogPost(post: BlogPost): Promise<boolean> {
+export async function upsertBlogPost(post: BlogPost): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const payload = {
       title: post.title,
@@ -279,23 +293,26 @@ export async function upsertBlogPost(post: BlogPost): Promise<boolean> {
     }
     if (post.id) {
       const { error } = await sb.from(BLOG_TABLE).update(payload).eq('id', post.id)
-      return !error
+      if (error) return { ok: false, error: errMsg(error) }
+      return { ok: true }
     }
     const { error } = await sb.from(BLOG_TABLE).insert(payload)
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
-export async function deleteBlogPost(id: string): Promise<boolean> {
+export async function deleteBlogPost(id: string): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb.from(BLOG_TABLE).delete().eq('id', id)
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
@@ -361,14 +378,15 @@ export async function fetchReservations(): Promise<{ data: Reservation[]; fromDb
   }
 }
 
-export async function updateReservationStatus(id: string, status: string): Promise<boolean> {
+export async function updateReservationStatus(id: string, status: string): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb.from(RESERVATIONS_TABLE).update({ status }).eq('id', id)
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
@@ -475,30 +493,31 @@ export async function uploadMedia(
   }
 }
 
-export async function deleteMedia(id: string, storagePath: string): Promise<boolean> {
+export async function deleteMedia(id: string, storagePath: string): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error: delErr } = await sb.from(MEDIA_TABLE).delete().eq('id', id)
-    if (delErr) return false
+    if (delErr) return { ok: false, error: errMsg(delErr) }
     if (storagePath) await sb.storage.from(MEDIA_BUCKET).remove([storagePath])
-    return true
-  } catch {
-    return false
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 
-export async function updateMediaSlot(id: string, slot: string): Promise<boolean> {
+export async function updateMediaSlot(id: string, slot: string): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     const { error } = await sb
       .from(MEDIA_TABLE)
       .update({ slot, updated_at: new Date().toISOString() })
       .eq('id', id)
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
   }
 }
 

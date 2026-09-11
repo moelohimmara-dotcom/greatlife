@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 
 export interface SiteContent {
@@ -69,13 +69,13 @@ interface SiteContextValue {
   isDark: boolean
   dataSource: 'loading' | 'supabase' | 'local'
   dataLoading: boolean
-  saveContentToDb: () => Promise<boolean>
+  saveContentToDb: () => Promise<SaveResult>
   refreshMessages: () => Promise<number>
   lastMessageCount: number
   blogPosts: BlogPost[]
   setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
-  saveSiteConfigToDb: () => Promise<boolean>
-  markMessageHandled: (id: string, handled: boolean) => Promise<boolean>
+  saveSiteConfigToDb: () => Promise<SaveResult>
+  markMessageHandled: (id: string, handled: boolean) => Promise<SaveResult>
   refreshMedia: () => Promise<void>
   adminUsers: AdminUser[]
   refreshAdminUsers: () => Promise<void>
@@ -237,13 +237,13 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   }
 
   const handleMarkMessageHandled = async (id: string, handled: boolean) => {
-    const ok = await markMessageHandled(id, handled)
-    if (ok) {
+    const res = await markMessageHandled(id, handled)
+    if (res.ok) {
       setMessages(prev => prev.map(m =>
         m.id === id ? { ...m, handled } : m
       ))
     }
-    return ok
+    return res
   }
 
   const refreshMessages = async (): Promise<number> => {
