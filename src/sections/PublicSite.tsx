@@ -7,6 +7,7 @@ import { Engagements } from './Engagements'
 import { Team } from './Team'
 import { Localisation } from './Localisation'
 import { Contact } from './Contact'
+import { Reservation } from './Reservation'
 import { Blog } from './Blog'
 import { Footer } from './Footer'
 
@@ -22,6 +23,7 @@ export function PublicSite() {
       {visibility.sections.equipe && <Team />}
       {visibility.sections.localisation && <Localisation />}
       {visibility.sections.contact && <Contact />}
+      <Reservation />
       {visibility.sections.blog && <Blog />}
       <Footer />
     </div>

@@ -6,6 +6,7 @@ const MENU_TABLE = 'menu_items'
 const CONTENT_TABLE = 'site_content'
 const MESSAGES_TABLE = 'messages'
 const BLOG_TABLE = 'blog_posts'
+const RESERVATIONS_TABLE = 'reservations'
 const CONTENT_KEY = 'site_config'
 
 export interface SiteConfig {
@@ -295,6 +296,79 @@ export async function deleteBlogPost(id: string): Promise<boolean> {
   if (!sb) return false
   try {
     const { error } = await sb.from(BLOG_TABLE).delete().eq('id', id)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export interface Reservation {
+  id?: string
+  nom: string
+  email: string
+  phone: string
+  date: string
+  time: string
+  guests: number
+  message: string
+  status: string
+  created_at?: string
+}
+
+export async function insertReservation(r: Omit<Reservation, 'id' | 'status' | 'created_at'>): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb.from(RESERVATIONS_TABLE).insert({
+      nom: r.nom,
+      email: r.email,
+      phone: r.phone,
+      date: r.date,
+      time: r.time,
+      guests: r.guests,
+      message: r.message,
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function fetchReservations(): Promise<{ data: Reservation[]; fromDb: boolean }> {
+  const sb = getSupabase()
+  if (!sb) return { data: [], fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(RESERVATIONS_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error || !data) return { data: [], fromDb: false }
+    return {
+      data: (data as Array<Record<string, unknown>>).map(r => ({
+        id: String(r.id ?? ''),
+        nom: String(r.nom ?? ''),
+        email: String(r.email ?? ''),
+        phone: String(r.phone ?? ''),
+        date: String(r.date ?? ''),
+        time: String(r.time ?? ''),
+        guests: Number(r.guests ?? 2),
+        message: String(r.message ?? ''),
+        status: String(r.status ?? 'pending'),
+        created_at: String(r.created_at ?? ''),
+      })),
+      fromDb: true,
+    }
+  } catch {
+    return { data: [], fromDb: false }
+  }
+}
+
+export async function updateReservationStatus(id: string, status: string): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb.from(RESERVATIONS_TABLE).update({ status }).eq('id', id)
     return !error
   } catch {
     return false

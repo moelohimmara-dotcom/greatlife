@@ -11,7 +11,7 @@ import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, type BlogPost } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, type BlogPost, type Reservation } from '@/lib/repository'
 import { invokeReplyEmail } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,7 +26,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const navItems: [string, string][] = [
-    ['dashboard', 'Tableau de bord'], ['messages', 'Messages'], ['content', 'Contenu'], ['menu', 'Carte & prix'],
+    ['dashboard', 'Tableau de bord'], ['messages', 'Messages'], ['reservations', 'Réservations'], ['content', 'Contenu'], ['menu', 'Carte & prix'],
     ['theme', 'Thème & ambiance'], ['blog', 'Blog'], ['media', 'Médias'], ['visibility', 'Visibilité'],
     ['users', 'Utilisateurs & rôles'], ['forms', 'Formulaires & emails'],
   ]
@@ -685,6 +685,73 @@ function MessagesManager() {
   )
 }
 
+function ReservationsManager() {
+  const { theme: t, dataSource } = useSite()
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    if (dataSource !== 'supabase') { setLoading(false); return }
+    let active = true
+    let timer: ReturnType<typeof setInterval>
+    const poll = async () => {
+      const res = await fetchReservations()
+      if (!active || !res.fromDb) return
+      setReservations(res.data)
+      setLoading(false)
+    }
+    poll()
+    timer = setInterval(poll, 30000)
+    return () => { active = false; clearInterval(timer) }
+  }, [dataSource])
+  const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
+  const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const updateStatus = async (id: string, status: string) => {
+    const ok = await updateReservationStatus(id, status)
+    if (ok) setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+  }
+  if (dataSource !== 'supabase') {
+    return (
+      <div style={{ maxWidth: '640px' }}>
+        <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Réservations</h2>
+        <div style={{ marginTop: 16, padding: 20, borderRadius: 14, background: t.surfaceAlt, border: `1px dashed ${t.shadow}`, fontSize: 14, color: t.muted }}>
+          Les réservations de table apparaissent ici. Connectez Supabase pour activer la gestion des réservations.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ maxWidth: '820px' }}>
+      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Réservations</h2>
+      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>{reservations.length} réservation{reservations.length > 1 ? 's' : ''} · actualisation auto (30s)</p>
+      {loading ? <p style={{ color: t.muted, fontSize: 14 }}>Chargement…</p> :
+        reservations.length === 0 ? <p style={{ color: t.muted, fontSize: 14 }}>Aucune réservation pour l'instant.</p> :
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+          {reservations.map(r => (
+            <OrganicCard key={r.id} style={{ padding: '18px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: t.heading }}>{r.nom} <span style={{ fontSize: '13px', color: t.muted, fontWeight: 400 }}>· {r.guests} personne{r.guests > 1 ? 's' : ''}</span></div>
+                  <div style={{ fontSize: '13px', color: t.muted, marginTop: 4 }}>
+                    {r.date} à {r.time} · {r.email}{r.phone ? ` · ${r.phone}` : ''}
+                  </div>
+                  {r.message && <div style={{ fontSize: '13px', color: t.text, marginTop: 8, whiteSpace: 'pre-wrap' }}>{r.message}</div>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status]}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {r.status !== 'confirmed' && <button onClick={() => updateStatus(r.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
+                    {r.status !== 'cancelled' && <button onClick={() => updateStatus(r.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
+                  </div>
+                </div>
+              </div>
+            </OrganicCard>
+          ))}
+        </div>
+      }
+    </div>
+  )
+}
+
 export function Admin() {
   const [active, setActive] = useState('dashboard')
   return (
@@ -693,6 +760,7 @@ export function Admin() {
         <motion.div key={active} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
           {active === 'dashboard' && <Dashboard />}
           {active === 'messages' && <MessagesManager />}
+          {active === 'reservations' && <ReservationsManager />}
           {active === 'content' && <ContentEditor />}
           {active === 'menu' && <MenuEditor />}
           {active === 'theme' && <ThemeEditor />}
