@@ -72,6 +72,15 @@ L'indicateur de connexion est visible sur le tableau de bord admin.
 - **Storage** : `food-photos`, `team-portraits`, `blog-images`
 - **Edge Function** : `send-contact-email` (active)
 
+## Déploiement Netlify (actif)
+
+Le site est déployé sur Netlify — URL de production : **https://greatlife-gn.netlify.app**
+
+- Build : `npm run build` (Vite), dossier publié : `dist`
+- Config : `netlify.toml` (redirect SPA, cache des assets, Node 20)
+- Déploiement via CLI : `netlify deploy --prod --dir=dist`
+- Variables d'environnement \`VITE_SUPABASE_*\` à définir dans *Site settings → Environment variables*.
+
 ## Déploiement Vercel
 
 1. Aller sur [vercel.com](https://vercel.com) → Importer `moelohimmara-dotcom/greatlife`
