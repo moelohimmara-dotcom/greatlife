@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, saveContent } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, type BlogPost, type SiteConfig } from '@/lib/repository'
 
 export interface SiteContent {
   slogan: string
@@ -38,6 +38,7 @@ export interface ContactMessage {
   sujet: string
   message: string
   date: string
+  handled?: boolean
 }
 
 interface SiteContextValue {
@@ -64,6 +65,10 @@ interface SiteContextValue {
   saveContentToDb: () => Promise<boolean>
   refreshMessages: () => Promise<number>
   lastMessageCount: number
+  blogPosts: BlogPost[]
+  setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
+  saveSiteConfigToDb: () => Promise<boolean>
+  markMessageHandled: (nom: string, email: string, date: string, handled: boolean) => Promise<boolean>
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -100,6 +105,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [menu, setMenu] = useState(MENU)
   const [media, setMedia] = useState(DEFAULT_MEDIA)
   const [messages, setMessages] = useState<ContactMessage[]>([])
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -161,20 +167,28 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function load() {
-      const [menuRes, contentRes, messagesRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
+        fetchBlogPosts(),
       ])
       if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb
       setDataSource(anyDb ? 'supabase' : 'local')
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
-        setContent(prev => ({ ...prev, ...contentRes.data }))
+        const cfg = contentRes.data as Partial<SiteConfig>
+        if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
+        if (cfg.themeId) setThemeId(cfg.themeId)
+        if (cfg.fontId) setFontId(cfg.fontId)
+        if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
       }
       if (messagesRes.fromDb && messagesRes.data.length > 0) {
         setMessages(messagesRes.data)
+      }
+      if (blogRes.fromDb && blogRes.data.length > 0) {
+        setBlogPosts(blogRes.data)
       }
       setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
@@ -186,6 +200,21 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const saveContentToDb = async () => saveContent(content)
+
+  const saveSiteConfigToDb = async () => {
+    const config: SiteConfig = { content, themeId, fontId, visibility }
+    return saveSiteConfig(config)
+  }
+
+  const handleMarkMessageHandled = async (nom: string, email: string, date: string, handled: boolean) => {
+    const ok = await markMessageHandled(nom, email, date, handled)
+    if (ok) {
+      setMessages(prev => prev.map(m =>
+        m.nom === nom && m.email === email && m.date === date ? { ...m, handled } : m
+      ))
+    }
+    return ok
+  }
 
   const refreshMessages = async (): Promise<number> => {
     const res = await fetchMessages()
@@ -203,6 +232,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     menu, setMenu, media, setMedia, messages, setMessages,
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
+    blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>

@@ -11,7 +11,7 @@ import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, fetchMessages } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, type BlogPost } from '@/lib/repository'
 import { invokeReplyEmail } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,7 +27,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   const navigate = useNavigate()
   const navItems: [string, string][] = [
     ['dashboard', 'Tableau de bord'], ['messages', 'Messages'], ['content', 'Contenu'], ['menu', 'Carte & prix'],
-    ['theme', 'Thème & ambiance'], ['media', 'Médias'], ['visibility', 'Visibilité'],
+    ['theme', 'Thème & ambiance'], ['blog', 'Blog'], ['media', 'Médias'], ['visibility', 'Visibilité'],
     ['users', 'Utilisateurs & rôles'], ['forms', 'Formulaires & emails'],
   ]
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
@@ -187,7 +187,7 @@ function MenuEditor() {
       <div>
         <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em' }}>Carte & prix</h2>
         <p style={{ color: t.muted, fontSize: '13px', marginTop: 0 }}>Sélectionnez un produit.</p>
-        <div style={{ maxHeight: '520px', overflow: 'auto', borderRadius: '14px', background: t.surface, border: `1px solid ${t.shadow}` }}>
+        <div style={{ maxHeight: '480px', overflow: 'auto', borderRadius: '14px', background: t.surface, border: `1px solid ${t.shadow}` }}>
           {menu.map(m => (
             <button key={m.name} onClick={() => setSel(m.name)} style={{
               display: 'block', width: '100%', textAlign: 'left', padding: '11px 14px',
@@ -200,6 +200,16 @@ function MenuEditor() {
             </button>
           ))}
         </div>
+        <button onClick={() => {
+          const newItem = { cat: 'Burgers', name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
+          setMenu([...menu, newItem])
+          if (dataSource === 'supabase') upsertMenuItem(newItem)
+          setSel(newItem.name)
+        }} style={{
+          marginTop: 12, width: '100%', fontSize: '13px', fontWeight: 600, padding: '10px',
+          borderRadius: '12px', cursor: 'pointer', border: `1px dashed ${t.primary}44`,
+          background: 'transparent', color: t.primary,
+        }}>+ Ajouter un produit</button>
       </div>
       <div>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: '0 0 16px', letterSpacing: '-0.02em' }}>{item.name}</h3>
@@ -220,20 +230,38 @@ function MenuEditor() {
             <Switch checked={!!item.sig} onCheckedChange={v => update('sig', v)} /> Produit signature
           </label>
         </div>
+        <div style={{ marginTop: '20px', display: 'flex', gap: 10 }}>
+          <button onClick={() => {
+            if (dataSource === 'supabase') deleteMenuItem(item.name)
+            setMenu(menu.filter(m => m.name !== item.name))
+            setSel(menu[0]?.name ?? '')
+          }} style={{
+            fontSize: '12px', fontWeight: 600, padding: '8px 16px', borderRadius: '10px',
+            cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent,
+          }}>Supprimer ce produit</button>
+        </div>
       </div>
     </div>
   )
 }
 
 function ThemeEditor() {
-  const { themeId, setThemeId, fontId, setFontId, theme: t, content } = useSite()
+  const { themeId, setThemeId, fontId, setFontId, theme: t, content, dataSource, saveSiteConfigToDb } = useSite()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const save = async () => {
+    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
+    setSaveStatus('saving')
+    const ok = await saveSiteConfigToDb()
+    setSaveStatus(ok ? 'saved' : 'error')
+    setTimeout(() => setSaveStatus('idle'), 3000)
+  }
   return (
     <div style={{ maxWidth: '760px' }}>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Thème & ambiance</h2>
       <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Choisissez une ambiance. Le site change en direct.</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px,1fr))', gap: '16px', marginTop: '20px' }}>
         {Object.values(THEMES).map(th => (
-          <button key={th.id} onClick={() => setThemeId(th.id)} style={{
+          <button key={th.id} onClick={() => { setThemeId(th.id); setSaveStatus('idle') }} style={{
             cursor: 'pointer', border: themeId === th.id ? `3px solid ${t.accent}` : `1px solid ${t.shadow}`,
             borderRadius: '16px', padding: '16px', background: th.surface, textAlign: 'left', transition: 'border 0.2s',
           }}>
@@ -247,7 +275,7 @@ function ThemeEditor() {
       </div>
       <div style={{ marginTop: '28px' }}>
         <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Typographie</Label>
-        <Select value={fontId} onValueChange={setFontId}>
+        <Select value={fontId} onValueChange={v => { setFontId(v); setSaveStatus('idle') }}>
           <SelectTrigger style={{ maxWidth: '320px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px' }}><SelectValue /></SelectTrigger>
           <SelectContent>
             {Object.entries(FONTS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
@@ -255,7 +283,13 @@ function ThemeEditor() {
         </Select>
       </div>
       <Separator style={{ margin: '28px 0' }} />
-      <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Aperçu en direct</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Aperçu en direct</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {saveStatus !== 'idle' && <SaveBar status={saveStatus} />}
+          <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '9px 18px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
+        </div>
+      </div>
       <div style={{ marginTop: '12px', padding: '24px', borderRadius: '18px', background: t.surface, border: `1px solid ${t.shadow}` }}>
         <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em' }}>{content.heroTitle}</div>
         <div style={{ fontSize: '14px', color: t.muted, marginTop: '8px' }}>{content.slogan}</div>
@@ -296,14 +330,26 @@ function MediaManager() {
 }
 
 function VisibilityEditor() {
-  const { visibility, setVisibility, theme: t } = useSite()
-  const toggle = (k: string) => setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } })
-  const toggleExtra = (k: string) => setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as typeof visibility)
+  const { visibility, setVisibility, theme: t, dataSource, saveSiteConfigToDb } = useSite()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const toggle = (k: string) => { setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } }); setSaveStatus('idle') }
+  const toggleExtra = (k: string) => { setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as typeof visibility); setSaveStatus('idle') }
+  const save = async () => {
+    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
+    setSaveStatus('saving')
+    const ok = await saveSiteConfigToDb()
+    setSaveStatus(ok ? 'saved' : 'error')
+    setTimeout(() => setSaveStatus('idle'), 3000)
+  }
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
     <div style={{ maxWidth: '640px' }}>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Visibilité</h2>
       <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Affichez ou masquez des éléments du site en un clic.</p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 12 }}>
+        {saveStatus !== 'idle' && <SaveBar status={saveStatus} />}
+        <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '9px 18px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
+      </div>
       <div style={{ marginTop: '20px' }}>
         <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '10px' }}>Sections de page</div>
         {rows.map(([k, l]) => (
@@ -368,6 +414,86 @@ function UsersRoles() {
   )
 }
 
+function BlogEditor() {
+  const { blogPosts, setBlogPosts, theme: t, dataSource } = useSite()
+  const [editing, setEditing] = useState<BlogPost | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+
+  const save = async () => {
+    if (!editing) return
+    setSaveStatus('saving')
+    if (dataSource === 'supabase') {
+      const ok = await upsertBlogPost(editing)
+      setSaveStatus(ok ? 'saved' : 'error')
+      if (ok) {
+        setBlogPosts(prev => {
+          const exists = prev.find(p => p.id === editing.id)
+          if (exists) return prev.map(p => p.id === editing.id ? editing : p)
+          return [editing, ...prev]
+        })
+      }
+    } else {
+      setSaveStatus('saved')
+    }
+    setTimeout(() => setSaveStatus('idle'), 3000)
+  }
+
+  const remove = async (post: BlogPost) => {
+    if (post.id && dataSource === 'supabase') deleteBlogPost(post.id)
+    setBlogPosts(prev => prev.filter(p => p.id !== post.id))
+  }
+
+  return (
+    <div style={{ maxWidth: '760px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Blog</h2>
+          <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Rédigez et publiez des articles.</p>
+        </div>
+        <Button onClick={() => setEditing({ title: '', excerpt: '', body: '', category: 'Actualités', published: false })} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>+ Nouvel article</Button>
+      </div>
+      {editing && (
+        <div style={{ marginTop: 20, padding: 24, borderRadius: 16, background: t.surface, border: `1px solid ${t.shadow}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0 }}>{editing.id ? 'Modifier' : 'Nouvel article'}</h3>
+            <button onClick={() => setEditing(null)} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Fermer</button>
+          </div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Titre</Label><Input value={editing.title} onChange={e => setEditing({ ...editing, title: e.target.value })} style={inputStyle} /></div>
+            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Catégorie</Label><Input value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value })} style={inputStyle} /></div>
+            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Extrait</Label><Textarea rows={2} value={editing.excerpt} onChange={e => setEditing({ ...editing, excerpt: e.target.value })} style={inputStyle} /></div>
+            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Contenu</Label><Textarea rows={6} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} style={inputStyle} /></div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
+              <Switch checked={editing.published} onCheckedChange={v => setEditing({ ...editing, published: v })} /> Publier sur le site
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
+              {saveStatus !== 'idle' && <SaveBar status={saveStatus} />}
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {blogPosts.length === 0 && <p style={{ color: t.muted, fontSize: '14px' }}>Aucun article. Cliquez sur « Nouvel article » pour commencer.</p>}
+        {blogPosts.map(post => (
+          <div key={post.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px' }}>
+            <div>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{post.title}</span>
+              <span style={{ fontSize: '11px', fontWeight: 600, marginLeft: 8, padding: '2px 8px', borderRadius: '100px', background: post.published ? `${t.primary}15` : t.surfaceAlt, color: post.published ? t.primary : t.muted }}>{post.published ? 'Publié' : 'Brouillon'}</span>
+              <div style={{ fontSize: '12px', color: t.muted, marginTop: 2 }}>{post.category} · {post.excerpt.slice(0, 60)}{post.excerpt.length > 60 ? '…' : ''}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setEditing(post)} style={{ fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Modifier</button>
+              <button onClick={() => remove(post)} style={{ fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Supprimer</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function FormsConfig() {
   const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -408,13 +534,14 @@ function FormsConfig() {
 }
 
 function MessagesManager() {
-  const { messages, setMessages, theme: t, dataSource } = useSite()
+  const { messages, setMessages, theme: t, dataSource, markMessageHandled } = useSite()
   const { user } = useAuth()
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
   const [sending, setSending] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [polling, setPolling] = useState(false)
   const [newCount, setNewCount] = useState(0)
+  const [handling, setHandling] = useState(false)
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
 
   useEffect(() => {
@@ -438,6 +565,13 @@ function MessagesManager() {
   }, [dataSource, setMessages])
 
   const selected = selectedIdx !== null ? messages[selectedIdx] : null
+
+  const toggleHandled = async () => {
+    if (!selected) return
+    setHandling(true)
+    await markMessageHandled(selected.nom, selected.email, selected.date, !selected.handled)
+    setHandling(false)
+  }
 
   const sendReply = async () => {
     if (!selected || !replyText.trim()) return
@@ -495,7 +629,7 @@ function MessagesManager() {
                 transition: 'all 0.2s',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom}</span>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom} {m.handled && <span style={{ fontSize: '10px', color: t.primary, marginLeft: 6 }}>✓</span>}</span>
                   <span style={{ fontSize: '11px', color: t.muted }}>{m.date}</span>
                 </div>
                 <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '2px' }}>{m.sujet}</div>
@@ -513,10 +647,17 @@ function MessagesManager() {
               <div style={{ fontSize: '13px', color: t.muted, marginTop: '2px' }}>{selected.email} · {selected.date}</div>
               <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '4px' }}>{selected.sujet}</div>
             </div>
-            <button onClick={() => { setSelectedIdx(null); setReplyText(''); setSending('idle') }} style={{
-              fontSize: '13px', fontWeight: 600, padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
-              border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted,
-            }}>Fermer</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {selected.handled && <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${t.primary}15`, color: t.primary }}>✓ Traité</span>}
+              <button onClick={toggleHandled} disabled={handling} style={{
+                fontSize: '12px', fontWeight: 600, padding: '7px 14px', borderRadius: '10px', cursor: 'pointer',
+                border: `1px solid ${selected.handled ? t.primary : t.shadow}`, background: selected.handled ? `${t.primary}0d` : 'transparent', color: selected.handled ? t.primary : t.muted,
+              }}>{selected.handled ? '✓ Traité' : 'Marquer traité'}</button>
+              <button onClick={() => { setSelectedIdx(null); setReplyText(''); setSending('idle') }} style={{
+                fontSize: '13px', fontWeight: 600, padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
+                border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted,
+              }}>Fermer</button>
+            </div>
           </div>
           <OrganicCard style={{ padding: '20px', marginBottom: '20px' }}>
             <div style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '8px' }}>Message original</div>
@@ -555,6 +696,7 @@ export function Admin() {
           {active === 'content' && <ContentEditor />}
           {active === 'menu' && <MenuEditor />}
           {active === 'theme' && <ThemeEditor />}
+          {active === 'blog' && <BlogEditor />}
           {active === 'media' && <MediaManager />}
           {active === 'visibility' && <VisibilityEditor />}
           {active === 'users' && <UsersRoles />}

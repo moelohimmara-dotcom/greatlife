@@ -5,7 +5,15 @@ import type { SiteContent, ContactMessage } from '@/contexts/SiteContext'
 const MENU_TABLE = 'menu_items'
 const CONTENT_TABLE = 'site_content'
 const MESSAGES_TABLE = 'messages'
+const BLOG_TABLE = 'blog_posts'
 const CONTENT_KEY = 'site_config'
+
+export interface SiteConfig {
+  content: SiteContent
+  themeId: string
+  fontId: string
+  visibility: unknown
+}
 
 interface MenuRow {
   id: string
@@ -72,21 +80,19 @@ export async function upsertMenuItem(item: MenuItem): Promise<boolean> {
   }
 }
 
-const CONTENT_COLUMNS = [
-  'slogan',
-  'heroTitle',
-  'heroSub',
-  'storyTitle',
-  'story',
-  'emailContact',
-  'emailReservation',
-  'autoReply',
-] as const
-
-type ContentRow = Pick<SiteContent, (typeof CONTENT_COLUMNS)[number]>
+export async function deleteMenuItem(name: string): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb.from(MENU_TABLE).delete().eq('name', name)
+    return !error
+  } catch {
+    return false
+  }
+}
 
 export async function fetchContent(): Promise<{
-  data: Partial<SiteContent> | null
+  data: Partial<SiteConfig> | null
   fromDb: boolean
 }> {
   const sb = getSupabase()
@@ -98,7 +104,7 @@ export async function fetchContent(): Promise<{
       .eq('key', CONTENT_KEY)
       .maybeSingle()
     if (error || !data) return { data: null, fromDb: false }
-    const value = data.value as Partial<SiteContent>
+    const value = data.value as Partial<SiteConfig>
     return { data: value ?? null, fromDb: true }
   } catch {
     return { data: null, fromDb: false }
@@ -109,7 +115,14 @@ export async function saveContent(content: SiteContent): Promise<boolean> {
   const sb = getSupabase()
   if (!sb) return false
   try {
-    const row: ContentRow = {
+    const { data: existing } = await sb
+      .from(CONTENT_TABLE)
+      .select('value')
+      .eq('key', CONTENT_KEY)
+      .maybeSingle()
+    const currentValue = (existing?.value ?? {}) as Record<string, unknown>
+    const merged = {
+      ...currentValue,
       slogan: content.slogan,
       heroTitle: content.heroTitle,
       heroSub: content.heroSub,
@@ -120,7 +133,21 @@ export async function saveContent(content: SiteContent): Promise<boolean> {
       autoReply: content.autoReply,
     }
     const { error } = await sb.from(CONTENT_TABLE).upsert(
-      { key: CONTENT_KEY, value: row, updated_at: new Date().toISOString() },
+      { key: CONTENT_KEY, value: merged, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    )
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function saveSiteConfig(config: SiteConfig): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb.from(CONTENT_TABLE).upsert(
+      { key: CONTENT_KEY, value: config, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     )
     return !error
@@ -149,6 +176,7 @@ export async function fetchMessages(): Promise<{
         sujet: String(m.sujet ?? 'contact'),
         message: String(m.message ?? ''),
         date: String(m.date ?? new Date().toISOString()),
+        handled: Boolean(m.handled ?? false),
       })),
       fromDb: true,
     }
@@ -167,6 +195,106 @@ export async function insertMessage(msg: ContactMessage): Promise<boolean> {
       sujet: msg.sujet,
       message: msg.message,
     })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export interface MessageRecord {
+  id?: string
+  nom: string
+  email: string
+  sujet: string
+  message: string
+  date: string
+  handled: boolean
+}
+
+export async function markMessageHandled(
+  nom: string,
+  email: string,
+  date: string,
+  handled: boolean
+): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb
+      .from(MESSAGES_TABLE)
+      .update({ handled })
+      .eq('nom', nom)
+      .eq('email', email)
+      .eq('date', date)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export interface BlogPost {
+  id?: string
+  title: string
+  excerpt: string
+  body: string
+  category: string
+  published: boolean
+  created_at?: string
+}
+
+export async function fetchBlogPosts(): Promise<{ data: BlogPost[]; fromDb: boolean }> {
+  const sb = getSupabase()
+  if (!sb) return { data: [], fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(BLOG_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error || !data) return { data: [], fromDb: false }
+    return {
+      data: (data as Array<Record<string, unknown>>).map(p => ({
+        id: String(p.id ?? ''),
+        title: String(p.title ?? ''),
+        excerpt: String(p.excerpt ?? ''),
+        body: String(p.body ?? ''),
+        category: String(p.category ?? 'Actualités'),
+        published: Boolean(p.published ?? false),
+        created_at: String(p.created_at ?? ''),
+      })),
+      fromDb: true,
+    }
+  } catch {
+    return { data: [], fromDb: false }
+  }
+}
+
+export async function upsertBlogPost(post: BlogPost): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const payload = {
+      title: post.title,
+      excerpt: post.excerpt,
+      body: post.body,
+      category: post.category,
+      published: post.published,
+    }
+    if (post.id) {
+      const { error } = await sb.from(BLOG_TABLE).update(payload).eq('id', post.id)
+      return !error
+    }
+    const { error } = await sb.from(BLOG_TABLE).insert(payload)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function deleteBlogPost(id: string): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  try {
+    const { error } = await sb.from(BLOG_TABLE).delete().eq('id', id)
     return !error
   } catch {
     return false
