@@ -68,6 +68,8 @@ interface ContactPayload {
   orderTotal?: string;
   pickupTimeSlot?: string;
   notes?: string;
+  // Champ utilisé pour le mode "create-reservation" (insertion reservation cote serveur)
+  resaMessage?: string;
 }
 
 async function sendMail(
@@ -391,6 +393,71 @@ async function handleCreateOrder(body: ContactPayload): Promise<Response> {
   return corsResponse(JSON.stringify({ ok: errors.length === 0, ref, errors }));
 }
 
+async function handleCreateReservation(body: ContactPayload): Promise<Response> {
+  const { nom, email, phone, resaDate, resaTime, resaGuests, resaMessage } = body;
+  if (!nom || !email || !resaDate || !resaTime) {
+    return corsResponse(
+      JSON.stringify({ ok: false, error: "Champs requis manquants pour la reservation" }),
+      400,
+    );
+  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { error: insertErr } = await supabase.from("reservations").insert({
+    nom,
+    email,
+    phone: phone || "",
+    date: resaDate,
+    time: resaTime,
+    guests: resaGuests ? Number(resaGuests) : 2,
+    message: resaMessage || "",
+    status: "pending",
+  });
+  if (insertErr) {
+    console.error("Reservation insert error:", insertErr);
+    return corsResponse(
+      JSON.stringify({ ok: false, error: "Impossible d'enregistrer la reservation" }),
+      500,
+    );
+  }
+  const errors: string[] = [];
+  if (SMTP_USER && SMTP_PASS) {
+    const destEmail = "moelohimmara@gmail.com";
+    try {
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, ">");
+      await sendMail(
+        destEmail,
+        `Nouvelle reservation - ${resaDate} ${resaTime}`,
+        `Nom: ${nom}\nEmail: ${email}${phone ? `\nTel: ${phone}` : ""}\nDate: ${resaDate}\nHeure: ${resaTime}\nPersonnes: ${resaGuests || "2"}${resaMessage ? `\nMessage: ${resaMessage}` : ""}`,
+        `<p><strong>${esc(nom)}</strong> (${esc(email)}${phone ? " / " + esc(phone) : ""})</p><p>Date: ${esc(resaDate)}</p><p>Heure: ${esc(resaTime)}</p><p>Personnes: ${esc(resaGuests || "2")}</p>${resaMessage ? `<p>Message: ${esc(resaMessage)}</p>` : ""}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("notif:" + msg);
+      console.error("Reservation notif email error:", err);
+    }
+    try {
+      const autoReply =
+        `Bonjour ${nom}, merci pour votre demande de reservation chez Greatlife ! Nous avons bien recu votre demande pour le ${resaDate} a ${resaTime} (${resaGuests || "2"} personnes). Nous vous confirmons votre table sous 24h. - L'equipe Greatlife`;
+      await sendMail(
+        email,
+        "Greatlife - Nous avons bien recu votre reservation",
+        autoReply,
+        `<p>${autoReply.replace(/\n/g, "<br>")}</p>`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("autoreply:" + msg);
+      console.error("Reservation auto-reply error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -405,6 +472,9 @@ serve(async (req: Request) => {
 
     if (action === "create-order") {
       return await handleCreateOrder(body);
+    }
+    if (action === "create-reservation") {
+      return await handleCreateReservation(body);
     }
 
     if (action === "reply" || action === "reservation-status" || action === "order-status") {

@@ -9,9 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { getSupabase } from '@/lib/supabase'
-import { insertReservation } from '@/lib/repository'
-import { invokeContactEmail } from '@/lib/supabase'
+import { getSupabase, invokeCreateReservation } from '@/lib/supabase'
 
 export function Reservation() {
   const { theme: t } = useSite()
@@ -54,14 +52,16 @@ export function Reservation() {
     setError(false)
     const sb = getSupabase()
     if (sb) {
-      const insertOk = await insertReservation({ ...form, guests: parseInt(form.guests) || 2 })
-      const emailResult = await invokeContactEmail({
+      const result = await invokeCreateReservation({
         nom: form.nom,
         email: form.email,
-        sujet: 'reservation',
-        message: `Réservation — ${form.date} à ${form.time}, ${form.guests} personnes${form.phone ? `, tel: ${form.phone}` : ''}${form.message ? `, message: ${form.message}` : ''}`,
+        phone: form.phone,
+        resaDate: form.date,
+        resaTime: form.time,
+        resaGuests: form.guests,
+        resaMessage: form.message,
       })
-      if (!insertOk || !emailResult.ok) {
+      if (!result.ok) {
         setError(true)
         setLoading(false)
         return

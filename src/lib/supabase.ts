@@ -128,6 +128,31 @@ export async function invokeCreateOrder(payload: {
   }
 }
 
+export async function invokeCreateReservation(payload: {
+  nom: string
+  email: string
+  phone: string
+  resaDate: string
+  resaTime: string
+  resaGuests: string
+  resaMessage: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb || !EDGE_FUNCTION_URL) return { ok: false, error: 'not-configured' }
+  try {
+    const { data, error } = await sb.functions.invoke('send-contact-email', {
+      body: { action: 'create-reservation', ...payload },
+    })
+    if (error) return { ok: false, error: error.message }
+    if (data && (data as { error?: string }).error) {
+      return { ok: false, error: (data as { error: string }).error }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
 export async function invokeReservationStatusEmail(payload: {
   to: string
   nom: string
