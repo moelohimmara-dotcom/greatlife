@@ -12,7 +12,7 @@ import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, type BlogPost, type Reservation } from '@/lib/repository'
-import { invokeReplyEmail } from '@/lib/supabase'
+import { invokeReplyEmail, getSupabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -539,7 +539,7 @@ function MessagesManager() {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
   const [sending, setSending] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [polling, setPolling] = useState(false)
+  const [live, setLive] = useState(false)
   const [newCount, setNewCount] = useState(0)
   const [handling, setHandling] = useState(false)
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
@@ -547,21 +547,45 @@ function MessagesManager() {
   useEffect(() => {
     if (dataSource !== 'supabase') return
     let active = true
-    let timer: ReturnType<typeof setInterval>
-    const poll = async () => {
+    let channel: { unsubscribe: () => void } | undefined
+    let pollTimer: ReturnType<typeof setInterval> | undefined
+
+    const refresh = async () => {
       const res = await fetchMessages()
       if (!active || !res.fromDb) return
       setMessages(prev => {
-        if (res.data.length > prev.length) {
-          setNewCount(res.data.length - prev.length)
-        }
+        if (res.data.length > prev.length) setNewCount(res.data.length - prev.length)
         return res.data
       })
-      setPolling(true)
     }
-    timer = setInterval(poll, 15000)
-    poll()
-    return () => { active = false; clearInterval(timer) }
+
+    refresh()
+
+    const sb = getSupabase()
+    if (sb) {
+      channel = sb
+        .channel('messages-realtime', { config: { private: false } })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+          refresh()
+        })
+        .subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            setLive(true)
+            pollTimer = setInterval(refresh, 30000)
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            setLive(false)
+            pollTimer = setInterval(refresh, 10000)
+          }
+        })
+    } else {
+      pollTimer = setInterval(refresh, 15000)
+    }
+
+    return () => {
+      active = false
+      if (channel) channel.unsubscribe()
+      if (pollTimer) clearInterval(pollTimer)
+    }
   }, [dataSource, setMessages])
 
   const selected = selectedIdx !== null ? messages[selectedIdx] : null
@@ -614,8 +638,8 @@ function MessagesManager() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 16 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: polling ? t.primary : t.muted, animation: polling ? 'pulse 2s infinite' : 'none' }} />
-          <span style={{ fontSize: '12px', color: t.muted }}>{polling ? 'Actualisation automatique (15s)' : 'Chargement…'}</span>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: live ? t.primary : t.muted, animation: live ? 'pulse 2s infinite' : 'none' }} />
+          <span style={{ fontSize: '12px', color: t.muted }}>{live ? 'Temps réel' : 'Actualisation périodique'}</span>
         </div>
         {messages.length === 0 ? (
           <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant.</p>
@@ -692,16 +716,25 @@ function ReservationsManager() {
   useEffect(() => {
     if (dataSource !== 'supabase') { setLoading(false); return }
     let active = true
-    let timer: ReturnType<typeof setInterval>
-    const poll = async () => {
+    let timer: ReturnType<typeof setInterval> | undefined
+    let channel: { unsubscribe: () => void } | undefined
+    const refresh = async () => {
       const res = await fetchReservations()
       if (!active || !res.fromDb) return
       setReservations(res.data)
       setLoading(false)
     }
-    poll()
-    timer = setInterval(poll, 30000)
-    return () => { active = false; clearInterval(timer) }
+    refresh()
+    const sb = getSupabase()
+    if (sb) {
+      channel = sb.channel('reservations-realtime', { config: { private: false } })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reservations' }, refresh)
+        .subscribe()
+      timer = setInterval(refresh, 60000)
+    } else {
+      timer = setInterval(refresh, 30000)
+    }
+    return () => { active = false; if (channel) channel.unsubscribe(); if (timer) clearInterval(timer) }
   }, [dataSource])
   const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
   const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }

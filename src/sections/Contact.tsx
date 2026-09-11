@@ -44,8 +44,8 @@ export function Contact() {
       }
     } else {
       await new Promise(r => setTimeout(r, 600))
+      setMessages(prev => [{ ...form, date: new Date().toISOString() }, ...prev])
     }
-    setMessages(prev => [{ ...form, date: new Date().toISOString(), id: undefined }, ...prev])
     setSent(true)
     setLoading(false)
     setForm({ nom: '', email: '', sujet: 'contact', message: '' })
