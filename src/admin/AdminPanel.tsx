@@ -172,13 +172,13 @@ function Dashboard() {
   )
 }
 
-function SaveBar({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
+function SaveBar({ status, error }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: string }) {
   const { theme: t } = useSite()
   const label = status === 'saving' ? 'Enregistrement…' : status === 'saved' ? 'Enregistré ✓' : status === 'error' ? 'Échec de l\'enregistrement' : ''
   if (!label && status === 'idle') return null
   return (
-    <span style={{ fontSize: '13px', fontWeight: 600, color: status === 'error' ? t.accent : status === 'saved' ? t.primary : t.muted }}>
-      {label}
+    <span title={error} style={{ fontSize: '13px', fontWeight: 600, color: status === 'error' ? t.accent : status === 'saved' ? t.primary : t.muted, maxWidth: 360, display: 'inline-block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'middle' }}>
+      {label}{error ? ` — ${error}` : ''}
     </span>
   )
 }
@@ -196,19 +196,20 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
 function ContentEditor() {
   const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle') }
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
+  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
   const inp = inputStyle(t)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
-    setSaveStatus('saving')
-    const ok = await saveContentToDb()
-    setSaveStatus(ok ? 'saved' : 'error')
-    setTimeout(() => setSaveStatus('idle'), 3000)
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await saveContentToDb()
+    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+    setTimeout(() => setSaveStatus('idle'), 4000)
   }
   return (
     <div style={{ maxWidth: '760px' }}>
       <PageHeader title="Contenu du site" subtitle="Modifiez tous les textes. Les changements sont appliqués en direct."
-        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div style={{ display: 'grid', gap: '22px', marginTop: '24px' }}>
         <div>
@@ -241,6 +242,7 @@ function MenuEditor() {
   const { menu, setMenu, theme: t, dataSource } = useSite()
   const [sel, setSel] = useState(menu[0]?.name ?? '')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const [query, setQuery] = useState('')
   const [confirmDel, setConfirmDel] = useState(false)
   const item = menu.find(m => m.name === sel)
@@ -251,10 +253,10 @@ function MenuEditor() {
     setMenu(next)
     const updated = next.find(m => m.name === sel)
     if (updated && dataSource === 'supabase') {
-      setSaveStatus('saving')
-      upsertMenuItem(updated).then(ok => {
-        setSaveStatus(ok ? 'saved' : 'error')
-        setTimeout(() => setSaveStatus('idle'), 2000)
+      setSaveStatus('saving'); setSaveErr(undefined)
+      upsertMenuItem(updated).then(res => {
+        setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+        setTimeout(() => setSaveStatus('idle'), 4000)
       })
     }
   }
@@ -306,7 +308,7 @@ function MenuEditor() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>{item.name}</h3>
-          <SaveBar status={saveStatus} />
+          <SaveBar status={saveStatus} error={saveErr} />
         </div>
         <div style={{ display: 'grid', gap: 14, maxWidth: '560px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
@@ -350,17 +352,18 @@ function MenuEditor() {
 function ThemeEditor() {
   const { themeId, setThemeId, fontId, setFontId, theme: t, content, dataSource, saveSiteConfigToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
-    setSaveStatus('saving')
-    const ok = await saveSiteConfigToDb()
-    setSaveStatus(ok ? 'saved' : 'error')
-    setTimeout(() => setSaveStatus('idle'), 3000)
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await saveSiteConfigToDb()
+    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+    setTimeout(() => setSaveStatus('idle'), 4000)
   }
   return (
     <div style={{ maxWidth: '800px' }}>
       <PageHeader title="Thème & ambiance" subtitle="Choisissez une ambiance. Le site change en direct."
-        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div style={{ marginTop: 12, marginBottom: 20 }}><SectionTitle color={t.primary}>Palette de couleurs</SectionTitle></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px,1fr))', gap: '14px' }}>
@@ -482,25 +485,25 @@ function MediaManager() {
   const handleDelete = async (m: MediaSlot) => {
     if (!m.id) return
     setRemovingId(m.id)
-    const ok = await deleteMedia(m.id, '')
+    const res = await deleteMedia(m.id, '')
     setRemovingId(null)
-    if (ok) {
+    if (res.ok) {
       setStatus({ kind: 'ok', msg: `${m.filename || 'Fichier'} supprimé.` })
       await refreshMedia()
     } else {
-      setStatus({ kind: 'err', msg: 'Échec de la suppression.' })
+      setStatus({ kind: 'err', msg: res.error || 'Échec de la suppression.' })
     }
   }
 
   const handleSaveSlot = async (m: MediaSlot) => {
     if (!m.id) return
-    const ok = await updateMediaSlot(m.id, editSlotValue)
-    if (ok) {
+    const res = await updateMediaSlot(m.id, editSlotValue)
+    if (res.ok) {
       setEditSlotId(null)
       await refreshMedia()
       setStatus({ kind: 'ok', msg: 'Emplacement mis à jour.' })
     } else {
-      setStatus({ kind: 'err', msg: 'Échec de la mise à jour.' })
+      setStatus({ kind: 'err', msg: res.error || 'Échec de la mise à jour.' })
     }
   }
 
@@ -660,20 +663,21 @@ function MediaManager() {
 function VisibilityEditor() {
   const { visibility, setVisibility, theme: t, dataSource, saveSiteConfigToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const toggle = (k: string) => { setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } }); setSaveStatus('idle') }
-  const toggleExtra = (k: string) => { setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as typeof visibility); setSaveStatus('idle') }
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
+  const toggle = (k: string) => { setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } }); setSaveStatus('idle'); setSaveErr(undefined) }
+  const toggleExtra = (k: string) => { setVisibility({ ...visibility, [k]: !visibility[k as keyof typeof visibility] } as typeof visibility); setSaveStatus('idle'); setSaveErr(undefined) }
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
-    setSaveStatus('saving')
-    const ok = await saveSiteConfigToDb()
-    setSaveStatus(ok ? 'saved' : 'error')
-    setTimeout(() => setSaveStatus('idle'), 3000)
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await saveSiteConfigToDb()
+    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+    setTimeout(() => setSaveStatus('idle'), 4000)
   }
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
     <div style={{ maxWidth: '640px' }}>
       <PageHeader title="Visibilité" subtitle="Affichez ou masquez des éléments du site en un clic."
-        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Sections de page</SectionTitle></div>
       {rows.map(([k, l]) => (
@@ -850,15 +854,16 @@ function BlogEditor() {
   const { blogPosts, setBlogPosts, theme: t, dataSource } = useSite()
   const [editing, setEditing] = useState<BlogPost | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const inp = inputStyle(t)
 
   const save = async () => {
     if (!editing) return
-    setSaveStatus('saving')
+    setSaveStatus('saving'); setSaveErr(undefined)
     if (dataSource === 'supabase') {
-      const ok = await upsertBlogPost(editing)
-      setSaveStatus(ok ? 'saved' : 'error')
-      if (ok) {
+      const res = await upsertBlogPost(editing)
+      setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+      if (res.ok) {
         setBlogPosts(prev => {
           const exists = prev.find(p => p.id === editing.id)
           if (exists) return prev.map(p => p.id === editing.id ? editing : p)
@@ -868,7 +873,7 @@ function BlogEditor() {
     } else {
       setSaveStatus('saved')
     }
-    setTimeout(() => setSaveStatus('idle'), 3000)
+    setTimeout(() => setSaveStatus('idle'), 4000)
   }
 
   const remove = async (post: BlogPost) => {
@@ -899,7 +904,7 @@ function BlogEditor() {
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
               <PrimaryButton onClick={save}>Enregistrer</PrimaryButton>
-              <SaveBar status={saveStatus} />
+              <SaveBar status={saveStatus} error={saveErr} />
             </div>
           </div>
         </OrganicCard>
@@ -930,19 +935,20 @@ function BlogEditor() {
 function FormsConfig() {
   const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle') }
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
+  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
   const inp = inputStyle(t)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
-    setSaveStatus('saving')
-    const ok = await saveContentToDb()
-    setSaveStatus(ok ? 'saved' : 'error')
-    setTimeout(() => setSaveStatus('idle'), 3000)
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await saveContentToDb()
+    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+    setTimeout(() => setSaveStatus('idle'), 4000)
   }
   return (
     <div style={{ maxWidth: '700px' }}>
       <PageHeader title="Formulaires & emails" subtitle="Configurez les destinataires et l'auto-réponse."
-        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Destinataires</SectionTitle></div>
       <div style={{ display: 'grid', gap: 14 }}>
@@ -1027,11 +1033,13 @@ function MessagesManager() {
 
   const selected = selectedIdx !== null ? messages[selectedIdx] : null
 
+  const [handledErr, setHandledErr] = useState<string | undefined>(undefined)
   const toggleHandled = async () => {
     if (!selected) return
-    setHandling(true)
-    await markMessageHandled(selected.id ?? '', !selected.handled)
+    setHandling(true); setHandledErr(undefined)
+    const res = await markMessageHandled(selected.id ?? '', !selected.handled)
     setHandling(false)
+    if (!res.ok) { setHandledErr(res.error || 'Échec de la mise à jour'); setTimeout(() => setHandledErr(undefined), 4000) }
   }
 
   const sendReply = async () => {
@@ -1107,8 +1115,9 @@ function MessagesManager() {
               <div style={{ fontSize: '13px', color: t.muted, marginTop: '2px' }}>{selected.email} · {selected.date}</div>
               <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '4px' }}>{selected.sujet}</div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {selected.handled && <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${t.primary}15`, color: t.primary }}>✓ Traité</span>}
+              {handledErr && <span style={{ fontSize: '11px', fontWeight: 600, color: t.accent }} title={handledErr}>✗ {handledErr}</span>}
               <button onClick={toggleHandled} disabled={handling} style={{
                 fontSize: '12px', fontWeight: 600, padding: '7px 14px', borderRadius: '10px', cursor: 'pointer',
                 border: `1px solid ${selected.handled ? t.primary : t.shadow}`, background: selected.handled ? `${t.primary}0d` : 'transparent', color: selected.handled ? t.primary : t.muted,
@@ -1178,9 +1187,11 @@ function ReservationsManager() {
   const filteredResa = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
   const counts = { all: reservations.length, pending: reservations.filter(r => r.status === 'pending').length, confirmed: reservations.filter(r => r.status === 'confirmed').length, cancelled: reservations.filter(r => r.status === 'cancelled').length }
   const [statusSending, setStatusSending] = useState(false)
+  const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
   const updateStatus = async (id: string, status: string) => {
-    const ok = await updateReservationStatus(id, status)
-    if (!ok) return
+    setStatusErr(undefined)
+    const res = await updateReservationStatus(id, status)
+    if (!res.ok) { setStatusErr(res.error || 'Échec de la mise à jour'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
     const r = reservations.find(x => x.id === id)
     if (r) {
@@ -1236,6 +1247,7 @@ function ReservationsManager() {
                   <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status]}</span>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
+                    {statusErr && <span style={{ fontSize: '10px', color: t.accent, fontWeight: 600, maxWidth: 220 }} title={statusErr}>✗ {statusErr}</span>}
                     {r.status !== 'confirmed' && <button onClick={() => updateStatus(r.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
                     {r.status !== 'pending' && <button onClick={() => updateStatus(r.id!, 'pending')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>En attente</button>}
                     {r.status !== 'cancelled' && <button onClick={() => updateStatus(r.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
