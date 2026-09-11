@@ -9,12 +9,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { getSupabase, invokeContactEmail } from '@/lib/supabase'
+import { insertMessage } from '@/lib/repository'
 
 export function Contact() {
   const { theme: t, setMessages } = useSite()
   const [form, setForm] = useState({ nom: '', email: '', sujet: 'contact', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   const validate = () => {
     const e: Record<string, string | undefined> = {}
@@ -25,17 +28,28 @@ export function Contact() {
     setErrors(e)
     return Object.keys(e).length === 0
   }
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
-    setTimeout(() => {
-      setMessages(prev => [{ ...form, date: new Date().toLocaleString('fr-FR') }, ...prev])
-      setSent(true)
-      setLoading(false)
-      setForm({ nom: '', email: '', sujet: 'contact', message: '' })
-      setTimeout(() => setSent(false), 4000)
-    }, 800)
+    setError(false)
+    const sb = getSupabase()
+    if (sb) {
+      const insertOk = await insertMessage(form)
+      const emailResult = await invokeContactEmail(form)
+      if (!insertOk || !emailResult.ok) {
+        setError(true)
+        setLoading(false)
+        return
+      }
+    } else {
+      await new Promise(r => setTimeout(r, 600))
+      setMessages(prev => [{ ...form, date: new Date().toISOString() }, ...prev])
+    }
+    setSent(true)
+    setLoading(false)
+    setForm({ nom: '', email: '', sujet: 'contact', message: '' })
+    setTimeout(() => setSent(false), 4000)
   }
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
@@ -105,6 +119,11 @@ export function Contact() {
                 {sent && (
                   <span style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {Icon.check(16, t.primary)} Envoyé ! Auto-réponse transmise au client.
+                  </span>
+                )}
+                {error && (
+                  <span style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ✗ Échec de l'envoi — veuillez réessayer.
                   </span>
                 )}
               </div>
