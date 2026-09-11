@@ -1,4 +1,5 @@
 import { useSite } from '@/contexts/SiteContext'
+import { CartProvider } from '@/contexts/CartContext'
 import { PublicNav } from '@/components/nav/PublicNav'
 import { Hero } from './Hero'
 import { Carte } from './Carte'
@@ -10,22 +11,26 @@ import { Contact } from './Contact'
 import { Reservation } from './Reservation'
 import { Blog } from './Blog'
 import { Footer } from './Footer'
+import { OrderCart } from './OrderCart'
 
 export function PublicSite() {
   const { visibility, rootStyle } = useSite()
   return (
-    <div style={rootStyle}>
-      <PublicNav />
-      {visibility.sections.home && <Hero />}
-      {visibility.sections.carte && <Carte />}
-      {visibility.sections.histoire && <Story />}
-      {visibility.sections.engagements && <Engagements />}
-      {visibility.sections.equipe && <Team />}
-      {visibility.sections.localisation && <Localisation />}
-      {visibility.sections.contact && <Contact />}
-      <Reservation />
-      {visibility.sections.blog && <Blog />}
-      <Footer />
-    </div>
+    <CartProvider>
+      <div style={rootStyle}>
+        <PublicNav />
+        {visibility.sections.home && <Hero />}
+        {visibility.sections.carte && <Carte />}
+        {visibility.sections.histoire && <Story />}
+        {visibility.sections.engagements && <Engagements />}
+        {visibility.sections.equipe && <Team />}
+        {visibility.sections.localisation && <Localisation />}
+        {visibility.sections.contact && <Contact />}
+        <Reservation />
+        {visibility.sections.blog && <Blog />}
+        <Footer />
+        <OrderCart />
+      </div>
+    </CartProvider>
   )
 }

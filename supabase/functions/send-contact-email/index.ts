@@ -41,7 +41,7 @@ const SMTP_HOST = "smtp.gmail.com";
 const SMTP_PORT = 465;
 
 interface ContactPayload {
-  action?: "contact" | "reply" | "reservation-status";
+  action?: "contact" | "reply" | "reservation-status" | "order-status";
   nom: string;
   email: string;
   sujet: string;
@@ -57,6 +57,11 @@ interface ContactPayload {
   resaDate?: string;
   resaTime?: string;
   resaGuests?: string;
+  // Champs utilisés pour le mode "order-status" (notification commande client)
+  ref?: string;
+  items?: string;
+  total?: string;
+  pickupTime?: string;
 }
 
 async function sendMail(
@@ -250,6 +255,62 @@ async function handleReservationStatus(body: ContactPayload): Promise<Response> 
   return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
+async function handleOrderStatus(body: ContactPayload): Promise<Response> {
+  const to = body.to || body.email;
+  const status = body.status || "confirmed";
+  const nom = body.nom || "";
+  const ref = body.ref || "";
+  const items = body.items || "";
+  const total = body.total || "";
+  const pickupTime = body.pickupTime || body.resaTime || "";
+
+  if (!to) {
+    return corsResponse(JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+  }
+
+  const refLabel = ref ? ` (ref ${ref})` : "";
+  const pickupLabel = pickupTime ? ` pour retrait a ${pickupTime}` : "";
+  const itemsLabel = items ? `\nVotre commande : ${items}` : "";
+  const totalLabel = total ? `\nTotal : ${total} FG` : "";
+
+  let textContent = "";
+  let subject = "";
+  if (status === "confirmed") {
+    subject = `Greatlife - Commande confirmee${ref ? " " + ref : ""}`;
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous avons le plaisir de confirmer votre commande${refLabel}${pickupLabel}. Votre demande a ete prise en compte et traitee : votre commande est validee ! Nous la preparons des maintenant.${itemsLabel}${totalLabel}\nPour toute modification, repondez a cet email. - L'equipe Greatlife`;
+  } else if (status === "pending") {
+    subject = `Greatlife - Commande en attente${ref ? " " + ref : ""}`;
+    textContent = `Bonjour${nom ? " " + nom : ""}, votre commande${refLabel}${pickupLabel} a bien ete prise en compte. Un ou plusieurs articles ne sont pas disponibles pour le moment, mais le seront tres bientot. Nous vous recontacterons des que possible pour finaliser votre commande.${itemsLabel}${totalLabel}\nMerci de votre patience. - L'equipe Greatlife`;
+  } else if (status === "cancelled") {
+    subject = `Greatlife - Commande annulee${ref ? " " + ref : ""}`;
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous vous informons que votre commande${refLabel}${pickupLabel} a ete annulee. Cela peut provenir d'un desistement de votre part ou d'une decision de notre equipe en raison de la situation.${itemsLabel}${totalLabel}\nPour replanifier une commande, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
+  } else {
+    return corsResponse(JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
+  }
+
+  const errors: string[] = [];
+
+  if (SMTP_USER && SMTP_PASS) {
+    try {
+      const html = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222">` +
+        `<div style="font-size:24px;font-weight:700;color:#2d6a4f;margin-bottom:16px">Great<span style="color:#e8a93c">life</span></div>` +
+        `<p style="white-space:pre-wrap">${textContent.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</p>` +
+        `<p style="margin-top:24px">\u2014 L'equipe Greatlife</p>` +
+        `<div style="font-size:11px;color:#aaa;margin-top:16px">Conakry, Guin\u00e9e \u00b7 Fast-food bio sans culpabilit\u00e9</div>` +
+        `</div>`;
+      await sendMail(to, subject, textContent, html);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("order:" + msg);
+      console.error("Order status email error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -262,7 +323,7 @@ serve(async (req: Request) => {
     const body: ContactPayload = await req.json();
     const action = body.action || "contact";
 
-    if (action === "reply" || action === "reservation-status") {
+    if (action === "reply" || action === "reservation-status" || action === "order-status") {
       const authHeader = req.headers.get("Authorization") || "";
       const token = authHeader.replace("Bearer ", "");
       if (!token || token.length < 20) {
@@ -294,6 +355,7 @@ serve(async (req: Request) => {
         );
       }
       if (action === "reply") return await handleReply(body);
+      if (action === "order-status") return await handleOrderStatus(body);
       return await handleReservationStatus(body);
     }
     return await handleContact(body);
