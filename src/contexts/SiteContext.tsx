@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, type BlogPost, type SiteConfig, type MediaAsset } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser } from '@/lib/repository'
 
 export interface SiteContent {
   slogan: string
@@ -76,6 +76,8 @@ interface SiteContextValue {
   saveSiteConfigToDb: () => Promise<boolean>
   markMessageHandled: (id: string, handled: boolean) => Promise<boolean>
   refreshMedia: () => Promise<void>
+  adminUsers: AdminUser[]
+  refreshAdminUsers: () => Promise<void>
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -126,6 +128,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [media, setMedia] = useState(DEFAULT_MEDIA)
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -187,15 +190,16 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function load() {
-      const [menuRes, contentRes, messagesRes, blogRes, mediaRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
         fetchBlogPosts(),
         fetchMedia(),
+        fetchAdminUsers(),
       ])
       if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb
       setDataSource(anyDb ? 'supabase' : 'local')
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
@@ -214,6 +218,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (mediaRes.fromDb && mediaRes.data.length > 0) {
         setMedia(mediaRes.data.map(mediaAssetToSlot))
       }
+      if (adminRes.fromDb) setAdminUsers(adminRes.data)
       setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
     }
@@ -256,6 +261,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     else setMedia(DEFAULT_MEDIA)
   }
 
+  const refreshAdminUsers = async (): Promise<void> => {
+    const res = await fetchAdminUsers()
+    if (res.fromDb) setAdminUsers(res.data)
+  }
+
   const value: SiteContextValue = {
     themeId, setThemeId, theme, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
@@ -263,7 +273,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
-    refreshMedia,
+    refreshMedia, adminUsers, refreshAdminUsers,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
