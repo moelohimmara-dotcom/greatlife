@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
+import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { CATEGORY_ORDER } from '@/data/menu'
 import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
@@ -18,60 +18,112 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+
+const NAV_GROUPS: [string, [string, string, string][]][] = [
+  ['Pilotage', [
+    ['dashboard', 'Tableau de bord', 'grid'],
+    ['messages', 'Messages', 'mail'],
+    ['reservations', 'Réservations', 'calendar'],
+  ]],
+  ['Contenu', [
+    ['content', 'Contenu', 'write'],
+    ['menu', 'Carte & prix', 'leaf'],
+    ['blog', 'Blog', 'write'],
+  ]],
+  ['Apparence', [
+    ['theme', 'Thème & ambiance', 'palette'],
+    ['media', 'Médias', 'image'],
+    ['visibility', 'Visibilité', 'eye'],
+  ]],
+  ['Système', [
+    ['users', 'Utilisateurs & rôles', 'users'],
+    ['forms', 'Formulaires & emails', 'settings'],
+  ]],
+]
 
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
   const { theme: t } = useSite()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const navItems: [string, string][] = [
-    ['dashboard', 'Tableau de bord'], ['messages', 'Messages'], ['reservations', 'Réservations'], ['content', 'Contenu'], ['menu', 'Carte & prix'],
-    ['theme', 'Thème & ambiance'], ['blog', 'Blog'], ['media', 'Médias'], ['visibility', 'Visibilité'],
-    ['users', 'Utilisateurs & rôles'], ['forms', 'Formulaires & emails'],
-  ]
+  const [mobileNav, setMobileNav] = useState(false)
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
+  const go = (k: string) => { setActive(k); setMobileNav(false) }
+
+  const Sidebar = (
+    <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '22px 14px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em', display: 'inline-flex', alignItems: 'baseline' }}>
+        Great<span style={{ color: t.accent }}>life</span> <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
+      </Link>
+      <nav style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, overflow: 'auto' }}>
+        {NAV_GROUPS.map(([groupLabel, items]) => (
+          <div key={groupLabel}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: t.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {items.map(([k, l, icon]) => {
+                const isActive = active === k
+                return (
+                  <button key={k} onClick={() => go(k)} style={{
+                    textAlign: 'left', padding: '9px 12px', borderRadius: 10,
+                    fontSize: '13.5px', fontWeight: isActive ? 600 : 500, cursor: 'pointer', border: 'none',
+                    background: isActive ? t.primary : 'transparent',
+                    color: isActive ? '#fff' : t.text,
+                    display: 'inline-flex', alignItems: 'center', gap: 10,
+                    transition: 'background 0.18s', position: 'relative',
+                  }} onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = `${t.primary}0a` }}
+                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                    {!isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 0, borderRadius: 3, background: t.primary, transition: 'height 0.18s' }} />}
+                    <span style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.7 }}>{Icon[icon](15, isActive ? '#fff' : t.text)}</span>
+                    <span>{l}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '14px' }}>
+        <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{user?.role === 'owner' ? 'Propriétaire' : 'Gérant'}</div>
+        <button onClick={handleLogout} style={{
+          width: '100%', fontSize: '13px', fontWeight: 600, padding: '9px', borderRadius: 10, cursor: 'pointer',
+          border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent,
+          display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center',
+        }}>{Icon.logout(14)} Déconnexion</button>
+        <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
+      </div>
+    </aside>
+  )
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', minHeight: '100vh', background: t.bg }}>
-      <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '24px 16px', display: 'flex', flexDirection: 'column' }}>
-        <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em' }}>
-          Great<span style={{ color: t.accent }}>life</span> <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500 }}>admin</span>
-        </Link>
-        <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-          {navItems.map(([k, l]) => (
-            <button key={k} onClick={() => setActive(k)} style={{
-              textAlign: 'left', padding: '11px 14px', borderRadius: '12px',
-              fontSize: '14px', fontWeight: 500, cursor: 'pointer', border: 'none',
-              background: active === k ? t.primary : 'transparent',
-              color: active === k ? '#fff' : t.text,
-              transition: 'background 0.2s',
-            }}>{l}</button>
-          ))}
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minHeight: '100vh', background: t.bg }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', minHeight: '100vh' }} className="admin-layout">
+<div className="admin-sidebar-desktop">{Sidebar}</div>
+        <main className="admin-main-pad" style={{ padding: '32px 36px', overflow: 'auto', position: 'relative' }}>
+          <button onClick={() => setMobileNav(true)} className="admin-mobile-menu" style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20, border: `1px solid ${t.shadow}`, background: t.surface, borderRadius: 10, padding: '9px 11px', cursor: 'pointer', color: t.heading }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+          {children}
+        </main>
+      </div>
+      {mobileNav && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
+          <div onClick={() => setMobileNav(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.4)' }} />
+          <div style={{ width: '260px', maxWidth: '82vw' }}>{Sidebar}</div>
         </div>
-        <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '16px' }}>
-          <div style={{ fontSize: '11px', color: t.muted, marginBottom: '2px' }}>Connecté en tant que</div>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
-          <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{user?.role === 'owner' ? 'Propriétaire' : 'Gérant'}</div>
-          <button onClick={handleLogout} style={{
-            width: '100%', fontSize: '13px', fontWeight: 600, padding: '9px',
-            borderRadius: '10px', cursor: 'pointer',
-            border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent,
-            display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center',
-          }}>{Icon.logout(14)} Déconnexion</button>
-          <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
-        </div>
-      </aside>
-      <main style={{ padding: '32px 36px', overflow: 'auto' }}>{children}</main>
+      )}
     </div>
   )
 }
 
-function DashCard({ label, value, sub }: { label: string; value: React.ReactNode; sub: string }) {
+function DashCard({ label, value, sub, icon, color }: { label: string; value: React.ReactNode; sub: string; icon: React.ReactNode; color: string }) {
   const { theme: t } = useSite()
   return (
-    <OrganicCard style={{ padding: '24px' }}>
+    <OrganicCard style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 12, background: `${color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
       <div style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--f-heading)', fontSize: '32px', fontWeight: 700, color: t.heading, margin: '4px 0', letterSpacing: '-0.03em' }}>{value}</div>
+      <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, margin: '2px 0', letterSpacing: '-0.03em' }}>{value}</div>
       <div style={{ fontSize: '12px', color: t.muted }}>{sub}</div>
     </OrganicCard>
   )
@@ -81,30 +133,41 @@ function Dashboard() {
   const { menu, messages, theme: t, dataSource, dataLoading, adminUsers } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
+  const recentMessages = messages.slice(0, 4)
   return (
     <div>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '28px', fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Tableau de bord</h2>
-      <p style={{ color: t.muted, marginTop: 0, fontSize: '14px' }}>Bienvenue Mister Marcket. Pilotez votre site en toute liberté.</p>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: '100px', background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor, marginTop: 4 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}
-      </div>
+      <PageHeader title="Tableau de bord" subtitle="Pilotez votre site en toute liberté."
+        badge={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}</span>}
+      />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '24px' }}>
-        <DashCard label="Produits dans la carte" value={menu.length} sub="toutes catégories" />
-        <DashCard label="Messages reçus" value={messages.length} sub="via formulaires" />
-        <DashCard label="Catégories actives" value={CATEGORY_ORDER.length} sub="burgers, wraps, salades…" />
-        <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles attribués" />
+        <DashCard label="Produits" value={menu.length} sub="toutes catégories" icon={Icon.leaf(20, t.primary)} color={t.primary} />
+        <DashCard label="Messages" value={messages.length} sub="via formulaires" icon={Icon.mail(20, t.accent)} color={t.accent} />
+        <DashCard label="Réservations" value={messages.length} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
+        <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
       </div>
-      <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: '28px 0 12px', letterSpacing: '-0.02em' }}>Messages récents</h3>
-      {messages.length === 0 ? <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant. Les soumissions du formulaire de contact apparaissent ici.</p> :
-        messages.map((m, i) => (
-          <OrganicCard key={i} style={{ padding: '16px', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600, color: t.heading }}>
-              <span>{m.nom} — {m.email}</span><span style={{ color: t.muted, fontWeight: 400 }}>{m.date}</span>
-            </div>
-            <div style={{ fontSize: '11px', color: t.accent, fontWeight: 600, marginTop: '3px' }}>{m.sujet}</div>
-            <p style={{ fontSize: '13px', color: t.text, margin: '8px 0 0' }}>{m.message}</p>
-          </OrganicCard>
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
+        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Messages récents</h3>
+      </div>
+      {recentMessages.length === 0 ? <EmptyState icon={Icon.mail(28, t.muted)} title="Aucun message" subtitle="Les soumissions du formulaire de contact apparaîtront ici." /> :
+        <div style={{ display: 'grid', gap: 10 }}>
+          {recentMessages.map((m, i) => (
+            <OrganicCard key={i} style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${t.primary}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: t.primary, flexShrink: 0 }}>{m.nom.charAt(0).toUpperCase()}</div>
+                  <div>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom}</span>
+                    <span style={{ fontSize: '12px', color: t.muted, marginLeft: 6 }}>{m.email}</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', color: t.muted, flexShrink: 0 }}>{m.date}</span>
+              </div>
+              <div style={{ fontSize: '11px', color: t.accent, fontWeight: 600, marginTop: '6px', marginLeft: 40 }}>{m.sujet}</div>
+              <p style={{ fontSize: '13px', color: t.text, margin: '6px 0 0 40px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</p>
+            </OrganicCard>
+          ))}
+        </div>
+      }
     </div>
   )
 }
@@ -120,11 +183,21 @@ function SaveBar({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) 
   )
 }
 
+function SectionTitle({ children, color }: { children: React.ReactNode; color: string }) {
+  const { theme: t } = useSite()
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12px', fontWeight: 700, color: t.heading, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+      <span style={{ width: 4, height: 16, borderRadius: 3, background: color }} />
+      {children}
+    </div>
+  )
+}
+
 function ContentEditor() {
   const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle') }
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const inp = inputStyle(t)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving')
@@ -133,23 +206,31 @@ function ContentEditor() {
     setTimeout(() => setSaveStatus('idle'), 3000)
   }
   return (
-    <div style={{ maxWidth: '720px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ maxWidth: '760px' }}>
+      <PageHeader title="Contenu du site" subtitle="Modifiez tous les textes. Les changements sont appliqués en direct."
+        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+      />
+      <div style={{ display: 'grid', gap: '22px', marginTop: '24px' }}>
         <div>
-          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Contenu du site</h2>
-          <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Modifiez tous les textes. Les changements sont appliqués en direct.</p>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.primary}>Section d'accueil</SectionTitle></div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Slogan</FieldLabel><Input value={content.slogan} onChange={e => set('slogan', e.target.value)} style={inp} /></div>
+            <div><FieldLabel>Titre principal (Hero)</FieldLabel><Input value={content.heroTitle} onChange={e => set('heroTitle', e.target.value)} style={inp} /></div>
+            <div><FieldLabel>Sous-titre Hero</FieldLabel><Textarea rows={3} value={content.heroSub} onChange={e => set('heroSub', e.target.value)} style={inp} /></div>
+          </div>
         </div>
-        <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
-      </div>
-      {saveStatus !== 'idle' && <div style={{ marginTop: 8 }}><SaveBar status={saveStatus} /></div>}
-      <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Slogan</Label><Input value={content.slogan} onChange={e => set('slogan', e.target.value)} style={inputStyle} /></div>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Titre Hero</Label><Input value={content.heroTitle} onChange={e => set('heroTitle', e.target.value)} style={inputStyle} /></div>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Sous-titre Hero</Label><Textarea rows={3} value={content.heroSub} onChange={e => set('heroSub', e.target.value)} style={inputStyle} /></div>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Notre histoire</Label><Textarea rows={4} value={content.story} onChange={e => set('story', e.target.value)} style={inputStyle} /></div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email contact</Label><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inputStyle} /></div>
-          <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email réservation</Label><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inputStyle} /></div>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Section histoire</SectionTitle></div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Notre histoire</FieldLabel><Textarea rows={5} value={content.story} onChange={e => set('story', e.target.value)} style={inp} /></div>
+          </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.gold}>Coordonnées</SectionTitle></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div><FieldLabel>Email contact</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} /></div>
+            <div><FieldLabel>Email réservation</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} /></div>
+          </div>
         </div>
       </div>
     </div>
@@ -160,7 +241,11 @@ function MenuEditor() {
   const { menu, setMenu, theme: t, dataSource } = useSite()
   const [sel, setSel] = useState(menu[0]?.name ?? '')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [query, setQuery] = useState('')
+  const [confirmDel, setConfirmDel] = useState(false)
   const item = menu.find(m => m.name === sel)
+  const filtered = query.trim() ? menu.filter(m => m.name.toLowerCase().includes(query.toLowerCase()) || m.cat.toLowerCase().includes(query.toLowerCase())) : menu
+  const grouped = filtered.reduce((acc, m) => { (acc[m.cat] = acc[m.cat] || []).push(m); return acc }, {} as Record<string, typeof menu>)
   const update = (k: string, v: string | boolean | string[]) => {
     const next = menu.map(m => m.name === sel ? { ...m, [k]: v } : m)
     setMenu(next)
@@ -173,31 +258,38 @@ function MenuEditor() {
       })
     }
   }
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const inp = inputStyle(t)
   if (!item) {
     return (
       <div>
-        <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em' }}>Carte & prix</h2>
-        <p style={{ color: t.muted, fontSize: '14px' }}>Aucun produit à afficher pour le moment.</p>
+        <PageHeader title="Carte & prix" subtitle="Aucun produit à afficher." />
+        <div style={{ marginTop: 20 }}><EmptyState title="Aucun produit" subtitle="Ajoutez votre premier produit pour commencer." /></div>
       </div>
     )
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '28px' }}>
       <div>
-        <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, letterSpacing: '-0.02em' }}>Carte & prix</h2>
-        <p style={{ color: t.muted, fontSize: '13px', marginTop: 0 }}>Sélectionnez un produit.</p>
-        <div style={{ maxHeight: '480px', overflow: 'auto', borderRadius: '14px', background: t.surface, border: `1px solid ${t.shadow}` }}>
-          {menu.map(m => (
-            <button key={m.name} onClick={() => setSel(m.name)} style={{
-              display: 'block', width: '100%', textAlign: 'left', padding: '11px 14px',
-              fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
-              background: sel === m.name ? `${t.primary}0d` : 'transparent',
-              color: sel === m.name ? t.primary : t.text,
-              borderBottom: `1px solid ${t.shadow}`,
-            }}>
-              {m.sig ? '★ ' : ''}{m.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {m.price}</span>
-            </button>
+        <PageHeader title="Carte & prix" subtitle="Sélectionnez un produit." />
+        <div style={{ marginTop: 14, position: 'relative' }}>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" style={{ ...inp, paddingLeft: 36 }} />
+          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(15, t.muted)}</span>
+        </div>
+        <div style={{ maxHeight: '440px', overflow: 'auto', borderRadius: 14, background: t.surface, border: `1px solid ${t.shadow}`, marginTop: 14 }}>
+          {Object.entries(grouped).map(([cat, items]) => (
+            <div key={cat}>
+              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.06em', background: t.surfaceAlt, position: 'sticky', top: 0 }}>{cat}</div>
+              {items.map(m => (
+                <button key={m.name} onClick={() => setSel(m.name)} style={{
+                  display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
+                  fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
+                  background: sel === m.name ? `${t.primary}0d` : 'transparent',
+                  color: sel === m.name ? t.primary : t.text, borderBottom: `1px solid ${t.shadow}`,
+                }}>
+                  {m.sig ? '★ ' : ''}{m.name} <span style={{ color: t.muted, fontWeight: 400, fontSize: 12 }}>· {m.price}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
         <button onClick={() => {
@@ -207,38 +299,48 @@ function MenuEditor() {
           setSel(newItem.name)
         }} style={{
           marginTop: 12, width: '100%', fontSize: '13px', fontWeight: 600, padding: '10px',
-          borderRadius: '12px', cursor: 'pointer', border: `1px dashed ${t.primary}44`,
-          background: 'transparent', color: t.primary,
-        }}>+ Ajouter un produit</button>
+          borderRadius: 12, cursor: 'pointer', border: `1px dashed ${t.primary}55`,
+          background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>{Icon.plus(14, t.primary)} Ajouter un produit</button>
       </div>
       <div>
-        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: '0 0 16px', letterSpacing: '-0.02em' }}>{item.name}</h3>
-        {saveStatus !== 'idle' && <div style={{ marginBottom: 12 }}><SaveBar status={saveStatus} /></div>}
-        <div style={{ display: 'grid', gap: '14px', maxWidth: '560px' }}>
-          <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Nom</Label><Input value={item.name} onChange={e => update('name', e.target.value)} style={inputStyle} /></div>
-          <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Prix (FG)</Label><Input value={item.price} onChange={e => update('price', e.target.value)} style={inputStyle} /></div>
-          <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Description percutante</Label><Textarea rows={3} value={item.desc} onChange={e => update('desc', e.target.value)} style={inputStyle} /></div>
-          <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Vertus (panneau dépliable)</Label><Textarea rows={2} value={item.vertus} onChange={e => update('vertus', e.target.value)} style={inputStyle} /></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>{item.name}</h3>
+          <SaveBar status={saveStatus} />
+        </div>
+        <div style={{ display: 'grid', gap: 14, maxWidth: '560px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
+            <div><FieldLabel>Nom</FieldLabel><Input value={item.name} onChange={e => update('name', e.target.value)} style={inp} /></div>
+            <div><FieldLabel>Prix (FG)</FieldLabel><Input value={item.price} onChange={e => update('price', e.target.value)} style={inp} /></div>
+          </div>
+          <div><FieldLabel>Description percutante</FieldLabel><Textarea rows={3} value={item.desc} onChange={e => update('desc', e.target.value)} style={inp} /></div>
+          <div><FieldLabel>Vertus (panneau dépliable)</FieldLabel><Textarea rows={2} value={item.vertus} onChange={e => update('vertus', e.target.value)} style={inp} /></div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginRight: 4 }}>Badges :</Label>
+            <FieldLabel>Badges</FieldLabel>
             {['omni', 'vege', 'gluten', 'arachide', 'lactose'].map(b => (
               <button key={b} onClick={() => update('badges', item.badges.includes(b) ? item.badges.filter(x => x !== b) : [...item.badges, b])}
-                style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer', border: `1px solid ${t.primary}33`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text }}>{BADGE_DEFS[b]?.label}</button>
+                style={{ fontSize: '11px', padding: '5px 11px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${t.primary}44`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text, transition: 'all 0.15s' }}>{BADGE_DEFS[b]?.label}</button>
             ))}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
             <Switch checked={!!item.sig} onCheckedChange={v => update('sig', v)} /> Produit signature
           </label>
         </div>
-        <div style={{ marginTop: '20px', display: 'flex', gap: 10 }}>
-          <button onClick={() => {
-            if (dataSource === 'supabase') deleteMenuItem(item.name)
-            setMenu(menu.filter(m => m.name !== item.name))
-            setSel(menu[0]?.name ?? '')
-          }} style={{
-            fontSize: '12px', fontWeight: 600, padding: '8px 16px', borderRadius: '10px',
-            cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent,
-          }}>Supprimer ce produit</button>
+        <div style={{ marginTop: '24px' }}>
+          {confirmDel ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid #dc262644`, background: '#dc262608' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#dc2626' }}>Supprimer « {item.name} » ?</span>
+              <button onClick={() => {
+                if (dataSource === 'supabase') deleteMenuItem(item.name)
+                setMenu(menu.filter(m => m.name !== item.name))
+                setSel(menu[0]?.name ?? '')
+                setConfirmDel(false)
+              }} style={{ fontSize: 12, fontWeight: 700, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
+              <button onClick={() => setConfirmDel(false)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+            </div>
+          ) : (
+            <GhostButton color="#dc2626" onClick={() => setConfirmDel(true)} title="Supprimer ce produit">{Icon.trash(13, '#dc2626')} Supprimer ce produit</GhostButton>
+          )}
         </div>
       </div>
     </div>
@@ -256,46 +358,41 @@ function ThemeEditor() {
     setTimeout(() => setSaveStatus('idle'), 3000)
   }
   return (
-    <div style={{ maxWidth: '760px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Thème & ambiance</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Choisissez une ambiance. Le site change en direct.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px,1fr))', gap: '16px', marginTop: '20px' }}>
+    <div style={{ maxWidth: '800px' }}>
+      <PageHeader title="Thème & ambiance" subtitle="Choisissez une ambiance. Le site change en direct."
+        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+      />
+      <div style={{ marginTop: 12, marginBottom: 20 }}><SectionTitle color={t.primary}>Palette de couleurs</SectionTitle></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px,1fr))', gap: '14px' }}>
         {Object.values(THEMES).map(th => (
           <button key={th.id} onClick={() => { setThemeId(th.id); setSaveStatus('idle') }} style={{
-            cursor: 'pointer', border: themeId === th.id ? `3px solid ${t.accent}` : `1px solid ${t.shadow}`,
-            borderRadius: '16px', padding: '16px', background: th.surface, textAlign: 'left', transition: 'border 0.2s',
-          }}>
+            cursor: 'pointer', border: themeId === th.id ? `2px solid ${t.accent}` : `1px solid ${t.shadow}`,
+            borderRadius: 16, padding: 16, background: th.surface, textAlign: 'left', transition: 'border 0.2s, transform 0.2s',
+            transform: themeId === th.id ? 'translateY(-2px)' : 'none',
+          }} onMouseEnter={e => { if (themeId !== th.id) (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)' }}
+            onMouseLeave={e => { if (themeId !== th.id) (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
             <div style={{ display: 'flex', gap: 5, marginBottom: '10px' }}>
-              {[th.primary, th.accent, th.gold, th.bg].map((c, i) => <div key={i} style={{ width: '24px', height: '24px', borderRadius: '7px', background: c, border: `1px solid ${th.shadow}` }} />)}
+              {[th.primary, th.accent, th.gold, th.bg].map((c, i) => <div key={i} style={{ width: '22px', height: '22px', borderRadius: 7, background: c, border: `1px solid ${th.shadow}` }} />)}
             </div>
             <div style={{ fontWeight: 700, fontSize: '14px', color: th.heading }}>{th.label}</div>
-            {themeId === th.id && <div style={{ fontSize: '11px', color: th.accent, fontWeight: 600, marginTop: 2 }}>✓ Actif</div>}
+            {themeId === th.id && <div style={{ fontSize: '11px', color: th.accent, fontWeight: 600, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{Icon.check(12, th.accent)} Actif</div>}
           </button>
         ))}
       </div>
-      <div style={{ marginTop: '28px' }}>
-        <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Typographie</Label>
-        <Select value={fontId} onValueChange={v => { setFontId(v); setSaveStatus('idle') }}>
-          <SelectTrigger style={{ maxWidth: '320px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px' }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {Object.entries(FONTS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <Separator style={{ margin: '28px 0' }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Aperçu en direct</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {saveStatus !== 'idle' && <SaveBar status={saveStatus} />}
-          <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '9px 18px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
-        </div>
-      </div>
-      <div style={{ marginTop: '12px', padding: '24px', borderRadius: '18px', background: t.surface, border: `1px solid ${t.shadow}` }}>
+      <div style={{ marginTop: 28, marginBottom: 20 }}><SectionTitle color={t.accent}>Typographie</SectionTitle></div>
+      <Select value={fontId} onValueChange={v => { setFontId(v); setSaveStatus('idle') }}>
+        <SelectTrigger style={{ maxWidth: '340px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '11px 14px' }}><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {Object.entries(FONTS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <div style={{ marginTop: 28, marginBottom: 12 }}><SectionTitle color={t.gold}>Aperçu en direct</SectionTitle></div>
+      <div style={{ padding: '26px', borderRadius: 18, background: t.surface, border: `1px solid ${t.shadow}` }}>
         <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em' }}>{content.heroTitle}</div>
         <div style={{ fontSize: '14px', color: t.muted, marginTop: '8px' }}>{content.slogan}</div>
         <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>
-          <span style={{ padding: '8px 16px', borderRadius: '100px', background: t.primary, color: '#fff', fontSize: '13px', fontWeight: 600 }}>Bouton primaire</span>
-          <span style={{ padding: '8px 16px', borderRadius: '100px', background: t.gold, color: '#fff', fontSize: '13px', fontWeight: 600 }}>Bouton accent</span>
+          <span style={{ padding: '9px 18px', borderRadius: 100, background: t.primary, color: '#fff', fontSize: '13px', fontWeight: 600 }}>Bouton primaire</span>
+          <span style={{ padding: '9px 18px', borderRadius: 100, background: t.gold, color: '#fff', fontSize: '13px', fontWeight: 600 }}>Bouton accent</span>
         </div>
       </div>
     </div>
@@ -399,15 +496,9 @@ function MediaManager() {
 
   return (
     <div style={{ maxWidth: '860px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Médias</h2>
-          <p style={{ color: t.muted, fontSize: '14px', marginTop: 4 }}>Téléversez et redimensionnez vos images, puis assignez-les aux emplacements du site.</p>
-        </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 100, background: `${t.primary}12`, fontSize: 12, fontWeight: 600, color: t.primary }}>
-          {dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}
-        </div>
-      </div>
+      <PageHeader title="Médias" subtitle="Téléversez et redimensionnez vos images, puis assignez-les aux emplacements du site."
+        badge={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 100, background: `${t.primary}12`, fontSize: 12, fontWeight: 600, color: t.primary }}>{dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}</span>}
+      />
 
       {!isSupabase && (
         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
@@ -571,29 +662,25 @@ function VisibilityEditor() {
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
     <div style={{ maxWidth: '640px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Visibilité</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Affichez ou masquez des éléments du site en un clic.</p>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 12 }}>
-        {saveStatus !== 'idle' && <SaveBar status={saveStatus} />}
-        <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '9px 18px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
-      </div>
-      <div style={{ marginTop: '20px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '10px' }}>Sections de page</div>
-        {rows.map(([k, l]) => (
-          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{l}</span>
-            <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: '22px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: t.muted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '10px' }}>Éléments</div>
-        {(['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const).map(k => (
-          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
-            <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
-          </div>
-        ))}
+      <PageHeader title="Visibilité" subtitle="Affichez ou masquez des éléments du site en un clic."
+        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+      />
+      <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Sections de page</SectionTitle></div>
+      {rows.map(([k, l]) => (
+        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
+          <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{l}</span>
+          <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
+        </div>
+      ))}
+      <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.accent}>Éléments de contenu</SectionTitle></div>
+      {(['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const).map(k => (
+        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
+          <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
+          <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
+        </div>
+      ))}
+      <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: t.surfaceAlt, fontSize: 12, color: t.muted }}>
+        Les changements sont appliqués en direct sur le site après enregistrement.
       </div>
     </div>
   )
@@ -655,8 +742,7 @@ function UsersRoles() {
 
   return (
     <div style={{ maxWidth: '920px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Utilisateurs & rôles</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Permissions granulaires par module (voir / écrire / désactivé).</p>
+      <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)." />
 
       {!isSupabase && (
         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
@@ -665,8 +751,11 @@ function UsersRoles() {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 10px' }}>
-        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: 0 }}>Équipe</h3>
-        <Button size="sm" disabled={!isSupabase || !!editing} style={{ background: t.primary, color: '#fff', borderRadius: 10, opacity: !isSupabase || editing ? 0.6 : 1 }} onClick={startAdd}>+ Ajouter</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: 0 }}>Équipe</h3>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 10px', borderRadius: 100 }}>{adminUsers.length}</span>
+        </div>
+        <PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing}>{Icon.plus(13, '#fff')} Ajouter</PrimaryButton>
       </div>
 
       {status.kind !== 'idle' && (
@@ -752,7 +841,7 @@ function BlogEditor() {
   const { blogPosts, setBlogPosts, theme: t, dataSource } = useSite()
   const [editing, setEditing] = useState<BlogPost | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const inp = inputStyle(t)
 
   const save = async () => {
     if (!editing) return
@@ -779,50 +868,51 @@ function BlogEditor() {
   }
 
   return (
-    <div style={{ maxWidth: '760px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Blog</h2>
-          <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Rédigez et publiez des articles.</p>
-        </div>
-        <Button onClick={() => setEditing({ title: '', excerpt: '', body: '', category: 'Actualités', published: false })} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>+ Nouvel article</Button>
-      </div>
+    <div style={{ maxWidth: '780px' }}>
+      <PageHeader title="Blog" subtitle="Rédigez et publiez des articles."
+        actions={<PrimaryButton onClick={() => setEditing({ title: '', excerpt: '', body: '', category: 'Actualités', published: false })}>{Icon.plus(14, '#fff')} Nouvel article</PrimaryButton>}
+      />
       {editing && (
-        <div style={{ marginTop: 20, padding: 24, borderRadius: 16, background: t.surface, border: `1px solid ${t.shadow}` }}>
+        <OrganicCard style={{ marginTop: 20, padding: 22 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0 }}>{editing.id ? 'Modifier' : 'Nouvel article'}</h3>
-            <button onClick={() => setEditing(null)} style={{ fontSize: '13px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Fermer</button>
+            <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0 }}>{editing.id ? 'Modifier l\'article' : 'Nouvel article'}</h3>
+            <button onClick={() => setEditing(null)} style={{ fontSize: '13px', fontWeight: 600, padding: '7px 14px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, display: 'inline-flex', alignItems: 'center', gap: 5 }}>{Icon.x(14, t.muted)} Fermer</button>
           </div>
           <div style={{ display: 'grid', gap: 14 }}>
-            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Titre</Label><Input value={editing.title} onChange={e => setEditing({ ...editing, title: e.target.value })} style={inputStyle} /></div>
-            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Catégorie</Label><Input value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value })} style={inputStyle} /></div>
-            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Extrait</Label><Textarea rows={2} value={editing.excerpt} onChange={e => setEditing({ ...editing, excerpt: e.target.value })} style={inputStyle} /></div>
-            <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Contenu</Label><Textarea rows={6} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} style={inputStyle} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 14 }}>
+              <div><FieldLabel>Titre</FieldLabel><Input value={editing.title} onChange={e => setEditing({ ...editing, title: e.target.value })} style={inp} /></div>
+              <div><FieldLabel>Catégorie</FieldLabel><Input value={editing.category} onChange={e => setEditing({ ...editing, category: e.target.value })} style={inp} /></div>
+            </div>
+            <div><FieldLabel>Extrait</FieldLabel><Textarea rows={2} value={editing.excerpt} onChange={e => setEditing({ ...editing, excerpt: e.target.value })} style={inp} /></div>
+            <div><FieldLabel>Contenu</FieldLabel><Textarea rows={6} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} style={inp} /></div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
               <Switch checked={editing.published} onCheckedChange={v => setEditing({ ...editing, published: v })} /> Publier sur le site
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
-              {saveStatus !== 'idle' && <SaveBar status={saveStatus} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <PrimaryButton onClick={save}>Enregistrer</PrimaryButton>
+              <SaveBar status={saveStatus} />
             </div>
           </div>
-        </div>
+        </OrganicCard>
       )}
-      <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {blogPosts.length === 0 && <p style={{ color: t.muted, fontSize: '14px' }}>Aucun article. Cliquez sur « Nouvel article » pour commencer.</p>}
-        {blogPosts.map(post => (
-          <div key={post.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px' }}>
-            <div>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{post.title}</span>
-              <span style={{ fontSize: '11px', fontWeight: 600, marginLeft: 8, padding: '2px 8px', borderRadius: '100px', background: post.published ? `${t.primary}15` : t.surfaceAlt, color: post.published ? t.primary : t.muted }}>{post.published ? 'Publié' : 'Brouillon'}</span>
-              <div style={{ fontSize: '12px', color: t.muted, marginTop: 2 }}>{post.category} · {post.excerpt.slice(0, 60)}{post.excerpt.length > 60 ? '…' : ''}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setEditing(post)} style={{ fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Modifier</button>
-              <button onClick={() => remove(post)} style={{ fontSize: '12px', fontWeight: 600, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Supprimer</button>
-            </div>
-          </div>
-        ))}
+      <div style={{ marginTop: 24 }}>
+        {blogPosts.length === 0 && <EmptyState icon={Icon.write(26, t.muted)} title="Aucun article" subtitle="Cliquez sur « Nouvel article » pour commencer." />}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+          {blogPosts.map(post => (
+            <OrganicCard key={post.id} style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 9px', borderRadius: 100 }}>{post.category}</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: post.published ? `${t.primary}15` : t.surfaceAlt, color: post.published ? t.primary : t.muted }}>{post.published ? 'Publié' : 'Brouillon'}</span>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: t.heading, lineHeight: 1.3 }}>{post.title || 'Sans titre'}</div>
+              <div style={{ fontSize: '13px', color: t.muted, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{post.excerpt || 'Aucun extrait'}</div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <GhostButton color={t.primary} onClick={() => setEditing(post)}>Modifier</GhostButton>
+                <GhostButton color="#dc2626" onClick={() => remove(post)}>{Icon.trash(12, '#dc2626')} Supprimer</GhostButton>
+              </div>
+            </OrganicCard>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -832,7 +922,7 @@ function FormsConfig() {
   const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle') }
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const inp = inputStyle(t)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving')
@@ -841,27 +931,31 @@ function FormsConfig() {
     setTimeout(() => setSaveStatus('idle'), 3000)
   }
   return (
-    <div style={{ maxWidth: '680px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Formulaires & emails</h2>
-          <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Configurez les destinataires et l'auto-réponse envoyée au client.</p>
-        </div>
-        <Button onClick={save} style={{ background: t.primary, color: '#fff', fontWeight: 600, padding: '10px 20px', borderRadius: '100px', border: 'none', cursor: 'pointer' }}>Enregistrer</Button>
+    <div style={{ maxWidth: '700px' }}>
+      <PageHeader title="Formulaires & emails" subtitle="Configurez les destinataires et l'auto-réponse."
+        actions={<><SaveBar status={saveStatus} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+      />
+      <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Destinataires</SectionTitle></div>
+      <div style={{ display: 'grid', gap: 14 }}>
+        <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} /></div>
+        <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} /></div>
       </div>
-      {saveStatus !== 'idle' && <div style={{ marginTop: 8 }}><SaveBar status={saveStatus} /></div>}
-      <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — messages généraux</Label><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inputStyle} /></div>
-        <div><Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Destinataire — réservations</Label><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inputStyle} /></div>
-        <div>
-          <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Template d'auto-réponse (variable : {`{nom}`})</Label>
-          <Textarea rows={4} value={content.autoReply} onChange={e => set('autoReply', e.target.value)} style={inputStyle} />
-        </div>
+      <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.accent}>Auto-réponse</SectionTitle></div>
+      <div>
+        <FieldLabel>Template d'auto-réponse (variable : {`{nom}`})</FieldLabel>
+        <Textarea rows={4} value={content.autoReply} onChange={e => set('autoReply', e.target.value)} style={inp} />
       </div>
-      <Separator style={{ margin: '24px 0' }} />
-      <div style={{ fontSize: '13px', fontWeight: 600, color: t.heading }}>Pipeline d'envoi</div>
-      <div style={{ fontSize: '13px', color: t.muted, marginTop: '8px', lineHeight: 1.7 }}>
-        Soumission → stockage table <code>messages</code> → email au destinataire → auto-réponse au client (via Edge Function Supabase + fournisseur SMTP/Resend). Historique consultable et exportable.
+      <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.gold}>Pipeline d'envoi</SectionTitle></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, color: t.muted, fontWeight: 500 }}>
+        {['Soumission', 'Table messages', 'Email destinataire', 'Auto-réponse client'].map((s, i, arr) => (
+          <React.Fragment key={s}>
+            <span style={{ padding: '6px 12px', borderRadius: 8, background: t.surfaceAlt, border: `1px solid ${t.shadow}`, color: t.heading }}>{s}</span>
+            {i < arr.length - 1 && <span style={{ color: t.muted }}>{Icon.arrow(14, t.muted)}</span>}
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{ fontSize: '12px', color: t.muted, marginTop: '12px', lineHeight: 1.6 }}>
+        Via Edge Function Supabase + SMTP Google. Historique consultable et exportable depuis le module Messages.
       </div>
     </div>
   )
@@ -876,7 +970,7 @@ function MessagesManager() {
   const [live, setLive] = useState(false)
   const [newCount, setNewCount] = useState(0)
   const [handling, setHandling] = useState(false)
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+  const inp = inputStyle(t)
 
   useEffect(() => {
     if (dataSource !== 'supabase') return
@@ -963,31 +1057,30 @@ function MessagesManager() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: selected ? '300px 1fr' : '1fr', gap: '24px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: selected ? '320px 1fr' : '1fr', gap: '24px' }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Messages</h2>
-          {newCount > 0 && (
-            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: t.accent, color: '#fff' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>
-          )}
+          <PageHeader title="Messages" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 16 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: live ? t.primary : t.muted, animation: live ? 'pulse 2s infinite' : 'none' }} />
-          <span style={{ fontSize: '12px', color: t.muted }}>{live ? 'Temps réel' : 'Actualisation périodique'}</span>
+          <span style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{live ? 'Temps réel' : 'Actualisation périodique'}</span>
+          {newCount > 0 && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: t.accent, color: '#fff', marginLeft: 'auto' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>}
         </div>
         {messages.length === 0 ? (
-          <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant.</p>
+          <EmptyState icon={Icon.mail(26, t.muted)} title="Aucun message" subtitle="Les soumissions du formulaire apparaîtront ici." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {messages.map((m, i) => (
               <button key={i} onClick={() => { setSelectedIdx(i); setReplyText(''); setSending('idle') }} style={{
-                textAlign: 'left', padding: '14px 16px', borderRadius: '14px', cursor: 'pointer',
+                textAlign: 'left', padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
                 border: selectedIdx === i ? `2px solid ${t.primary}` : `1px solid ${t.shadow}`,
-                background: selectedIdx === i ? `${t.primary}08` : t.surface,
-                transition: 'all 0.2s',
+                background: selectedIdx === i ? `${t.primary}08` : (m.handled ? t.surfaceAlt : t.surface),
+                transition: 'all 0.2s', position: 'relative',
               }}>
+                {!m.handled && <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: t.accent }} />}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom} {m.handled && <span style={{ fontSize: '10px', color: t.primary, marginLeft: 6 }}>✓</span>}</span>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom} {m.handled && <span style={{ fontSize: '10px', color: t.primary, marginLeft: 6 }}>{Icon.check(10, t.primary)}</span>}</span>
                   <span style={{ fontSize: '11px', color: t.muted }}>{m.date}</span>
                 </div>
                 <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '2px' }}>{m.sujet}</div>
@@ -1018,12 +1111,12 @@ function MessagesManager() {
             </div>
           </div>
           <OrganicCard style={{ padding: '20px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '8px' }}>Message original</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: t.muted, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message original</div>
             <p style={{ fontSize: '14px', color: t.text, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{selected.message}</p>
           </OrganicCard>
           <div>
-            <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Votre réponse</Label>
-            <Textarea rows={5} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Tapez votre réponse au client…" style={inputStyle} />
+            <FieldLabel>Votre réponse</FieldLabel>
+            <Textarea rows={5} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Tapez votre réponse au client…" style={inp} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '12px', flexWrap: 'wrap' }}>
               <Button onClick={sendReply} disabled={!replyText.trim() || sending === 'sending'} style={{
                 background: sending === 'sending' ? t.muted : t.primary, color: '#fff', fontWeight: 600,
@@ -1072,6 +1165,9 @@ function ReservationsManager() {
   }, [dataSource])
   const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
   const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const [filter, setFilter] = useState<string>('all')
+  const filteredResa = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
+  const counts = { all: reservations.length, pending: reservations.filter(r => r.status === 'pending').length, confirmed: reservations.filter(r => r.status === 'confirmed').length, cancelled: reservations.filter(r => r.status === 'cancelled').length }
   const [statusSending, setStatusSending] = useState(false)
   const updateStatus = async (id: string, status: string) => {
     const ok = await updateReservationStatus(id, status)
@@ -1102,13 +1198,22 @@ function ReservationsManager() {
     )
   }
   return (
-    <div style={{ maxWidth: '820px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Réservations</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>{reservations.length} réservation{reservations.length > 1 ? 's' : ''} · actualisation auto (30s)</p>
-      {loading ? <p style={{ color: t.muted, fontSize: 14 }}>Chargement…</p> :
-        reservations.length === 0 ? <p style={{ color: t.muted, fontSize: 14 }}>Aucune réservation pour l'instant.</p> :
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
-          {reservations.map(r => (
+    <div style={{ maxWidth: '840px' }}>
+      <PageHeader title="Réservations" subtitle={`${reservations.length} réservation${reservations.length > 1 ? 's' : ''} · actualisation auto`} />
+      {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
+        reservations.length === 0 ? <div style={{ marginTop: 20 }}><EmptyState icon={Icon.calendar(28, t.muted)} title="Aucune réservation" subtitle="Les demandes de table apparaîtront ici." /></div> :
+        <>
+        <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+          {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
+            <button key={k} onClick={() => setFilter(k)} style={{
+              fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${filter === k ? t.primary : t.shadow}`,
+              background: filter === k ? t.primary : 'transparent', color: filter === k ? '#fff' : t.muted, transition: 'all 0.15s',
+            }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts]}</span></button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+          {filteredResa.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune réservation dans ce filtre.</p> :
+          filteredResa.map(r => (
             <OrganicCard key={r.id} style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div>
@@ -1131,6 +1236,7 @@ function ReservationsManager() {
             </OrganicCard>
           ))}
         </div>
+        </>
       }
     </div>
   )
