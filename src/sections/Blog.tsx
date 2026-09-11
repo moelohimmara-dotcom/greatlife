@@ -13,11 +13,13 @@ const FALLBACK_POSTS: BlogPost[] = [
 ]
 
 export function Blog() {
-  const { theme: t, blogPosts } = useSite()
+  const { theme: t, blogPosts, media } = useSite()
   const [expanded, setExpanded] = useState<string | null>(null)
   const posts = blogPosts.length > 0
     ? blogPosts.filter(p => p.published)
     : FALLBACK_POSTS
+  const mediaMap = new Map(media.filter(m => m.url).map(m => [m.slot, m.url!]))
+  const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const illusMap: Record<string, string> = {
     'corossol': 'corossol', 'sain': 'sain', 'producteurs': 'producteurs',
     'découverte': 'corossol', 'santé': 'sain', 'producteur': 'producteurs',
@@ -32,14 +34,15 @@ export function Blog() {
   return (
     <section id="blog" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Reveal><SectionHead title="Le journal Greatlife" sub="Recettes, coulisses et rencontres avec nos producteurs." align="center" /></Reveal>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
+      <div className="blog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
         {posts.map((post, i) => {
           const illus = getIllus(post.title, post.category)
+          const postImg = mediaMap.get(`blog-${slugify(post.title)}`)
           return (
           <Reveal key={i} delay={(i % 3) * 0.06}>
             <OrganicCard hover style={{ padding: '0', overflow: 'hidden' }}>
-              <div style={{ height: '160px', background: `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-                {illus === 'corossol' && (
+              <div style={{ height: '160px', background: postImg ? `url(${postImg}) center/cover` : `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                {!postImg && illus === 'corossol' && (
                   <svg width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden="true">
                     <ellipse cx="40" cy="42" rx="28" ry="32" fill={t.primary} opacity="0.15" />
                     <path d="M 40 14 C 24 14 16 28 16 42 C 16 58 28 68 40 68 C 52 68 64 58 64 42 C 64 28 56 14 40 14 Z" fill={t.gold} opacity="0.25" stroke={t.heading} strokeWidth="1.5" />
@@ -52,7 +55,7 @@ export function Blog() {
                     <path d="M 40 6 Q 48 2 52 8 Q 48 10 42 8" fill={t.primary} opacity="0.3" />
                   </svg>
                 )}
-                {illus === 'sain' && (
+                {!postImg && illus === 'sain' && (
                   <svg width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden="true">
                     <path d="M 50 16 C 44 14 38 18 36 26 C 34 34 40 40 48 38 C 54 36 56 28 50 16 Z" fill={t.primary} opacity="0.25" stroke={t.heading} strokeWidth="1.5" />
                     <path d="M 38 28 Q 44 30 48 34" stroke={t.heading} strokeWidth="1" opacity="0.3" />
@@ -67,7 +70,7 @@ export function Blog() {
                     <path d="M 34 18 Q 36 14 40 16 Q 38 20 34 18" fill={t.primary} opacity="0.4" />
                   </svg>
                 )}
-                {illus === 'producteurs' && (
+                {!postImg && illus === 'producteurs' && (
                   <svg width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden="true">
                     <circle cx="58" cy="22" r="8" fill={t.gold} opacity="0.3" />
                     {[0,45,90,135,180,225,270,315].map(a => {
