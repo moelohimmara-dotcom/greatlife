@@ -33,6 +33,7 @@ export interface MediaSlot {
 }
 
 export interface ContactMessage {
+  id?: string
   nom: string
   email: string
   sujet: string
@@ -68,7 +69,7 @@ interface SiteContextValue {
   blogPosts: BlogPost[]
   setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
   saveSiteConfigToDb: () => Promise<boolean>
-  markMessageHandled: (nom: string, email: string, date: string, handled: boolean) => Promise<boolean>
+  markMessageHandled: (id: string, handled: boolean) => Promise<boolean>
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -206,11 +207,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     return saveSiteConfig(config)
   }
 
-  const handleMarkMessageHandled = async (nom: string, email: string, date: string, handled: boolean) => {
-    const ok = await markMessageHandled(nom, email, date, handled)
+  const handleMarkMessageHandled = async (id: string, handled: boolean) => {
+    const ok = await markMessageHandled(id, handled)
     if (ok) {
       setMessages(prev => prev.map(m =>
-        m.nom === nom && m.email === email && m.date === date ? { ...m, handled } : m
+        m.id === id ? { ...m, handled } : m
       ))
     }
     return ok

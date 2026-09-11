@@ -569,7 +569,7 @@ function MessagesManager() {
   const toggleHandled = async () => {
     if (!selected) return
     setHandling(true)
-    await markMessageHandled(selected.nom, selected.email, selected.date, !selected.handled)
+    await markMessageHandled(selected.id ?? '', !selected.handled)
     setHandling(false)
   }
 
