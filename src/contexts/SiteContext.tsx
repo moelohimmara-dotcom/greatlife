@@ -5,6 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
+import { fetchMenu, fetchContent, fetchMessages, saveContent } from '@/lib/repository'
 
 export interface SiteContent {
   slogan: string
@@ -58,6 +59,9 @@ interface SiteContextValue {
   setMessages: React.Dispatch<React.SetStateAction<ContactMessage[]>>
   rootStyle: React.CSSProperties
   isDark: boolean
+  dataSource: 'loading' | 'supabase' | 'local'
+  dataLoading: boolean
+  saveContentToDb: () => Promise<boolean>
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -94,6 +98,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [menu, setMenu] = useState(MENU)
   const [media, setMedia] = useState(DEFAULT_MEDIA)
   const [messages, setMessages] = useState<ContactMessage[]>([])
+  const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
+  const [dataLoading, setDataLoading] = useState(true)
 
   const theme = THEMES[themeId]
   const font = FONTS[fontId]
@@ -148,11 +154,39 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     document.head.appendChild(style)
   }, [])
 
+  useEffect(() => {
+    let active = true
+    async function load() {
+      const [menuRes, contentRes, messagesRes] = await Promise.all([
+        fetchMenu(),
+        fetchContent(),
+        fetchMessages(),
+      ])
+      if (!active) return
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb
+      setDataSource(anyDb ? 'supabase' : 'local')
+      if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
+      if (contentRes.fromDb && contentRes.data) {
+        setContent(prev => ({ ...prev, ...contentRes.data }))
+      }
+      if (messagesRes.fromDb && messagesRes.data.length > 0) {
+        setMessages(messagesRes.data)
+      }
+      setDataLoading(false)
+    }
+    load()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const saveContentToDb = async () => saveContent(content)
+
   const value: SiteContextValue = {
     themeId, setThemeId, theme, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
     menu, setMenu, media, setMedia, messages, setMessages,
-    rootStyle, isDark,
+    rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
