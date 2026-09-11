@@ -93,11 +93,16 @@ async function handleContact(body: ContactPayload): Promise<Response> {
     autoReply?: string;
   };
   const destEmail = config.emailContact || "moelohimmara@gmail.com";
-  const autoReply = (config.autoReply ||
-    "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife")
-    .replace(/{nom}/g, nom);
 
   const sujetFinal = sujet || "contact";
+  const autoReplies: Record<string, string> = {
+    reservation: "Bonjour {nom}, merci pour votre demande de reservation a Greatlife ! Nous confirmons votre table sous 24h. - L'equipe Greatlife",
+    commande: "Bonjour {nom}, merci pour votre commande chez Greatlife ! Nous vous recontactons rapidement pour confirmer les details. - L'equipe Greatlife",
+    recrutement: "Bonjour {nom}, merci pour votre interet a rejoindre Greatlife ! Nous etudions votre candidature et reviendrons vers vous. - L'equipe Greatlife",
+    contact: "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife",
+  };
+  const autoReply = (autoReplies[sujetFinal] || autoReplies.contact)
+    .replace(/{nom}/g, nom);
 
   const errors: string[] = [];
 
