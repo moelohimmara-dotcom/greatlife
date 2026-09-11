@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
-import type { ContactMessage } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
@@ -12,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 export function Contact() {
-  const { theme: t, content, setMessages } = useSite()
+  const { theme: t, setMessages } = useSite()
   const [form, setForm] = useState({ nom: '', email: '', sujet: 'contact', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -61,7 +60,8 @@ export function Contact() {
               </div>
               <div>
                 <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Type de demande</Label>
-                <Select value={form.sujet} onValueChange={v => setForm({ ...form, sujet: v })}>
+               
+ <Select value={form.sujet} onValueChange={v => setForm({ ...form, sujet: v })}>
                   <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="contact">Message général</SelectItem>
@@ -89,7 +89,8 @@ export function Contact() {
                   {loading ? 'Envoi en cours…' : 'Envoyer'}
                   {!loading && Icon.arrow(16)}
                 </Button>
-                <Button type="button" onClick={() => { setForm({ nom: '', email: '', sujet: 'contact', message: '' }); setErrors({}) }}
+                <Button type="button" onClick={() => { setForm(
+{ nom: '', email: '', sujet: 'contact', message: '' }); setErrors({}) }}
                   aria-label="Effacer le formulaire"
                   style={{
                   background: 'transparent', color: t.muted, fontWeight: 600,
