@@ -10,8 +10,8 @@ import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation } from '@/lib/repository'
-import { invokeReplyEmail, invokeReservationStatusEmail, getSupabase } from '@/lib/supabase'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, fetchOrders, updateOrderStatus, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
+import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,6 +23,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 const NAV_GROUPS: [string, [string, string, string][]][] = [
   ['Pilotage', [
     ['dashboard', 'Tableau de bord', 'grid'],
+    ['orders', 'Commandes', 'coin'],
     ['messages', 'Messages', 'mail'],
     ['reservations', 'Réservations', 'calendar'],
   ]],
@@ -130,7 +131,7 @@ function DashCard({ label, value, sub, icon, color }: { label: string; value: Re
 }
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
   const recentMessages = messages.slice(0, 4)
@@ -142,6 +143,7 @@ function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '24px' }}>
         <DashCard label="Produits" value={menu.length} sub="toutes catégories" icon={Icon.leaf(20, t.primary)} color={t.primary} />
         <DashCard label="Messages" value={messages.length} sub="via formulaires" icon={Icon.mail(20, t.accent)} color={t.accent} />
+        <DashCard label="Commandes" value={ordersCount} sub="en ligne" icon={Icon.coin(20, t.gold)} color={t.gold} />
         <DashCard label="Réservations" value={messages.length} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
         <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
       </div>
@@ -1154,6 +1156,122 @@ function MessagesManager() {
   )
 }
 
+function OrdersManager() {
+  const { theme: t, dataSource } = useSite()
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    if (dataSource !== 'supabase') { setLoading(false); return }
+    let active = true
+    let timer: ReturnType<typeof setInterval> | undefined
+    let channel: { unsubscribe: () => void } | undefined
+    const refresh = async () => {
+      const res = await fetchOrders()
+      if (!active || !res.fromDb) return
+      setOrders(res.data)
+      setLoading(false)
+    }
+    refresh()
+    const sb = getSupabase()
+    if (sb) {
+      channel = sb.channel('orders-realtime', { config: { private: false } })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, refresh)
+        .subscribe()
+      timer = setInterval(refresh, 60000)
+    } else {
+      timer = setInterval(refresh, 30000)
+    }
+    return () => { active = false; if (channel) channel.unsubscribe(); if (timer) clearInterval(timer) }
+  }, [dataSource])
+  const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
+  const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const [filter, setFilter] = useState<string>('all')
+  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
+  const counts = { all: orders.length, pending: orders.filter(o => o.status === 'pending').length, confirmed: orders.filter(o => o.status === 'confirmed').length, cancelled: orders.filter(o => o.status === 'cancelled').length }
+  const [statusSending, setStatusSending] = useState(false)
+  const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
+  const updateStatus = async (id: string, status: string) => {
+    setStatusErr(undefined)
+    const res = await updateOrderStatus(id, status)
+    if (!res.ok) { setStatusErr(res.error || 'Échec de la mise à jour'); setTimeout(() => setStatusErr(undefined), 4000); return }
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+    const o = orders.find(x => x.id === id)
+    if (o) {
+      setStatusSending(true)
+      await invokeOrderStatusEmail({
+        to: o.email,
+        nom: o.nom,
+        status,
+        ref: o.ref,
+        items: o.items.map(i => `${i.qty}× ${i.name}`).join(', '),
+        total: o.total,
+        pickupTime: o.pickup_time,
+      })
+      setStatusSending(false)
+    }
+  }
+  if (dataSource !== 'supabase') {
+    return (
+      <div style={{ maxWidth: '640px' }}>
+        <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Commandes</h2>
+        <div style={{ marginTop: 16, padding: 20, borderRadius: 14, background: t.surfaceAlt, border: `1px dashed ${t.shadow}`, fontSize: 14, color: t.muted }}>
+          Les commandes en ligne apparaissent ici. Connectez Supabase pour activer la gestion des commandes.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ maxWidth: '840px' }}>
+      <PageHeader title="Commandes" subtitle={`${orders.length} commande${orders.length > 1 ? 's' : ''} · actualisation auto`} />
+      {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
+        orders.length === 0 ? <div style={{ marginTop: 20 }}><EmptyState icon={Icon.coin(28, t.muted)} title="Aucune commande" subtitle="Les commandes en ligne des clients apparaîtront ici." /></div> :
+        <>
+        <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+          {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
+            <button key={k} onClick={() => setFilter(k)} style={{
+              fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${filter === k ? t.primary : t.shadow}`,
+              background: filter === k ? t.primary : 'transparent', color: filter === k ? '#fff' : t.muted, transition: 'all 0.15s',
+            }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts]}</span></button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+          {filtered.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune commande dans ce filtre.</p> :
+          filtered.map(o => (
+            <OrganicCard key={o.id} style={{ padding: '18px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: t.heading }}>{o.nom} {o.ref && <span style={{ fontSize: '11px', color: t.muted, fontWeight: 600, fontFamily: 'var(--f-body)', marginLeft: 6 }}>· ref {o.ref}</span>}</div>
+                  <div style={{ fontSize: '13px', color: t.muted, marginTop: 4 }}>{o.email}{o.phone ? ` · ${o.phone}` : ''} · retrait {o.pickup_time || '—'}</div>
+                  {o.items.length > 0 && (
+                    <div style={{ fontSize: '13px', color: t.text, marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {o.items.map((it, idx) => (
+                        <span key={idx} style={{ padding: '3px 9px', borderRadius: 8, background: t.surfaceAlt, border: `1px solid ${t.shadow}`, fontSize: '12px' }}>{it.qty}× {it.name}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: t.accent, marginTop: 8 }}>{o.total} FG</div>
+                  {o.notes && <div style={{ fontSize: '12px', color: t.muted, marginTop: 6, whiteSpace: 'pre-wrap' }}>Note : {o.notes}</div>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[o.status]}15`, color: statusColor[o.status] }}>{statusLabel[o.status]}</span>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
+                    {statusErr && <span style={{ fontSize: '10px', color: t.accent, fontWeight: 600, maxWidth: 220 }} title={statusErr}>✗ {statusErr}</span>}
+                    {o.status !== 'confirmed' && <button onClick={() => updateStatus(o.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
+                    {o.status !== 'pending' && <button onClick={() => updateStatus(o.id!, 'pending')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>En attente</button>}
+                    {o.status !== 'cancelled' && <button onClick={() => updateStatus(o.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
+                  </div>
+                </div>
+              </div>
+            </OrganicCard>
+          ))}
+        </div>
+        </>
+      }
+    </div>
+  )
+}
+
 function ReservationsManager() {
   const { theme: t, dataSource } = useSite()
   const [reservations, setReservations] = useState<Reservation[]>([])
@@ -1271,6 +1389,7 @@ export function Admin() {
         <motion.div key={active} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
           {active === 'dashboard' && <Dashboard />}
           {active === 'messages' && <MessagesManager />}
+          {active === 'orders' && <OrdersManager />}
           {active === 'reservations' && <ReservationsManager />}
           {active === 'content' && <ContentEditor />}
           {active === 'menu' && <MenuEditor />}
