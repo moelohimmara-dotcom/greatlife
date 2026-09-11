@@ -45,6 +45,7 @@ section[id] {
   .engagements-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important; }
   .hero-grid { gap: 40px !important; }
   .story-grid { gap: 40px !important; }
+  .footer-grid { grid-template-columns: 1fr 1fr !important; }
 }
 
 @media (max-width: 768px) {
