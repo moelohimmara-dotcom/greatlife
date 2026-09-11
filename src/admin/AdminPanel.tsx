@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSite } from '@/contexts/SiteContext'
+import { useSite, type MediaSlot } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 import { CATEGORY_ORDER } from '@/data/menu'
-import { USERS } from '@/data/users'
 import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, type BlogPost, type Reservation } from '@/lib/repository'
-import { invokeReplyEmail, getSupabase } from '@/lib/supabase'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation } from '@/lib/repository'
+import { invokeReplyEmail, invokeReservationStatusEmail, getSupabase } from '@/lib/supabase'
+import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -78,7 +78,7 @@ function DashCard({ label, value, sub }: { label: string; value: React.ReactNode
 }
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
   return (
@@ -92,7 +92,7 @@ function Dashboard() {
         <DashCard label="Produits dans la carte" value={menu.length} sub="toutes catégories" />
         <DashCard label="Messages reçus" value={messages.length} sub="via formulaires" />
         <DashCard label="Catégories actives" value={CATEGORY_ORDER.length} sub="burgers, wraps, salades…" />
-        <DashCard label="Utilisateurs" value={USERS.length} sub="avec rôles attribués" />
+        <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles attribués" />
       </div>
       <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: '28px 0 12px', letterSpacing: '-0.02em' }}>Messages récents</h3>
       {messages.length === 0 ? <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant. Les soumissions du formulaire de contact apparaissent ici.</p> :
@@ -302,28 +302,255 @@ function ThemeEditor() {
   )
 }
 
+const MEDIA_SLOTS: string[] = ['hero', 'logo', 'histoire', 'greatlife', 'general']
+const SLOT_LABELS: Record<string, string> = {
+  hero: 'Hero principal',
+  logo: 'Logo / favicon',
+  histoire: 'Fond section histoire',
+  greatlife: 'Photo — Le Greatlife',
+  general: 'Général / divers',
+}
+const SLOT_DIMS: Record<string, string> = {
+  hero: '1920×1080',
+  logo: '512×512',
+  histoire: '1600×900',
+  greatlife: '800×600',
+  general: 'libre',
+}
+
+function formatSize(n: number | null | undefined): string {
+  if (!n) return ''
+  if (n < 1024) return `${n} o`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} Ko`
+  return `${(n / (1024 * 1024)).toFixed(1)} Mo`
+}
+
 function MediaManager() {
-  const { media, theme: t } = useSite()
+  const { media, theme: t, dataSource, refreshMedia } = useSite()
+  const [slot, setSlot] = useState('hero')
+  const [resizePreset, setResizePreset] = useState('original')
+  const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [editSlotId, setEditSlotId] = useState<string | null>(null)
+  const [editSlotValue, setEditSlotValue] = useState('general')
+  const [dragOver, setDragOver] = useState(false)
+  const fileRef = React.useRef<HTMLInputElement>(null)
+
+  const isSupabase = dataSource === 'supabase'
+  const dbAssets = media.filter(m => m.id)
+  const resizeMax = RESIZE_PRESETS.find(p => p.id === resizePreset)?.max ?? 0
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return
+    if (!isSupabase) {
+      setStatus({ kind: 'err', msg: 'Connexion Supabase requise pour téléverser.' })
+      return
+    }
+    setUploading(true)
+    setStatus({ kind: 'busy', msg: `Préparation de ${file.name}…` })
+    let finalFile = file
+    let dims = ''
+    try {
+      if (resizeMax > 0 && isResizableImage(file)) {
+        const r = await resizeImageFile(file, resizeMax)
+        finalFile = r.file
+        dims = ` (${r.width}×${r.height})`
+      }
+    } catch {
+      // resize failed: fall back to original
+    }
+    setStatus({ kind: 'busy', msg: `Téléversement de ${finalFile.name}${dims}…` })
+    const res = await uploadMedia(finalFile, slot)
+    setUploading(false)
+    if (res.data) {
+      setStatus({ kind: 'ok', msg: `${res.data.filename} téléversé dans « ${SLOT_LABELS[res.data.slot] || res.data.slot} »${dims}.` })
+      await refreshMedia()
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec du téléversement.' })
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleDelete = async (m: MediaSlot) => {
+    if (!m.id) return
+    setRemovingId(m.id)
+    const ok = await deleteMedia(m.id, '')
+    setRemovingId(null)
+    if (ok) {
+      setStatus({ kind: 'ok', msg: `${m.filename || 'Fichier'} supprimé.` })
+      await refreshMedia()
+    } else {
+      setStatus({ kind: 'err', msg: 'Échec de la suppression.' })
+    }
+  }
+
+  const handleSaveSlot = async (m: MediaSlot) => {
+    if (!m.id) return
+    const ok = await updateMediaSlot(m.id, editSlotValue)
+    if (ok) {
+      setEditSlotId(null)
+      await refreshMedia()
+      setStatus({ kind: 'ok', msg: 'Emplacement mis à jour.' })
+    } else {
+      setStatus({ kind: 'err', msg: 'Échec de la mise à jour.' })
+    }
+  }
+
   return (
-    <div style={{ maxWidth: '820px' }}>
-      <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Médias & dimensions</h2>
-      <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Uploadez images/vidéos, recadrez et assignez aux emplacements.</p>
-      <div style={{ display: 'grid', gap: '12px', marginTop: '20px' }}>
-        {media.map((m, i) => (
-          <OrganicCard key={i} style={{ padding: '16px', display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: '14px', alignItems: 'center' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '12px', background: `${t.primary}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.5"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, color: t.heading, fontSize: '15px' }}>{m.slot}</div>
-              <div style={{ fontSize: '12px', color: t.muted, marginTop: '2px' }}>Dimensions : {m.dims} · {m.status}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button size="sm" variant="outline" style={{ borderColor: t.primary + '44', color: t.primary, borderRadius: '10px' }}>Redimensionner</Button>
-              <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: '10px' }}>Remplacer</Button>
-            </div>
+    <div style={{ maxWidth: '860px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Médias</h2>
+          <p style={{ color: t.muted, fontSize: '14px', marginTop: 4 }}>Téléversez et redimensionnez vos images, puis assignez-les aux emplacements du site.</p>
+        </div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 100, background: `${t.primary}12`, fontSize: 12, fontWeight: 600, color: t.primary }}>
+          {dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {!isSupabase && (
+        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
+          Mode local — la connexion Supabase n'est pas active. Les téléversements sont désactivés.
+        </div>
+      )}
+
+      <OrganicCard style={{ marginTop: 18, padding: 18, display: 'grid', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <Label style={{ color: t.heading, fontSize: 12, fontWeight: 600 }}>Emplacement cible</Label>
+            <Select value={slot} onValueChange={setSlot}>
+              <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '10px 12px' }}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MEDIA_SLOTS.map(s => (
+                  <SelectItem key={s} value={s}>{SLOT_LABELS[s] || s} {SLOT_DIMS[s] ? `· ${SLOT_DIMS[s]}` : ''}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <Label style={{ color: t.heading, fontSize: 12, fontWeight: 600 }}>Redimensionnement</Label>
+            <Select value={resizePreset} onValueChange={setResizePreset}>
+              <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '10px 12px' }}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RESIZE_PRESETS.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,video/*"
+          style={{ display: 'none' }}
+          onChange={e => handleFile(e.target.files?.[0])}
+        />
+        <div
+          onClick={() => !uploading && isSupabase && fileRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); if (isSupabase) setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => {
+            e.preventDefault(); setDragOver(false)
+            if (isSupabase && !uploading) handleFile(e.dataTransfer.files?.[0])
+          }}
+          style={{
+            border: `2px dashed ${dragOver ? t.primary : t.primary + '44'}`,
+            borderRadius: 14,
+            padding: '28px 16px',
+            textAlign: 'center',
+            cursor: isSupabase && !uploading ? 'pointer' : 'default',
+            background: dragOver ? `${t.primary}0d` : t.surfaceAlt,
+            transition: 'all 0.15s',
+          }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.4" style={{ margin: '0 auto 10px', display: 'block' }}>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <div style={{ fontWeight: 600, color: t.heading, fontSize: 14 }}>{uploading ? 'Téléversement en cours…' : 'Glissez-déposez ou cliquez pour téléverser'}</div>
+          <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>Images & vidéos · {RESIZE_PRESETS.find(p => p.id === resizePreset)?.label.toLowerCase()}</div>
+        </div>
+
+        {status.kind !== 'idle' && (
+          <div style={{
+            fontSize: 13,
+            padding: '9px 12px',
+            borderRadius: 10,
+            background: status.kind === 'ok' ? `${t.primary}12` : status.kind === 'err' ? '#dc262612' : `${t.primary}08`,
+            color: status.kind === 'err' ? '#dc2626' : t.heading,
+            border: `1px solid ${status.kind === 'err' ? '#dc262633' : t.primary + '22'}`,
+          }}>
+            {status.kind === 'busy' && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: t.primary, marginRight: 8, animation: 'pulse 1s infinite' }} />}
+            {status.msg}
+          </div>
+        )}
+      </OrganicCard>
+
+      <div style={{ marginTop: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: t.heading, marginBottom: 12 }}>Fichiers téléversés</div>
+        {dbAssets.length === 0 ? (
+          <OrganicCard style={{ padding: '32px 16px', textAlign: 'center' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={t.muted} strokeWidth="1.3" style={{ margin: '0 auto 10px', display: 'block', opacity: 0.6 }}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
+            <div style={{ color: t.muted, fontSize: 13 }}>Aucun fichier téléversé pour le moment.</div>
           </OrganicCard>
-        ))}
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            {dbAssets.map((m, i) => {
+              const isImg = m.content_type?.startsWith('image/')
+              const editing = editSlotId === m.id
+              return (
+                <OrganicCard key={m.id || i} style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ width: '100%', aspectRatio: '16 / 10', background: `${t.primary}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+                    {isImg && m.url ? (
+                      <img src={m.url} alt={m.filename} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.3"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
+                    )}
+                    <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+                      {SLOT_LABELS[m.slot] || m.slot}
+                    </span>
+                  </div>
+                  <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: t.heading, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.filename}</div>
+                    <div style={{ fontSize: 11, color: t.muted }}>{m.content_type || 'fichier'} {formatSize(m.size_bytes) ? `· ${formatSize(m.size_bytes)}` : ''}</div>
+                    {editing ? (
+                      <div style={{ display: 'grid', gap: 6, marginTop: 4 }}>
+                        <Select value={editSlotValue} onValueChange={setEditSlotValue}>
+                          <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 8, background: t.surfaceAlt, padding: '7px 10px', fontSize: 12 }}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MEDIA_SLOTS.map(s => (
+                              <SelectItem key={s} value={s}>{SLOT_LABELS[s] || s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: 8, flex: 1 }} onClick={() => handleSaveSlot(m)}>OK</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditSlotId(null)}>Annuler</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                        {m.url && (
+                          <a href={m.url} target="_blank" rel="noreferrer" style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: 600, padding: '7px 0', borderRadius: 8, border: `1px solid ${t.primary}33`, color: t.primary, textDecoration: 'none' }}>Ouvrir</a>
+                        )}
+                        <Button size="sm" variant="outline" style={{ flex: 1, borderColor: t.primary + '44', color: t.primary, borderRadius: 8 }} onClick={() => { setEditSlotId(m.id || null); setEditSlotValue(m.slot) }}>Déplacer</Button>
+                        <Button size="sm" variant="outline" disabled={removingId === m.id} style={{ borderColor: '#dc262644', color: '#dc2626', borderRadius: 8, opacity: removingId === m.id ? 0.6 : 1 }} onClick={() => handleDelete(m)}>{removingId === m.id ? '…' : 'Suppr.'}</Button>
+                      </div>
+                    )}
+                  </div>
+                </OrganicCard>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -372,27 +599,134 @@ function VisibilityEditor() {
   )
 }
 
+const ROLE_OPTIONS = ROLES.map(r => ({ id: r.id, name: r.name }))
+
 function UsersRoles() {
-  const { theme: t } = useSite()
+  const { theme: t, dataSource, adminUsers, refreshAdminUsers } = useSite()
+  const { user: currentUser } = useAuth()
   const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
   const permColor = (p: string) => p === 'écrire' ? t.accent : p === 'lecture' || p === 'carte' || p === 'blog' ? t.primary : t.muted
   const permIcon = (p: string) => p === 'écrire' ? Icon.write(13, t.accent) : p === 'lecture' ? Icon.eye(13, t.primary) : p === 'carte' ? Icon.leaf(13, t.gold) : p === 'blog' ? Icon.write(13, t.primary) : '—'
+
+  const isSupabase = dataSource === 'supabase'
+  const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
+  const [editing, setEditing] = useState<{ id?: string; email: string; name: string; role: string } | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: t.text, width: '100%' }
+
+  const startAdd = () => setEditing({ email: '', name: '', role: 'guest' })
+  const startEdit = (u: { id: string; email: string; name: string; role: string }) =>
+    setEditing({ id: u.id, email: u.email, name: u.name, role: u.role })
+
+  const saveEdit = async () => {
+    if (!editing) return
+    if (!editing.email.trim() || !editing.name.trim()) {
+      setStatus({ kind: 'err', msg: 'Email et nom requis.' }); return
+    }
+    setStatus({ kind: 'busy', msg: 'Enregistrement…' })
+    const res = await upsertAdminUser({
+      id: editing.id,
+      email: editing.email.trim().toLowerCase(),
+      name: editing.name.trim(),
+      role: editing.role,
+    })
+    if (res.ok) {
+      setEditing(null)
+      await refreshAdminUsers()
+      setStatus({ kind: 'ok', msg: editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.' })
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec.' })
+    }
+  }
+
+  const remove = async (id: string, name: string) => {
+    setBusyId(id)
+    const res = await deleteAdminUser(id)
+    setBusyId(null)
+    if (res.ok) {
+      await refreshAdminUsers()
+      setStatus({ kind: 'ok', msg: `${name} supprimé.` })
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec de la suppression.' })
+    }
+  }
+
+  const currentEmail = currentUser?.email?.toLowerCase()
+
   return (
     <div style={{ maxWidth: '920px' }}>
       <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Utilisateurs & rôles</h2>
       <p style={{ color: t.muted, fontSize: '14px', marginTop: 0 }}>Permissions granulaires par module (voir / écrire / désactivé).</p>
-      <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: '20px 0 10px' }}>Équipe</h3>
-      {USERS.map(u => {
-        const role = ROLES.find(r => r.id === u.role)!
-        return (
-          <div key={u.email} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: '12px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}</span></span>
-            <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '100px', background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
+
+      {!isSupabase && (
+        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
+          Mode local — la gestion des utilisateurs nécessite une connexion Supabase.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 10px' }}>
+        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: 0 }}>Équipe</h3>
+        <Button size="sm" disabled={!isSupabase || !!editing} style={{ background: t.primary, color: '#fff', borderRadius: 10, opacity: !isSupabase || editing ? 0.6 : 1 }} onClick={startAdd}>+ Ajouter</Button>
+      </div>
+
+      {status.kind !== 'idle' && (
+        <div style={{
+          fontSize: 13, padding: '9px 12px', borderRadius: 10, marginBottom: 12,
+          background: status.kind === 'ok' ? `${t.primary}12` : status.kind === 'err' ? '#dc262612' : `${t.primary}08`,
+          color: status.kind === 'err' ? '#dc2626' : t.heading,
+          border: `1px solid ${status.kind === 'err' ? '#dc262633' : t.primary + '22'}`,
+        }}>{status.msg}</div>
+      )}
+
+      {editing && (
+        <OrganicCard style={{ padding: 16, marginBottom: 12, display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Nom</Label>
+              <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inputStyle} placeholder="Nom complet" />
+            </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Email</Label>
+              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inputStyle} placeholder="email@greatlife.gn" disabled={!!editing.id} />
+            </div>
           </div>
-        )
-      })}
+          <div style={{ display: 'grid', gap: 6, maxWidth: 260 }}>
+            <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Rôle</Label>
+            <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
+              <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px' }}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: 10 }} onClick={saveEdit}>Enregistrer</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
+          </div>
+        </OrganicCard>
+      )}
+
+      {adminUsers.length === 0 ? (
+        <p style={{ color: t.muted, fontSize: 14, padding: '16px 0' }}>Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Ajouter ».' : ''}</p>
+      ) : (
+        adminUsers.map(u => {
+          const role = ROLES.find(r => r.id === u.role) || ROLES.find(r => r.id === 'guest')!
+          const isSelf = u.email.toLowerCase() === currentEmail
+          return (
+            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
+                <Button size="sm" variant="outline" disabled={!isSupabase || busyId === u.id} style={{ borderColor: t.primary + '44', color: t.primary, borderRadius: 10 }} onClick={() => startEdit(u)}>Modifier</Button>
+                <Button size="sm" variant="outline" disabled={!isSupabase || isSelf || busyId === u.id} style={{ borderColor: '#dc262644', color: '#dc2626', borderRadius: 10, opacity: isSelf || busyId === u.id ? 0.5 : 1 }} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</Button>
+              </div>
+            </div>
+          )
+        })
+      )}
+
       <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: '24px 0 10px' }}>Matrice des permissions</h3>
-      <div style={{ overflowX: 'auto', borderRadius: '14px', border: `1px solid ${t.shadow}` }}>
+      <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${t.shadow}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface }}>
           <thead>
             <tr style={{ background: t.surfaceAlt }}>
@@ -738,9 +1072,24 @@ function ReservationsManager() {
   }, [dataSource])
   const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
   const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const [statusSending, setStatusSending] = useState(false)
   const updateStatus = async (id: string, status: string) => {
     const ok = await updateReservationStatus(id, status)
-    if (ok) setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+    if (!ok) return
+    setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+    const r = reservations.find(x => x.id === id)
+    if (r) {
+      setStatusSending(true)
+      await invokeReservationStatusEmail({
+        to: r.email,
+        nom: r.nom,
+        status,
+        resaDate: r.date,
+        resaTime: r.time,
+        resaGuests: String(r.guests),
+      })
+      setStatusSending(false)
+    }
   }
   if (dataSource !== 'supabase') {
     return (
@@ -771,8 +1120,10 @@ function ReservationsManager() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status]}</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
                     {r.status !== 'confirmed' && <button onClick={() => updateStatus(r.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
+                    {r.status !== 'pending' && <button onClick={() => updateStatus(r.id!, 'pending')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>En attente</button>}
                     {r.status !== 'cancelled' && <button onClick={() => updateStatus(r.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
                   </div>
                 </div>

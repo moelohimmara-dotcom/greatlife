@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, type BlogPost, type SiteConfig } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser } from '@/lib/repository'
 
 export interface SiteContent {
   slogan: string
@@ -27,9 +27,14 @@ export interface SiteVisibility {
 }
 
 export interface MediaSlot {
+  id?: string
   slot: string
   dims: string
   status: string
+  url?: string
+  filename?: string
+  content_type?: string | null
+  size_bytes?: number | null
 }
 
 export interface ContactMessage {
@@ -70,6 +75,9 @@ interface SiteContextValue {
   setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
   saveSiteConfigToDb: () => Promise<boolean>
   markMessageHandled: (id: string, handled: boolean) => Promise<boolean>
+  refreshMedia: () => Promise<void>
+  adminUsers: AdminUser[]
+  refreshAdminUsers: () => Promise<void>
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -92,11 +100,24 @@ const DEFAULT_VISIBILITY: SiteVisibility = {
 }
 
 const DEFAULT_MEDIA: MediaSlot[] = [
-  { slot: 'Hero principal', dims: '1920×1080', status: 'assigné' },
-  { slot: 'Photo — Le Greatlife', dims: '800×600', status: 'assigné' },
+  { slot: 'Hero principal', dims: '1920×1080', status: 'à assigner' },
+  { slot: 'Photo — Le Greatlife', dims: '800×600', status: 'à assigner' },
   { slot: 'Fond section histoire', dims: '1600×900', status: 'à assigner' },
-  { slot: 'Logo / favicon', dims: '512×512', status: 'assigné' },
+  { slot: 'Logo / favicon', dims: '512×512', status: 'à assigner' },
 ]
+
+function mediaAssetToSlot(a: MediaAsset): MediaSlot {
+  return {
+    id: a.id,
+    slot: a.slot,
+    dims: '',
+    status: 'assigné',
+    url: a.public_url,
+    filename: a.filename,
+    content_type: a.content_type,
+    size_bytes: a.size_bytes,
+  }
+}
 
 export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [themeId, setThemeId] = useState('gourmand')
@@ -107,6 +128,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [media, setMedia] = useState(DEFAULT_MEDIA)
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -168,14 +190,16 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function load() {
-      const [menuRes, contentRes, messagesRes, blogRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
         fetchBlogPosts(),
+        fetchMedia(),
+        fetchAdminUsers(),
       ])
       if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb
       setDataSource(anyDb ? 'supabase' : 'local')
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
@@ -191,6 +215,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (blogRes.fromDb && blogRes.data.length > 0) {
         setBlogPosts(blogRes.data)
       }
+      if (mediaRes.fromDb && mediaRes.data.length > 0) {
+        setMedia(mediaRes.data.map(mediaAssetToSlot))
+      }
+      if (adminRes.fromDb) setAdminUsers(adminRes.data)
       setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
     }
@@ -227,6 +255,17 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     return lastMessageCount
   }
 
+  const refreshMedia = async (): Promise<void> => {
+    const res = await fetchMedia()
+    if (res.fromDb) setMedia(res.data.map(mediaAssetToSlot))
+    else setMedia(DEFAULT_MEDIA)
+  }
+
+  const refreshAdminUsers = async (): Promise<void> => {
+    const res = await fetchAdminUsers()
+    if (res.fromDb) setAdminUsers(res.data)
+  }
+
   const value: SiteContextValue = {
     themeId, setThemeId, theme, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
@@ -234,6 +273,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
+    refreshMedia, adminUsers, refreshAdminUsers,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>

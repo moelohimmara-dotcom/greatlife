@@ -22,13 +22,26 @@ if (typeof (Deno as any).writeAll !== "function") {
   };
 }
 
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function corsResponse(body: string, status = 200, extra: Record<string, string> = {}) {
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...extra },
+  });
+}
+
 const SMTP_USER = Deno.env.get("SMTP_USER") || "moelohimmara@gmail.com";
 const SMTP_PASS = Deno.env.get("SMTP_PASS") || "maki lqrj wivo cmha";
 const SMTP_HOST = "smtp.gmail.com";
 const SMTP_PORT = 465;
 
 interface ContactPayload {
-  action?: "contact" | "reply";
+  action?: "contact" | "reply" | "reservation-status";
   nom: string;
   email: string;
   sujet: string;
@@ -39,6 +52,11 @@ interface ContactPayload {
   replyMessage?: string;
   replyFromName?: string;
   originalMessage?: string;
+  // Champs utilisés pour le mode "reservation-status" (notification client)
+  status?: string;
+  resaDate?: string;
+  resaTime?: string;
+  resaGuests?: string;
 }
 
 async function sendMail(
@@ -71,10 +89,7 @@ async function handleContact(body: ContactPayload): Promise<Response> {
   const { nom, email, sujet, message } = body;
 
   if (!nom || !email || !message) {
-    return new Response(JSON.stringify({ error: "Champs requis manquants" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return corsResponse(JSON.stringify({ error: "Champs requis manquants" }), 400);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -137,10 +152,7 @@ async function handleContact(body: ContactPayload): Promise<Response> {
     errors.push("no-credentials");
   }
 
-  return new Response(JSON.stringify({ ok: errors.length === 0, errors }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
 async function handleReply(body: ContactPayload): Promise<Response> {
@@ -151,9 +163,9 @@ async function handleReply(body: ContactPayload): Promise<Response> {
   const original = body.originalMessage || "";
 
   if (!to || !replyText) {
-    return new Response(
+    return corsResponse(
       JSON.stringify({ ok: false, error: "Destinataire et message requis" }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
+      400,
     );
   }
 
@@ -182,31 +194,81 @@ async function handleReply(body: ContactPayload): Promise<Response> {
     errors.push("no-credentials");
   }
 
-  return new Response(JSON.stringify({ ok: errors.length === 0, errors }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+}
+
+async function handleReservationStatus(body: ContactPayload): Promise<Response> {
+  const to = body.to || body.email;
+  const status = body.status || "confirmed";
+  const nom = body.nom || "";
+  const date = body.resaDate || "";
+  const time = body.resaTime || "";
+  const guests = body.resaGuests || "";
+
+  if (!to) {
+    return corsResponse(JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+  }
+
+  const dateLabel = date && time ? ` pour le ${date} a ${time}` : "";
+  const guestsLabel = guests ? ` (${guests} personnes)` : "";
+
+  let textContent = "";
+  let subject = "";
+  if (status === "confirmed") {
+    subject = "Greatlife - Reservation confirmee";
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous avons le plaisir de confirmer votre reservation${dateLabel}${guestsLabel}. Votre demande a ete prise en compte et traitee : votre reservation est validee ! Nous vous attendons avec plaisir chez Greatlife. Pour toute modification, repondez a cet email. - L'equipe Greatlife`;
+  } else if (status === "pending") {
+    subject = "Greatlife - Reservation en attente";
+    textContent = `Bonjour${nom ? " " + nom : ""}, votre demande de reservation${dateLabel}${guestsLabel} a bien ete prise en compte. Aucune table n'est disponible pour le moment, mais nous vous recontacterons des qu'une place se libere. Merci de votre patience. - L'equipe Greatlife`;
+  } else if (status === "cancelled") {
+    subject = "Greatlife - Reservation annulee";
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous vous informons que votre reservation${dateLabel}${guestsLabel} a ete annulee. Cela peut provenir d'un desistement de votre part ou d'une decision de notre equipe en raison de la situation. Pour replanifier, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
+  } else {
+    return corsResponse(JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
+  }
+
+  const errors: string[] = [];
+
+  if (SMTP_USER && SMTP_PASS) {
+    try {
+      const html = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222">` +
+        `<div style="font-size:24px;font-weight:700;color:#2d6a4f;margin-bottom:16px">Great<span style="color:#e8a93c">life</span></div>` +
+        `<p style="white-space:pre-wrap">${textContent.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</p>` +
+        `<p style="margin-top:24px">\u2014 L'equipe Greatlife</p>` +
+        `<div style="font-size:11px;color:#aaa;margin-top:16px">Conakry, Guin\u00e9e \u00b7 Fast-food bio sans culpabilit\u00e9</div>` +
+        `</div>`;
+      await sendMail(to, subject, textContent, html);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("status:" + msg);
+      console.error("Reservation status email error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
 serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" },
-    });
+    return corsResponse(JSON.stringify({ error: "Method not allowed" }), 405);
   }
 
   try {
     const body: ContactPayload = await req.json();
     const action = body.action || "contact";
 
-    if (action === "reply") {
+    if (action === "reply" || action === "reservation-status") {
       const authHeader = req.headers.get("Authorization") || "";
       const token = authHeader.replace("Bearer ", "");
       if (!token || token.length < 20) {
-        return new Response(
-          JSON.stringify({ ok: false, error: "Authentification requise pour repondre" }),
-          { status: 401, headers: { "Content-Type": "application/json" } },
+        return corsResponse(
+          JSON.stringify({ ok: false, error: "Authentification requise" }),
+          401,
         );
       }
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -214,9 +276,9 @@ serve(async (req: Request) => {
       const supabase = createClient(supabaseUrl, supabaseKey);
       const { data: userData, error: userErr } = await supabase.auth.getUser(token);
       if (userErr || !userData.user) {
-        return new Response(
+        return corsResponse(
           JSON.stringify({ ok: false, error: "Session admin invalide" }),
-          { status: 403, headers: { "Content-Type": "application/json" } },
+          403,
         );
       }
       const adminEmail = userData.user.email || "";
@@ -226,25 +288,23 @@ serve(async (req: Request) => {
         .eq("email", adminEmail)
         .maybeSingle();
       if (!adminRow || !["owner", "manager"].includes(adminRow.role)) {
-        return new Response(
+        return corsResponse(
           JSON.stringify({ ok: false, error: "Acces non autorise" }),
-          { status: 403, headers: { "Content-Type": "application/json" } },
+          403,
         );
       }
-      return await handleReply(body);
+      if (action === "reply") return await handleReply(body);
+      return await handleReservationStatus(body);
     }
     return await handleContact(body);
   } catch (err) {
     console.error("Edge function error:", err);
-    return new Response(
+    return corsResponse(
       JSON.stringify({
         error: "Erreur serveur",
         detail: err instanceof Error ? err.message : String(err),
       }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
+      500,
     );
   }
 });
