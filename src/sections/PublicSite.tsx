@@ -25,8 +25,8 @@ export function PublicSite() {
         {visibility.sections.engagements && <Engagements />}
         {visibility.sections.equipe && <Team />}
         {visibility.sections.localisation && <Localisation />}
-        {visibility.sections.contact && <Contact />}
         <Reservation />
+        {visibility.sections.contact && <Contact />}
         {visibility.sections.blog && <Blog />}
         <Footer />
         <OrderCart />

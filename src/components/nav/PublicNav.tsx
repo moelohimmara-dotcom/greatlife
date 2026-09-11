@@ -54,7 +54,7 @@ export function PublicNav() {
           ))}
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <a href="#contact" className="desktop-nav" aria-label="Réserver une table" style={{
+          <a href="#reservation" className="desktop-nav" aria-label="Réserver une table" style={{
             fontSize: '14px', fontWeight: 600, color: '#fff', background: t.primary,
             padding: '8px 18px', borderRadius: '100px', textDecoration: 'none',
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -113,7 +113,7 @@ export function PublicNav() {
                 {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.accent }} />}
               </motion.a>
             ))}
-            <a href="#contact" onClick={() => setDrawerOpen(false)}
+            <a href="#reservation" onClick={() => setDrawerOpen(false)}
               style={{ marginTop: '16px', textAlign: 'center', fontSize: '15px', fontWeight: 600,
                 color: '#fff', background: t.primary, padding: '14px', borderRadius: '100px',
                 textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,

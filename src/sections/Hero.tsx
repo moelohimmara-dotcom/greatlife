@@ -43,7 +43,7 @@ export function Hero() {
               onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
               Découvrir la carte {Icon.arrow(16)}
             </a>
-            <a href="#contact" style={{
+            <a href="#reservation" style={{
               display: 'inline-flex', alignItems: 'center',
               background: 'transparent', color: t.heading, fontWeight: 600,
               padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none',

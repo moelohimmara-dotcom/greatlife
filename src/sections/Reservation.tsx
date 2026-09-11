@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
@@ -20,6 +20,23 @@ export function Reservation() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
+  const nomInputRef = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    const focusForm = () => {
+      if (window.location.hash === '#reservation') {
+        window.setTimeout(() => {
+          const el = nomInputRef.current
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.focus({ preventScroll: true })
+          }
+        }, 450)
+      }
+    }
+    focusForm()
+    window.addEventListener('hashchange', focusForm)
+    return () => window.removeEventListener('hashchange', focusForm)
+  }, [])
   const validate = () => {
     const e: Record<string, string | undefined> = {}
     if (!form.nom.trim()) e.nom = 'Votre nom est requis'
@@ -70,7 +87,7 @@ export function Reservation() {
               <div className="reservation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Nom</Label>
-                  <Input value={form.nom} onChange={e => { setForm({ ...form, nom: e.target.value }); setErrors({ ...errors, nom: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.nom ? t.accent : t.shadow}` }} required />
+                  <Input ref={nomInputRef} value={form.nom} onChange={e => { setForm({ ...form, nom: e.target.value }); setErrors({ ...errors, nom: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.nom ? t.accent : t.shadow}` }} required />
                   {errors.nom && <div style={errStyle}>{errors.nom}</div>}
                 </div>
                 <div>
