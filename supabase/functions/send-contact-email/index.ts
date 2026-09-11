@@ -41,7 +41,7 @@ const SMTP_HOST = "smtp.gmail.com";
 const SMTP_PORT = 465;
 
 interface ContactPayload {
-  action?: "contact" | "reply";
+  action?: "contact" | "reply" | "reservation-status";
   nom: string;
   email: string;
   sujet: string;
@@ -52,6 +52,11 @@ interface ContactPayload {
   replyMessage?: string;
   replyFromName?: string;
   originalMessage?: string;
+  // Champs utilisés pour le mode "reservation-status" (notification client)
+  status?: string;
+  resaDate?: string;
+  resaTime?: string;
+  resaGuests?: string;
 }
 
 async function sendMail(
@@ -192,6 +197,56 @@ async function handleReply(body: ContactPayload): Promise<Response> {
   return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
+async function handleReservationStatus(body: ContactPayload): Promise<Response> {
+  const to = body.to || body.email;
+  const status = body.status || "confirmed";
+  const nom = body.nom || "";
+  const date = body.resaDate || "";
+  const time = body.resaTime || "";
+  const guests = body.resaGuests || "";
+
+  if (!to) {
+    return corsResponse(JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+  }
+
+  const dateLabel = date && time ? ` pour le ${date} a ${time}` : "";
+  const guestsLabel = guests ? ` (${guests} personnes)` : "";
+
+  let textContent = "";
+  let subject = "";
+  if (status === "confirmed") {
+    subject = "Greatlife - Reservation confirmee";
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous avons le plaisir de confirmer votre reservation${dateLabel}${guestsLabel}. Nous vous attendons avec plaisir chez Greatlife ! Pour toute modification, repondez a cet email. - L'equipe Greatlife`;
+  } else if (status === "cancelled") {
+    subject = "Greatlife - Reservation annulee";
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous sommes desoles de vous informer que votre reservation${dateLabel}${guestsLabel} a du etre annulee. Pour replanifier, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
+  } else {
+    return corsResponse(JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
+  }
+
+  const errors: string[] = [];
+
+  if (SMTP_USER && SMTP_PASS) {
+    try {
+      const html = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222">` +
+        `<div style="font-size:24px;font-weight:700;color:#2d6a4f;margin-bottom:16px">Great<span style="color:#e8a93c">life</span></div>` +
+        `<p style="white-space:pre-wrap">${textContent.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</p>` +
+        `<p style="margin-top:24px">\u2014 L'equipe Greatlife</p>` +
+        `<div style="font-size:11px;color:#aaa;margin-top:16px">Conakry, Guin\u00e9e \u00b7 Fast-food bio sans culpabilit\u00e9</div>` +
+        `</div>`;
+      await sendMail(to, subject, textContent, html);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("status:" + msg);
+      console.error("Reservation status email error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+
+  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -204,12 +259,12 @@ serve(async (req: Request) => {
     const body: ContactPayload = await req.json();
     const action = body.action || "contact";
 
-    if (action === "reply") {
+    if (action === "reply" || action === "reservation-status") {
       const authHeader = req.headers.get("Authorization") || "";
       const token = authHeader.replace("Bearer ", "");
       if (!token || token.length < 20) {
         return corsResponse(
-          JSON.stringify({ ok: false, error: "Authentification requise pour repondre" }),
+          JSON.stringify({ ok: false, error: "Authentification requise" }),
           401,
         );
       }
@@ -235,7 +290,8 @@ serve(async (req: Request) => {
           403,
         );
       }
-      return await handleReply(body);
+      if (action === "reply") return await handleReply(body);
+      return await handleReservationStatus(body);
     }
     return await handleContact(body);
   } catch (err) {

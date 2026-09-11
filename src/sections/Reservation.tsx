@@ -18,6 +18,7 @@ export function Reservation() {
   const [form, setForm] = useState({ nom: '', email: '', phone: '', date: '', time: '12:00', guests: '2', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   const validate = () => {
     const e: Record<string, string | undefined> = {}
@@ -33,10 +34,23 @@ export function Reservation() {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
+    setError(false)
     const sb = getSupabase()
     if (sb) {
-      await insertReservation({ ...form, guests: parseInt(form.guests) || 2 })
-      await invokeContactEmail({ nom: form.nom, email: form.email, sujet: 'reservation', message: `Réservation — ${form.date} à ${form.time}, ${form.guests} personnes${form.phone ? `, tel: ${form.phone}` : ''}${form.message ? `, message: ${form.message}` : ''}` })
+      const insertOk = await insertReservation({ ...form, guests: parseInt(form.guests) || 2 })
+      const emailResult = await invokeContactEmail({
+        nom: form.nom,
+        email: form.email,
+        sujet: 'reservation',
+        message: `Réservation — ${form.date} à ${form.time}, ${form.guests} personnes${form.phone ? `, tel: ${form.phone}` : ''}${form.message ? `, message: ${form.message}` : ''}`,
+      })
+      if (!insertOk || !emailResult.ok) {
+        setError(true)
+        setLoading(false)
+        return
+      }
+    } else {
+      await new Promise(r => setTimeout(r, 600))
     }
     setSent(true)
     setLoading(false)
@@ -110,6 +124,11 @@ export function Reservation() {
                 {sent && (
                   <span style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {Icon.check(16, t.primary)} Réservation envoyée ! Nous vous confirmons par email.
+                  </span>
+                )}
+                {error && (
+                  <span style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ✗ Échec de la réservation — veuillez réessayer.
                   </span>
                 )}
               </div>
