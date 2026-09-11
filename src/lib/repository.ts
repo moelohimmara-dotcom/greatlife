@@ -172,6 +172,7 @@ export async function fetchMessages(): Promise<{
     if (error || !data) return { data: [], fromDb: false }
     return {
       data: (data as Array<Record<string, unknown>>).map(m => ({
+        id: String(m.id ?? ''),
         nom: String(m.nom ?? ''),
         email: String(m.email ?? ''),
         sujet: String(m.sujet ?? 'contact'),
@@ -213,9 +214,7 @@ export interface MessageRecord {
 }
 
 export async function markMessageHandled(
-  nom: string,
-  email: string,
-  date: string,
+  id: string,
   handled: boolean
 ): Promise<boolean> {
   const sb = getSupabase()
@@ -224,9 +223,7 @@ export async function markMessageHandled(
     const { error } = await sb
       .from(MESSAGES_TABLE)
       .update({ handled })
-      .eq('nom', nom)
-      .eq('email', email)
-      .eq('date', date)
+      .eq('id', id)
     return !error
   } catch {
     return false
