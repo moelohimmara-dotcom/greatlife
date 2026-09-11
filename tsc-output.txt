@@ -1,8 +1,1 @@
-src/auth/LoginScreen.tsx(27,21): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'SetStateAction<string>'.
-  Type 'undefined' is not assignable to type 'SetStateAction<string>'.
-src/lib/icons/index.tsx(3,6): error TS6196: 'IconProps' is declared but never used.
-src/lib/icons/index.tsx(16,18): error TS6133: 'c' is declared but its value is never read.
-src/sections/Contact.tsx(3,1): error TS6133: 'ContactMessage' is declared but its value is never read.
-src/sections/Contact.tsx(15,21): error TS6133: 'content' is declared but its value is never read.
-src/sections/PublicSite.tsx(9,10): error TS2305: Module '"./Contact"' has no exported member 'ContactForm'.
 TSC EXIT CODE: 0
