@@ -1,1 +1,1 @@
-{"error":{"code":"bad_request","message":"Invalid request: missing required property `name`."}}
+{"error":{"code":"forbidden","message":"Not authorized"}}
