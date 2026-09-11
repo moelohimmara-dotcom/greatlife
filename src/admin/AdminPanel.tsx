@@ -699,7 +699,7 @@ function UsersRoles() {
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
   const [editing, setEditing] = useState<{ id?: string; email: string; name: string; role: string } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '9px 12px', fontSize: 14, color: t.text, width: '100%' }
+  const inp = inputStyle(t)
 
   const startAdd = () => setEditing({ email: '', name: '', role: 'guest' })
   const startEdit = (u: { id: string; email: string; name: string; role: string }) =>
@@ -771,26 +771,26 @@ function UsersRoles() {
         <OrganicCard style={{ padding: 16, marginBottom: 12, display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ display: 'grid', gap: 6 }}>
-              <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Nom</Label>
-              <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inputStyle} placeholder="Nom complet" />
+              <FieldLabel>Nom</FieldLabel>
+              <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inp} placeholder="Nom complet" />
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
-              <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Email</Label>
-              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inputStyle} placeholder="email@greatlife.gn" disabled={!!editing.id} />
+              <FieldLabel>Email</FieldLabel>
+              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inp} placeholder="email@greatlife.gn" disabled={!!editing.id} />
             </div>
           </div>
           <div style={{ display: 'grid', gap: 6, maxWidth: 260 }}>
-            <Label style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>Rôle</Label>
+            <FieldLabel>Rôle</FieldLabel>
             <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
-              <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px' }}><SelectValue /></SelectTrigger>
+              <SelectTrigger style={{ borderColor: t.shadow, borderRadius: 10, background: t.surfaceAlt, padding: '11px 14px', fontSize: 14 }}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: 10 }} onClick={saveEdit}>Enregistrer</Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <PrimaryButton onClick={saveEdit}>Enregistrer</PrimaryButton>
+            <GhostButton color={t.muted} onClick={() => setEditing(null)}>Annuler</GhostButton>
           </div>
         </OrganicCard>
       )}
@@ -806,8 +806,8 @@ function UsersRoles() {
               <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
-                <Button size="sm" variant="outline" disabled={!isSupabase || busyId === u.id} style={{ borderColor: t.primary + '44', color: t.primary, borderRadius: 10 }} onClick={() => startEdit(u)}>Modifier</Button>
-                <Button size="sm" variant="outline" disabled={!isSupabase || isSelf || busyId === u.id} style={{ borderColor: '#dc262644', color: '#dc2626', borderRadius: 10, opacity: isSelf || busyId === u.id ? 0.5 : 1 }} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</Button>
+                <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id} onClick={() => startEdit(u)}>Modifier</GhostButton>
+                <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
               </div>
             </div>
           )
