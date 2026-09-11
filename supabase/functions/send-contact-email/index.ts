@@ -28,10 +28,17 @@ const SMTP_HOST = "smtp.gmail.com";
 const SMTP_PORT = 465;
 
 interface ContactPayload {
+  action?: "contact" | "reply";
   nom: string;
   email: string;
   sujet: string;
   message: string;
+  // Champs utilisés pour le mode "reply" (réponse admin → client)
+  to?: string;
+  subject?: string;
+  replyMessage?: string;
+  replyFromName?: string;
+  originalMessage?: string;
 }
 
 async function sendMail(
@@ -60,6 +67,131 @@ async function sendMail(
   }
 }
 
+async function handleContact(body: ContactPayload): Promise<Response> {
+  const { nom, email, sujet, message } = body;
+
+  if (!nom || !email || !message) {
+    return new Response(JSON.stringify({ error: "Champs requis manquants" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const { error: dbError } = await supabase.from("messages").insert({
+    nom,
+    email,
+    sujet: sujet || "contact",
+    message,
+  });
+  if (dbError) {
+    console.error("DB insert error:", dbError);
+  }
+
+  const { data: contentData } = await supabase
+    .from("site_content")
+    .select("value")
+    .eq("key", "site_config")
+    .maybeSingle();
+
+  const config = (contentData?.value || {}) as {
+    emailContact?: string;
+    emailReservation?: string;
+    autoReply?: string;
+  };
+  const destEmail = config.emailContact || "moelohimmara@gmail.com";
+  const autoReply = (config.autoReply ||
+    "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife")
+    .replace(/{nom}/g, nom);
+
+  const sujetFinal = sujet || "contact";
+
+  const errors: string[] = [];
+
+  if (SMTP_USER && SMTP_PASS) {
+    try {
+      await sendMail(
+        destEmail,
+        `Nouveau message - ${sujetFinal}`,
+        `Nom: ${nom}\nEmail: ${email}\nSujet: ${sujetFinal}\n\n${message}`,
+        `<p><strong>${nom}</strong> (${email})</p><p><em>Sujet: ${sujetFinal}</em></p><p>${message}</p>`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("dest:" + msg);
+      console.error("Send to dest error:", err);
+    }
+
+    try {
+      await sendMail(
+        email,
+        "Greatlife - Nous avons bien recu votre message",
+        autoReply,
+        `<p>${autoReply.replace(/\n/g, "<br>")}</p>`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("autoreply:" + msg);
+      console.error("Auto-reply error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+
+  return new Response(JSON.stringify({ ok: errors.length === 0, errors }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+async function handleReply(body: ContactPayload): Promise<Response> {
+  const to = body.to || body.email;
+  const replySubject = body.subject || `Re: ${body.sujet || "contact"}`;
+  const replyText = body.replyMessage || body.message || "";
+  const fromName = body.replyFromName || "Greatlife";
+  const original = body.originalMessage || "";
+
+  if (!to || !replyText) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "Destinataire et message requis" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const errors: string[] = [];
+
+  if (SMTP_USER && SMTP_PASS) {
+    try {
+      const htmlBody =
+        `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222">` +
+        `<div style="font-size:24px;font-weight:700;color:#2d6a4f;margin-bottom:16px">Great<span style="color:#e8a93c">life</span></div>` +
+        `<p>Bonjour,</p>` +
+        `<p style="white-space:pre-wrap">${replyText.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</p>` +
+        (original
+          ? `<hr style="border:none;border-top:1px solid #eee;margin:20px 0" /><div style="font-size:12px;color:#888">Votre message initial :</div><blockquote style="border-left:3px solid #eee;padding-left:12px;margin:8px 0;color:#666;font-size:13px">${original.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</blockquote>`
+          : "") +
+        `<p style="margin-top:24px">— ${fromName}, équipe Greatlife</p>` +
+        `<div style="font-size:11px;color:#aaa;margin-top:16px">Conakry, Guinée · Fast-food bio sans culpabilité</div>` +
+        `</div>`;
+      await sendMail(to, replySubject, replyText, htmlBody);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push("reply:" + msg);
+      console.error("Reply send error:", err);
+    }
+  } else {
+    errors.push("no-credentials");
+  }
+
+  return new Response(JSON.stringify({ ok: errors.length === 0, errors }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
@@ -70,83 +202,12 @@ serve(async (req: Request) => {
 
   try {
     const body: ContactPayload = await req.json();
-    const { nom, email, sujet, message } = body;
+    const action = body.action || "contact";
 
-    if (!nom || !email || !message) {
-      return new Response(JSON.stringify({ error: "Champs requis manquants" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (action === "reply") {
+      return await handleReply(body);
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { error: dbError } = await supabase.from("messages").insert({
-      nom,
-      email,
-      sujet: sujet || "contact",
-      message,
-    });
-    if (dbError) {
-      console.error("DB insert error:", dbError);
-    }
-
-    const { data: contentData } = await supabase
-      .from("site_content")
-      .select("value")
-      .eq("key", "site_config")
-      .maybeSingle();
-
-    const config = (contentData?.value || {}) as {
-      emailContact?: string;
-      emailReservation?: string;
-      autoReply?: string;
-    };
-    const destEmail = config.emailContact || "moelohimmara@gmail.com";
-    const autoReply = (config.autoReply ||
-      "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife")
-      .replace(/{nom}/g, nom);
-
-    const sujetFinal = sujet || "contact";
-
-    const errors: string[] = [];
-
-    if (SMTP_USER && SMTP_PASS) {
-      try {
-        await sendMail(
-          destEmail,
-          `Nouveau message - ${sujetFinal}`,
-          `Nom: ${nom}\nEmail: ${email}\nSujet: ${sujetFinal}\n\n${message}`,
-          `<p><strong>${nom}</strong> (${email})</p><p><em>Sujet: ${sujetFinal}</em></p><p>${message}</p>`,
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push("dest:" + msg);
-        console.error("Send to dest error:", err);
-      }
-
-      try {
-        await sendMail(
-          email,
-          "Greatlife - Nous avons bien recu votre message",
-          autoReply,
-          `<p>${autoReply.replace(/\n/g, "<br>")}</p>`,
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push("autoreply:" + msg);
-        console.error("Auto-reply error:", err);
-      }
-    } else {
-      errors.push("no-credentials");
-    }
-
-    return new Response(JSON.stringify({ ok: errors.length === 0, errors }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return await handleContact(body);
   } catch (err) {
     console.error("Edge function error:", err);
     return new Response(

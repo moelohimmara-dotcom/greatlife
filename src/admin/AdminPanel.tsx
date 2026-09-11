@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite } from '@/contexts/SiteContext'
@@ -11,7 +11,8 @@ import { MODULES, ROLES } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem } from '@/lib/repository'
+import { upsertMenuItem, fetchMessages } from '@/lib/repository'
+import { invokeReplyEmail } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -25,7 +26,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const navItems: [string, string][] = [
-    ['dashboard', 'Tableau de bord'], ['content', 'Contenu'], ['menu', 'Carte & prix'],
+    ['dashboard', 'Tableau de bord'], ['messages', 'Messages'], ['content', 'Contenu'], ['menu', 'Carte & prix'],
     ['theme', 'Thème & ambiance'], ['media', 'Médias'], ['visibility', 'Visibilité'],
     ['users', 'Utilisateurs & rôles'], ['forms', 'Formulaires & emails'],
   ]
@@ -406,6 +407,143 @@ function FormsConfig() {
   )
 }
 
+function MessagesManager() {
+  const { messages, setMessages, theme: t, dataSource } = useSite()
+  const { user } = useAuth()
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [sending, setSending] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [polling, setPolling] = useState(false)
+  const [newCount, setNewCount] = useState(0)
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }
+
+  useEffect(() => {
+    if (dataSource !== 'supabase') return
+    let active = true
+    let timer: ReturnType<typeof setInterval>
+    const poll = async () => {
+      const res = await fetchMessages()
+      if (!active || !res.fromDb) return
+      setMessages(prev => {
+        if (res.data.length > prev.length) {
+          setNewCount(res.data.length - prev.length)
+        }
+        return res.data
+      })
+      setPolling(true)
+    }
+    timer = setInterval(poll, 15000)
+    poll()
+    return () => { active = false; clearInterval(timer) }
+  }, [dataSource, setMessages])
+
+  const selected = selectedIdx !== null ? messages[selectedIdx] : null
+
+  const sendReply = async () => {
+    if (!selected || !replyText.trim()) return
+    setSending('sending')
+    const result = await invokeReplyEmail({
+      to: selected.email,
+      subject: `Re: ${selected.sujet}`,
+      replyMessage: replyText,
+      replyFromName: user?.name || 'Greatlife',
+      originalMessage: selected.message,
+    })
+    if (result.ok) {
+      setSending('sent')
+      setReplyText('')
+      setTimeout(() => setSending('idle'), 3000)
+    } else {
+      setSending('error')
+      setTimeout(() => setSending('idle'), 4000)
+    }
+  }
+
+  if (dataSource !== 'supabase') {
+    return (
+      <div style={{ maxWidth: '640px' }}>
+        <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Messages</h2>
+        <div style={{ marginTop: '16px', padding: '20px', borderRadius: '14px', background: t.surfaceAlt, border: `1px dashed ${t.shadow}`, fontSize: '14px', color: t.muted }}>
+          Les messages reçus via le formulaire de contact apparaissent ici. Connectez Supabase pour activer la gestion et la réponse aux messages.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: selected ? '300px 1fr' : '1fr', gap: '24px' }}>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>Messages</h2>
+          {newCount > 0 && (
+            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '100px', background: t.accent, color: '#fff' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 16 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: polling ? t.primary : t.muted, animation: polling ? 'pulse 2s infinite' : 'none' }} />
+          <span style={{ fontSize: '12px', color: t.muted }}>{polling ? 'Actualisation automatique (15s)' : 'Chargement…'}</span>
+        </div>
+        {messages.length === 0 ? (
+          <p style={{ color: t.muted, fontSize: '14px' }}>Aucun message pour l'instant.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {messages.map((m, i) => (
+              <button key={i} onClick={() => { setSelectedIdx(i); setReplyText(''); setSending('idle') }} style={{
+                textAlign: 'left', padding: '14px 16px', borderRadius: '14px', cursor: 'pointer',
+                border: selectedIdx === i ? `2px solid ${t.primary}` : `1px solid ${t.shadow}`,
+                background: selectedIdx === i ? `${t.primary}08` : t.surface,
+                transition: 'all 0.2s',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom}</span>
+                  <span style={{ fontSize: '11px', color: t.muted }}>{m.date}</span>
+                </div>
+                <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '2px' }}>{m.sujet}</div>
+                <div style={{ fontSize: '13px', color: t.muted, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {selected && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>{selected.nom}</h3>
+              <div style={{ fontSize: '13px', color: t.muted, marginTop: '2px' }}>{selected.email} · {selected.date}</div>
+              <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '4px' }}>{selected.sujet}</div>
+            </div>
+            <button onClick={() => { setSelectedIdx(null); setReplyText(''); setSending('idle') }} style={{
+              fontSize: '13px', fontWeight: 600, padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
+              border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted,
+            }}>Fermer</button>
+          </div>
+          <OrganicCard style={{ padding: '20px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '8px' }}>Message original</div>
+            <p style={{ fontSize: '14px', color: t.text, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{selected.message}</p>
+          </OrganicCard>
+          <div>
+            <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Votre réponse</Label>
+            <Textarea rows={5} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Tapez votre réponse au client…" style={inputStyle} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '12px', flexWrap: 'wrap' }}>
+              <Button onClick={sendReply} disabled={!replyText.trim() || sending === 'sending'} style={{
+                background: sending === 'sending' ? t.muted : t.primary, color: '#fff', fontWeight: 600,
+                padding: '11px 24px', borderRadius: '100px', border: 'none', cursor: sending === 'sending' ? 'wait' : 'pointer',
+                opacity: !replyText.trim() || sending === 'sending' ? 0.6 : 1,
+              }}>
+                {sending === 'sending' ? 'Envoi…' : 'Répondre par email'}
+              </Button>
+              {sending === 'sent' && <span style={{ fontSize: '13px', color: t.primary, fontWeight: 600 }}>✓ Email envoyé à {selected.email}</span>}
+              {sending === 'error' && <span style={{ fontSize: '13px', color: t.accent, fontWeight: 600 }}>✗ Échec de l'envoi — réessayez</span>}
+            </div>
+            <div style={{ fontSize: '12px', color: t.muted, marginTop: '10px' }}>L'email sera envoyé depuis moelohimmara@gmail.com vers {selected.email}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Admin() {
   const [active, setActive] = useState('dashboard')
   return (
@@ -413,6 +551,7 @@ export function Admin() {
       <AnimatePresence mode="wait">
         <motion.div key={active} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
           {active === 'dashboard' && <Dashboard />}
+          {active === 'messages' && <MessagesManager />}
           {active === 'content' && <ContentEditor />}
           {active === 'menu' && <MenuEditor />}
           {active === 'theme' && <ThemeEditor />}
