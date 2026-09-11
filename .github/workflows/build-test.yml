@@ -1,0 +1,34 @@
+name: Build Test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install 2>&1
+      - name: Run TypeScript check
+        run: |
+          npx tsc --noEmit 2>&1 > tsc-output.txt || true
+          echo "TSC EXIT CODE: $?" >> tsc-output.txt
+      - name: Run Vite build
+        run: |
+          npx vite build 2>&1 > vite-output.txt || true
+          echo "VITE EXIT CODE: $?" >> vite-output.txt
+      - name: Save build results
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add tsc-output.txt vite-output.txt
+          git commit -m "debug: build test output [skip ci]" || echo "Nothing to commit"
+          git push || echo "Push failed"
