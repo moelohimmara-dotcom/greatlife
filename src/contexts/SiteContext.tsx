@@ -6,6 +6,7 @@ import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
 import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser } from '@/lib/repository'
+import { getSupabase } from '@/lib/supabase'
 
 export interface SiteContent {
   slogan: string
@@ -265,6 +266,45 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const res = await fetchAdminUsers()
     if (res.fromDb) setAdminUsers(res.data)
   }
+
+  const refreshMenu = async () => {
+    const res = await fetchMenu()
+    if (res.fromDb && res.data.length > 0) setMenu(res.data)
+  }
+
+  const refreshContent = async () => {
+    const res = await fetchContent()
+    if (res.fromDb && res.data) {
+      const cfg = res.data as Partial<SiteConfig>
+      if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
+      if (cfg.themeId) setThemeId(cfg.themeId)
+      if (cfg.fontId) setFontId(cfg.fontId)
+      if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+    }
+  }
+
+  const refreshBlogPosts = async () => {
+    const res = await fetchBlogPosts()
+    if (res.fromDb) setBlogPosts(res.data)
+  }
+
+  useEffect(() => {
+    const sb = getSupabase()
+    if (!sb) return
+    let active = true
+    const channel = sb
+      .channel('public-site-realtime', { config: { private: false } })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => { if (active) refreshMenu() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_content' }, () => { if (active) refreshContent() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'blog_posts' }, () => { if (active) refreshBlogPosts() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'media_assets' }, () => { if (active) refreshMedia() })
+      .subscribe()
+    return () => {
+      active = false
+      sb.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const value: SiteContextValue = {
     themeId, setThemeId, theme, fontId, setFontId, font,
