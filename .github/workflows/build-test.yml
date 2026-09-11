@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -16,19 +16,8 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies
-        run: npm install 2>&1
+        run: npm install
       - name: Run TypeScript check
-        run: |
-          npx tsc --noEmit 2>&1 > tsc-output.txt || true
-          echo "TSC EXIT CODE: $?" >> tsc-output.txt
+        run: npx tsc --noEmit
       - name: Run Vite build
-        run: |
-          npx vite build 2>&1 > vite-output.txt || true
-          echo "VITE EXIT CODE: $?" >> vite-output.txt
-      - name: Save build results
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add tsc-output.txt vite-output.txt
-          git commit -m "debug: build test output [skip ci]" || echo "Nothing to commit"
-          git push || echo "Push failed"
+        run: npx vite build

@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy:
@@ -17,28 +17,7 @@ jobs:
       - name: Deploy to Vercel
         run: |
           VK=$(echo 'dmNwXzZ2MmROT2s1NVhrR2tNSEJ5UTNBdTRwRnM3MEJLZDBjUnNnRUFPekFFRWpvVlBBb0sxM1g3M09W' | base64 -d)
-          TID="team_Ho3m52mA88kIRf7aQYUrHmsL"
-          
-          {
-            echo "=== Method 1: Vercel CLI ==="
-            vercel deploy --prod --token="$VK" --yes 2>&1 || echo "CLI failed"
-            echo ""
-            echo "=== Method 2: API without teamId ==="
-            curl -s -X POST "https://api.vercel.com/v13/deployments" \
-              -H "Authorization: Bearer $VK" \
-              -H "Content-Type: application/json" \
-              -d '{"name":"greatlife","gitSource":{"type":"github","org":"moelohimmara-dotcom","repo":"greatlife","ref":"main"},"target":"production"}'
-            echo ""
-            echo "=== Method 3: API with teamId header ==="
-            curl -s -X POST "https://api.vercel.com/v13/deployments" \
-              -H "Authorization: Bearer $VK" \
-              -H "Content-Type: application/json" \
-              -H "x-vercel-team-id: $TID" \
-              -d '{"name":"greatlife","gitSource":{"type":"github","org":"moelohimmara-dotcom","repo":"greatlife","ref":"main"},"target":"production"}'
-          } > vercel-deploy-response.txt
-          
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add vercel-deploy-response.txt
-          git commit -m "debug: Vercel deployment attempts [skip ci]" || echo "Nothing to commit"
-          git push || echo "Push failed"
+          vercel deploy --prod --token="$VK" --yes
+        env:
+          VERCEL_PROJECT_ID: prj_Non4T3iS5DO9Tvf12h25y1sTfZ8J
+          VERCEL_ORG_ID: team_Ho3m52mA88kIRf7aQYUrHmsL
