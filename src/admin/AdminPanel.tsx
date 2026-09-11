@@ -743,7 +743,7 @@ function UsersRoles() {
   return (
     <div style={{ maxWidth: '920px' }}>
       <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)."
-        actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing}>{Icon.plus(14, '#fff')} Ajouter</PrimaryButton>}
+        actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing}>{Icon.plus(14, '#fff')} Ajouter nouveau</PrimaryButton>}
       />
 
       {!isSupabase && (
