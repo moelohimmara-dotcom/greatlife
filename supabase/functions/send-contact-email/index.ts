@@ -81,16 +81,6 @@ async function handleContact(body: ContactPayload): Promise<Response> {
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const { error: dbError } = await supabase.from("messages").insert({
-    nom,
-    email,
-    sujet: sujet || "contact",
-    message,
-  });
-  if (dbError) {
-    console.error("DB insert error:", dbError);
-  }
-
   const { data: contentData } = await supabase
     .from("site_content")
     .select("value")
@@ -113,11 +103,12 @@ async function handleContact(body: ContactPayload): Promise<Response> {
 
   if (SMTP_USER && SMTP_PASS) {
     try {
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
       await sendMail(
         destEmail,
         `Nouveau message - ${sujetFinal}`,
         `Nom: ${nom}\nEmail: ${email}\nSujet: ${sujetFinal}\n\n${message}`,
-        `<p><strong>${nom}</strong> (${email})</p><p><em>Sujet: ${sujetFinal}</em></p><p>${message}</p>`,
+        `<p><strong>${esc(nom)}</strong> (${esc(email)})</p><p><em>Sujet: ${esc(sujetFinal)}</em></p><p>${esc(message)}</p>`,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -205,6 +196,36 @@ serve(async (req: Request) => {
     const action = body.action || "contact";
 
     if (action === "reply") {
+      const authHeader = req.headers.get("Authorization") || "";
+      const token = authHeader.replace("Bearer ", "");
+      if (!token || token.length < 20) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Authentification requise pour repondre" }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (userErr || !userData.user) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Session admin invalide" }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      const adminEmail = userData.user.email || "";
+      const { data: adminRow } = await supabase
+        .from("admin_users")
+        .select("role")
+        .eq("email", adminEmail)
+        .maybeSingle();
+      if (!adminRow || !["owner", "manager"].includes(adminRow.role)) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Acces non autorise" }),
+          { status: 403, headers: { "Content-Type": "application/json" } },
+        );
+      }
       return await handleReply(body);
     }
     return await handleContact(body);
