@@ -1,11 +1,12 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { useSite } from '@/contexts/SiteContext'
+import { useSite, useMedia } from '@/contexts/SiteContext'
 import { softShadow } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 import { BurgerIllustration } from '@/lib/icons/FoodIcon'
 
 export function Hero() {
   const { theme: t, content } = useSite()
+  const heroImg = useMedia('hero')
   const { scrollY } = useScroll()
   const yImg = useTransform(scrollY, [0, 400], [0, 60])
   const opacity = useTransform(scrollY, [0, 300], [1, 0.7])
@@ -66,14 +67,18 @@ export function Hero() {
         <motion.div style={{ y: yImg, opacity }} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}>
           <div style={{
             position: 'relative', aspectRatio: '1', borderRadius: '50%',
-            background: `radial-gradient(circle at 35% 35%, ${t.gold}30, ${t.accent}20 50%, ${t.primary}15 100%)`,
+            background: heroImg
+              ? `url(${heroImg}) center/cover`
+              : `radial-gradient(circle at 35% 35%, ${t.gold}30, ${t.accent}20 50%, ${t.primary}15 100%)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: softShadow(t), border: `1px solid ${t.shadow}`,
+            boxShadow: softShadow(t), border: `1px solid ${t.shadow}`, overflow: 'hidden',
           }}>
-            <div style={{ position: 'absolute', inset: '30px', borderRadius: '50%', border: `2px dashed ${t.primary}22` }} />
-            <div style={{ position: 'relative', width: '60%', height: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BurgerIllustration theme={t} />
-            </div>
+            {!heroImg && <div style={{ position: 'absolute', inset: '30px', borderRadius: '50%', border: `2px dashed ${t.primary}22` }} />}
+            {!heroImg && (
+              <div style={{ position: 'relative', width: '60%', height: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BurgerIllustration theme={t} />
+              </div>
+            )}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
               style={{ position: 'absolute', bottom: '10%', right: '5%', background: t.surface, borderRadius: '16px', padding: '12px 18px', boxShadow: softShadow(t), border: `1px solid ${t.shadow}` }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Signature</div>

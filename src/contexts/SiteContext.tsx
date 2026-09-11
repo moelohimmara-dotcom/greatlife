@@ -84,6 +84,11 @@ interface SiteContextValue {
 const SiteContext = createContext<SiteContextValue | null>(null)
 export const useSite = () => useContext(SiteContext)!
 
+export function useMedia(slot: string): string | undefined {
+  const { media } = useContext(SiteContext)!
+  return media.find(m => m.slot === slot && m.url)?.url
+}
+
 const DEFAULT_CONTENT: SiteContent = {
   slogan: 'Manger vite. Manger bio. Manger gourmand.',
   heroTitle: 'Le fast-food sans culpabilité.',

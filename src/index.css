@@ -46,11 +46,28 @@ section[id] {
   .story-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
   .loca-grid { grid-template-columns: 1fr !important; }
   .contact-grid { grid-template-columns: 1fr !important; }
+  .reservation-grid { grid-template-columns: 1fr !important; }
   .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
   .section-pad { padding: 60px 20px !important; }
   .section-pad-top { padding: 30px 20px 60px !important; }
+  .menu-grid { grid-template-columns: 1fr !important; }
+  .blog-grid { grid-template-columns: 1fr !important; }
+  .engagements-grid { grid-template-columns: 1fr !important; }
   .admin-layout { grid-template-columns: 1fr !important; }
   .admin-sidebar-desktop { display: none !important; }
   .admin-mobile-menu { display: inline-flex !important; }
   .admin-main-pad { padding: 56px 18px 32px !important; }
+}
+
+@media (max-width: 480px) {
+  .hero-grid { gap: 24px !important; }
+  .menu-grid { grid-template-columns: 1fr !important; }
+  .blog-grid { grid-template-columns: 1fr !important; }
+  .engagements-grid { grid-template-columns: 1fr !important; }
+  .section-pad { padding: 48px 16px !important; }
+  .section-pad-top { padding: 24px 16px 48px !important; }
+  .loca-grid { grid-template-columns: 1fr !important; }
+  .contact-grid { grid-template-columns: 1fr !important; }
+  .reservation-grid { grid-template-columns: 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
 }
