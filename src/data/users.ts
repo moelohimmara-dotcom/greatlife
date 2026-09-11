@@ -12,8 +12,8 @@ export const USERS: UserRecord[] = [
 ]
 
 export const ADMIN_ACCOUNTS = [
-  { email: 'owner@greatlife.gn', password: 'greatlife2026', name: 'Mister Marcket', role: 'owner' },
-  { email: 'gerant@greatlife.gn', password: 'greatlife2026', name: 'Aïcha Diallo', role: 'manager' },
+  { email: 'owner@greatlife.com', password: 'greatlife2026', name: 'Mister Marcket', role: 'owner' },
+  { email: 'gerant@greatlife.com', password: 'greatlife2026', name: 'Aïcha Diallo', role: 'manager' },
 ]
 
 export const ADMIN_ROLES = ['owner', 'manager']
