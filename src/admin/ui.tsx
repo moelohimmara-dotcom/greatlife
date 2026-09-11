@@ -99,7 +99,8 @@ export function PrimaryButton({ onClick, children, disabled, style, color }: {
     <button onClick={onClick} disabled={disabled} style={{
       fontSize: '13px', fontWeight: 600, padding: '10px 20px', borderRadius: 100, cursor: disabled ? 'not-allowed' : 'pointer',
       border: 'none', background: c, color: '#fff', opacity: disabled ? 0.5 : 1,
-      transition: 'opacity 0.15s, filter 0.15s', ...style,
+      transition: 'opacity 0.15s, filter 0.15s',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, ...style,
     }} onMouseEnter={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.08)' }}
       onMouseLeave={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.filter = 'none' }}
     >{children}</button>
