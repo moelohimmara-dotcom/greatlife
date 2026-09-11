@@ -1,13 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SmtpClient } from "https://deno.land/x/smtp@v0.6.0/mod.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SMTP_USER = Deno.env.get("SMTP_USER") || "moelohimmara@gmail.com";
+const SMTP_PASS = Deno.env.get("SMTP_PASS") || "";
+const SMTP_HOST = "smtp.gmail.com";
+const SMTP_PORT = 465;
 
 interface ContactPayload {
   nom: string;
   email: string;
   sujet: string;
   message: string;
+}
+
+async function sendMail(to: string, subject: string, textContent: string, html: string) {
+  const client = new SmtpClient();
+  await client.connectTLS({
+    hostname: SMTP_HOST,
+    port: SMTP_PORT,
+    username: SMTP_USER,
+    password: SMTP_PASS,
+  });
+  try {
+    await client.send({
+      from: SMTP_USER,
+      to,
+      subject,
+      content: textContent,
+      html,
+    });
+  } finally {
+    await client.close();
+  }
 }
 
 serve(async (req: Request) => {
@@ -40,7 +65,6 @@ serve(async (req: Request) => {
       sujet: sujet || "contact",
       message,
     });
-
     if (dbError) {
       console.error("DB insert error:", dbError);
     }
@@ -50,46 +74,43 @@ serve(async (req: Request) => {
       .from("site_content")
       .select("value")
       .eq("key", "site_config")
-      .single();
+      .maybeSingle();
 
-    const config = contentData?.value || {};
-    const destEmail = config.emailContact || "contact@greatlife.gn";
-    const autoReply = (config.autoReply || "Bonjour {nom}, merci pour votre message à Greatlife ! Nous revenons vers vous sous 24h. — L'équipe Greatlife").replace(/{nom}/g, nom);
+    const config = (contentData?.value || {}) as {
+      emailContact?: string;
+      emailReservation?: string;
+      autoReply?: string;
+    };
+    const destEmail = config.emailContact || "moelohimmara@gmail.com";
+    const autoReply = (config.autoReply || "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife").replace(/{nom}/g, nom);
 
-    // 3. Envoyer l'email au gérant via Resend
-    if (RESEND_API_KEY) {
-      const emailRes = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Greatlife <noreply@greatlife.gn>",
-          to: [destEmail],
-          subject: `Nouveau message — ${sujet || "contact"}`,
-          html: `<p><strong>${nom}</strong> (${email})</p><p><em>Sujet: ${sujet || "contact"}</em></p><p>${message}</p>`,
-        }),
-      });
+    // 3. Envoyer les emails via Gmail SMTP
+    if (SMTP_USER && SMTP_PASS) {
+      const sujetFinal = sujet || "contact";
 
-      if (!emailRes.ok) {
-        console.error("Resend error:", await emailRes.text());
+      // Email au gérant
+      try {
+        await sendMail(
+          destEmail,
+          `Nouveau message - ${sujetFinal}`,
+          `Nom: ${nom}\nEmail: ${email}\nSujet: ${sujetFinal}\n\n${message}`,
+          `<p><strong>${nom}</strong> (${email})</p><p><em>Sujet: ${sujetFinal}</em></p><p>${message}</p>`
+        );
+      } catch (err) {
+        console.error("Send to dest error:", err);
       }
 
-      // 4. Auto-réponse au client
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Greatlife <noreply@greatlife.gn>",
-          to: [email],
-          subject: "Greatlife — Nous avons bien reçu votre message",
-          text: autoReply,
-        }),
-      });
+      // Auto-réponse au client
+      try {
+        await sendMail(
+          email,
+          "Greatlife - Nous avons bien recu votre message",
+          autoReply,
+          `<p>${autoReply.replace(/\n/g, "<br>")}</p>`
+        );
+      } catch (err) {
+        console.error("Auto-reply error:", err);
+      }
     }
 
     return new Response(JSON.stringify({ ok: true }), {
