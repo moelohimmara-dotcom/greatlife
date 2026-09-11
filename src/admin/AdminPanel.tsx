@@ -399,12 +399,17 @@ function ThemeEditor() {
   )
 }
 
-const MEDIA_SLOTS: string[] = ['hero', 'logo', 'histoire', 'greatlife', 'general']
+const MEDIA_SLOTS: string[] = ['hero', 'logo', 'histoire', 'greatlife', 'equipe-1', 'equipe-2', 'equipe-3', 'equipe-4', 'produit', 'general']
 const SLOT_LABELS: Record<string, string> = {
   hero: 'Hero principal',
   logo: 'Logo / favicon',
   histoire: 'Fond section histoire',
   greatlife: 'Photo — Le Greatlife',
+  'equipe-1': 'Équipe — Membre 1',
+  'equipe-2': 'Équipe — Membre 2',
+  'equipe-3': 'Équipe — Membre 3',
+  'equipe-4': 'Équipe — Membre 4',
+  produit: 'Photo produit (générique)',
   general: 'Général / divers',
 }
 const SLOT_DIMS: Record<string, string> = {
@@ -412,6 +417,11 @@ const SLOT_DIMS: Record<string, string> = {
   logo: '512×512',
   histoire: '1600×900',
   greatlife: '800×600',
+  'equipe-1': '600×600',
+  'equipe-2': '600×600',
+  'equipe-3': '600×600',
+  'equipe-4': '600×600',
+  produit: '800×600',
   general: 'libre',
 }
 

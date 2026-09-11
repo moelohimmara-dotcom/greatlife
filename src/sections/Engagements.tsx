@@ -18,10 +18,10 @@ export function Engagements() {
   return (
     <section id="engagements" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Reveal><SectionHead title="Ce qui nous distingue" sub="Six engagements concrets qui font de Greatlife un fast-food à part." align="center" /></Reveal>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px,1fr))', gap: '20px' }}>
+      <div className="engagements-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px,1fr))', gap: '20px' }}>
         {items.map(([ic, title, desc], i) => (
           <Reveal key={i} delay={(i % 3) * 0.06}>
-            <OrganicCard style={{ padding: '28px' }}>
+            <OrganicCard hover style={{ padding: '28px' }}>
               <div style={{ width: '52px', height: '52px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${t.primary}0d`, marginBottom: '18px' }}>
                 {ic}
               </div>
