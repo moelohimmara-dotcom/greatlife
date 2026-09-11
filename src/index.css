@@ -49,4 +49,8 @@ section[id] {
   .footer-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
   .section-pad { padding: 60px 20px !important; }
   .section-pad-top { padding: 30px 20px 60px !important; }
+  .admin-layout { grid-template-columns: 1fr !important; }
+  .admin-sidebar-desktop { display: none !important; }
+  .admin-mobile-menu { display: inline-flex !important; }
+  .admin-main-pad { padding: 56px 18px 32px !important; }
 }
