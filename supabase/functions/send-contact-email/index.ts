@@ -216,10 +216,13 @@ async function handleReservationStatus(body: ContactPayload): Promise<Response> 
   let subject = "";
   if (status === "confirmed") {
     subject = "Greatlife - Reservation confirmee";
-    textContent = `Bonjour${nom ? " " + nom : ""}, nous avons le plaisir de confirmer votre reservation${dateLabel}${guestsLabel}. Nous vous attendons avec plaisir chez Greatlife ! Pour toute modification, repondez a cet email. - L'equipe Greatlife`;
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous avons le plaisir de confirmer votre reservation${dateLabel}${guestsLabel}. Votre demande a ete prise en compte et traitee : votre reservation est validee ! Nous vous attendons avec plaisir chez Greatlife. Pour toute modification, repondez a cet email. - L'equipe Greatlife`;
+  } else if (status === "pending") {
+    subject = "Greatlife - Reservation en attente";
+    textContent = `Bonjour${nom ? " " + nom : ""}, votre demande de reservation${dateLabel}${guestsLabel} a bien ete prise en compte. Aucune table n'est disponible pour le moment, mais nous vous recontacterons des qu'une place se libere. Merci de votre patience. - L'equipe Greatlife`;
   } else if (status === "cancelled") {
     subject = "Greatlife - Reservation annulee";
-    textContent = `Bonjour${nom ? " " + nom : ""}, nous sommes desoles de vous informer que votre reservation${dateLabel}${guestsLabel} a du etre annulee. Pour replanifier, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
+    textContent = `Bonjour${nom ? " " + nom : ""}, nous vous informons que votre reservation${dateLabel}${guestsLabel} a ete annulee. Cela peut provenir d'un desistement de votre part ou d'une decision de notre equipe en raison de la situation. Pour replanifier, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
   } else {
     return corsResponse(JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
   }
