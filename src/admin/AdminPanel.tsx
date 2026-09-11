@@ -742,7 +742,9 @@ function UsersRoles() {
 
   return (
     <div style={{ maxWidth: '920px' }}>
-      <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)." />
+      <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)."
+        actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing}>{Icon.plus(14, '#fff')} Ajouter</PrimaryButton>}
+      />
 
       {!isSupabase && (
         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
@@ -750,12 +752,9 @@ function UsersRoles() {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: 0 }}>Équipe</h3>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 10px', borderRadius: 100 }}>{adminUsers.length}</span>
-        </div>
-        <PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing}>{Icon.plus(13, '#fff')} Ajouter</PrimaryButton>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 10px' }}>
+        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: 0 }}>Équipe</h3>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 10px', borderRadius: 100 }}>{adminUsers.length}</span>
       </div>
 
       {status.kind !== 'idle' && (
