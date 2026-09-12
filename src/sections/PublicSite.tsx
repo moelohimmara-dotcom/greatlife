@@ -33,7 +33,7 @@ export function PublicSite() {
     <CartProvider>
       <div style={rootStyle}>
         <PublicNav />
-        {order.map(key => visibility.sections[key] && SECTION_COMPONENTS[key] ? (() => {
+        {order.map(key => visibility.sections[key] !== false && SECTION_COMPONENTS[key] ? (() => {
           const Comp = SECTION_COMPONENTS[key]
           return <Comp key={key} />
         })() : null)}

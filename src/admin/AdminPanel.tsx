@@ -788,7 +788,7 @@ function VisibilityEditor() {
             </div>
             <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{labelOf(k)}</span>
           </div>
-          <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
+          <Switch checked={visibility.sections[k] !== false} onCheckedChange={() => toggle(k)} />
         </div>
       ))}
       <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.accent}>Éléments de contenu</SectionTitle></div>

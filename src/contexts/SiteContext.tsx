@@ -131,6 +131,16 @@ function mediaAssetToSlot(a: MediaAsset): MediaSlot {
   }
 }
 
+function mergeVisibility(prev: SiteVisibility, incoming: unknown): SiteVisibility {
+  const v = (incoming || {}) as Partial<SiteVisibility>
+  return {
+    ...prev,
+    ...v,
+    sections: { ...prev.sections, ...(v.sections || {}) },
+    sectionOrder: v.sectionOrder && v.sectionOrder.length ? v.sectionOrder : prev.sectionOrder,
+  }
+}
+
 export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [themeId, setThemeId] = useState('gourmand')
   const [fontId, setFontId] = useState('fraunces')
@@ -253,7 +263,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
         if (cfg.themeId) setThemeId(cfg.themeId)
         if (cfg.fontId) setFontId(cfg.fontId)
-        if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+        if (cfg.visibility) setVisibility(prev => mergeVisibility(prev, cfg.visibility))
         if (cfg.customColors) setCustomColorsState(cfg.customColors)
       }
       if (messagesRes.fromDb && messagesRes.data.length > 0) {
@@ -327,7 +337,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
       if (cfg.themeId) setThemeId(cfg.themeId)
       if (cfg.fontId) setFontId(cfg.fontId)
-      if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+      if (cfg.visibility) setVisibility(prev => mergeVisibility(prev, cfg.visibility))
       if (cfg.customColors) setCustomColorsState(cfg.customColors)
     }
   }
