@@ -4,6 +4,7 @@ export const CATEGORY_ORDER = [
 ]
 
 export interface MenuItem {
+  id?: string
   cat: string
   name: string
   sig?: boolean

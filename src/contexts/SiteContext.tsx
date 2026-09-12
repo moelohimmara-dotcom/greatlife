@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 
 export interface SiteContent {
@@ -80,6 +80,7 @@ interface SiteContextValue {
   adminUsers: AdminUser[]
   refreshAdminUsers: () => Promise<void>
   ordersCount: number
+  reservationsCount: number
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -102,7 +103,7 @@ const DEFAULT_CONTENT: SiteContent = {
 }
 
 const DEFAULT_VISIBILITY: SiteVisibility = {
-  sections: { home: true, carte: true, histoire: true, engagements: true, equipe: true, localisation: true, contact: true, blog: true },
+  sections: { home: true, carte: true, histoire: true, engagements: true, equipe: true, localisation: true, reservation: true, contact: true, blog: true },
   vertusPanel: true, suggestions: true, testimonials: true, badges: true,
 }
 
@@ -137,6 +138,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [ordersCount, setOrdersCount] = useState(0)
+  const [reservationsCount, setReservationsCount] = useState(0)
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -198,7 +200,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function load() {
-      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, reservationsRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
@@ -206,9 +208,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         fetchMedia(),
         fetchAdminUsers(),
         fetchOrders(),
+        fetchReservations(),
       ])
       if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || reservationsRes.fromDb
       setDataSource(anyDb ? 'supabase' : 'local')
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
@@ -229,6 +232,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       }
       if (adminRes.fromDb) setAdminUsers(adminRes.data)
       if (ordersRes.fromDb) setOrdersCount(ordersRes.data.length)
+      if (reservationsRes.fromDb) setReservationsCount(reservationsRes.data.length)
       setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
     }
@@ -302,6 +306,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     if (res.fromDb) setOrdersCount(res.data.length)
   }
 
+  const refreshReservations = async () => {
+    const res = await fetchReservations()
+    if (res.fromDb) setReservationsCount(res.data.length)
+  }
+
   useEffect(() => {
     const sb = getSupabase()
     if (!sb) return
@@ -313,6 +322,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blog_posts' }, () => { if (active) refreshBlogPosts() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'media_assets' }, () => { if (active) refreshMedia() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { if (active) refreshOrders() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => { if (active) refreshReservations() })
       .subscribe()
     return () => {
       active = false
@@ -328,7 +338,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
-    refreshMedia, adminUsers, refreshAdminUsers, ordersCount,
+    refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>

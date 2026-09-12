@@ -11,6 +11,7 @@ import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, fetchOrders, updateOrderStatus, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
+import type { MenuItem } from '@/data/menu'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
@@ -131,7 +132,7 @@ function DashCard({ label, value, sub, icon, color }: { label: string; value: Re
 }
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
   const recentMessages = messages.slice(0, 4)
@@ -144,7 +145,7 @@ function Dashboard() {
         <DashCard label="Produits" value={menu.length} sub="toutes catégories" icon={Icon.leaf(20, t.primary)} color={t.primary} />
         <DashCard label="Messages" value={messages.length} sub="via formulaires" icon={Icon.mail(20, t.accent)} color={t.accent} />
         <DashCard label="Commandes" value={ordersCount} sub="en ligne" icon={Icon.coin(20, t.gold)} color={t.gold} />
-        <DashCard label="Réservations" value={messages.length} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
+        <DashCard label="Réservations" value={reservationsCount} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
         <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
@@ -240,20 +241,24 @@ function ContentEditor() {
   )
 }
 
+function itemId(m: MenuItem): string {
+  return m.id ?? m.name
+}
+
 function MenuEditor() {
   const { menu, setMenu, theme: t, dataSource } = useSite()
-  const [sel, setSel] = useState(menu[0]?.name ?? '')
+  const [sel, setSel] = useState(() => menu[0] ? itemId(menu[0]) : '')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const [query, setQuery] = useState('')
   const [confirmDel, setConfirmDel] = useState(false)
-  const item = menu.find(m => m.name === sel)
+  const item = menu.find(m => itemId(m) === sel)
   const filtered = query.trim() ? menu.filter(m => m.name.toLowerCase().includes(query.toLowerCase()) || m.cat.toLowerCase().includes(query.toLowerCase())) : menu
   const grouped = filtered.reduce((acc, m) => { (acc[m.cat] = acc[m.cat] || []).push(m); return acc }, {} as Record<string, typeof menu>)
   const update = (k: string, v: string | boolean | string[]) => {
-    const next = menu.map(m => m.name === sel ? { ...m, [k]: v } : m)
+    const next = menu.map(m => itemId(m) === sel ? { ...m, [k]: v } : m)
     setMenu(next)
-    const updated = next.find(m => m.name === sel)
+    const updated = next.find(m => itemId(m) === sel)
     if (updated && dataSource === 'supabase') {
       setSaveStatus('saving'); setSaveErr(undefined)
       upsertMenuItem(updated).then(res => {
@@ -284,11 +289,11 @@ function MenuEditor() {
             <div key={cat}>
               <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.06em', background: t.surfaceAlt, position: 'sticky', top: 0 }}>{cat}</div>
               {items.map(m => (
-                <button key={m.name} onClick={() => setSel(m.name)} style={{
+                <button key={itemId(m)} onClick={() => setSel(itemId(m))} style={{
                   display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
                   fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
-                  background: sel === m.name ? `${t.primary}0d` : 'transparent',
-                  color: sel === m.name ? t.primary : t.text, borderBottom: `1px solid ${t.shadow}`,
+                  background: sel === itemId(m) ? `${t.primary}0d` : 'transparent',
+                  color: sel === itemId(m) ? t.primary : t.text, borderBottom: `1px solid ${t.shadow}`,
                 }}>
                   {m.sig ? '★ ' : ''}{m.name} <span style={{ color: t.muted, fontWeight: 400, fontSize: 12 }}>· {m.price}</span>
                 </button>
@@ -297,10 +302,11 @@ function MenuEditor() {
           ))}
         </div>
         <button onClick={() => {
-          const newItem = { cat: 'Burgers', name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
+          const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `local-${Date.now()}`
+          const newItem: MenuItem = { id: newId, cat: 'Burgers', name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
           setMenu([...menu, newItem])
           if (dataSource === 'supabase') upsertMenuItem(newItem)
-          setSel(newItem.name)
+          setSel(newId)
         }} style={{
           marginTop: 12, width: '100%', fontSize: '13px', fontWeight: 600, padding: '10px',
           borderRadius: 12, cursor: 'pointer', border: `1px dashed ${t.primary}55`,
@@ -335,9 +341,9 @@ function MenuEditor() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid #dc262644`, background: '#dc262608' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#dc2626' }}>Supprimer « {item.name} » ?</span>
               <button onClick={() => {
-                if (dataSource === 'supabase') deleteMenuItem(item.name)
-                setMenu(menu.filter(m => m.name !== item.name))
-                setSel(menu[0]?.name ?? '')
+                if (dataSource === 'supabase' && item.id) deleteMenuItem(item.id)
+                setMenu(menu.filter(m => itemId(m) !== sel))
+                setSel(menu.find(m => itemId(m) !== sel) ? itemId(menu.find(m => itemId(m) !== sel)!) : '')
                 setConfirmDel(false)
               }} style={{ fontSize: 12, fontWeight: 700, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
               <button onClick={() => setConfirmDel(false)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
@@ -675,7 +681,7 @@ function VisibilityEditor() {
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
-  const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
+  const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['reservation', 'Réservation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
     <div style={{ maxWidth: '640px' }}>
       <PageHeader title="Visibilité" subtitle="Affichez ou masquez des éléments du site en un clic."
@@ -855,6 +861,7 @@ function UsersRoles() {
 function BlogEditor() {
   const { blogPosts, setBlogPosts, theme: t, dataSource } = useSite()
   const [editing, setEditing] = useState<BlogPost | null>(null)
+  const [confirmDelId, setConfirmDelId] = useState<string | undefined>(undefined)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const inp = inputStyle(t)
@@ -922,9 +929,17 @@ function BlogEditor() {
               </div>
               <div style={{ fontWeight: 700, fontSize: '15px', color: t.heading, lineHeight: 1.3 }}>{post.title || 'Sans titre'}</div>
               <div style={{ fontSize: '13px', color: t.muted, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{post.excerpt || 'Aucun extrait'}</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <GhostButton color={t.primary} onClick={() => setEditing(post)}>Modifier</GhostButton>
-                <GhostButton color="#dc2626" onClick={() => remove(post)}>{Icon.trash(12, '#dc2626')} Supprimer</GhostButton>
+                {confirmDelId === post.id ? (
+                  <>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#dc2626' }}>Supprimer « {post.title || 'Sans titre'} » ?</span>
+                    <button onClick={() => { remove(post); setConfirmDelId(undefined) }} style={{ fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
+                    <button onClick={() => setConfirmDelId(undefined)} style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+                  </>
+                ) : (
+                  <GhostButton color="#dc2626" onClick={() => setConfirmDelId(post.id)}>{Icon.trash(12, '#dc2626')} Supprimer</GhostButton>
+                )}
               </div>
             </OrganicCard>
           ))}

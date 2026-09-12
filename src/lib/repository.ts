@@ -42,6 +42,7 @@ function rowToMenuItem(row: MenuRow): MenuItem {
     badges = (row.badges as unknown[]).filter((b): b is string => typeof b === 'string')
   }
   return {
+    id: row.id,
     cat: row.cat,
     name: row.name,
     sig: !!row.sig,
@@ -71,18 +72,18 @@ export async function upsertMenuItem(item: MenuItem): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(MENU_TABLE).upsert(
-      {
-        cat: item.cat,
-        name: item.name,
-        sig: item.sig ?? false,
-        price: item.price,
-        description: item.desc,
-        vertus: item.vertus,
-        badges: item.badges,
-      },
-      { onConflict: 'name' }
-    )
+    const payload: Record<string, unknown> = {
+      cat: item.cat,
+      name: item.name,
+      sig: item.sig ?? false,
+      price: item.price,
+      description: item.desc,
+      vertus: item.vertus,
+      badges: item.badges,
+    }
+    const onConflict = item.id ? 'id' : 'name'
+    if (item.id) payload.id = item.id
+    const { error } = await sb.from(MENU_TABLE).upsert(payload, { onConflict })
     if (error) return { ok: false, error: errMsg(error) }
     return { ok: true }
   } catch (err) {
@@ -90,11 +91,11 @@ export async function upsertMenuItem(item: MenuItem): Promise<SaveResult> {
   }
 }
 
-export async function deleteMenuItem(name: string): Promise<SaveResult> {
+export async function deleteMenuItem(id: string): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(MENU_TABLE).delete().eq('name', name)
+    const { error } = await sb.from(MENU_TABLE).delete().eq('id', id)
     if (error) return { ok: false, error: errMsg(error) }
     return { ok: true }
   } catch (err) {
