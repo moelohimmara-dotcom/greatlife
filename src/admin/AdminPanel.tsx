@@ -438,6 +438,11 @@ function ThemeEditor() {
           )
         })}
       </div>
+      <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.heading, minWidth: 70 }}>Rayon fin</span>
+        <input type="range" min={0} max={100} value={customColors.buttonRadius ?? 100} onChange={e => { setCustomColors({ buttonRadius: Number(e.target.value) }); setSaveStatus('idle') }} style={{ flex: 1, accentColor: t.primary, cursor: 'pointer' }} />
+        <span style={{ fontSize: 12, color: t.muted, minWidth: 44, textAlign: 'right' }}>{customColors.buttonRadius ?? 100}px</span>
+      </div>
       <div style={{ marginTop: 28, marginBottom: 20 }}><SectionTitle color={t.accent}>Typographie</SectionTitle></div>
       <Select value={fontId} onValueChange={v => { setFontId(v); setSaveStatus('idle') }}>
         <SelectTrigger style={{ maxWidth: '340px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '11px 14px' }}><SelectValue /></SelectTrigger>

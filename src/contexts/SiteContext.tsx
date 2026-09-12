@@ -150,7 +150,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const baseTheme = THEMES[themeId] ?? Object.values(THEMES)[0]
   const font = FONTS[fontId]
-  const isDark = themeId === 'premium'
+  const isDark = themeId === 'premium' || themeId === 'nuit'
 
   function shade(hex: string, amt: number): string {
     const m = hex.replace('#', '')
@@ -208,7 +208,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const link = document.createElement('link')
     link.id = id
     link.rel = 'stylesheet'
-    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap'
+    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700&family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=Merriweather:wght@400;700;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Mulish:wght@400;500;600;700&display=swap'
     document.head.appendChild(link)
   }, [])
 
