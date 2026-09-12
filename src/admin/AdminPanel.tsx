@@ -253,6 +253,9 @@ function MenuEditor() {
   const [query, setQuery] = useState('')
   const [confirmDel, setConfirmDel] = useState(false)
   const item = menu.find(m => itemId(m) === sel)
+  useEffect(() => {
+    if (!item && menu.length > 0) setSel(itemId(menu[0]))
+  }, [item, menu])
   const filtered = query.trim() ? menu.filter(m => m.name.toLowerCase().includes(query.toLowerCase()) || m.cat.toLowerCase().includes(query.toLowerCase())) : menu
   const grouped = filtered.reduce((acc, m) => { (acc[m.cat] = acc[m.cat] || []).push(m); return acc }, {} as Record<string, typeof menu>)
   const update = (k: string, v: string | boolean | string[]) => {
