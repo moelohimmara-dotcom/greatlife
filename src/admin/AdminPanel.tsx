@@ -734,15 +734,35 @@ function VisibilityEditor() {
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['reservation', 'Réservation'], ['contact', 'Contact'], ['blog', 'Blog']]
+  const labelOf = (k: string) => rows.find(r => r[0] === k)?.[1] || k
+  const order: string[] = visibility.sectionOrder?.length ? visibility.sectionOrder : rows.map(r => r[0])
+  const move = (idx: number, dir: -1 | 1) => {
+    const next = [...order]
+    const j = idx + dir
+    if (j < 0 || j >= next.length) return
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    setVisibility({ ...visibility, sectionOrder: next }); setSaveStatus('idle'); setSaveErr(undefined)
+  }
+  const resetOrder = () => { setVisibility({ ...visibility, sectionOrder: rows.map(r => r[0]) }); setSaveStatus('idle'); setSaveErr(undefined) }
   return (
     <div style={{ maxWidth: '640px' }}>
-      <PageHeader title="Visibilité" subtitle="Affichez ou masquez des éléments du site en un clic."
+      <PageHeader title="Visibilité & disposition" subtitle="Affichez, masquez et réordonnez les sections du site."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Sections de page</SectionTitle></div>
-      {rows.map(([k, l]) => (
+      <div style={{ marginTop: 12, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <SectionTitle color={t.primary}>Sections de page</SectionTitle>
+        <button onClick={resetOrder} style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Ordre par défaut</button>
+      </div>
+      {order.map((k, idx) => (
         <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{l}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: t.muted, width: 18, textAlign: 'center' }}>{idx + 1}</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label="Monter" style={{ border: 'none', background: 'transparent', cursor: idx === 0 ? 'default' : 'pointer', padding: '0 2px', opacity: idx === 0 ? 0.3 : 1, color: t.muted, lineHeight: 1, fontSize: 11 }}>▲</button>
+              <button onClick={() => move(idx, 1)} disabled={idx === order.length - 1} aria-label="Descendre" style={{ border: 'none', background: 'transparent', cursor: idx === order.length - 1 ? 'default' : 'pointer', padding: '0 2px', opacity: idx === order.length - 1 ? 0.3 : 1, color: t.muted, lineHeight: 1, fontSize: 11 }}>▼</button>
+            </div>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{labelOf(k)}</span>
+          </div>
           <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
         </div>
       ))}

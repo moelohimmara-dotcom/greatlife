@@ -1,3 +1,4 @@
+import React from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { CartProvider } from '@/contexts/CartContext'
 import { PublicNav } from '@/components/nav/PublicNav'
@@ -13,21 +14,29 @@ import { Blog } from './Blog'
 import { Footer } from './Footer'
 import { OrderCart } from './OrderCart'
 
+const SECTION_COMPONENTS: Record<string, () => React.ReactElement> = {
+  home: Hero,
+  carte: Carte,
+  histoire: Story,
+  engagements: Engagements,
+  equipe: Team,
+  localisation: Localisation,
+  reservation: Reservation,
+  contact: Contact,
+  blog: Blog,
+}
+
 export function PublicSite() {
   const { visibility, rootStyle } = useSite()
+  const order = visibility.sectionOrder?.length ? visibility.sectionOrder : Object.keys(SECTION_COMPONENTS)
   return (
     <CartProvider>
       <div style={rootStyle}>
         <PublicNav />
-        {visibility.sections.home && <Hero />}
-        {visibility.sections.carte && <Carte />}
-        {visibility.sections.histoire && <Story />}
-        {visibility.sections.engagements && <Engagements />}
-        {visibility.sections.equipe && <Team />}
-        {visibility.sections.localisation && <Localisation />}
-        {visibility.sections.reservation && <Reservation />}
-        {visibility.sections.contact && <Contact />}
-        {visibility.sections.blog && <Blog />}
+        {order.map(key => visibility.sections[key] && SECTION_COMPONENTS[key] ? (() => {
+          const Comp = SECTION_COMPONENTS[key]
+          return <Comp key={key} />
+        })() : null)}
         <Footer />
         <OrderCart />
       </div>

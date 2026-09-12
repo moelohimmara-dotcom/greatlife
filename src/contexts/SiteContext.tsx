@@ -21,6 +21,7 @@ export interface SiteContent {
 
 export interface SiteVisibility {
   sections: Record<string, boolean>
+  sectionOrder: string[]
   vertusPanel: boolean
   suggestions: boolean
   testimonials: boolean
@@ -106,6 +107,7 @@ const DEFAULT_CONTENT: SiteContent = {
 
 const DEFAULT_VISIBILITY: SiteVisibility = {
   sections: { home: true, carte: true, histoire: true, engagements: true, equipe: true, localisation: true, reservation: true, contact: true, blog: true },
+  sectionOrder: ['home', 'carte', 'histoire', 'engagements', 'equipe', 'localisation', 'reservation', 'contact', 'blog'],
   vertusPanel: true, suggestions: true, testimonials: true, badges: true,
 }
 
