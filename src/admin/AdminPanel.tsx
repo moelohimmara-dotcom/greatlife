@@ -418,6 +418,26 @@ function ThemeEditor() {
           </div>
         ))}
       </div>
+      <div style={{ marginTop: 28, marginBottom: 16 }}><SectionTitle color={t.accent}>Forme des boutons</SectionTitle></div>
+      <div style={{ fontSize: 12.5, color: t.muted, marginBottom: 14 }}>Pilule (très arrondi), arrondi ou carré. S'applique aux boutons d'action du site.</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {([
+          { r: 100, label: 'Pilule' },
+          { r: 12, label: 'Arrondi' },
+          { r: 4, label: 'Carré' },
+        ] as const).map(p => {
+          const active = (customColors.buttonRadius ?? 100) === p.r
+          return (
+            <button key={p.r} onClick={() => { setCustomColors({ buttonRadius: p.r }); setSaveStatus('idle') }}
+              className="gbtn"
+              style={{
+                fontSize: 13, fontWeight: 600, padding: '10px 22px', cursor: 'pointer',
+                border: active ? `2px solid ${t.primary}` : `1px solid ${t.shadow}`,
+                background: active ? `${t.primary}0d` : 'transparent', color: active ? t.primary : t.text,
+              }}>{p.label}</button>
+          )
+        })}
+      </div>
       <div style={{ marginTop: 28, marginBottom: 20 }}><SectionTitle color={t.accent}>Typographie</SectionTitle></div>
       <Select value={fontId} onValueChange={v => { setFontId(v); setSaveStatus('idle') }}>
         <SelectTrigger style={{ maxWidth: '340px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '11px 14px' }}><SelectValue /></SelectTrigger>

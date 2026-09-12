@@ -126,10 +126,10 @@ export function Reservation() {
                 <Textarea rows={3} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Anniversaire, allergies, table en terrasse…" style={inputStyle} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <Button type="submit" disabled={loading} aria-label="Réserver la table"
+                <Button type="submit" disabled={loading} aria-label="Réserver la table" className="gbtn"
                   style={{
                   background: loading ? t.muted : t.primary, color: '#fff', fontWeight: 600,
-                  padding: '12px 28px', borderRadius: '100px', fontSize: '15px',
+                  padding: '12px 28px', fontSize: '15px',
                   border: 'none', cursor: loading ? 'wait' : 'pointer',
                   opacity: loading ? 0.7 : 1,
                   boxShadow: `0 4px 16px ${t.shadowDeep}`,

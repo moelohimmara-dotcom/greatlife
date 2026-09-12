@@ -105,10 +105,10 @@ function ProductModal({ item, onClose }: { item: MenuItem; onClose: () => void }
               <span style={{ minWidth: 30, textAlign: 'center', fontSize: 16, fontWeight: 700, color: t.heading }}>{qty}</span>
               <button onClick={() => setQty(qty + 1)} aria-label="Augmenter" style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${t.shadow}`, background: t.surfaceAlt, color: t.heading, cursor: 'pointer', fontSize: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
-            <button onClick={handleAdd} disabled={added}
+            <button onClick={handleAdd} disabled={added} className="gbtn"
               style={{
                 flex: 1, minWidth: 160, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                fontSize: '15px', fontWeight: 700, padding: '14px 24px', borderRadius: '100px', cursor: 'pointer', border: 'none',
+                fontSize: '15px', fontWeight: 700, padding: '14px 24px', cursor: 'pointer', border: 'none',
                 background: added ? t.primary : t.primary, color: '#fff',
                 boxShadow: `0 4px 16px ${t.shadowDeep}`, transition: 'all 0.2s',
               }}>

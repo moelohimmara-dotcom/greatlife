@@ -191,8 +191,16 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     ['--c-heading-invert' as any]: theme.headingInvert,
     ['--f-heading' as any]: font.heading,
     ['--f-body' as any]: font.body,
+    ['--btn-radius' as any]: `${customColors.buttonRadius ?? 100}px`,
     ['--dark' as any]: isDark ? '1' : '0',
   }
+
+  useEffect(() => {
+    const id = 'greatlife-btn-radius'
+    let el = document.getElementById(id) as HTMLStyleElement | null
+    if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el) }
+    el.textContent = `.gbtn { border-radius: var(--btn-radius, 100px) !important; }`
+  }, [customColors.buttonRadius])
 
   useEffect(() => {
     const id = 'greatlife-fonts'

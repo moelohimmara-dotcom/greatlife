@@ -14,6 +14,7 @@ export interface CustomColors {
   accent?: string
   gold?: string
   bg?: string
+  buttonRadius?: number
 }
 
 export interface SiteConfig {

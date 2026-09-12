@@ -34,19 +34,19 @@ export function Hero() {
           }}>{content.heroTitle}</h1>
           <p style={{ fontSize: '18px', color: t.muted, lineHeight: 1.55, margin: '24px 0 32px', maxWidth: '480px' }}>{content.heroSub}</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="#carte" style={{
+            <a href="#carte" className="gbtn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: t.primary, color: '#fff', fontWeight: 600,
-              padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none',
+              padding: '14px 28px', fontSize: '15px', textDecoration: 'none',
               boxShadow: `0 4px 16px ${t.shadowDeep}`, transition: 'transform 0.2s',
             }} onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.03)')}
               onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
               Découvrir la carte {Icon.arrow(16)}
             </a>
-            <a href="#reservation" style={{
+            <a href="#reservation" className="gbtn" style={{
               display: 'inline-flex', alignItems: 'center',
               background: 'transparent', color: t.heading, fontWeight: 600,
-              padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none',
+              padding: '14px 28px', fontSize: '15px', textDecoration: 'none',
               border: `2px solid ${t.primary}33`,
             }}>Réserver une table</a>
           </div>

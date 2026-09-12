@@ -54,7 +54,7 @@ export function Footer() {
             <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: 1.8 }}>
               Lun–Dim<br />7h00 – 23h00<br /><span style={{ fontSize: '13px', opacity: 0.7 }}>Service continu</span>
             </div>
-            <a href="#reservation" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: '14px', fontSize: '13px', fontWeight: 700, color: '#fff', background: t.gold, padding: '9px 16px', borderRadius: '100px', textDecoration: 'none', transition: 'transform 0.2s' }}
+            <a href="#reservation" className="gbtn" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: '14px', fontSize: '13px', fontWeight: 700, color: '#fff', background: t.gold, padding: '9px 16px', textDecoration: 'none', transition: 'transform 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
               {Icon.calendar(14, '#fff')} Réserver
             </a>

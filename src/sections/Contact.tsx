@@ -91,10 +91,10 @@ export function Contact() {
                 {errors.message && <div style={errStyle}>{errors.message}</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <Button type="submit" disabled={loading} aria-label="Envoyer le message"
+                <Button type="submit" disabled={loading} aria-label="Envoyer le message" className="gbtn"
                   style={{
                   background: loading ? t.muted : t.primary, color: '#fff', fontWeight: 600,
-                  padding: '12px 28px', borderRadius: '100px', fontSize: '15px',
+                  padding: '12px 28px', fontSize: '15px',
                   border: 'none', cursor: loading ? 'wait' : 'pointer',
                   opacity: loading ? 0.7 : 1,
                   boxShadow: `0 4px 16px ${t.shadowDeep}`,
@@ -105,10 +105,10 @@ export function Contact() {
                 </Button>
                 <Button type="button" onClick={() => { setForm(
 { nom: '', email: '', sujet: 'contact', message: '' }); setErrors({}) }}
-                  aria-label="Effacer le formulaire"
+                  aria-label="Effacer le formulaire" className="gbtn"
                   style={{
                   background: 'transparent', color: t.muted, fontWeight: 600,
-                  padding: '12px 20px', borderRadius: '100px', fontSize: '14px',
+                  padding: '12px 20px', fontSize: '14px',
                   border: `1px solid ${t.shadow}`, cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   transition: 'all 0.2s',
