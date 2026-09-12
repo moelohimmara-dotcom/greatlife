@@ -362,7 +362,7 @@ function MenuEditor() {
 }
 
 function ThemeEditor() {
-  const { themeId, setThemeId, fontId, setFontId, theme: t, content, dataSource, saveSiteConfigToDb } = useSite()
+  const { themeId, setThemeId, fontId, setFontId, theme: t, content, dataSource, saveSiteConfigToDb, customColors, setCustomColors } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const save = async () => {
@@ -392,6 +392,30 @@ function ThemeEditor() {
             <div style={{ fontWeight: 700, fontSize: '14px', color: th.heading }}>{th.label}</div>
             {themeId === th.id && <div style={{ fontSize: '11px', color: th.accent, fontWeight: 600, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{Icon.check(12, th.accent)} Actif</div>}
           </button>
+        ))}
+      </div>
+      <div style={{ marginTop: 28, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <SectionTitle color={t.accent}>Couleurs personnalisées</SectionTitle>
+        {(customColors.primary || customColors.accent || customColors.gold || customColors.bg) && (
+          <button onClick={() => { setCustomColors({ primary: undefined, accent: undefined, gold: undefined, bg: undefined }); setSaveStatus('idle') }} style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Réinitialiser</button>
+        )}
+      </div>
+      <div style={{ fontSize: 12.5, color: t.muted, marginBottom: 14 }}>Superposez vos propres couleurs au thème « {THEMES[themeId]?.label} ». Laissez vide pour garder la couleur du thème.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
+        {([
+          { key: 'primary', label: 'Principale', hint: 'boutons & titres' },
+          { key: 'accent', label: 'Accent', hint: 'détails & surbrillance' },
+          { key: 'gold', label: 'Or', hint: 'badges & signature' },
+          { key: 'bg', label: 'Fond', hint: 'arrière-plan du site' },
+        ] as const).map(c => (
+          <div key={c.key} style={{ padding: '14px', borderRadius: 14, background: t.surface, border: `1px solid ${t.shadow}` }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: t.heading, marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 11, color: t.muted, marginBottom: 10 }}>{c.hint}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="color" value={customColors[c.key] || ''} onChange={e => { setCustomColors({ [c.key]: e.target.value }); setSaveStatus('idle') }} style={{ width: 44, height: 44, border: `1px solid ${t.shadow}`, borderRadius: 10, cursor: 'pointer', padding: 2, background: 'transparent' }} />
+              <span style={{ fontSize: 12, color: t.muted, fontFamily: 'var(--f-body)' }}>{customColors[c.key] || THEMES[themeId]?.[c.key === 'bg' ? 'bg' : c.key] || '—'}</span>
+            </div>
+          </div>
         ))}
       </div>
       <div style={{ marginTop: 28, marginBottom: 20 }}><SectionTitle color={t.accent}>Typographie</SectionTitle></div>

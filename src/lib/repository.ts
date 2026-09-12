@@ -9,11 +9,19 @@ const BLOG_TABLE = 'blog_posts'
 const RESERVATIONS_TABLE = 'reservations'
 const CONTENT_KEY = 'site_config'
 
+export interface CustomColors {
+  primary?: string
+  accent?: string
+  gold?: string
+  bg?: string
+}
+
 export interface SiteConfig {
   content: SiteContent
   themeId: string
   fontId: string
   visibility: unknown
+  customColors?: CustomColors
 }
 
 export type SaveResult = { ok: boolean; error?: string }

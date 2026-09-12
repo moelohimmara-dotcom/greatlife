@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type CustomColors, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 
 export interface SiteContent {
@@ -52,6 +52,8 @@ interface SiteContextValue {
   themeId: string
   setThemeId: (id: string) => void
   theme: ThemePalette
+  customColors: Partial<CustomColors>
+  setCustomColors: (c: Partial<CustomColors>) => void
   fontId: string
   setFontId: (id: string) => void
   font: FontPair
@@ -130,6 +132,7 @@ function mediaAssetToSlot(a: MediaAsset): MediaSlot {
 export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [themeId, setThemeId] = useState('gourmand')
   const [fontId, setFontId] = useState('fraunces')
+  const [customColors, setCustomColorsState] = useState<Partial<CustomColors>>({})
   const [content, setContent] = useState(DEFAULT_CONTENT)
   const [visibility, setVisibility] = useState(DEFAULT_VISIBILITY)
   const [menu, setMenu] = useState(MENU)
@@ -143,9 +146,30 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
 
-  const theme = THEMES[themeId]
+  const baseTheme = THEMES[themeId] ?? Object.values(THEMES)[0]
   const font = FONTS[fontId]
   const isDark = themeId === 'premium'
+
+  function shade(hex: string, amt: number): string {
+    const m = hex.replace('#', '')
+    if (m.length !== 6) return hex
+    const r = Math.max(0, Math.min(255, parseInt(m.slice(0, 2), 16) + amt))
+    const g = Math.max(0, Math.min(255, parseInt(m.slice(2, 4), 16) + amt))
+    const b = Math.max(0, Math.min(255, parseInt(m.slice(4, 6), 16) + amt))
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+  }
+
+  const theme: ThemePalette = customColors.primary || customColors.accent || customColors.gold || customColors.bg
+    ? {
+        ...baseTheme,
+        ...(customColors.primary ? { primary: customColors.primary, primaryDark: shade(customColors.primary, -28), heading: customColors.primary } : {}),
+        ...(customColors.accent ? { accent: customColors.accent, accentSoft: shade(customColors.accent, 24) } : {}),
+        ...(customColors.gold ? { gold: customColors.gold, cream: customColors.gold } : {}),
+        ...(customColors.bg ? { bg: customColors.bg, surfaceAlt: shade(customColors.bg, 8) } : {}),
+      }
+    : baseTheme
+
+  const setCustomColors = (c: Partial<CustomColors>) => setCustomColorsState(prev => ({ ...prev, ...c }))
 
   const rootStyle: React.CSSProperties = {
     background: theme.bg, color: theme.text, fontFamily: font.body,
@@ -220,6 +244,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         if (cfg.themeId) setThemeId(cfg.themeId)
         if (cfg.fontId) setFontId(cfg.fontId)
         if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+        if (cfg.customColors) setCustomColorsState(cfg.customColors)
       }
       if (messagesRes.fromDb && messagesRes.data.length > 0) {
         setMessages(messagesRes.data)
@@ -245,7 +270,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const saveContentToDb = async () => saveContent(content)
 
   const saveSiteConfigToDb = async () => {
-    const config: SiteConfig = { content, themeId, fontId, visibility }
+    const config: SiteConfig = { content, themeId, fontId, visibility, customColors }
     return saveSiteConfig(config)
   }
 
@@ -293,6 +318,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (cfg.themeId) setThemeId(cfg.themeId)
       if (cfg.fontId) setFontId(cfg.fontId)
       if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+      if (cfg.customColors) setCustomColorsState(cfg.customColors)
     }
   }
 
@@ -332,7 +358,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value: SiteContextValue = {
-    themeId, setThemeId, theme, fontId, setFontId, font,
+    themeId, setThemeId, theme, customColors, setCustomColors, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
     menu, setMenu, media, setMedia, messages, setMessages,
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
