@@ -14,6 +14,7 @@ import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBl
 import type { MenuItem } from '@/data/menu'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
+import { getProductIllustrations } from '@/lib/productImages'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -606,6 +607,30 @@ function MediaManager() {
           </div>
         )}
       </OrganicCard>
+
+      {(() => {
+        const illus = getProductIllustrations()
+        if (illus.length === 0) return null
+        return (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: t.heading }}>Illustrations produits</div>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: `${t.gold}15`, color: t.gold }}>{illus.length} visuels</span>
+            </div>
+            <div style={{ fontSize: 12, color: t.muted, marginBottom: 12 }}>Visuels générés pour la carte publique. Ils apparaissent automatiquement sur chaque fiche produit du site.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+              {illus.map(it => (
+                <OrganicCard key={it.slot} style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: `${t.primary}0d` }}>
+                    <img src={it.url} alt={it.product} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ padding: '8px 10px', fontSize: 11, color: t.muted, textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.product}</div>
+                </OrganicCard>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={{ marginTop: 24 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: t.heading, marginBottom: 12 }}>Fichiers téléversés</div>
