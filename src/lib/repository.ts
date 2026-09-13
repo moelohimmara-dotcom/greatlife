@@ -401,6 +401,18 @@ export async function updateReservationStatus(id: string, status: string): Promi
   }
 }
 
+export async function deleteReservation(id: string): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { error } = await sb.from(RESERVATIONS_TABLE).delete().eq('id', id)
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
 const ORDERS_TABLE = 'orders'
 
 export interface OrderItem {
