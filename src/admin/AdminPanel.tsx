@@ -776,6 +776,8 @@ function UsersRoles() {
   const effAccess = getEffectiveModuleAccess()
   const [rbacBusy, setRbacBusy] = useState(false)
   const [rbacStatus, setRbacStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; msg: string }>({ kind: 'idle', msg: '' })
+  const [moduleQuery, setModuleQuery] = useState('')
+  const filteredModules = ALL_MODULES.filter(m => MODULE_ACCESS[m].module.toLowerCase().includes(moduleQuery.trim().toLowerCase()))
 
   const actionsFor = (m: string): CrudAction[] => CRUD_ACTIONS.filter(act => MODULE_ACCESS[m].actions[act] !== undefined)
   const roleHas = (m: string, a: CrudAction, role: string): boolean => {
@@ -1027,18 +1029,29 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
       {!isOwner && (
         <div style={{ fontSize: 12, color: t.muted, marginBottom: 10 }}>Lecture seule — seul le propriétaire peut modifier les permissions.</div>
       )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
+          <input value={moduleQuery} onChange={e => setModuleQuery(e.target.value)} placeholder="Rechercher un module…" style={{ ...inp, paddingLeft: 30, fontSize: 12 }} />
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(13, t.muted)}</span>
+        </div>
+        {moduleQuery && <span style={{ fontSize: 11, color: t.muted }}>{filteredModules.length} module{filteredModules.length > 1 ? 's' : ''}</span>}
+      </div>
       <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${t.shadow}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface, minWidth: 720 }}>
           <thead>
             <tr style={{ background: t.surfaceAlt }}>
               <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.muted, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}></th>
-              {MODULE_GROUPS.map(([label, mods]) => (
-                <th key={label} colSpan={mods.length} style={{ ...cellStyle, color: t.muted, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${t.shadow}` }}>{label}</th>
-              ))}
+              {MODULE_GROUPS.map(([label, mods]) => {
+                const shown = mods.filter(m => filteredModules.includes(m))
+                if (shown.length === 0) return null
+                return (
+                  <th key={label} colSpan={shown.length} style={{ ...cellStyle, color: t.muted, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${t.shadow}` }}>{label}</th>
+                )
+              })}
             </tr>
             <tr style={{ background: t.surfaceAlt }}>
               <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1 }}>Rôle</th>
-              {ALL_MODULES.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{MODULE_ACCESS[m].module}</th>)}
+              {filteredModules.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{MODULE_ACCESS[m].module}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -1052,7 +1065,7 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
                     </div>
                   ) })()}
                 </td>
-                {ALL_MODULES.map(m => {
+                {filteredModules.map(m => {
                   const acts = actionsFor(m)
                   if (acts.length === 0) {
                     const p = permLevelFor(m, r.id)
