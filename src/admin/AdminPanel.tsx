@@ -10,7 +10,7 @@ import { MODULES, ROLES, canAccessModule, canWriteModule, ROLE_LABELS } from '@/
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, type BlogPost, type Reservation, type Order } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
@@ -42,6 +42,7 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
     ['users', 'Utilisateurs & rôles', 'users'],
     ['forms', 'Formulaires & emails', 'settings'],
     ['settings', 'Réglages globaux', 'settings'],
+    ['audit', "Journal d'activité", 'eye'],
   ]],
 ]
 
@@ -1450,6 +1451,7 @@ function MessagesManager() {
 
 function OrdersManager() {
   const { theme: t, dataSource } = useSite()
+  const { user } = useAuth()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
@@ -1515,6 +1517,7 @@ function OrdersManager() {
     if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setOrders(prev => prev.filter(o => o.id !== id))
     setConfirmDel(null)
+    await logAudit({ actor: user?.email ?? '', action: 'order_delete', target: `Commande ${orders.find(o => o.id === id)?.ref ?? id}`, detail: 'Suppression de commande' })
   }
   const [statusSending, setStatusSending] = useState(false)
   const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
@@ -1524,6 +1527,7 @@ function OrdersManager() {
     if (!res.ok) { setStatusErr(res.error || 'Échec de la mise à jour'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
     const o = orders.find(x => x.id === id)
+    if (o) await logAudit({ actor: user?.email ?? '', action: 'order_status', target: `Commande ${o.ref}`, detail: `→ ${statusLabel[status] ?? status}` })
     if (o) {
       setStatusSending(true)
       await invokeOrderStatusEmail({
@@ -1630,6 +1634,7 @@ function OrdersManager() {
 
 function ReservationsManager() {
   const { theme: t, dataSource } = useSite()
+  const { user } = useAuth()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
@@ -1696,6 +1701,7 @@ function ReservationsManager() {
     if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setReservations(prev => prev.filter(r => r.id !== id))
     setConfirmDel(null)
+    await logAudit({ actor: user?.email ?? '', action: 'reservation_delete', target: `Réservation ${reservations.find(r => r.id === id)?.nom ?? id}`, detail: 'Suppression de réservation' })
   }
   const [statusSending, setStatusSending] = useState(false)
   const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
@@ -1705,6 +1711,7 @@ function ReservationsManager() {
     if (!res.ok) { setStatusErr(res.error || 'Échec de la mise à jour'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
     const r = reservations.find(x => x.id === id)
+    if (r) await logAudit({ actor: user?.email ?? '', action: 'reservation_status', target: `Réservation ${r.nom}`, detail: `→ ${statusLabel[status] ?? status}` })
     if (r) {
       setStatusSending(true)
       await invokeReservationStatusEmail({
@@ -1970,10 +1977,89 @@ function TeamContentsEditor() {
   )
 }
 
+function AuditManager() {
+  const { theme: t, dataSource } = useSite()
+  const { user } = useAuth()
+  const [entries, setEntries] = useState<AuditEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<string>('all')
+  const inp = inputStyle(t)
+  useEffect(() => {
+    if (dataSource !== 'supabase') { setLoading(false); return }
+    let active = true
+    const refresh = async () => {
+      const res = await fetchAuditLog()
+      if (!active || !res.fromDb) return
+      setEntries(res.data); setLoading(false)
+    }
+    refresh()
+    const timer = setInterval(refresh, 30000)
+    return () => { active = false; clearInterval(timer) }
+  }, [dataSource])
+  const actions = Array.from(new Set(entries.map(e => e.action))).sort()
+  const q = query.trim().toLowerCase()
+  const filtered = entries.filter(e =>
+    (filter === 'all' || e.action === filter) &&
+    (!q || e.actor.toLowerCase().includes(q) || e.target.toLowerCase().includes(q) || e.detail.toLowerCase().includes(q))
+  )
+  const actorName = (a: string) => a || 'système'
+  if (dataSource !== 'supabase') {
+    return (
+      <div style={{ maxWidth: '640px' }}>
+        <PageHeader title="Journal d'activité" />
+        <div style={{ marginTop: 16, padding: 20, borderRadius: 14, background: t.surfaceAlt, border: `1px dashed ${t.shadow}`, fontSize: 14, color: t.muted }}>
+          Le journal des actions admin apparaît ici. Connectez Supabase pour l'activer.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ maxWidth: '900px' }}>
+      <PageHeader title="Journal d'activité" subtitle={`${entries.length} action${entries.length > 1 ? 's' : ''} tracée${entries.length > 1 ? 's' : ''}`} />
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher (acteur, cible, détail)…" style={{ ...inp, paddingLeft: 32, fontSize: 13 }} />
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(14, t.muted)}</span>
+        </div>
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger style={{ ...inp, width: 180 }}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les actions</SelectItem>
+            {actions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
+        filtered.length === 0 ? <EmptyState icon={Icon.eye(26, t.muted)} title="Aucune entrée" subtitle="Les actions sensibles du panneau seront tracées ici." /> :
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          {filtered.map(e => (
+            <OrganicCard key={e.id} style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${t.primary}14`, color: t.primary }}>{e.action}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: t.heading }}>{e.target || '—'}</span>
+                </div>
+                <span style={{ fontSize: '11px', color: t.muted }}>{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : ''}</span>
+              </div>
+              {e.detail && <div style={{ fontSize: '12px', color: t.muted, marginTop: 6 }}>{e.detail}</div>}
+              <div style={{ fontSize: '11px', color: t.accent, fontWeight: 600, marginTop: 4 }}>par {actorName(e.actor)}{e.actor === (user?.email ?? '') ? ' (vous)' : ''}</div>
+            </OrganicCard>
+          ))}
+        </div>
+      }
+    </div>
+  )
+}
+
 function SettingsEditor() {
-  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const { content, setContent, theme: t, dataSource, saveContentToDb, themeId, setThemeId, fontId, setFontId, visibility, setVisibility } = useSite()
+  const { user } = useAuth()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
+  const [importStatus, setImportStatus] = useState<'idle' | 'busy' | 'ok' | 'error'>('idle')
+  const [importErr, setImportErr] = useState<string | undefined>(undefined)
+  const fileRef = React.useRef<HTMLInputElement>(null)
   const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
   const inp = inputStyle(t)
   const save = async () => {
@@ -1982,6 +2068,37 @@ function SettingsEditor() {
     const res = await saveContentToDb()
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
+  }
+  const buildConfig = () => ({ content, themeId, fontId, visibility })
+  const exportConfig = () => {
+    const blob = new Blob([JSON.stringify(buildConfig(), null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `greatlife-config-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  const handleImport = async (file: File | undefined) => {
+    if (!file) return
+    setImportStatus('busy'); setImportErr(undefined)
+    try {
+      const text = await file.text()
+      const cfg = JSON.parse(text) as { content?: typeof content; themeId?: string; fontId?: string; visibility?: typeof visibility }
+      if (cfg.content) setContent(cfg.content)
+      if (cfg.themeId) setThemeId(cfg.themeId)
+      if (cfg.fontId) setFontId(cfg.fontId)
+      if (cfg.visibility) setVisibility(cfg.visibility)
+      if (dataSource === 'supabase') {
+        const res = await saveSiteConfig(buildConfig())
+        if (!res.ok) { setImportStatus('error'); setImportErr(res.error || 'Échec de l\'enregistrement'); setTimeout(() => setImportStatus('idle'), 4000); return }
+        await logAudit({ actor: user?.email ?? '', action: 'import_config', target: 'site_config', detail: `Importé depuis ${file.name}` })
+      }
+      setImportStatus('ok'); setTimeout(() => setImportStatus('idle'), 3000)
+    } catch {
+      setImportStatus('error'); setImportErr('Fichier JSON invalide'); setTimeout(() => setImportStatus('idle'), 4000)
+    }
+    if (fileRef.current) fileRef.current.value = ''
   }
   return (
     <div style={{ maxWidth: '760px' }}>
@@ -2013,6 +2130,17 @@ function SettingsEditor() {
             <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
             <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
           </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.primary}>Sauvegarde & transfert</SectionTitle></div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <GhostButton color={t.primary} onClick={exportConfig}>{Icon.arrow(13, t.primary)} Exporter la configuration</GhostButton>
+            <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={e => handleImport(e.target.files?.[0])} />
+            <GhostButton color={t.accent} onClick={() => fileRef.current?.click()} disabled={importStatus === 'busy'}>{importStatus === 'busy' ? 'Import…' : 'Importer une configuration'}</GhostButton>
+            {importStatus === 'ok' && <span style={{ fontSize: '12px', color: t.primary, fontWeight: 600 }}>✓ Importé</span>}
+            {importStatus === 'error' && <span style={{ fontSize: '12px', color: t.accent, fontWeight: 600 }} title={importErr}>✗ {importErr}</span>}
+          </div>
+          <div style={{ fontSize: '12px', color: t.muted, marginTop: 10 }}>L'export contient le contenu, le thème, les polices et la visibilité. L'import remplace la configuration courante et l'enregistre dans Supabase.</div>
         </div>
       </div>
     </div>
@@ -2056,6 +2184,7 @@ export function Admin() {
           {effective === 'users' && <UsersRoles />}
           {effective === 'forms' && <FormsConfig />}
           {effective === 'settings' && <SettingsEditor />}
+          {effective === 'audit' && <AuditManager />}
         </motion.div>
       </AnimatePresence>
     </AdminShell>
