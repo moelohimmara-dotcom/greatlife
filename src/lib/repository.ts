@@ -494,6 +494,18 @@ export async function updateOrderStatus(id: string, status: string): Promise<Sav
   }
 }
 
+export async function deleteOrder(id: string): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { error } = await sb.from(ORDERS_TABLE).delete().eq('id', id)
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
 const MEDIA_TABLE = 'media_assets'
 const MEDIA_BUCKET = 'media'
 
