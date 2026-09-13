@@ -817,6 +817,16 @@ function VisibilityEditor() {
 
 const ROLE_OPTIONS = ROLES.map(r => ({ id: r.id, name: r.name }))
 
+function emailErrLabel(err?: string): string {
+  if (!err) return 'raison inconnue'
+  if (err === 'not-configured') return 'Supabase non configuré'
+  if (err === 'network') return 'erreur réseau'
+  if (err === 'no-credentials') return 'secrets SMTP manquants (SMTP_USER/SMTP_PASS)'
+  if (err === 'Authentification requise' || err === 'Session admin invalide') return 'authentification admin requise'
+  if (err === 'Acces non autorise' || err === 'Accès non autorisé') return 'accès non autorisé'
+  return err
+}
+
 function UsersRoles() {
   const { theme: t, dataSource, adminUsers, refreshAdminUsers, rbacOverrides, saveRbac } = useSite()
   const { user: currentUser, refreshRole } = useAuth()
@@ -898,6 +908,8 @@ function UsersRoles() {
     const res = await saveRbac(pendingOverrides)
     setRbacBusy(false)
     if (res.ok) {
+      let mailFail = 0
+      let mailTotal = 0
       for (const m of ALL_MODULES) for (const a of CRUD_ACTIONS) {
         const p = pendingOverrides[m]?.[a]
         const s = savedOverrides?.[m]?.[a] ?? MODULE_ACCESS[m].actions[a]
@@ -913,7 +925,8 @@ function UsersRoles() {
             const permLabel = a === 'create' ? 'Création' : a === 'update' ? 'Modification' : a === 'delete' ? 'Suppression' : 'Publication'
             const permText = `${permLabel} sur le module « ${MODULE_ACCESS[m].module} » ${granted ? 'vous a été accordée' : 'vous a été retirée'}.`
             for (const u of adminUsers.filter(u => u.role === role)) {
-              invokeReplyEmail({
+              mailTotal++
+              const r = await invokeReplyEmail({
                 to: u.email,
                 subject: `Greatlife - Mise à jour de vos permissions (${ROLE_LABELS[role] ?? role})`,
                 replyMessage: `Bonjour ${u.name},
@@ -927,13 +940,21 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
 
 — L'équipe Greatlife`,
                 replyFromName: 'Greatlife',
-              }).catch(() => {})
+              })
+              if (!r.ok) mailFail++
             }
           }
         }
       }
       setPendingOverrides(null)
-      setRbacStatus({ kind: 'ok', msg: 'Permissions enregistrées.' })
+      const okMsg = 'Permissions enregistrées.'
+      if (mailTotal === 0) {
+        setRbacStatus({ kind: 'ok', msg: okMsg })
+      } else if (mailFail === 0) {
+        setRbacStatus({ kind: 'ok', msg: `${okMsg} ${mailTotal} email(s) de notification envoyé(s).` })
+      } else {
+        setRbacStatus({ kind: 'err', msg: `${okMsg} — ${mailFail}/${mailTotal} email(s) non envoyé(s) (vérifiez les secrets SMTP et l'Edge Function).` })
+      }
       refreshRole().catch(() => {})
     } else {
       setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
@@ -947,11 +968,10 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
     const res = await saveRbac(null)
     setRbacBusy(false)
     if (res.ok) {
-      setRbacStatus({ kind: 'ok', msg: 'Permissions réinitialisées (valeurs par défaut).' })
-      refreshRole().catch(() => {})
       logAudit({ actor: currentUser?.email ?? '', action: 'rbac_reset', target: 'Matrice globale', detail: 'Réinitialisation' })
+      let mailFail = 0
       for (const u of adminUsers) {
-        invokeReplyEmail({
+        const r = await invokeReplyEmail({
           to: u.email,
           subject: 'Greatlife - Réinitialisation des permissions',
           replyMessage: `Bonjour ${u.name},
@@ -964,8 +984,16 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
 
 — L'équipe Greatlife`,
           replyFromName: 'Greatlife',
-        }).catch(() => {})
+        })
+        if (!r.ok) mailFail++
       }
+      const okMsg = 'Permissions réinitialisées (valeurs par défaut).'
+      if (mailFail === 0) {
+        setRbacStatus({ kind: 'ok', msg: `${okMsg} ${adminUsers.length} email(s) envoyé(s).` })
+      } else {
+        setRbacStatus({ kind: 'err', msg: `${okMsg} — ${mailFail}/${adminUsers.length} email(s) non envoyé(s) (vérifiez les secrets SMTP et l'Edge Function).` })
+      }
+      refreshRole().catch(() => {})
     } else {
       setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
@@ -1006,7 +1034,7 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
         detail: `Rôle : ${ROLE_LABELS[editing.role] ?? editing.role}`,
       })
       const dest = editing.email.trim().toLowerCase()
-      invokeReplyEmail({
+      const mail = await invokeReplyEmail({
         to: dest,
         subject: 'Greatlife - Votre accès au panneau d\'administration',
         replyMessage: `Bonjour ${editing.name.trim()},
@@ -1019,11 +1047,15 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
 
 — L'équipe Greatlife`,
         replyFromName: 'Greatlife',
-      }).catch(() => {})
+      })
       setEditing(null)
       await refreshAdminUsers()
       refreshRole().catch(() => {})
-      setStatus({ kind: 'ok', msg: editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.' })
+      const okMsg = editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.'
+      setStatus(mail.ok
+        ? { kind: 'ok', msg: `${okMsg} Email de notification envoyé à ${dest}.` }
+        : { kind: 'err', msg: `${okMsg} — Email non envoyé (${emailErrLabel(mail.error)}).` }
+      )
     } else {
       setStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
