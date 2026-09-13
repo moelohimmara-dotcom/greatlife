@@ -143,6 +143,14 @@ export async function saveContent(content: SiteContent): Promise<SaveResult> {
       emailContact: content.emailContact,
       emailReservation: content.emailReservation,
       autoReply: content.autoReply,
+      restaurantName: content.restaurantName,
+      currency: content.currency,
+      phone: content.phone,
+      address: content.address,
+      hours: content.hours,
+      socialFacebook: content.socialFacebook,
+      socialInstagram: content.socialInstagram,
+      socialWhatsapp: content.socialWhatsapp,
     }
     const { error } = await sb.from(CONTENT_TABLE).upsert(
       { key: CONTENT_KEY, value: merged, updated_at: new Date().toISOString() },
@@ -586,13 +594,23 @@ export async function uploadMedia(
   }
 }
 
-export async function deleteMedia(id: string, storagePath: string): Promise<SaveResult> {
+export async function deleteMedia(id: string, storagePath?: string): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
+    let path = storagePath
+    if (!path) {
+      const { data: row, error: readErr } = await sb
+        .from(MEDIA_TABLE)
+        .select('storage_path')
+        .eq('id', id)
+        .maybeSingle()
+      if (readErr) return { ok: false, error: errMsg(readErr) }
+      path = row ? String((row as Record<string, unknown>).storage_path ?? '') : ''
+    }
     const { error: delErr } = await sb.from(MEDIA_TABLE).delete().eq('id', id)
     if (delErr) return { ok: false, error: errMsg(delErr) }
-    if (storagePath) await sb.storage.from(MEDIA_BUCKET).remove([storagePath])
+    if (path) await sb.storage.from(MEDIA_BUCKET).remove([path])
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }

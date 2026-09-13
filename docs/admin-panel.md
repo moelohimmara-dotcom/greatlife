@@ -1,6 +1,6 @@
 # Greatlife — Panneau d'administration
 
-> Le panneau admin vit dans `src/admin/AdminPanel.tsx` (~1400 lignes : shell + 12 modules) et `src/admin/ui.tsx` (primitives). Accès : `/login` → `/admin`. Voir aussi [database.md](./database.md) pour les tables sous-jacentes.
+> Le panneau admin vit dans `src/admin/AdminPanel.tsx` (shell + 13 modules) et `src/admin/ui.tsx` (primitives). Accès : `/login` → `/admin`. Voir aussi [database.md](./database.md) pour les tables sous-jacentes.
 
 ## Accès & authentification
 
@@ -38,11 +38,12 @@
 | Apparence | `visibility` | Visibilité | `VisibilityEditor` | eye |
 | Système | `users` | Utilisateurs & rôles | `UsersRoles` | users |
 | Système | `forms` | Formulaires & emails | `FormsConfig` | settings |
+| Système | `settings` | Réglages globaux | `SettingsEditor` | settings |
 
 ## Les 12 modules
 
 ### 1. Dashboard (`Dashboard`)
-Cartes de stats : nb produits, messages, commandes, réservations, utilisateurs. Badge d'état de la source de données (`dataSource` : Supabase connecté / Mode démo / Chargement). Liste les 4 derniers messages. Données depuis `useSite()`.
+Cartes de stats : nb produits, messages (dont non traités), commandes (dont en attente), réservations, utilisateurs, et **chiffre d'affaires** (somme des `total` des commandes confirmées, sur la période sélectionnée). Filtre de période : Tout / 30 jours / 7 jours. Badge d'état de la source de données (`dataSource` : Supabase connecté / Mode démo / Chargement). Liste les 4 derniers messages. Données depuis `useSite()` + `fetchOrders`.
 
 ### 2. Commandes (`OrdersManager`, ligne 1159)
 - Charge `fetchOrders` au montage, souscrit au canal `orders-realtime` + polling 60 s.
@@ -95,6 +96,10 @@ Cartes de stats : nb produits, messages, commandes, réservations, utilisateurs.
 ### 12. Formulaires & emails (`FormsConfig`, ligne 937)
 - Édite l'auto-réponse (`autoReply`), les emails de contact/réservation.
 - Ces valeurs sont stockées dans `site_content` (via `saveContentToDb`).
+
+### 13. Réglages globaux (`SettingsEditor`)
+- Édite l'identité et les coordonnées du restaurant : nom, devise, téléphone, adresse, horaires d'ouverture, réseaux sociaux (Facebook, Instagram, WhatsApp).
+- Stocké dans `site_content` (via `saveContentToDb`) dans les champs `restaurantName`, `currency`, `phone`, `address`, `hours`, `socialFacebook`, `socialInstagram`, `socialWhatsapp` (voir `SiteContent`).
 
 ## Primitives admin (`src/admin/ui.tsx`)
 
