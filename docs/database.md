@@ -17,9 +17,9 @@
 | `messages` | Messages du formulaire de contact | 001 | non | INSERT public ; UPDATE/SELECT admin |
 | `site_content` | Config du site (clé `site_config`) | 001 | oui (SELECT) | owner, manager |
 | `admin_users` | Comptes admin + rôles | 001 | non | owner uniquement |
-| `blog_posts` | Articles de blog | 005 | publiés uniquement (SELECT) ; drafts admin | owner, manager |
+| `blog_posts` | Articles de blog | 005 | publiés uniquement (SELECT) ; drafts admin | owner, manager, editor |
 | `reservations` | Réservations de table | 006 | non | INSERT public ; UPDATE/SELECT admin |
-| `media_assets` | Métadonnées des médias uploadés | 011 | oui (SELECT) | owner, manager |
+| `media_assets` | Métadonnées des médias uploadés | 011 | oui (SELECT) | owner, manager, editor, marketing |
 | `orders` | Commandes en ligne | 012 | non | INSERT public ; UPDATE/SELECT admin |
 
 ### Schéma détaillé
@@ -104,6 +104,7 @@ Les fichiers sont dans `supabase/migrations/`, préfixés `NNN_`. Toutes sont **
 | 011 | `011_media_management.sql` | Bucket `media` + table `media_assets` + policies via `is_admin()` |
 | 012 | `012_orders.sql` | Table `orders` + RLS + Realtime sur orders |
 | 013 | `013_fix_reservations_orders_rls.sql` | Remplace les policies admin de `reservations` et `orders` par des versions basées sur `is_admin()` (corrige la récursion RLS des migrations 006/012) |
+| 014 | `014_rbac_roles.sql` | Élargit le RBAC : `editor` (blog) et `marketing` (médias) gagnent l'écriture sur `blog_posts` / `media_assets` + bucket `media`, en cohérence avec `MODULE_ACCESS` (rbac.ts) |
 
 ### Appliquer les migrations
 

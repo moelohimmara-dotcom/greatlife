@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { MODULES, ROLES } from '@/data/rbac'
+import { MODULES, ROLES, canAccessModule, canWriteModule, ROLE_LABELS } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -63,7 +63,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           <div key={groupLabel}>
             <div style={{ fontSize: '10px', fontWeight: 700, color: t.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {items.map(([k, l, icon]) => {
+              {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => {
                 const isActive = active === k
                 return (
                   <button key={k} onClick={() => go(k)} style={{
@@ -88,7 +88,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
       <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '14px' }}>
         <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
         <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{user?.role === 'owner' ? 'Propriétaire' : 'Gérant'}</div>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
         <button onClick={handleLogout} style={{
           width: '100%', fontSize: '13px', fontWeight: 600, padding: '9px', borderRadius: 10, cursor: 'pointer',
           border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent,
@@ -1589,26 +1589,43 @@ function SettingsEditor() {
   )
 }
 
+const AccessBanner = () => {
+  const { theme: t } = useSite()
+  const { user } = useAuth()
+  const role = user?.role ?? 'guest'
+  return (
+    <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, border: `1px solid ${t.primary}22`, fontSize: 13, color: t.heading, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ flexShrink: 0 }}>{Icon.eye(16, t.gold || '#b8860b')}</span>
+      <span>Accès en lecture seule — votre rôle « {ROLE_LABELS[role] ?? role} » ne permet pas de modifier ce module.</span>
+    </div>
+  )
+}
+
 export function Admin() {
   const [active, setActive] = useState('dashboard')
+  const { user } = useAuth()
+  const role = user?.role ?? 'guest'
+  const effective = canAccessModule(active, role) ? active : 'dashboard'
+  const readOnly = !canWriteModule(effective, role)
   return (
-    <AdminShell active={active} setActive={setActive}>
+    <AdminShell active={effective} setActive={setActive}>
       <AnimatePresence mode="wait">
-        <motion.div key={active} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
-          {active === 'dashboard' && <Dashboard />}
-          {active === 'messages' && <MessagesManager />}
-          {active === 'orders' && <OrdersManager />}
-          {active === 'reservations' && <ReservationsManager />}
-          {active === 'content' && <ContentEditor />}
-          {active === 'team' && <TeamContentsEditor />}
-          {active === 'menu' && <MenuEditor />}
-          {active === 'theme' && <ThemeEditor />}
-          {active === 'blog' && <BlogEditor />}
-          {active === 'media' && <MediaManager />}
-          {active === 'visibility' && <VisibilityEditor />}
-          {active === 'users' && <UsersRoles />}
-          {active === 'forms' && <FormsConfig />}
-          {active === 'settings' && <SettingsEditor />}
+        <motion.div key={effective} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
+          {readOnly && effective !== 'dashboard' && <AccessBanner />}
+          {effective === 'dashboard' && <Dashboard />}
+          {effective === 'messages' && <MessagesManager />}
+          {effective === 'orders' && <OrdersManager />}
+          {effective === 'reservations' && <ReservationsManager />}
+          {effective === 'content' && <ContentEditor />}
+          {effective === 'team' && <TeamContentsEditor />}
+          {effective === 'menu' && <MenuEditor />}
+          {effective === 'theme' && <ThemeEditor />}
+          {effective === 'blog' && <BlogEditor />}
+          {effective === 'media' && <MediaManager />}
+          {effective === 'visibility' && <VisibilityEditor />}
+          {effective === 'users' && <UsersRoles />}
+          {effective === 'forms' && <FormsConfig />}
+          {effective === 'settings' && <SettingsEditor />}
         </motion.div>
       </AnimatePresence>
     </AdminShell>

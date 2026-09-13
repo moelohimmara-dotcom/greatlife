@@ -11,7 +11,7 @@
 
 ## RBAC
 
-`src/data/rbac.ts` définit 6 rôles (owner, manager, chef, editor, marketing, guest) avec une matrice de permissions par module. **Cependant, aujourd'hui seul le gating route (`ADMIN_ROLES`) est effectif** — la matrice `RBAC` sert de référence future. Pour implémenter un RBAC réel par module, voir [DEVELOPMENT.md → Roadmap](../DEVELOPMENT.md#8-roadmap--pistes-dévolution).
+`src/data/rbac.ts` définit 6 rôles (owner, manager, chef, editor, marketing, guest). Le RBAC est **réel et par module** : `MODULE_ACCESS` définit, pour chaque clé de module, les rôles qui peuvent y accíer (`canAccessModule`) et ceux qui peuvent y écrire (`canWriteModule`). La sidebar n'affiche que les modules accessibles au rôle connecté ; un module en lecture seule affiche une bannière « Accès en lecture seule ». Toutes les entrées du panneau (`ADMIN_PANEL_ROLES`) peuvent se connecter (gating route `ADMIN_ROLES` dans `src/data/users.ts`). La sécurité réelle est garantie par RLS (voir [database.md](./database.md) et la migration 014), cohérente avec cette matrice.
 
 ## Le shell (`AdminShell`)
 
