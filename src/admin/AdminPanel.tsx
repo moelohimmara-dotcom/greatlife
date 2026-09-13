@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, getEffectiveModuleAccess, type RbacOverrides, type CrudAction } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, getEffectiveModuleAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -988,7 +988,14 @@ function UsersRoles() {
           <tbody>
             {ROLES.map(r => (
               <tr key={r.id} style={{ borderTop: `1px solid ${t.shadow}` }}>
-                <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, fontWeight: 600, position: 'sticky', left: 0, background: t.surface, zIndex: 1 }}>{r.name}</td>
+                <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, fontWeight: 600, position: 'sticky', left: 0, background: t.surface, zIndex: 1, whiteSpace: 'nowrap' }}>
+                  {r.name}
+                  {(() => { const s = roleSummary(r.id); return (
+                    <div style={{ fontSize: 9, fontWeight: 500, color: t.muted, marginTop: 2 }}>
+                      {s.modulesWrite} écriture · {s.modulesRead} lecture · {s.actionsGranted}/{s.actionsTotal} actions
+                    </div>
+                  ) })()}
+                </td>
                 {ALL_MODULES.map(m => {
                   const acts = actionsFor(m)
                   if (acts.length === 0) {

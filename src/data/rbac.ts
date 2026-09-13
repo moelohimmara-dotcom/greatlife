@@ -118,3 +118,29 @@ export function permLevelFor(moduleKey: string, role: string): 'write' | 'read' 
   if (!access || !access.roles.includes(role)) return 'none'
   return canWriteModule(moduleKey, role) ? 'write' : 'read'
 }
+
+export interface RoleSummary {
+  modulesWrite: number
+  modulesRead: number
+  modulesNone: number
+  actionsGranted: number
+  actionsTotal: number
+}
+
+export function roleSummary(role: string): RoleSummary {
+  let modulesWrite = 0
+  let modulesRead = 0
+  let modulesNone = 0
+  let actionsGranted = 0
+  let actionsTotal = 0
+  for (const key of ALL_MODULES) {
+    const p = permLevelFor(key, role)
+    if (p === 'write') modulesWrite++
+    else if (p === 'read') modulesRead++
+    else modulesNone++
+    const acts = CRUD_ACTIONS.filter(a => MODULE_ACCESS[key].actions[a] !== undefined)
+    actionsTotal += acts.length
+    for (const a of acts) if (canDo(key, a, role)) actionsGranted++
+  }
+  return { modulesWrite, modulesRead, modulesNone, actionsGranted, actionsTotal }
+}
