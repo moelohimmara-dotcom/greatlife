@@ -1,95 +1,128 @@
 # Greatlife — Site vitrine & Panneau admin
 
-Restaurant fast-food bio à Conakry, Guinée. Site vitrine + panneau d'administration.
+Restaurant fast-food bio à Conakry, Guinée. Site vitrine public + panneau d'administration complet, propulsés par React + Supabase.
+
+Ce README est le **point d'entrée** de la documentation. Il est conçu pour qu'un développeur reprenant le projet le lise **dans l'ordre** :
+
+1. **[README.md](./README.md)** — Vue d'ensemble, stack, démarrage rapide (vous êtes ici)
+2. **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Structure des dossiers, flux de données, conventions de code
+3. **[DEVELOPMENT.md](./DEVELOPMENT.md)** — Guide de reprise : lancer, développer, tâches courantes, pièges, sécurité
+4. **[docs/public-site.md](./docs/public-site.md)** — Le site public : sections, panier, commande en ligne, réservations
+5. **[docs/admin-panel.md](./docs/admin-panel.md)** — Le panneau admin : shell, 12 modules, RBAC
+6. **[docs/database.md](./docs/database.md)** — Supabase : schéma, 12 migrations, RLS, `is_admin()`, Realtime
+7. **[docs/emails.md](./docs/emails.md)** — Edge Function `send-contact-email` : 4 actions d'envoi, SMTP
+8. **[docs/deployment.md](./docs/deployment.md)** — Déploiement Netlify / Vercel, domaine, CI
+
+> Commencez par ce README, puis suivez l'ordre ci-dessus. Chaque document renvoie au suivant.
+
+---
+
+## En deux phrases
+
+- **Côté public** (`/`) : un site vitrine one-page responsive (sections Hero, Carte, Histoire, Équipe, Localisation, Contact, Réservation, Blog) avec **commande en ligne** (panier + retrait) et **formulaire de réservation**.
+- **Côté admin** (`/login` → `/admin`) : 12 modules (tableau de bord, commandes, messages, réservations, contenu, carte & prix, blog, thème, médias, visibilité, utilisateurs & rôles, formulaires & emails).
 
 ## Stack
 
-- **Frontend** : React 18 + TypeScript + Vite + Tailwind CSS + Framer Motion
-- **Backend** : Supabase (PostgreSQL + Auth + Storage + Edge Functions)
-- **Déploiement** : Vercel
-- **Code** : GitHub (`moelohimmara-dotcom/greatlife`)
+| Couche | Technologie |
+|---|---|
+| Frontend | React 18, TypeScript (strict), Vite 5, Tailwind CSS, Framer Motion |
+| Routing | react-router-dom v6 (3 routes : `/`, `/login`, `/admin`) |
+| Backend | Supabase (PostgreSQL + Auth + Storage + Realtime + Edge Functions) |
+| Emails | Edge Function `send-contact-email` (Deno) via SMTP Gmail |
+| Déploiement | Netlify (actif) ou Vercel — build Vite, dossier `dist` |
+| CI | GitHub Actions `build-test.yml` (`tsc --noEmit` + `vite build`) |
+| Code | GitHub : `moelohimmara-dotcom/greatlife` |
 
-## Démarrage
+## Démarrage rapide
 
 ```bash
+git clone https://github.com/moelohimmara-dotcom/greatlife
+cd greatlife
 npm install
-cp .env.example .env   # Variables Supabase pré-configurées
+cp .env.example .env   # Variables Supabase pré-remplies
 npm run dev             # http://localhost:5173
 ```
 
+Sans `.env`, le site démarre en **mode démo** (données en mémoire, auth locale, aucune persistance) — utile pour explorer l'UI sans backend.
+
+### Commandes npm
+
+| Script | Rôle |
+|---|---|
+| `npm run dev` | Serveur Vite (HMR) sur `:5173` |
+| `npm run build` | `tsc` (typecheck strict) + `vite build` → `dist/` |
+| `npm run preview` | Prévisualise le build de production |
+| `npm run lint` | ESLint sur `src` |
+
 ## Variables d'environnement
 
-| Variable | Description |
-|---|---|
-| `VITE_SUPABASE_URL` | URL du projet Supabase |
-| `VITE_SUPABASE_ANON_KEY` | Clé anonyme Supabase |
-| `RESEND_API_KEY` | Clé API Resend (emails) — pour l'Edge Function |
+| Variable | Où la définir | Rôle |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Vercel/Netlify (env client) | URL du projet Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Vercel/Netlify (env client) | Clé anonyme Supabase |
+| `SMTP_USER` | Supabase Edge Function secrets | Compte SMTP pour les emails |
+| `SMTP_PASS` | Supabase Edge Function secrets | Mot de passe d'application SMTP |
 
-## Structure
+> ⚠️ **Sécurité** — les secrets SMTP et les mots de passe admin ne doivent **jamais** être committés. Voir [DEVELOPMENT.md → Sécurité](./DEVELOPMENT.md#sécurité).
 
-```
-src/
-├── config/         # Thèmes, polices, badges
-├── data/           # Menu (38 items), rôles RBAC, utilisateurs
-├── lib/icons/      # Icônes SVG + illustrations alimentaires
-├── contexts/       # AuthContext + SiteContext
-├── hooks/          # useIsMobile, useScrollSpy
-├── components/
-│   ├── ui/         # Primitives (Card, Reveal, SectionHead, etc.)
-│   └── nav/        # Navigation publique responsive
-├── sections/       # Hero, Carte, Story, Engagements, Team, Localisation, Contact, Blog, Footer
-├── auth/           # LoginScreen + ProtectedRoute
-├── admin/          # AdminShell + 8 modules
-├── App.tsx         # Router + Providers
-└── main.tsx        # Entry point
-supabase/
-├── migrations/     # 001_init, 002_rls, 003_storage
-└── functions/      # send-contact-email (Edge Function)
-```
+## Deux modes de fonctionnement
 
-## Modes de fonctionnement
+Le site s'adapte automatiquement selon la présence des variables Supabase — voir `src/lib/supabase.ts` (`isSupabaseConfigured`) :
 
-Le site fonctionne dans deux modes selon la configuration Supabase :
-
-- **Mode Supabase (recommandé)** : si `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` sont définis, le site charge les données depuis Supabase (menu, contenu, messages), persiste les modifications de l'admin, authentifie via Supabase Auth (avec repli local) et envoie les emails du formulaire via l'Edge Function.
-- **Mode démo (local)** : sans variables d'environnement, le site reste utilisable (auth locale, données en mémoire, faux envoi de formulaire). Aucune donnée n'est persistée.
-
-L'indicateur de connexion est visible sur le tableau de bord admin.
+- **Mode Supabase (recommandé)** : `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` définis → données persistées en base, auth via Supabase Auth (avec repli local), emails réels via l'Edge Function, **Realtime** activé (les changements admin se propagent au site public en direct). L'indicateur de connexion est visible sur le tableau de bord admin.
+- **Mode démo (local)** : sans variables → données en mémoire (`src/data/*`), auth locale (comptes codés en dur), faux envoi de formulaire. Rien n'est persisté.
 
 ## Accès admin
 
-- **URL** : `/login` puis `/admin`
-- **Propriétaire** : `owner@greatlife.gn` / `greatlife2026`
-- **Gérant** : `gerant@greatlife.gn` / `greatlife2026`
-- Pour l'auth Supabase, créez ces comptes dans *Supabase → Authentication → Users* et renseignez leur rôle dans la table `admin_users`.
+- **URL** : `/login` puis `/admin` (protégé par `ProtectedRoute`)
+- **Comptes de secours locaux** (mode démo, dans `src/data/users.ts`) :
+  - Propriétaire : `owner@greatlife.com` / `greatlife2026`
+  - Gérant : `gerant@greatlife.com` / `greatlife2026`
+- **En mode Supabase** : créez les comptes dans *Supabase → Authentication → Users* et renseignez leur rôle dans la table `admin_users` (colonne `role`). C'est cette table qui détermine les permissions (voir `docs/database.md` et `docs/admin-panel.md`).
 
-## Supabase
+> Seuls les rôles `owner` et `manager` (`ADMIN_ROLES` dans `src/data/users.ts`) peuvent accéder au panneau. Le RBAC détaillé (chef, éditeur, marketing, invité) est défini dans `src/data/rbac.ts` mais sert aujourd'hui de référence ; la **vraie porte d'entrée** est la liste `ADMIN_ROLES`.
 
-- **Projet** : `gpvfryvmghjenwfqhnkd`
-- **URL** : `https://gpvfryvmghjenwfqhnkd.supabase.co`
-- **Région** : eu-west-1
-- **Tables** : `menu_items` (38), `messages`, `site_content`, `admin_users` (4)
-- **Storage** : `food-photos`, `team-portraits`, `blog-images`
+## Supabase — en bref
+
+- **Projet** : `gpvfryvmghjenwfqhnkd` (région eu-west-1)
+- **Tables** : `menu_items`, `messages`, `site_content`, `admin_users`, `blog_posts`, `reservations`, `orders`, `media_assets`
+- **Storage buckets** : `media` (général), `food-photos`, `team-portraits`, `blog-images`
 - **Edge Function** : `send-contact-email` (active)
+- **Migrations** : 12 fichiers numérotés dans `supabase/migrations/` (à rejouer dans l'ordre)
 
-## Déploiement Netlify (actif)
+→ Détails complets : [docs/database.md](./docs/database.md)
 
-Le site est déployé sur Netlify — URL de production : **https://greatlife-gn.netlify.app**
+## Déploiement
 
-- Build : `npm run build` (Vite), dossier publié : `dist`
-- Config : `netlify.toml` (redirect SPA, cache des assets, Node 20)
-- Déploiement via CLI : `netlify deploy --prod --dir=dist`
-- Variables d'environnement \`VITE_SUPABASE_*\` à définir dans *Site settings → Environment variables*.
+Le site est en production sur **Netlify** : https://greatlife-gn.netlify.app (build `npm run build`, publish `dist`, SPA fallback dans `netlify.toml`). Vercel est aussi supporté (`vercel.json`).
 
-## Déploiement Vercel
+→ Détails complets : [docs/deployment.md](./docs/deployment.md)
 
-1. Aller sur [vercel.com](https://vercel.com) → Importer `moelohimmara-dotcom/greatlife`
-2. Framework détecté : Vite (auto via `vercel.json`)
-3. Variables d'environnement : copier depuis `.env.example`
-4. Deploy → URL `*.vercel.app` active
+## Aperçu de la structure
 
-## Domaine
+```
+src/
+├── config/         Thèmes, polices, badges (singletons contextuels)
+├── data/           Menu (38 items), rôles RBAC, comptes admin de secours
+├── lib/
+│   ├── supabase.ts   Client Supabase + helpers invoke* (emails)
+│   ├── repository.ts TOUTES les fonctions CRUD vers Supabase
+│   ├── imageResize.ts Redimensionnement client des uploads
+│   └── icons/        Bibliothèque d'icônes SVG maison
+├── contexts/        AuthContext, SiteContext, CartContext
+├── hooks/           useIsMobile, useScrollSpy
+├── components/
+│   ├── ui/          Primitives (Button, Input, Card, Reveal, SectionHead…)
+│   └── nav/         Navigation publique responsive
+├── sections/        Sections du site public + OrderCart
+├── auth/            LoginScreen
+├── admin/           AdminPanel.tsx (shell + 12 modules) + ui.tsx (primitives admin)
+├── App.tsx          Router + Providers
+└── main.tsx         Entry point
+supabase/
+├── migrations/      12 migrations SQL (schéma + RLS + Realtime)
+└── functions/       send-contact-email (Edge Function Deno)
+```
 
-Configurer `greatlife.gn` :
-- CNAME → `cname.vercel-dns.com`
-- Dans Vercel → Settings → Domains → ajouter `greatlife.gn`
+→ Détails complets : [ARCHITECTURE.md](./ARCHITECTURE.md)
