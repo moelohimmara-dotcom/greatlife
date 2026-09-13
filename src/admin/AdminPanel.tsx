@@ -778,6 +778,7 @@ function UsersRoles() {
   const [rbacStatus, setRbacStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; msg: string }>({ kind: 'idle', msg: '' })
   const [moduleQuery, setModuleQuery] = useState('')
   const filteredModules = ALL_MODULES.filter(m => MODULE_ACCESS[m].module.toLowerCase().includes(moduleQuery.trim().toLowerCase()))
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const actionsFor = (m: string): CrudAction[] => CRUD_ACTIONS.filter(act => MODULE_ACCESS[m].actions[act] !== undefined)
   const roleHas = (m: string, a: CrudAction, role: string): boolean => {
@@ -998,7 +999,8 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
           const role = ROLES.find(r => r.id === u.role) || ROLES.find(r => r.id === 'guest')!
           const isSelf = u.email.toLowerCase() === currentEmail
           return (
-            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
+            <React.Fragment key={u.id}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
                 {ROLE_DESCRIPTIONS[role.id] && (
@@ -1014,8 +1016,41 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
                 <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
                 <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
+                <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>
               </div>
             </div>
+            {expandedId === u.id && (
+              <div style={{ marginBottom: 8, padding: '14px 16px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 12, fontSize: 12, color: t.text }}>
+                {(() => {
+                  const writeMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'write').map(m => MODULE_ACCESS[m].module)
+                  const readMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'read').map(m => MODULE_ACCESS[m].module)
+                  const noneMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'none').map(m => MODULE_ACCESS[m].module)
+                  return (
+                    <>
+                      {writeMods.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.accent, marginBottom: 4 }}>Écriture ({writeMods.length})</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{writeMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: `${t.accent}14`, color: t.accent }}>{m}</span>)}</div>
+                        </div>
+                      )}
+                      {readMods.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.primary, marginBottom: 4 }}>Lecture seule ({readMods.length})</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{readMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{m}</span>)}</div>
+                        </div>
+                      )}
+                      {noneMods.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 4 }}>Aucun accès ({noneMods.length})</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{noneMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 100, background: t.surface, color: t.muted, border: `1px solid ${t.shadow}` }}>{m}</span>)}</div>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+            )}
+            </React.Fragment>
           )
         })
       )}
