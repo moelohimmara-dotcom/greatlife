@@ -29,6 +29,7 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
   ]],
   ['Contenu', [
     ['content', 'Contenu', 'write'],
+    ['team', 'Équipe & contenus', 'users'],
     ['menu', 'Carte & prix', 'leaf'],
     ['blog', 'Blog', 'write'],
   ]],
@@ -1430,6 +1431,115 @@ function ReservationsManager() {
   )
 }
 
+const ENGAGEMENT_ICONS = ['leaf', 'recycle', 'fire', 'search', 'coin', 'star']
+
+function TeamContentsEditor() {
+  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
+  const [tab, setTab] = useState<'team' | 'engagements' | 'testimonials'>('team')
+  const inp = inputStyle(t)
+
+  const setTeam = (team: typeof content.team) => { setContent({ ...content, team }); setSaveStatus('idle'); setSaveErr(undefined) }
+  const setEngagements = (engagements: typeof content.engagements) => { setContent({ ...content, engagements }); setSaveStatus('idle'); setSaveErr(undefined) }
+  const setTestimonials = (testimonials: typeof content.testimonials) => { setContent({ ...content, testimonials }); setSaveStatus('idle'); setSaveErr(undefined) }
+
+  const save = async () => {
+    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await saveContentToDb()
+    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+    setTimeout(() => setSaveStatus('idle'), 4000)
+  }
+
+  const tabs: [string, string][] = [['team', 'Équipe'], ['engagements', 'Engagements'], ['testimonials', 'Témoignages']]
+
+  return (
+    <div style={{ maxWidth: '820px' }}>
+      <PageHeader title="Équipe & contenus" subtitle="Gérez les membres de l'équipe, les engagements et les témoignages clients."
+        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+      />
+      <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+        {tabs.map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k as 'team' | 'engagements' | 'testimonials')} style={{
+            fontSize: '13px', fontWeight: 600, padding: '8px 16px', borderRadius: 100, cursor: 'pointer',
+            border: `1px solid ${tab === k ? t.primary : t.shadow}`, background: tab === k ? t.primary : 'transparent',
+            color: tab === k ? '#fff' : t.muted, transition: 'all 0.15s',
+          }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{k === 'team' ? content.team.length : k === 'engagements' ? content.engagements.length : content.testimonials.length}</span></button>
+        ))}
+      </div>
+
+      {tab === 'team' && (
+        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+          {content.team.map((m, i) => (
+            <OrganicCard key={i} style={{ padding: 16, display: 'grid', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><FieldLabel>Nom</FieldLabel><Input value={m.name} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={inp} /></div>
+                <div><FieldLabel>Rôle</FieldLabel><Input value={m.role} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} style={inp} /></div>
+              </div>
+              <div><FieldLabel>Description</FieldLabel><Textarea rows={2} value={m.desc} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} style={inp} /></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <GhostButton color="#dc2626" onClick={() => setTeam(content.team.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
+              </div>
+            </OrganicCard>
+          ))}
+          <button onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])} style={{
+            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
+            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>{Icon.plus(14, t.primary)} Ajouter un membre</button>
+        </div>
+      )}
+
+      {tab === 'engagements' && (
+        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+          {content.engagements.map((e, i) => (
+            <OrganicCard key={i} style={{ padding: 16, display: 'grid', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 10 }}>
+                <div><FieldLabel>Icône</FieldLabel>
+                  <Select value={e.icon} onValueChange={v => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, icon: v } : x))}>
+                    <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '10px 12px' }}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ENGAGEMENT_ICONS.map(ic => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><FieldLabel>Titre</FieldLabel><Input value={e.title} onChange={ev => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, title: ev.target.value } : x))} style={inp} /></div>
+              </div>
+              <div><FieldLabel>Description</FieldLabel><Textarea rows={2} value={e.desc} onChange={ev => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, desc: ev.target.value } : x))} style={inp} /></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <GhostButton color="#dc2626" onClick={() => setEngagements(content.engagements.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
+              </div>
+            </OrganicCard>
+          ))}
+          <button onClick={() => setEngagements([...content.engagements, { icon: 'leaf', title: 'Nouvel engagement', desc: '' }])} style={{
+            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
+            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>{Icon.plus(14, t.primary)} Ajouter un engagement</button>
+        </div>
+      )}
+
+      {tab === 'testimonials' && (
+        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+          {content.testimonials.length === 0 && <EmptyState icon={Icon.mail(26, t.muted)} title="Aucun témoignage" subtitle="Ajoutez les avis de vos clients ; ils apparaîtront sur le site (si activés dans Visibilité)." />}
+          {content.testimonials.map((tm, i) => (
+            <OrganicCard key={i} style={{ padding: 16, display: 'grid', gap: 10 }}>
+              <div><FieldLabel>Auteur</FieldLabel><Input value={tm.author} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, author: e.target.value } : x))} style={inp} /></div>
+              <div><FieldLabel>Témoignage</FieldLabel><Textarea rows={3} value={tm.text} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} style={inp} /></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <GhostButton color="#dc2626" onClick={() => setTestimonials(content.testimonials.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
+              </div>
+            </OrganicCard>
+          ))}
+          <button onClick={() => setTestimonials([...content.testimonials, { author: 'Client', text: '' }])} style={{
+            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
+            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>{Icon.plus(14, t.primary)} Ajouter un témoignage</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SettingsEditor() {
   const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -1490,6 +1600,7 @@ export function Admin() {
           {active === 'orders' && <OrdersManager />}
           {active === 'reservations' && <ReservationsManager />}
           {active === 'content' && <ContentEditor />}
+          {active === 'team' && <TeamContentsEditor />}
           {active === 'menu' && <MenuEditor />}
           {active === 'theme' && <ThemeEditor />}
           {active === 'blog' && <BlogEditor />}
