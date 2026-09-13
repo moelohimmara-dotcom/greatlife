@@ -103,6 +103,7 @@ Les fichiers sont dans `supabase/migrations/`, préfixés `NNN_`. Toutes sont **
 | 010 | `010_fix_insert_authenticated.sql` | Corrige les policies d'insert pour les utilisateurs authentifiés |
 | 011 | `011_media_management.sql` | Bucket `media` + table `media_assets` + policies via `is_admin()` |
 | 012 | `012_orders.sql` | Table `orders` + RLS + Realtime sur orders |
+| 013 | `013_fix_reservations_orders_rls.sql` | Remplace les policies admin de `reservations` et `orders` par des versions basées sur `is_admin()` (corrige la récursion RLS des migrations 006/012) |
 
 ### Appliquer les migrations
 
