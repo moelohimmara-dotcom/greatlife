@@ -798,6 +798,25 @@ function UsersRoles() {
     if (res.ok) {
       setRbacStatus({ kind: 'ok', msg: 'Permissions mises à jour.' })
       logAudit({ actor: currentUser?.email ?? '', action: 'rbac_update', target: `${MODULE_ACCESS[m].module} / ${ROLE_LABELS[role] ?? role}`, detail: `${a} ${has ? 'retirée' : 'ajoutée'}` })
+      const permLabel = a === 'create' ? 'Création' : a === 'update' ? 'Modification' : a === 'delete' ? 'Suppression' : 'Publication'
+      const permText = `${permLabel} sur le module « ${MODULE_ACCESS[m].module} » ${has ? 'vous a été retirée' : 'vous a été accordée'}.`
+      for (const u of adminUsers.filter(u => u.role === role)) {
+        invokeReplyEmail({
+          to: u.email,
+          subject: `Greatlife - Mise à jour de vos permissions (${ROLE_LABELS[role] ?? role})`,
+          replyMessage: `Bonjour ${u.name},
+
+Vos permissions d'accès au panneau d'administration Greatlife ont été modifiées.
+
+Rôle : ${ROLE_LABELS[role] ?? role}
+${permText}
+
+Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
+
+— L'équipe Greatlife`,
+          replyFromName: 'Greatlife',
+        }).catch(() => {})
+      }
     } else {
       setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
@@ -811,6 +830,22 @@ function UsersRoles() {
     if (res.ok) {
       setRbacStatus({ kind: 'ok', msg: 'Permissions réinitialisées (valeurs par défaut).' })
       logAudit({ actor: currentUser?.email ?? '', action: 'rbac_reset', target: 'Matrice globale', detail: 'Réinitialisation' })
+      for (const u of adminUsers) {
+        invokeReplyEmail({
+          to: u.email,
+          subject: 'Greatlife - Réinitialisation des permissions',
+          replyMessage: `Bonjour ${u.name},
+
+La matrice des permissions d'accès au panneau d'administration Greatlife a été réinitialisée à ses valeurs par défaut.
+
+Rôle : ${ROLE_LABELS[u.role] ?? u.role}
+
+Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
+
+— L'équipe Greatlife`,
+          replyFromName: 'Greatlife',
+        }).catch(() => {})
+      }
     } else {
       setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
@@ -850,6 +885,21 @@ function UsersRoles() {
         target: editing.email.trim().toLowerCase(),
         detail: `Rôle : ${ROLE_LABELS[editing.role] ?? editing.role}`,
       })
+      const dest = editing.email.trim().toLowerCase()
+      invokeReplyEmail({
+        to: dest,
+        subject: 'Greatlife - Votre accès au panneau d\'administration',
+        replyMessage: `Bonjour ${editing.name.trim()},
+
+Votre compte d\'administration Greatlife a été ${editing.id ? 'modifié' : 'créé'}.
+
+Rôle attribué : ${ROLE_LABELS[editing.role] ?? editing.role}${ROLE_DESCRIPTIONS[editing.role] ? '\n' + ROLE_DESCRIPTIONS[editing.role] : ''}
+
+Vous pouvez vous connecter au panneau d\'administration avec cette adresse email. Si vous n\'êtes pas à l\'origine de cette demande, contactez le propriétaire.
+
+— L'équipe Greatlife`,
+        replyFromName: 'Greatlife',
+      }).catch(() => {})
       setEditing(null)
       await refreshAdminUsers()
       setStatus({ kind: 'ok', msg: editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.' })
@@ -917,7 +967,7 @@ function UsersRoles() {
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               <FieldLabel>Email</FieldLabel>
-              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inp} placeholder="email@greatlife.gn" disabled={!!editing.id} />
+              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inp} placeholder="email@greatlife.gn" />
             </div>
           </div>
           <div style={{ display: 'grid', gap: 6, maxWidth: 260 }}>
