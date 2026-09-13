@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, MODULE_GROUPS, getEffectiveModuleAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, MODULE_GROUPS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -773,7 +773,21 @@ function UsersRoles() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const inp = inputStyle(t)
 
-  const effAccess = getEffectiveModuleAccess()
+  const savedOverrides = rbacOverrides ?? null
+  const [pendingOverrides, setPendingOverrides] = useState<RbacOverrides | null>(null)
+  const effAccess = computeEffectiveAccess(pendingOverrides ?? savedOverrides)
+  const pendingCount = (() => {
+    if (!pendingOverrides) return 0
+    let n = 0
+    for (const m of ALL_MODULES) for (const a of CRUD_ACTIONS) {
+      const p = pendingOverrides[m]?.[a]
+      const s = savedOverrides?.[m]?.[a] ?? MODULE_ACCESS[m].actions[a]
+      const pj = p ? JSON.stringify([...p].sort()) : null
+      const sj = s ? JSON.stringify([...s].sort()) : null
+      if (pj !== sj) n++
+    }
+    return n
+  })()
   const [rbacBusy, setRbacBusy] = useState(false)
   const [rbacStatus, setRbacStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; msg: string }>({ kind: 'idle', msg: '' })
   const [moduleQuery, setModuleQuery] = useState('')
@@ -802,27 +816,46 @@ function UsersRoles() {
   }
   const isLocked = (m: string, role: string): boolean =>
     m === 'users' && role === 'owner'
-  const togglePerm = async (m: string, a: CrudAction, role: string) => {
+  const togglePerm = (m: string, a: CrudAction, role: string) => {
     if (!isOwner) return
     if (isLocked(m, role)) return
-    const next: RbacOverrides = { ...(rbacOverrides ?? {}) }
+    const base = pendingOverrides ?? savedOverrides ?? {}
+    const next: RbacOverrides = { ...base }
     const cur = effAccess[m].actions[a] ?? []
     const has = cur.includes(role)
     const updated = has ? cur.filter(r => r !== role) : [...cur, role]
     next[m] = { ...next[m], [a]: updated }
+    setPendingOverrides(next)
+  }
+  const discardPerms = () => {
+    setPendingOverrides(null)
+    setRbacStatus({ kind: 'idle', msg: '' })
+  }
+  const commitPerms = async () => {
+    if (!isOwner || !pendingOverrides) return
     setRbacBusy(true)
-    const res = await saveRbac(next)
+    const res = await saveRbac(pendingOverrides)
     setRbacBusy(false)
     if (res.ok) {
-      setRbacStatus({ kind: 'ok', msg: 'Permissions mises à jour.' })
-      logAudit({ actor: currentUser?.email ?? '', action: 'rbac_update', target: `${MODULE_ACCESS[m].module} / ${ROLE_LABELS[role] ?? role}`, detail: `${a} ${has ? 'retirée' : 'ajoutée'}` })
-      const permLabel = a === 'create' ? 'Création' : a === 'update' ? 'Modification' : a === 'delete' ? 'Suppression' : 'Publication'
-      const permText = `${permLabel} sur le module « ${MODULE_ACCESS[m].module} » ${has ? 'vous a été retirée' : 'vous a été accordée'}.`
-      for (const u of adminUsers.filter(u => u.role === role)) {
-        invokeReplyEmail({
-          to: u.email,
-          subject: `Greatlife - Mise à jour de vos permissions (${ROLE_LABELS[role] ?? role})`,
-          replyMessage: `Bonjour ${u.name},
+      for (const m of ALL_MODULES) for (const a of CRUD_ACTIONS) {
+        const p = pendingOverrides[m]?.[a]
+        const s = savedOverrides?.[m]?.[a] ?? MODULE_ACCESS[m].actions[a]
+        const pj = p ? JSON.stringify([...p].sort()) : null
+        const sj = s ? JSON.stringify([...s].sort()) : null
+        if (pj !== sj && p) {
+          const before = s ?? []
+          const added = p.filter(r => !before.includes(r))
+          const removed = before.filter(r => !p.includes(r))
+          for (const role of [...added, ...removed]) {
+            const granted = added.includes(role)
+            logAudit({ actor: currentUser?.email ?? '', action: 'rbac_update', target: `${MODULE_ACCESS[m].module} / ${ROLE_LABELS[role] ?? role}`, detail: `${a} ${granted ? 'ajoutée' : 'retirée'}` })
+            const permLabel = a === 'create' ? 'Création' : a === 'update' ? 'Modification' : a === 'delete' ? 'Suppression' : 'Publication'
+            const permText = `${permLabel} sur le module « ${MODULE_ACCESS[m].module} » ${granted ? 'vous a été accordée' : 'vous a été retirée'}.`
+            for (const u of adminUsers.filter(u => u.role === role)) {
+              invokeReplyEmail({
+                to: u.email,
+                subject: `Greatlife - Mise à jour de vos permissions (${ROLE_LABELS[role] ?? role})`,
+                replyMessage: `Bonjour ${u.name},
 
 Vos permissions d'accès au panneau d'administration Greatlife ont été modifiées.
 
@@ -832,9 +865,14 @@ ${permText}
 Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
-          replyFromName: 'Greatlife',
-        }).catch(() => {})
+                replyFromName: 'Greatlife',
+              }).catch(() => {})
+            }
+          }
+        }
       }
+      setPendingOverrides(null)
+      setRbacStatus({ kind: 'ok', msg: 'Permissions enregistrées.' })
     } else {
       setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
@@ -842,6 +880,7 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
   }
   const resetPerms = async () => {
     if (!isOwner) return
+    setPendingOverrides(null)
     setRbacBusy(true)
     const res = await saveRbac(null)
     setRbacBusy(false)
@@ -1083,6 +1122,13 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
       </div>
       {!isOwner && (
         <div style={{ fontSize: 12, color: t.muted, marginBottom: 10 }}>Lecture seule — seul le propriétaire peut modifier les permissions.</div>
+      )}
+      {pendingCount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '10px 14px', borderRadius: 12, background: `${t.accent}12`, border: `1px solid ${t.accent}33`, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>{pendingCount} modification{pendingCount > 1 ? 's' : ''} en attente</span>
+          <PrimaryButton onClick={commitPerms} disabled={rbacBusy || !isSupabase}>{rbacBusy ? 'Enregistrement…' : 'Enregistrer'}</PrimaryButton>
+          <GhostButton color={t.muted} disabled={rbacBusy} onClick={discardPerms}>Annuler</GhostButton>
+        </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
