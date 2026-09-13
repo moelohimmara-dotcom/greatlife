@@ -885,7 +885,7 @@ function UsersRoles() {
   return (
     <div style={{ maxWidth: '920px' }}>
       <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)."
-        actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing}>{Icon.plus(14, '#fff')} Ajouter nouveau</PrimaryButton>}
+        actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>{Icon.plus(14, '#fff')} Ajouter nouveau</PrimaryButton>}
       />
 
       {!isSupabase && (
@@ -955,8 +955,8 @@ function UsersRoles() {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
-                <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id} onClick={() => startEdit(u)}>Modifier</GhostButton>
-                <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
+                <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
+                <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
               </div>
             </div>
           )
@@ -1114,7 +1114,7 @@ function BlogEditor() {
   return (
     <div style={{ maxWidth: '820px' }}>
       <PageHeader title="Blog" subtitle="Rédigez et publiez des articles."
-        actions={<PrimaryButton onClick={() => setEditing({ title: '', excerpt: '', body: '', category: 'Actualités', published: false, slug: '', cover_url: '', meta_description: '' })}>{Icon.plus(14, '#fff')} Nouvel article</PrimaryButton>}
+        actions={<PrimaryButton onClick={() => setEditing({ title: '', excerpt: '', body: '', category: 'Actualités', published: false, slug: '', cover_url: '', meta_description: '' })} disabled={!canDo('blog', 'create', user?.role ?? '')}>{Icon.plus(14, '#fff')} Nouvel article</PrimaryButton>}
       />
       {editing && (
         <OrganicCard style={{ marginTop: 20, padding: 22 }}>
@@ -1168,7 +1168,7 @@ function BlogEditor() {
               </div>
               <Textarea ref={bodyRef} rows={8} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} style={{ ...inp, fontFamily: 'var(--f-body)' }} placeholder="Rédigez le contenu de l'article en Markdown…" />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text, opacity: canDo('blog', 'publish', user?.role ?? '') ? 1 : 0.5, pointerEvents: canDo('blog', 'publish', user?.role ?? '') ? 'auto' : 'none' }} title={canDo('blog', 'publish', user?.role ?? '') ? '' : 'Réservé au propriétaire et au gérant'}>
               <Switch checked={editing.published} onCheckedChange={v => setEditing({ ...editing, published: v })} /> Publier sur le site
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
@@ -2291,7 +2291,8 @@ export function Admin() {
       <AnimatePresence mode="wait">
         <motion.div key={effective} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
           {readOnly && effective !== 'dashboard' && <AccessBanner />}
-          {effective === 'dashboard' && <Dashboard />}
+          <div style={{ position: 'relative', pointerEvents: readOnly && effective !== 'dashboard' ? 'none' : 'auto' }}>
+            {effective === 'dashboard' && <Dashboard />}
           {effective === 'messages' && <MessagesManager />}
           {effective === 'orders' && <OrdersManager />}
           {effective === 'reservations' && <ReservationsManager />}
@@ -2306,6 +2307,7 @@ export function Admin() {
           {effective === 'forms' && <FormsConfig />}
           {effective === 'settings' && <SettingsEditor />}
           {effective === 'audit' && <AuditManager />}
+          </div>
         </motion.div>
       </AnimatePresence>
     </AdminShell>
