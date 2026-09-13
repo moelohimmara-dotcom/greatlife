@@ -116,6 +116,9 @@ interface SiteContextValue {
   refreshAdminUsers: () => Promise<void>
   ordersCount: number
   reservationsCount: number
+  pendingOrdersCount: number
+  pendingReservationsCount: number
+  unhandledMessagesCount: number
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -197,6 +200,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [ordersCount, setOrdersCount] = useState(0)
   const [reservationsCount, setReservationsCount] = useState(0)
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
+  const [pendingReservationsCount, setPendingReservationsCount] = useState(0)
+  const unhandledMessagesCount = messages.filter(m => !m.handled).length
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -361,12 +367,18 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const refreshOrders = async () => {
     const res = await fetchOrders()
-    if (res.fromDb) setOrdersCount(res.data.length)
+    if (res.fromDb) {
+      setOrdersCount(res.data.length)
+      setPendingOrdersCount(res.data.filter(o => o.status === 'pending').length)
+    }
   }
 
   const refreshReservations = async () => {
     const res = await fetchReservations()
-    if (res.fromDb) setReservationsCount(res.data.length)
+    if (res.fromDb) {
+      setReservationsCount(res.data.length)
+      setPendingReservationsCount(res.data.filter(r => r.status === 'pending').length)
+    }
   }
 
   useEffect(() => {
@@ -397,6 +409,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
     refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
+    pendingOrdersCount, pendingReservationsCount, unhandledMessagesCount,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>

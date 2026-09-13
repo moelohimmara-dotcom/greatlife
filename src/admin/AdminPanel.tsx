@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
-import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
+import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination } from '@/admin/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
@@ -46,12 +46,13 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
 ]
 
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
-  const { theme: t } = useSite()
+  const { theme: t, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileNav, setMobileNav] = useState(false)
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
   const go = (k: string) => { setActive(k); setMobileNav(false) }
+  const NOTIF: Record<string, number> = { messages: unhandledMessagesCount, orders: pendingOrdersCount, reservations: pendingReservationsCount }
 
   const Sidebar = (
     <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '22px 14px', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -78,6 +79,9 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
                     {!isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 0, borderRadius: 3, background: t.primary, transition: 'height 0.18s' }} />}
                     <span style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.7 }}>{Icon[icon](15, isActive ? '#fff' : t.text)}</span>
                     <span>{l}</span>
+                    {NOTIF[k] > 0 && (
+                      <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: 100, background: isActive ? 'rgba(255,255,255,0.25)' : t.accent, color: isActive ? '#fff' : '#fff', minWidth: 18, textAlign: 'center' }}>{NOTIF[k]}</span>
+                    )}
                   </button>
                 )
               })}
@@ -1142,6 +1146,8 @@ function MessagesManager() {
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [delBusy, setDelBusy] = useState(false)
   const [delErr, setDelErr] = useState<string | undefined>(undefined)
+  const [page, setPage] = useState(1)
+  const MSG_PAGE = 15
   const inp = inputStyle(t)
   const TEMPLATES = [
     "Bonjour, merci pour votre message. Nous revenons vers vous très vite. — L'équipe Greatlife",
@@ -1153,6 +1159,8 @@ function MessagesManager() {
     (statusFilter === 'all' || (statusFilter === 'unhandled' ? !m.handled : m.handled)) &&
     (!q || m.nom.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.sujet.toLowerCase().includes(q) || m.message.toLowerCase().includes(q))
   )
+  const pagedMessages = filtered.slice((page - 1) * MSG_PAGE, page * MSG_PAGE)
+  useEffect(() => { setPage(1) }, [query, statusFilter])
   const toggleSelect = (id: string) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   const allSelected = filtered.length > 0 && filtered.every(m => m.id && selectedIds.has(m.id))
   const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(filtered.map(m => m.id).filter((id): id is string => Boolean(id))))
@@ -1334,9 +1342,10 @@ function MessagesManager() {
         ) : filtered.length === 0 ? (
           <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucun message dans ce filtre.</p>
         ) : (
+          <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button onClick={toggleSelectAll} style={{ textAlign: 'left', fontSize: '12px', fontWeight: 600, color: t.muted, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', marginBottom: 2 }}>{allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
-            {filtered.map(m => {
+            {pagedMessages.map(m => {
               const i = messages.indexOf(m)
               const checked = Boolean(m.id && selectedIds.has(m.id))
               return (
@@ -1357,6 +1366,8 @@ function MessagesManager() {
               )
             })}
           </div>
+          <Pagination page={page} pageSize={MSG_PAGE} total={filtered.length} onPage={setPage} />
+          </>
         )}
       </div>
       {selected && (
@@ -1471,8 +1482,11 @@ function OrdersManager() {
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc')
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const ORDERS_PAGE = 12
   const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
   const q = query.trim().toLowerCase()
+  useEffect(() => { setPage(1) }, [filter, query, sortKey])
   const matches = orders.filter(o => (filter === 'all' || o.status === filter) && (!q || o.nom.toLowerCase().includes(q) || o.email.toLowerCase().includes(q) || o.ref.toLowerCase().includes(q) || o.phone.toLowerCase().includes(q)))
   const sorted = [...matches].sort((a, b) => {
     if (sortKey === 'amount_desc') return parsePrice(b.total) - parsePrice(a.total)
@@ -1481,6 +1495,7 @@ function OrdersManager() {
     const db = b.created_at ? new Date(b.created_at).getTime() : 0
     return sortKey === 'date_asc' ? da - db : db - da
   })
+  const pagedOrders = sorted.slice((page - 1) * ORDERS_PAGE, page * ORDERS_PAGE)
   const counts = { all: orders.length, pending: orders.filter(o => o.status === 'pending').length, confirmed: orders.filter(o => o.status === 'confirmed').length, preparing: orders.filter(o => o.status === 'preparing').length, ready: orders.filter(o => o.status === 'ready').length, delivered: orders.filter(o => o.status === 'delivered').length, cancelled: orders.filter(o => o.status === 'cancelled').length }
   const exportCsv = () => {
     const rows = [['Réf', 'Nom', 'Email', 'Téléphone', 'Statut', 'Total', 'Retrait', 'Articles', 'Notes', 'Date'].join(';')]
@@ -1565,7 +1580,7 @@ function OrdersManager() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
           {sorted.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune commande dans ce filtre.</p> :
-          sorted.map(o => (
+          pagedOrders.map(o => (
             <OrganicCard key={o.id} style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 240 }}>
@@ -1606,6 +1621,7 @@ function OrdersManager() {
             </OrganicCard>
           ))}
         </div>
+        <Pagination page={page} pageSize={ORDERS_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
         </>
       }
     </div>
@@ -1648,7 +1664,10 @@ function ReservationsManager() {
   const [dateFilter, setDateFilter] = useState('')
   const [view, setView] = useState<'list' | 'planning'>('list')
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const RESA_PAGE = 12
   const q = query.trim().toLowerCase()
+  useEffect(() => { setPage(1) }, [filter, query, sortKey, dateFilter, view])
   const matches = reservations.filter(r => (filter === 'all' || r.status === filter) && (!dateFilter || r.date === dateFilter) && (!q || r.nom.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.phone.toLowerCase().includes(q) || r.date.toLowerCase().includes(q) || r.time.toLowerCase().includes(q)))
   const sorted = [...matches].sort((a, b) => {
     if (sortKey === 'guests_desc') return b.guests - a.guests
@@ -1657,6 +1676,7 @@ function ReservationsManager() {
     const kb = `${b.date} ${b.time}`
     return sortKey === 'date_asc' ? ka.localeCompare(kb) : kb.localeCompare(ka)
   })
+  const pagedReservations = sorted.slice((page - 1) * RESA_PAGE, page * RESA_PAGE)
   const counts = { all: reservations.length, pending: reservations.filter(r => r.status === 'pending').length, confirmed: reservations.filter(r => r.status === 'confirmed').length, cancelled: reservations.filter(r => r.status === 'cancelled').length }
   const exportCsv = () => {
     const rows = [['Nom', 'Email', 'Téléphone', 'Date', 'Heure', 'Couverts', 'Statut', 'Message', 'Créée le'].join(';')]
@@ -1798,7 +1818,7 @@ function ReservationsManager() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-          {sorted.map(r => (
+          {pagedReservations.map(r => (
             <OrganicCard key={r.id} style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 240 }}>
@@ -1834,6 +1854,7 @@ function ReservationsManager() {
           ))}
           </div>
         )}
+        {view === 'list' && <Pagination page={page} pageSize={RESA_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />}
         </>
       }
     </div>
