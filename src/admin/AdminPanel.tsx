@@ -2181,7 +2181,7 @@ function AuditManager() {
 }
 
 function SettingsEditor() {
-  const { content, setContent, theme: t, dataSource, saveContentToDb, themeId, setThemeId, fontId, setFontId, visibility, setVisibility } = useSite()
+  const { content, setContent, theme: t, dataSource, saveContentToDb, themeId, setThemeId, fontId, setFontId, visibility, setVisibility, rbacOverrides, setRbacOverridesState, saveRbac } = useSite()
   const { user } = useAuth()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
@@ -2197,7 +2197,7 @@ function SettingsEditor() {
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
-  const buildConfig = () => ({ content, themeId, fontId, visibility })
+  const buildConfig = () => ({ content, themeId, fontId, visibility, rbacOverrides: rbacOverrides ?? undefined })
   const exportConfig = () => {
     const blob = new Blob([JSON.stringify(buildConfig(), null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -2212,13 +2212,15 @@ function SettingsEditor() {
     setImportStatus('busy'); setImportErr(undefined)
     try {
       const text = await file.text()
-      const cfg = JSON.parse(text) as { content?: typeof content; themeId?: string; fontId?: string; visibility?: typeof visibility }
+      const cfg = JSON.parse(text) as { content?: typeof content; themeId?: string; fontId?: string; visibility?: typeof visibility; rbacOverrides?: typeof rbacOverrides }
       if (cfg.content) setContent(cfg.content)
       if (cfg.themeId) setThemeId(cfg.themeId)
       if (cfg.fontId) setFontId(cfg.fontId)
       if (cfg.visibility) setVisibility(cfg.visibility)
+      if (cfg.rbacOverrides !== undefined) setRbacOverridesState(cfg.rbacOverrides ?? null)
       if (dataSource === 'supabase') {
         const res = await saveSiteConfig(buildConfig())
+        if (res.ok && cfg.rbacOverrides !== undefined) await saveRbac(cfg.rbacOverrides ?? null)
         if (!res.ok) { setImportStatus('error'); setImportErr(res.error || 'Échec de l\'enregistrement'); setTimeout(() => setImportStatus('idle'), 4000); return }
         await logAudit({ actor: user?.email ?? '', action: 'import_config', target: 'site_config', detail: `Importé depuis ${file.name}` })
       }
