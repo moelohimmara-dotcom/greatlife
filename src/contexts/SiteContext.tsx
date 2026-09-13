@@ -7,6 +7,7 @@ import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
 import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
+import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 
 export interface SiteContent {
   slogan: string
@@ -110,6 +111,9 @@ interface SiteContextValue {
   blogPosts: BlogPost[]
   setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
   saveSiteConfigToDb: () => Promise<SaveResult>
+  rbacOverrides: RbacOverrides | null
+  setRbacOverridesState: (o: RbacOverrides | null) => void
+  saveRbac: (overrides: RbacOverrides | null) => Promise<SaveResult>
   markMessageHandled: (id: string, handled: boolean) => Promise<SaveResult>
   refreshMedia: () => Promise<void>
   adminUsers: AdminUser[]
@@ -206,6 +210,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
+  const [rbacOverrides, setRbacOverridesState] = useState<RbacOverrides | null>(null)
 
   const theme = THEMES[themeId]
   const font = FONTS[fontId]
@@ -284,6 +289,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         if (cfg.themeId) setThemeId(cfg.themeId)
         if (cfg.fontId) setFontId(cfg.fontId)
         if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+        if (cfg.rbacOverrides) {
+          const ov = cfg.rbacOverrides as RbacOverrides
+          setRbacOverridesState(ov)
+          setRbacOverrides(ov)
+        }
       }
       if (messagesRes.fromDb && messagesRes.data.length > 0) {
         setMessages(messagesRes.data)
@@ -309,7 +319,14 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const saveContentToDb = async () => saveContent(content)
 
   const saveSiteConfigToDb = async () => {
-    const config: SiteConfig = { content, themeId, fontId, visibility }
+    const config: SiteConfig = { content, themeId, fontId, visibility, rbacOverrides: rbacOverrides ?? undefined }
+    return saveSiteConfig(config)
+  }
+
+  const saveRbac = async (overrides: RbacOverrides | null) => {
+    setRbacOverridesState(overrides)
+    setRbacOverrides(overrides)
+    const config: SiteConfig = { content, themeId, fontId, visibility, rbacOverrides: overrides ?? undefined }
     return saveSiteConfig(config)
   }
 
@@ -357,6 +374,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (cfg.themeId) setThemeId(cfg.themeId)
       if (cfg.fontId) setFontId(cfg.fontId)
       if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+      if (cfg.rbacOverrides) {
+        const ov = cfg.rbacOverrides as RbacOverrides
+        setRbacOverridesState(ov)
+        setRbacOverrides(ov)
+      }
     }
   }
 
@@ -407,7 +429,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     menu, setMenu, media, setMedia, messages, setMessages,
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
-    blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
+    blogPosts, setBlogPosts, saveSiteConfigToDb, rbacOverrides, setRbacOverridesState, saveRbac, markMessageHandled: handleMarkMessageHandled,
     refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
     pendingOrdersCount, pendingReservationsCount, unhandledMessagesCount,
   }
