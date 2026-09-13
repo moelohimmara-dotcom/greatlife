@@ -802,6 +802,7 @@ function UsersRoles() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const RBAC_ACTIONS_SET = new Set(['user_create', 'user_role_update', 'user_delete', 'rbac_update', 'rbac_reset'])
   const [rbacHistory, setRbacHistory] = useState<AuditEntry[]>([])
+  const [auditAll, setAuditAll] = useState<AuditEntry[]>([])
   const [rbacHistOpen, setRbacHistOpen] = useState(false)
   useEffect(() => {
     if (dataSource !== 'supabase') return
@@ -809,12 +810,14 @@ function UsersRoles() {
     const refresh = async () => {
       const res = await fetchAuditLog()
       if (!active || !res.fromDb) return
+      setAuditAll(res.data)
       setRbacHistory(res.data.filter(e => RBAC_ACTIONS_SET.has(e.action)))
     }
     refresh()
     const timer = setInterval(refresh, 30000)
     return () => { active = false; clearInterval(timer) }
   }, [dataSource])
+  const userActivity = (email: string) => auditAll.filter(e => e.actor.toLowerCase() === email.toLowerCase())
 
   const actionsFor = (m: string): CrudAction[] => CRUD_ACTIONS.filter(act => MODULE_ACCESS[m].actions[act] !== undefined)
   const roleHas = (m: string, a: CrudAction, role: string): boolean => {
@@ -1110,6 +1113,27 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
                         </div>
                       )}
                     </>
+                  )
+                })()}
+                {(() => {
+                  const acts = userActivity(u.email).slice(0, 8)
+                  if (acts.length === 0 && dataSource !== 'supabase') return null
+                  return (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${t.shadow}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.heading, marginBottom: 6 }}>Activité récente ({acts.length})</div>
+                      {acts.length === 0 ? (
+                        <div style={{ fontSize: 11, color: t.muted }}>Aucune action enregistrée.</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {acts.map(e => (
+                            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                              <span style={{ fontSize: 11, color: t.text }}><span style={{ fontWeight: 700, padding: '1px 7px', borderRadius: 100, background: `${t.primary}14`, color: t.primary, marginRight: 6 }}>{e.action}</span>{e.target}{e.detail ? ` — ${e.detail}` : ''}</span>
+                              <span style={{ fontSize: 10, color: t.muted, whiteSpace: 'nowrap' }}>{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )
                 })()}
               </div>
