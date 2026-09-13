@@ -14,6 +14,7 @@ export interface SiteConfig {
   themeId: string
   fontId: string
   visibility: unknown
+  rbacOverrides?: unknown
 }
 
 export type SaveResult = { ok: boolean; error?: string }

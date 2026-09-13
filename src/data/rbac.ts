@@ -1,5 +1,7 @@
 export type CrudAction = 'create' | 'update' | 'delete' | 'publish'
 
+export const CRUD_ACTIONS: CrudAction[] = ['create', 'update', 'delete', 'publish']
+
 export interface RoleDef {
   id: string
   name: string
@@ -51,29 +53,59 @@ export const MODULE_ACCESS: Record<string, ModuleAccess> = {
   audit: { module: "Journal d'activit\u00e9", roles: ['owner', 'manager'], actions: {} },
 }
 
+export const ALL_MODULES = Object.keys(MODULE_ACCESS)
+
+export type RbacOverrides = Record<string, Partial<Record<CrudAction, string[]>>>
+
+let effectiveAccess: Record<string, ModuleAccess> = MODULE_ACCESS
+
+export function setRbacOverrides(overrides: RbacOverrides | null | undefined): void {
+  if (!overrides || Object.keys(overrides).length === 0) {
+    effectiveAccess = MODULE_ACCESS
+    return
+  }
+  const next: Record<string, ModuleAccess> = {}
+  for (const key of ALL_MODULES) {
+    const base = MODULE_ACCESS[key]
+    const ov = overrides[key]
+    if (!ov) {
+      next[key] = base
+      continue
+    }
+    next[key] = {
+      module: base.module,
+      roles: base.roles,
+      actions: { ...base.actions, ...ov },
+    }
+  }
+  effectiveAccess = next
+}
+
+export function getEffectiveModuleAccess(): Record<string, ModuleAccess> {
+  return effectiveAccess
+}
+
 export function canAccessModule(moduleKey: string, role: string): boolean {
-  const access = MODULE_ACCESS[moduleKey]
+  const access = effectiveAccess[moduleKey]
   if (!access) return false
   return access.roles.includes(role)
 }
 
 export function canWriteModule(moduleKey: string, role: string): boolean {
-  const access = MODULE_ACCESS[moduleKey]
+  const access = effectiveAccess[moduleKey]
   if (!access) return false
   return writeRolesFromActions(access.actions).includes(role)
 }
 
 export function canDo(moduleKey: string, action: CrudAction, role: string): boolean {
-  const access = MODULE_ACCESS[moduleKey]
+  const access = effectiveAccess[moduleKey]
   if (!access) return false
   const roles = access.actions[action]
   return roles ? roles.includes(role) : false
 }
 
-export const ALL_MODULES = Object.keys(MODULE_ACCESS)
-
 export function permLevelFor(moduleKey: string, role: string): 'write' | 'read' | 'none' {
-  const access = MODULE_ACCESS[moduleKey]
+  const access = effectiveAccess[moduleKey]
   if (!access || !access.roles.includes(role)) return 'none'
   return canWriteModule(moduleKey, role) ? 'write' : 'read'
 }
