@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { MODULES, ROLES, canAccessModule, canWriteModule, ROLE_LABELS } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ALL_MODULES, permLevelFor, MODULE_ACCESS } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -763,8 +763,8 @@ function UsersRoles() {
   const { theme: t, dataSource, adminUsers, refreshAdminUsers } = useSite()
   const { user: currentUser } = useAuth()
   const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
-  const permColor = (p: string) => p === 'écrire' ? t.accent : p === 'lecture' || p === 'carte' || p === 'blog' ? t.primary : t.muted
-  const permIcon = (p: string) => p === 'écrire' ? Icon.write(13, t.accent) : p === 'lecture' ? Icon.eye(13, t.primary) : p === 'carte' ? Icon.leaf(13, t.gold) : p === 'blog' ? Icon.write(13, t.primary) : '—'
+  const permColor = (p: 'write' | 'read' | 'none') => p === 'write' ? t.accent : p === 'read' ? t.primary : t.muted
+  const permIcon = (p: 'write' | 'read' | 'none') => p === 'write' ? Icon.write(13, t.accent) : p === 'read' ? Icon.eye(13, t.primary) : '—'
 
   const isSupabase = dataSource === 'supabase'
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
@@ -789,6 +789,12 @@ function UsersRoles() {
       role: editing.role,
     })
     if (res.ok) {
+      logAudit({
+        actor: currentUser?.email ?? '',
+        action: editing.id ? 'user_role_update' : 'user_create',
+        target: editing.email.trim().toLowerCase(),
+        detail: `Rôle : ${ROLE_LABELS[editing.role] ?? editing.role}`,
+      })
       setEditing(null)
       await refreshAdminUsers()
       setStatus({ kind: 'ok', msg: editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.' })
@@ -802,6 +808,12 @@ function UsersRoles() {
     const res = await deleteAdminUser(id)
     setBusyId(null)
     if (res.ok) {
+      logAudit({
+        actor: currentUser?.email ?? '',
+        action: 'user_delete',
+        target: name,
+        detail: 'Suppression utilisateur',
+      })
       await refreshAdminUsers()
       setStatus({ kind: 'ok', msg: `${name} supprimé.` })
     } else {
@@ -890,14 +902,14 @@ function UsersRoles() {
           <thead>
             <tr style={{ background: t.surfaceAlt }}>
               <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading }}>Rôle</th>
-              {MODULES.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{m}</th>)}
+              {ALL_MODULES.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{MODULE_ACCESS[m].module}</th>)}
             </tr>
           </thead>
           <tbody>
             {ROLES.map(r => (
               <tr key={r.id} style={{ borderTop: `1px solid ${t.shadow}` }}>
                 <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, fontWeight: 600 }}>{r.name}</td>
-                {MODULES.map(m => <td key={m} style={{ ...cellStyle, color: permColor(r.perms[m] || '—') }}>{permIcon(r.perms[m] || '—')}</td>)}
+                {ALL_MODULES.map(m => { const p = permLevelFor(m, r.id); return <td key={m} style={{ ...cellStyle, color: permColor(p) }}>{permIcon(p)}</td> })}
               </tr>
             ))}
           </tbody>
@@ -915,6 +927,7 @@ function slugify(s: string): string {
 
 function BlogEditor() {
   const { blogPosts, setBlogPosts, theme: t, dataSource } = useSite()
+  const { user } = useAuth()
   const [editing, setEditing] = useState<BlogPost | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
@@ -1075,7 +1088,7 @@ function BlogEditor() {
                 <div style={{ fontSize: '13px', color: t.muted, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{post.excerpt || 'Aucun extrait'}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   <GhostButton color={t.primary} onClick={() => setEditing(post)}>Modifier</GhostButton>
-                  <GhostButton color="#dc2626" onClick={() => remove(post)}>{Icon.trash(12, '#dc2626')} Supprimer</GhostButton>
+                  {canDo('blog', 'delete', user?.role ?? '') && <GhostButton color="#dc2626" onClick={() => remove(post)}>{Icon.trash(12, '#dc2626')} Supprimer</GhostButton>}
                 </div>
               </div>
             </OrganicCard>
@@ -1611,14 +1624,14 @@ function OrdersManager() {
                         {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {confirmDel === o.id ? (
+                    {canDo('orders', 'delete', user?.role ?? '') && (confirmDel === o.id ? (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <button onClick={() => removeOrder(o.id!)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
                         <button onClick={() => setConfirmDel(null)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmDel(o.id ?? null)} title="Supprimer la commande" style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
-                    )}
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1807,14 +1820,14 @@ function ReservationsManager() {
                               {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                          {confirmDel === r.id ? (
+                          {canDo('reservations', 'delete', user?.role ?? '') && (confirmDel === r.id ? (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                               <button onClick={() => removeResa(r.id!)} style={{ fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>OK</button>
                               <button onClick={() => setConfirmDel(null)} style={{ fontSize: 10, fontWeight: 600, padding: '4px 8px', borderRadius: 7, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Non</button>
                             </div>
                           ) : (
                             <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer" style={{ fontSize: 10, fontWeight: 600, padding: '4px 7px', borderRadius: 7, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(11, '#dc2626')}</button>
-                          )}
+                          ))}
                         </div>
                       </div>
                     </OrganicCard>
@@ -1846,14 +1859,14 @@ function ReservationsManager() {
                         {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {confirmDel === r.id ? (
+                    {canDo('reservations', 'delete', user?.role ?? '') && (confirmDel === r.id ? (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <button onClick={() => removeResa(r.id!)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
                         <button onClick={() => setConfirmDel(null)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer la réservation" style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
-                    )}
+                    ))}
                   </div>
                 </div>
               </div>
