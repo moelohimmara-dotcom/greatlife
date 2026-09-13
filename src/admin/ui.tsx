@@ -1,5 +1,6 @@
 import React from 'react'
 import { useSite } from '@/contexts/SiteContext'
+import { Icon } from '@/lib/icons'
 
 export function PageHeader({
   title,
@@ -104,5 +105,26 @@ export function PrimaryButton({ onClick, children, disabled, style, color }: {
     }} onMouseEnter={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.08)' }}
       onMouseLeave={e => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.filter = 'none' }}
     >{children}</button>
+  )
+}
+
+export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
+  const { theme: t } = useSite()
+  const pages = Math.max(1, Math.ceil(total / pageSize))
+  if (total <= pageSize) return null
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const end = Math.min(page * pageSize, total)
+  const btn = (label: React.ReactNode, disabled: boolean, onClick: () => void) => (
+    <button onClick={onClick} disabled={disabled} style={{ fontSize: 12, fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: disabled ? 'not-allowed' : 'pointer', border: `1px solid ${disabled ? t.shadow : t.primary + '44'}`, background: 'transparent', color: disabled ? t.muted : t.primary, opacity: disabled ? 0.5 : 1 }}>{label}</button>
+  )
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, flexWrap: 'wrap', fontSize: 12, color: t.muted }}>
+      <span>{start}–{end} sur {total}</span>
+      <div style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
+        {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronLeft(13, page === 1 ? t.muted : t.primary)}</span>, page === 1, () => onPage(Math.max(1, page - 1)))}
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.heading, padding: '0 6px' }}>{page} / {pages}</span>
+        {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronRight(13, page === pages ? t.muted : t.primary)}</span>, page === pages, () => onPage(Math.min(pages, page + 1)))}
+      </div>
+    </div>
   )
 }
