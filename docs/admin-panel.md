@@ -31,6 +31,7 @@
 | Pilotage | `messages` | Messages | `MessagesManager` | mail |
 | Pilotage | `reservations` | Réservations | `ReservationsManager` | calendar |
 | Contenu | `content` | Contenu | `ContentEditor` | write |
+| Contenu | `team` | Équipe & contenus | `TeamContentsEditor` | users |
 | Contenu | `menu` | Carte & prix | `MenuEditor` | leaf |
 | Contenu | `blog` | Blog | `BlogEditor` | write |
 | Apparence | `theme` | Thème & ambiance | `ThemeEditor` | palette |
@@ -61,6 +62,12 @@ Cartes de stats : nb produits, messages (dont non traités), commandes (dont en 
 - Statuts : pending / confirmed / cancelled.
 
 ### 5. Contenu (`ContentEditor`, ligne 198)
+
+### 5.bis Équipe & contenus (`TeamContentsEditor`)
+- CRUD sur trois collections stockées dans `site_content` (via `saveContentToDb`) :
+  - **Équipe** : `content.team` (nom, rôle, description) — rendu par la section publique `Team`.
+  - **Engagements** : `content.engagements` (icône, titre, description) — rendu par `Engagements`.
+  - **Témoignages** : `content.testimonials` (auteur, texte) — rendu par la section publique `Testimonials` (gardée par `visibility.testimonials`).
 - Édite `SiteContent` (slogan, heroTitle, heroSub, storyTitle, story, emails contact/résa, autoReply).
 - Sauvegarde via `saveContentToDb` (merge dans `site_content.key = 'site_config'`).
 - `SaveBar` affiche l'état (idle/saving/saved/error) + le message d'erreur réel.
