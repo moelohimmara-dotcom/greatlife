@@ -303,6 +303,9 @@ export interface BlogPost {
   category: string
   published: boolean
   created_at?: string
+  slug?: string
+  cover_url?: string
+  meta_description?: string
 }
 
 export async function fetchBlogPosts(): Promise<{ data: BlogPost[]; fromDb: boolean }> {
@@ -323,6 +326,9 @@ export async function fetchBlogPosts(): Promise<{ data: BlogPost[]; fromDb: bool
         category: String(p.category ?? 'Actualités'),
         published: Boolean(p.published ?? false),
         created_at: String(p.created_at ?? ''),
+        slug: String(p.slug ?? ''),
+        cover_url: String(p.cover_url ?? ''),
+        meta_description: String(p.meta_description ?? ''),
       })),
       fromDb: true,
     }
@@ -341,6 +347,9 @@ export async function upsertBlogPost(post: BlogPost): Promise<SaveResult> {
       body: post.body,
       category: post.category,
       published: post.published,
+      slug: post.slug ?? '',
+      cover_url: post.cover_url ?? '',
+      meta_description: post.meta_description ?? '',
     }
     if (post.id) {
       const { error } = await sb.from(BLOG_TABLE).update(payload).eq('id', post.id)

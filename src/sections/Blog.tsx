@@ -19,6 +19,7 @@ export function Blog() {
     ? blogPosts.filter(p => p.published)
     : FALLBACK_POSTS
   const mediaMap = new Map(media.filter(m => m.url).map(m => [m.slot, m.url!]))
+  const postCover = (post: BlogPost) => post.cover_url || mediaMap.get(`blog-${slugify(post.title)}`)
   const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const illusMap: Record<string, string> = {
     'corossol': 'corossol', 'sain': 'sain', 'producteurs': 'producteurs',
@@ -37,7 +38,7 @@ export function Blog() {
       <div className="blog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
         {posts.map((post, i) => {
           const illus = getIllus(post.title, post.category)
-          const postImg = mediaMap.get(`blog-${slugify(post.title)}`)
+          const postImg = postCover(post)
           return (
           <Reveal key={i} delay={(i % 3) * 0.06}>
             <OrganicCard hover style={{ padding: '0', overflow: 'hidden' }}>
@@ -90,8 +91,8 @@ export function Blog() {
                 )}
               </div>
               <div style={{ padding: '20px 22px' }}>
-                <h4 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
-                <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.excerpt}</p>
+                <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
+                <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
                 {post.body && (
                   <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
                     {expanded === post.title ? 'Réduire' : 'Lire la suite'}
