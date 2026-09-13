@@ -49,6 +49,12 @@ export interface MediaSlot {
   size_bytes?: number | null
 }
 
+export interface MessageReply {
+  date: string
+  author: string
+  content: string
+}
+
 export interface ContactMessage {
   id?: string
   nom: string
@@ -57,6 +63,7 @@ export interface ContactMessage {
   message: string
   date?: string
   handled?: boolean
+  replies?: MessageReply[]
 }
 
 export interface TeamMember {
