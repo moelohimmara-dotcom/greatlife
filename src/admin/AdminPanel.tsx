@@ -761,7 +761,7 @@ const ROLE_OPTIONS = ROLES.map(r => ({ id: r.id, name: r.name }))
 
 function UsersRoles() {
   const { theme: t, dataSource, adminUsers, refreshAdminUsers, rbacOverrides, saveRbac } = useSite()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, refreshRole } = useAuth()
   const isOwner = currentUser?.role === 'owner'
   const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
   const permColor = (p: 'write' | 'read' | 'none') => p === 'write' ? t.accent : p === 'read' ? t.primary : t.muted
@@ -873,6 +873,7 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
       }
       setPendingOverrides(null)
       setRbacStatus({ kind: 'ok', msg: 'Permissions enregistrées.' })
+      refreshRole().catch(() => {})
     } else {
       setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
@@ -886,6 +887,7 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
     setRbacBusy(false)
     if (res.ok) {
       setRbacStatus({ kind: 'ok', msg: 'Permissions réinitialisées (valeurs par défaut).' })
+      refreshRole().catch(() => {})
       logAudit({ actor: currentUser?.email ?? '', action: 'rbac_reset', target: 'Matrice globale', detail: 'Réinitialisation' })
       for (const u of adminUsers) {
         invokeReplyEmail({
@@ -959,6 +961,7 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
       }).catch(() => {})
       setEditing(null)
       await refreshAdminUsers()
+      refreshRole().catch(() => {})
       setStatus({ kind: 'ok', msg: editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.' })
     } else {
       setStatus({ kind: 'err', msg: res.error || 'Échec.' })
