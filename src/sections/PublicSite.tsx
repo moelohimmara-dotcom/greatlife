@@ -10,6 +10,7 @@ import { Localisation } from './Localisation'
 import { Contact } from './Contact'
 import { Reservation } from './Reservation'
 import { Blog } from './Blog'
+import { Testimonials } from './Testimonials'
 import { Footer } from './Footer'
 import { OrderCart } from './OrderCart'
 
@@ -27,6 +28,7 @@ export function PublicSite() {
         {visibility.sections.localisation && <Localisation />}
         {visibility.sections.contact && <Contact />}
         <Reservation />
+        {visibility.testimonials && <Testimonials />}
         {visibility.sections.blog && <Blog />}
         <Footer />
         <OrderCart />

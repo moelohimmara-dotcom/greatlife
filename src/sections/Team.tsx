@@ -4,18 +4,14 @@ import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 
 export function Team() {
-  const { theme: t } = useSite()
+  const { theme: t, content } = useSite()
   const teamImg1 = useMedia('equipe-1')
   const teamImg2 = useMedia('equipe-2')
   const teamImg3 = useMedia('equipe-3')
   const teamImg4 = useMedia('equipe-4')
   const teamImgs = [teamImg1, teamImg2, teamImg3, teamImg4]
-  const team = [
-    { name: 'Mister Marcket', role: 'Fondateur & Propriétaire', desc: 'Visionnaire derrière le concept de fast-food bio accessible. Passionné par la valorisation du terroir guinéen.', color: t.primary },
-    { name: 'Aïssa Koné', role: 'Cheffe de cuisine', desc: 'Créatrice de nos recettes tropicales bio. Elle marie la street-food africaine et la cuisson saine avec brio.', color: t.accent },
-    { name: 'Ibrahima Camara', role: 'Responsable qualité & fournisseurs', desc: 'Le gardien du circuit court. Il sélectionne chaque producteur partenaire de la Fouta-Djallon à Conakry.', color: t.gold },
-    { name: 'Fatou Bérété', role: 'Hôte & Maître d\'hôtel', desc: 'Votre premier contact à Greatlife. Son accueil chaleureux donne le ton de l\'expérience gourmande.', color: t.primary },
-  ]
+  const palette = [t.primary, t.accent, t.gold, t.primary]
+  const team = content.team.map((m, i) => ({ ...m, color: palette[i % palette.length] }))
   return (
     <section id="equipe" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>

@@ -151,6 +151,9 @@ export async function saveContent(content: SiteContent): Promise<SaveResult> {
       socialFacebook: content.socialFacebook,
       socialInstagram: content.socialInstagram,
       socialWhatsapp: content.socialWhatsapp,
+      team: content.team,
+      engagements: content.engagements,
+      testimonials: content.testimonials,
     }
     const { error } = await sb.from(CONTENT_TABLE).upsert(
       { key: CONTENT_KEY, value: merged, updated_at: new Date().toISOString() },

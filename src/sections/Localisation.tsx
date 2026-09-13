@@ -6,19 +6,19 @@ import { softShadow } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 
 export function Localisation() {
-  const { theme: t, isDark } = useSite()
+  const { theme: t, isDark, content } = useSite()
   return (
     <section id="loca" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1000px', margin: '0 auto' }}>
       <Reveal>
-        <SectionHead title="Nous trouver" sub="Kaloum, Conakry — au cœur de la ville." />
+        <SectionHead title="Nous trouver" sub={content.address || 'Kaloum, Conakry — au cœur de la ville.'} />
         <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           <OrganicCard style={{ padding: '32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {[
-                [Icon.pin(20, t.primary), 'Kaloum, Conakry — Guinée', 'Face au Jardin du 2 Octobre'],
-                [Icon.clock(20, t.accent), 'Lun–Dim · 7h00 – 23h00', 'Service continu toute la journée'],
-                [Icon.phone(20, t.gold), '+224 620 00 00 00', 'Appel & WhatsApp'],
-                [Icon.mail(20, t.primary), 'contact@greatlife.gn', 'Réservations & commandes'],
+                [Icon.pin(20, t.primary), content.address || 'Kaloum, Conakry — Guinée', 'Adresse du restaurant'],
+                [Icon.clock(20, t.accent), content.hours || 'Lun–Dim · 7h00 – 23h00', 'Service continu toute la journée'],
+                [Icon.phone(20, t.gold), content.phone || '+224 620 00 00 00', 'Appel & WhatsApp'],
+                [Icon.mail(20, t.primary), content.emailContact || 'contact@greatlife.gn', 'Réservations & commandes'],
               ].map(([ic, title, sub], i) => (
                 <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${t.primary}0a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic}</div>

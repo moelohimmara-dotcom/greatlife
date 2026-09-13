@@ -25,6 +25,9 @@ export interface SiteContent {
   socialFacebook: string
   socialInstagram: string
   socialWhatsapp: string
+  team: TeamMember[]
+  engagements: Engagement[]
+  testimonials: Testimonial[]
 }
 
 export interface SiteVisibility {
@@ -54,6 +57,23 @@ export interface ContactMessage {
   message: string
   date?: string
   handled?: boolean
+}
+
+export interface TeamMember {
+  name: string
+  role: string
+  desc: string
+}
+
+export interface Engagement {
+  icon: string
+  title: string
+  desc: string
+}
+
+export interface Testimonial {
+  author: string
+  text: string
 }
 
 interface SiteContextValue {
@@ -115,6 +135,21 @@ const DEFAULT_CONTENT: SiteContent = {
   socialFacebook: '',
   socialInstagram: '',
   socialWhatsapp: '',
+  team: [
+    { name: 'Mister Marcket', role: 'Fondateur & Propriétaire', desc: 'Visionnaire derrière le concept de fast-food bio accessible. Passionné par la valorisation du terroir guinéen.' },
+    { name: 'Aïssa Koné', role: 'Cheffe de cuisine', desc: 'Créatrice de nos recettes tropicales bio. Elle marie la street-food africaine et la cuisson saine avec brio.' },
+    { name: 'Ibrahima Camara', role: 'Responsable qualité & fournisseurs', desc: 'Le gardien du circuit court. Il sélectionne chaque producteur partenaire de la Fouta-Djallon à Conakry.' },
+    { name: 'Fatou Bérété', role: 'Hôte & Maître d\'hôtel', desc: 'Votre premier contact à Greatlife. Son accueil chaleureux donne le ton de l\'expérience gourmande.' },
+  ],
+  engagements: [
+    { icon: 'leaf', title: 'Produits 100% bio', desc: 'Circuit court, fournisseurs locaux de Guinée, labels vérifiés.' },
+    { icon: 'recycle', title: 'Emballages écologiques', desc: 'Compostables et recyclables, zéro plastique à usage unique.' },
+    { icon: 'fire', title: 'Cuisson saine', desc: 'Modes de cuisson légers, gras maîtrisé, nutriments préservés.' },
+    { icon: 'search', title: 'Transparence totale', desc: 'Origine, prix et vertus affichés sur chaque produit.' },
+    { icon: 'coin', title: 'Bio accessible', desc: 'Des prix justes en FG : le bio n\'est pas un luxe.' },
+    { icon: 'leaf', title: 'Végé-friendly', desc: 'Une vraie offre végétale et vegan à chaque catégorie.' },
+  ],
+  testimonials: [],
   autoReply: 'Bonjour {nom}, merci pour votre message à Greatlife ! Nous revenons vers vous sous 24h. — L\'équipe Greatlife',
 }
 
