@@ -17,6 +17,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<LoginResult>
   logout: () => void
   loading: boolean
+  refreshRole: () => Promise<void>
 }
 const AuthContext = createContext<AuthContextValue | null>(null)
 export const useAuth = () => useContext(AuthContext)!
@@ -72,6 +73,8 @@ function buildUserFromEmail(email: string, role: string): AuthUser {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const userRef = React.useRef<AuthUser | null>(null)
+  userRef.current = user
 
   useEffect(() => {
     let active = true
@@ -114,6 +117,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active = false
     }
   }, [])
+
+  const refreshRole = async () => {
+    const current = userRef.current
+    if (!current) return
+    const fresh = await resolveRoleFromTable(current.email)
+    if (!fresh || !ADMIN_ROLES.includes(fresh)) return
+    if (fresh !== current.role) {
+      const u = buildUserFromEmail(current.email, fresh)
+      setUser(u)
+      writeLocalSession(u)
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return
+    const timer = setInterval(() => { refreshRole() }, 60000)
+    return () => clearInterval(timer)
+  }, [user])
 
   const login = async (email: string, password: string): Promise<LoginResult> => {
     const normalized = email.trim().toLowerCase()
@@ -175,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, refreshRole }}>
       {children}
     </AuthContext.Provider>
   )
