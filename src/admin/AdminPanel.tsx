@@ -779,6 +779,21 @@ function UsersRoles() {
   const [moduleQuery, setModuleQuery] = useState('')
   const filteredModules = ALL_MODULES.filter(m => MODULE_ACCESS[m].module.toLowerCase().includes(moduleQuery.trim().toLowerCase()))
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const RBAC_ACTIONS_SET = new Set(['user_create', 'user_role_update', 'user_delete', 'rbac_update', 'rbac_reset'])
+  const [rbacHistory, setRbacHistory] = useState<AuditEntry[]>([])
+  const [rbacHistOpen, setRbacHistOpen] = useState(false)
+  useEffect(() => {
+    if (dataSource !== 'supabase') return
+    let active = true
+    const refresh = async () => {
+      const res = await fetchAuditLog()
+      if (!active || !res.fromDb) return
+      setRbacHistory(res.data.filter(e => RBAC_ACTIONS_SET.has(e.action)))
+    }
+    refresh()
+    const timer = setInterval(refresh, 30000)
+    return () => { active = false; clearInterval(timer) }
+  }, [dataSource])
 
   const actionsFor = (m: string): CrudAction[] => CRUD_ACTIONS.filter(act => MODULE_ACCESS[m].actions[act] !== undefined)
   const roleHas = (m: string, a: CrudAction, role: string): boolean => {
@@ -1138,6 +1153,33 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
         <span>Légende :</span>
         {CRUD_ACTIONS.map(a => <span key={a}><b style={{ color: t.heading }}>{a[0].toUpperCase()}</b> = {a === 'create' ? 'Créer' : a === 'update' ? 'Modifier' : a === 'delete' ? 'Supprimer' : 'Publier'}</span>)}
         <span>Les modules sans actions (ex. Tableau de bord, Journal) restent en lecture.</span>
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+          <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            Historique des changements RBAC
+            <span style={{ fontSize: 12, fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '2px 10px', borderRadius: 100 }}>{rbacHistory.length}</span>
+          </h3>
+          <GhostButton color={t.muted} onClick={() => setRbacHistOpen(o => !o)}>{rbacHistOpen ? 'Masquer' : 'Afficher'}</GhostButton>
+        </div>
+        {rbacHistOpen && (
+          rbacHistory.length === 0 ? (
+            <p style={{ color: t.muted, fontSize: 13, padding: '8px 0' }}>Aucun changement RBAC enregistré pour le moment.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
+              {rbacHistory.slice(0, 50).map(e => (
+                <div key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 12px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 10, fontSize: 12 }}>
+                  <span style={{ flexShrink: 0, fontSize: 10, color: t.muted, minWidth: 110 }}>{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  <span style={{ flexShrink: 0, fontWeight: 700, color: t.accent, textTransform: 'capitalize', minWidth: 130 }}>{e.action.replace(/_/g, ' ')}</span>
+                  <span style={{ color: t.muted, flexShrink: 0 }}>{e.actor || 'système'}</span>
+                  <span style={{ color: t.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>→ {e.target}</span>
+                  <span style={{ color: t.muted, flexShrink: 0, fontSize: 11 }}>{e.detail}</span>
+                </div>
+              ))}
+            </div>
+          )
+        )}
       </div>
     </div>
   )
