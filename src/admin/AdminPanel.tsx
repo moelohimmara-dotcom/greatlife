@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, MODULE_GROUPS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -831,7 +831,6 @@ function UsersRoles() {
   const { theme: t, dataSource, adminUsers, refreshAdminUsers, rbacOverrides, saveRbac } = useSite()
   const { user: currentUser, refreshRole } = useAuth()
   const isOwner = currentUser?.role === 'owner'
-  const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
   const permColor = (p: 'write' | 'read' | 'none') => p === 'write' ? t.accent : p === 'read' ? t.primary : t.muted
   const permIcon = (p: 'write' | 'read' | 'none') => p === 'write' ? Icon.write(13, t.accent) : p === 'read' ? Icon.eye(13, t.primary) : '—'
 
@@ -1254,68 +1253,55 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
         </div>
         {moduleQuery && <span style={{ fontSize: 11, color: t.muted }}>{filteredModules.length} module{filteredModules.length > 1 ? 's' : ''}</span>}
       </div>
-      <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${t.shadow}` }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface, minWidth: 720 }}>
-          <thead>
-            <tr style={{ background: t.surfaceAlt }}>
-              <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.muted, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}></th>
-              {MODULE_GROUPS.map(([label, mods]) => {
-                const shown = mods.filter(m => filteredModules.includes(m))
-                if (shown.length === 0) return null
-                return (
-                  <th key={label} colSpan={shown.length} style={{ ...cellStyle, color: t.muted, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${t.shadow}` }}>{label}</th>
-                )
-              })}
-            </tr>
-            <tr style={{ background: t.surfaceAlt }}>
-              <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1 }}>Rôle</th>
-              {filteredModules.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{MODULE_ACCESS[m].module}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {ROLES.map(r => (
-              <tr key={r.id} style={{ borderTop: `1px solid ${t.shadow}` }}>
-                <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, fontWeight: 600, position: 'sticky', left: 0, background: t.surface, zIndex: 1, whiteSpace: 'nowrap' }}>
-                  {r.name}
-                  {(() => { const s = roleSummary(r.id); return (
-                    <div style={{ fontSize: 9, fontWeight: 500, color: t.muted, marginTop: 2 }}>
-                      {s.modulesWrite} écriture · {s.modulesRead} lecture · {s.actionsGranted}/{s.actionsTotal} actions
-                    </div>
-                  ) })()}
-                </td>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+        {ROLES.map(r => {
+          const s = roleSummary(r.id)
+          return (
+            <div key={r.id} style={{ background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 16px', background: t.surfaceAlt, flexWrap: 'wrap' }}>
+                <div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: t.heading }}>{ROLE_LABELS[r.id] ?? r.name}</span>
+                  <div style={{ fontSize: 11, color: t.muted, marginTop: 2 }}>{s.modulesWrite} écriture · {s.modulesRead} lecture · {s.actionsGranted}/{s.actionsTotal} actions</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px 12px', padding: 12 }}>
                 {filteredModules.map(m => {
                   const acts = actionsFor(m)
-                  if (acts.length === 0) {
-                    const p = permLevelFor(m, r.id)
-                    return <td key={m} style={{ ...cellStyle, color: permColor(p) }}>{permIcon(p)}</td>
-                  }
+                  const p = permLevelFor(m, r.id)
+                  const locked = isLocked(m, r.id)
+                  const disabled = !isOwner || rbacBusy || locked
                   return (
-                    <td key={m} style={{ ...cellStyle, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-                      {acts.map(a => {
-                        const on = roleHas(m, a, r.id)
-                        const locked = isLocked(m, r.id)
-                        return (
-                          <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: !isOwner || locked ? 0.45 : 1, pointerEvents: !isOwner || rbacBusy || locked ? 'none' : 'auto' }} title={locked ? 'Protégé (propriétaire)' : `${a} : ${on ? 'autorisé' : 'interdit'}`}>
-                            <Switch
-                              checked={on}
-                              onCheckedChange={() => togglePerm(m, a, r.id)}
-                            />
-                            <span style={{ fontSize: 9, fontWeight: 600, color: on ? t.accent : t.muted, textTransform: 'capitalize' }}>{a[0]}</span>
-                          </div>
-                        )
-                      })}
-                    </td>
+                    <div key={m} style={{ padding: '8px 10px', borderRadius: 10, background: p === 'write' ? `${t.accent}0d` : p === 'read' ? `${t.primary}0a` : 'transparent', border: `1px solid ${t.shadow}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: acts.length > 0 ? 6 : 0 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: t.heading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{MODULE_ACCESS[m].module}</span>
+                        {acts.length === 0 && <span style={{ fontSize: 11, fontWeight: 700, color: permColor(p) }}>{permIcon(p)}</span>}
+                      </div>
+                      {acts.length > 0 ? (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          {acts.map(a => {
+                            const on = roleHas(m, a, r.id)
+                            const aLabel = a === 'create' ? 'Créer' : a === 'update' ? 'Modif.' : a === 'delete' ? 'Suppr.' : 'Publ.'
+                            return (
+                              <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 5, opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }} title={locked ? 'Protégé (propriétaire)' : `${aLabel} : ${on ? 'autorisé' : 'interdit'}`}>
+                                <Switch checked={on} onCheckedChange={() => togglePerm(m, a, r.id)} />
+                                <span style={{ fontSize: 11, fontWeight: 600, color: on ? t.accent : t.muted }}>{aLabel}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: t.muted }}>{p === 'write' ? 'Écriture' : p === 'read' ? 'Lecture seule' : 'Aucun accès'}</div>
+                      )}
+                    </div>
                   )
                 })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </div>
+            </div>
+          )
+        })}
       </div>
       <div style={{ fontSize: 11, color: t.muted, marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <span>Légende :</span>
-        {CRUD_ACTIONS.map(a => <span key={a}><b style={{ color: t.heading }}>{a[0].toUpperCase()}</b> = {a === 'create' ? 'Créer' : a === 'update' ? 'Modifier' : a === 'delete' ? 'Supprimer' : 'Publier'}</span>)}
-        <span>Les modules sans actions (ex. Tableau de bord, Journal) restent en lecture.</span>
+        <span>Les modules sans actions (ex. Tableau de bord, Journal) restent en lecture seule. Le rôle propriétaire sur le module Utilisateurs est protégé (anti-verrouillage).</span>
       </div>
 
       <div style={{ marginTop: 24 }}>
