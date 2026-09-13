@@ -1004,6 +1004,11 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
                 {ROLE_DESCRIPTIONS[role.id] && (
                   <span style={{ fontSize: 11, color: t.muted, lineHeight: 1.3 }}>{ROLE_DESCRIPTIONS[role.id]}</span>
                 )}
+                {(() => { const s = roleSummary(u.role); return (
+                  <span style={{ fontSize: 10, color: t.muted, marginTop: 2 }}>
+                    {s.modulesWrite} module{s.modulesWrite > 1 ? 's' : ''} en écriture · {s.modulesRead} en lecture · {s.actionsGranted}/{s.actionsTotal} actions
+                  </span>
+                ) })()}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
