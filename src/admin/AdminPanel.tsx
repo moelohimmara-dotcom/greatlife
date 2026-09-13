@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ALL_MODULES, permLevelFor, MODULE_ACCESS } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, getEffectiveModuleAccess, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -760,8 +760,9 @@ function VisibilityEditor() {
 const ROLE_OPTIONS = ROLES.map(r => ({ id: r.id, name: r.name }))
 
 function UsersRoles() {
-  const { theme: t, dataSource, adminUsers, refreshAdminUsers } = useSite()
+  const { theme: t, dataSource, adminUsers, refreshAdminUsers, rbacOverrides, saveRbac } = useSite()
   const { user: currentUser } = useAuth()
+  const isOwner = currentUser?.role === 'owner'
   const cellStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '12px', fontWeight: 500, textAlign: 'center' }
   const permColor = (p: 'write' | 'read' | 'none') => p === 'write' ? t.accent : p === 'read' ? t.primary : t.muted
   const permIcon = (p: 'write' | 'read' | 'none') => p === 'write' ? Icon.write(13, t.accent) : p === 'read' ? Icon.eye(13, t.primary) : '—'
@@ -771,6 +772,49 @@ function UsersRoles() {
   const [editing, setEditing] = useState<{ id?: string; email: string; name: string; role: string } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const inp = inputStyle(t)
+
+  const effAccess = getEffectiveModuleAccess()
+  const [rbacBusy, setRbacBusy] = useState(false)
+  const [rbacStatus, setRbacStatus] = useState<{ kind: 'idle' | 'ok' | 'err'; msg: string }>({ kind: 'idle', msg: '' })
+
+  const actionsFor = (m: string): CrudAction[] => CRUD_ACTIONS.filter(act => MODULE_ACCESS[m].actions[act] !== undefined)
+  const roleHas = (m: string, a: CrudAction, role: string): boolean => {
+    const roles = effAccess[m].actions[a]
+    return roles ? roles.includes(role) : false
+  }
+  const isLocked = (m: string, role: string): boolean =>
+    m === 'users' && role === 'owner'
+  const togglePerm = async (m: string, a: CrudAction, role: string) => {
+    if (!isOwner) return
+    if (isLocked(m, role)) return
+    const next: RbacOverrides = { ...(rbacOverrides ?? {}) }
+    const cur = effAccess[m].actions[a] ?? []
+    const has = cur.includes(role)
+    const updated = has ? cur.filter(r => r !== role) : [...cur, role]
+    next[m] = { ...next[m], [a]: updated }
+    setRbacBusy(true)
+    const res = await saveRbac(next)
+    setRbacBusy(false)
+    if (res.ok) {
+      setRbacStatus({ kind: 'ok', msg: 'Permissions mises à jour.' })
+      logAudit({ actor: currentUser?.email ?? '', action: 'rbac_update', target: `${MODULE_ACCESS[m].module} / ${ROLE_LABELS[role] ?? role}`, detail: `${a} ${has ? 'retirée' : 'ajoutée'}` })
+    } else {
+      setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
+    }
+    setTimeout(() => setRbacStatus(s => s.kind === 'ok' ? { kind: 'idle', msg: '' } : s), 2500)
+  }
+  const resetPerms = async () => {
+    if (!isOwner) return
+    setRbacBusy(true)
+    const res = await saveRbac(null)
+    setRbacBusy(false)
+    if (res.ok) {
+      setRbacStatus({ kind: 'ok', msg: 'Permissions réinitialisées (valeurs par défaut).' })
+      logAudit({ actor: currentUser?.email ?? '', action: 'rbac_reset', target: 'Matrice globale', detail: 'Réinitialisation' })
+    } else {
+      setRbacStatus({ kind: 'err', msg: res.error || 'Échec.' })
+    }
+  }
 
   const startAdd = () => setEditing({ email: '', name: '', role: 'guest' })
   const startEdit = (u: { id: string; email: string; name: string; role: string }) =>
@@ -896,24 +940,65 @@ function UsersRoles() {
         })
       )}
 
-      <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: '24px 0 10px' }}>Matrice des permissions</h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '24px 0 10px', flexWrap: 'wrap' }}>
+        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: 0 }}>Matrice des permissions</h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {rbacStatus.kind !== 'idle' && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: rbacStatus.kind === 'err' ? '#dc2626' : t.primary }}>{rbacStatus.msg}</span>
+          )}
+          {isOwner && (
+            <GhostButton color={t.muted} disabled={rbacBusy || !isSupabase} onClick={resetPerms}>Réinitialiser</GhostButton>
+          )}
+        </div>
+      </div>
+      {!isOwner && (
+        <div style={{ fontSize: 12, color: t.muted, marginBottom: 10 }}>Lecture seule — seul le propriétaire peut modifier les permissions.</div>
+      )}
       <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${t.shadow}` }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface, minWidth: 720 }}>
           <thead>
             <tr style={{ background: t.surfaceAlt }}>
-              <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading }}>Rôle</th>
+              <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1 }}>Rôle</th>
               {ALL_MODULES.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{MODULE_ACCESS[m].module}</th>)}
             </tr>
           </thead>
           <tbody>
             {ROLES.map(r => (
               <tr key={r.id} style={{ borderTop: `1px solid ${t.shadow}` }}>
-                <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, fontWeight: 600 }}>{r.name}</td>
-                {ALL_MODULES.map(m => { const p = permLevelFor(m, r.id); return <td key={m} style={{ ...cellStyle, color: permColor(p) }}>{permIcon(p)}</td> })}
+                <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, fontWeight: 600, position: 'sticky', left: 0, background: t.surface, zIndex: 1 }}>{r.name}</td>
+                {ALL_MODULES.map(m => {
+                  const acts = actionsFor(m)
+                  if (acts.length === 0) {
+                    const p = permLevelFor(m, r.id)
+                    return <td key={m} style={{ ...cellStyle, color: permColor(p) }}>{permIcon(p)}</td>
+                  }
+                  return (
+                    <td key={m} style={{ ...cellStyle, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                      {acts.map(a => {
+                        const on = roleHas(m, a, r.id)
+                        const locked = isLocked(m, r.id)
+                        return (
+                          <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: !isOwner || locked ? 0.45 : 1, pointerEvents: !isOwner || rbacBusy || locked ? 'none' : 'auto' }} title={locked ? 'Protégé (propriétaire)' : `${a} : ${on ? 'autorisé' : 'interdit'}`}>
+                            <Switch
+                              checked={on}
+                              onCheckedChange={() => togglePerm(m, a, r.id)}
+                            />
+                            <span style={{ fontSize: 9, fontWeight: 600, color: on ? t.accent : t.muted, textTransform: 'capitalize' }}>{a[0]}</span>
+                          </div>
+                        )
+                      })}
+                    </td>
+                  )
+                })}
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+      <div style={{ fontSize: 11, color: t.muted, marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <span>Légende :</span>
+        {CRUD_ACTIONS.map(a => <span key={a}><b style={{ color: t.heading }}>{a[0].toUpperCase()}</b> = {a === 'create' ? 'Créer' : a === 'update' ? 'Modifier' : a === 'delete' ? 'Supprimer' : 'Publier'}</span>)}
+        <span>Les modules sans actions (ex. Tableau de bord, Journal) restent en lecture.</span>
       </div>
     </div>
   )
