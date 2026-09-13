@@ -151,10 +151,12 @@ function Dashboard() {
   const recentMessages = messages.slice(0, 4)
   const [period, setPeriod] = useState<'all' | '7' | '30'>('all')
   const [orders, setOrders] = useState<Order[]>([])
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   useEffect(() => {
     if (dataSource !== 'supabase') return
     let active = true
     fetchOrders().then(res => { if (active && res.fromDb) setOrders(res.data) })
+    fetchAuditLog().then(res => { if (active && res.fromDb) setAuditEntries(res.data) })
     return () => { active = false }
   }, [dataSource])
   const now = Date.now()
@@ -190,6 +192,55 @@ function Dashboard() {
         <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
         <DashCard label="Chiffre d\'affaires" value={<span>{fmt(revenue)} <span style={{ fontSize: 14, color: t.muted, fontWeight: 600 }}>{content.currency}</span></span>} sub={`${confirmedOrders.length} cmdes confirmées · ${periodLabel}`} icon={Icon.coin(20, t.primary)} color={t.primary} />
       </div>
+      {dataSource === 'supabase' && auditEntries.length > 0 && (() => {
+        const total = auditEntries.length
+        const byActor = new Map<string, number>()
+        const byAction = new Map<string, number>()
+        for (const e of auditEntries) {
+          const a = e.actor || 'système'
+          byActor.set(a, (byActor.get(a) ?? 0) + 1)
+          byAction.set(e.action, (byAction.get(e.action) ?? 0) + 1)
+        }
+        const topActors = [...byActor.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+        const topActions = [...byAction.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+        const maxActor = topActors[0]?.[1] ?? 1
+        const maxAction = topActions[0]?.[1] ?? 1
+        const last24 = auditEntries.filter(e => e.created_at && (now - new Date(e.created_at).getTime()) <= 86400000).length
+        return (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
+              <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Activité du panneau</h3>
+              <span style={{ fontSize: 12, color: t.muted, fontWeight: 600 }}>{total} action{total > 1 ? 's' : ''} tracée{total > 1 ? 's' : ''} · {last24} ces 24 h</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+              <OrganicCard style={{ padding: '18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Top utilisateurs</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {topActors.map(([a, n]) => (
+                    <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: t.text, minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a === (content as any).email || a === 'système' ? a : a.split('@')[0]}</span>
+                      <div style={{ flex: 1, height: 7, borderRadius: 100, background: t.surfaceAlt, overflow: 'hidden' }}><div style={{ width: `${(n / maxActor) * 100}%`, height: '100%', background: t.primary, borderRadius: 100 }} /></div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: t.heading, minWidth: 28, textAlign: 'right' }}>{n}</span>
+                    </div>
+                  ))}
+                </div>
+              </OrganicCard>
+              <OrganicCard style={{ padding: '18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Top actions</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {topActions.map(([a, n]) => (
+                    <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: `${t.accent}14`, color: t.accent, minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a}</span>
+                      <div style={{ flex: 1, height: 7, borderRadius: 100, background: t.surfaceAlt, overflow: 'hidden' }}><div style={{ width: `${(n / maxAction) * 100}%`, height: '100%', background: t.accent, borderRadius: 100 }} /></div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: t.heading, minWidth: 28, textAlign: 'right' }}>{n}</span>
+                    </div>
+                  ))}
+                </div>
+              </OrganicCard>
+            </div>
+          </>
+        )
+      })()}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Messages récents</h3>
       </div>
