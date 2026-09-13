@@ -21,6 +21,15 @@ export const ROLE_LABELS: Record<string, string> = ROLES.reduce((acc, r) => {
   return acc
 }, {} as Record<string, string>)
 
+export const ROLE_DESCRIPTIONS: Record<string, string> = {
+  owner: 'Accès complet à tous les modules et à la gestion des rôles.',
+  manager: 'Gestion opérationnelle (commandes, messages, contenu, blog, médias).',
+  chef: 'Responsable de la carte : créer, modifier et supprimer les plats et prix.',
+  editor: 'Rédacteur du blog : créer et modifier les articles, gérer les médias liés.',
+  marketing: 'Campagnes et contenus : médias, blog (lecture des formulaires).',
+  guest: 'Lecteur : consultation seule des contenus publics.',
+}
+
 export const ADMIN_PANEL_ROLES = ROLES.map(r => r.id)
 
 export interface ModuleAccess {
