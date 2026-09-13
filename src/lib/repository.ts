@@ -1,6 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { MENU, type MenuItem } from '@/data/menu'
-import type { SiteContent, ContactMessage } from '@/contexts/SiteContext'
+import type { SiteContent, ContactMessage, MessageReply } from '@/contexts/SiteContext'
 
 const MENU_TABLE = 'menu_items'
 const CONTENT_TABLE = 'site_content'
@@ -195,15 +195,27 @@ export async function fetchMessages(): Promise<{
       .limit(100)
     if (error || !data) return { data: [], fromDb: false }
     return {
-      data: (data as Array<Record<string, unknown>>).map(m => ({
-        id: String(m.id ?? ''),
-        nom: String(m.nom ?? ''),
-        email: String(m.email ?? ''),
-        sujet: String(m.sujet ?? 'contact'),
-        message: String(m.message ?? ''),
-        date: String(m.date ?? new Date().toISOString()),
-        handled: Boolean(m.handled ?? false),
-      })),
+      data: (data as Array<Record<string, unknown>>).map(m => {
+        let replies: MessageReply[] = []
+        const raw = m.replies
+        if (Array.isArray(raw)) {
+          replies = raw.map((r: Record<string, unknown>) => ({
+            date: String(r.date ?? ''),
+            author: String(r.author ?? ''),
+            content: String(r.content ?? ''),
+          }))
+        }
+        return {
+          id: String(m.id ?? ''),
+          nom: String(m.nom ?? ''),
+          email: String(m.email ?? ''),
+          sujet: String(m.sujet ?? 'contact'),
+          message: String(m.message ?? ''),
+          date: String(m.date ?? new Date().toISOString()),
+          handled: Boolean(m.handled ?? false),
+          replies,
+        }
+      }),
       fromDb: true,
     }
   } catch {
@@ -248,6 +260,34 @@ export async function markMessageHandled(
       .from(MESSAGES_TABLE)
       .update({ handled })
       .eq('id', id)
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
+export async function appendReply(id: string, reply: MessageReply): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { data, error: selErr } = await sb.from(MESSAGES_TABLE).select('replies').eq('id', id).maybeSingle()
+    if (selErr) return { ok: false, error: errMsg(selErr) }
+    const existing: MessageReply[] = Array.isArray((data as Record<string, unknown> | null)?.replies) ? ((data as Record<string, unknown>).replies as MessageReply[]) : []
+    const next = [...existing, reply]
+    const { error } = await sb.from(MESSAGES_TABLE).update({ replies: next }).eq('id', id)
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
+export async function deleteMessage(id: string): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { error } = await sb.from(MESSAGES_TABLE).delete().eq('id', id)
     if (error) return { ok: false, error: errMsg(error) }
     return { ok: true }
   } catch (err) {
