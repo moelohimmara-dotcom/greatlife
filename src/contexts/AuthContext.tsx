@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Navigate } from 'react-router-dom'
 import { ADMIN_ACCOUNTS, ADMIN_ROLES } from '@/data/users'
+import { ROLE_LABELS } from '@/data/rbac'
 import { getSupabase } from '@/lib/supabase'
 
 interface AuthUser {
@@ -12,12 +13,18 @@ interface LoginResult {
   ok: boolean
   error?: string
 }
+interface RoleNotice {
+  id: number
+  msg: string
+}
 interface AuthContextValue {
   user: AuthUser | null
   login: (email: string, password: string) => Promise<LoginResult>
   logout: () => void
   loading: boolean
   refreshRole: () => Promise<void>
+  roleNotice: RoleNotice | null
+  dismissRoleNotice: () => void
 }
 const AuthContext = createContext<AuthContextValue | null>(null)
 export const useAuth = () => useContext(AuthContext)!
@@ -73,8 +80,10 @@ function buildUserFromEmail(email: string, role: string): AuthUser {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [roleNotice, setRoleNotice] = useState<RoleNotice | null>(null)
   const userRef = React.useRef<AuthUser | null>(null)
   userRef.current = user
+  const noticeIdRef = React.useRef(0)
 
   useEffect(() => {
     let active = true
@@ -127,8 +136,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const u = buildUserFromEmail(current.email, fresh)
       setUser(u)
       writeLocalSession(u)
+      noticeIdRef.current += 1
+      setRoleNotice({
+        id: noticeIdRef.current,
+        msg: `Vos rôles/permissions ont été mis à jour. Nouveau rôle : ${ROLE_LABELS[fresh] ?? fresh}.`,
+      })
     }
   }
+  const dismissRoleNotice = useCallback(() => setRoleNotice(null), [])
 
   useEffect(() => {
     if (!user) return
@@ -196,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, refreshRole }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, refreshRole, roleNotice, dismissRoleNotice }}>
       {children}
     </AuthContext.Provider>
   )
