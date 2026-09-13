@@ -2426,6 +2426,9 @@ function AuditManager() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<string>('all')
+  const [actorFilter, setActorFilter] = useState<string>('all')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
   const inp = inputStyle(t)
   useEffect(() => {
     if (dataSource !== 'supabase') { setLoading(false); return }
@@ -2440,11 +2443,24 @@ function AuditManager() {
     return () => { active = false; clearInterval(timer) }
   }, [dataSource])
   const actions = Array.from(new Set(entries.map(e => e.action))).sort()
+  const actors = Array.from(new Set(entries.map(e => e.actor || 'système'))).sort()
   const q = query.trim().toLowerCase()
-  const filtered = entries.filter(e =>
-    (filter === 'all' || e.action === filter) &&
-    (!q || e.actor.toLowerCase().includes(q) || e.target.toLowerCase().includes(q) || e.detail.toLowerCase().includes(q))
-  )
+  const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null
+  const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : null
+  const filtered = entries.filter(e => {
+    if (filter !== 'all' && e.action !== filter) return false
+    if (actorFilter !== 'all' && (e.actor || 'système') !== actorFilter) return false
+    if (fromTs !== null || toTs !== null) {
+      const ts = e.created_at ? new Date(e.created_at).getTime() : NaN
+      if (!Number.isFinite(ts)) return false
+      if (fromTs !== null && ts < fromTs) return false
+      if (toTs !== null && ts > toTs) return false
+    }
+    if (q && !e.actor.toLowerCase().includes(q) && !e.target.toLowerCase().includes(q) && !e.detail.toLowerCase().includes(q)) return false
+    return true
+  })
+  const hasFilters = filter !== 'all' || actorFilter !== 'all' || dateFrom !== '' || dateTo !== '' || q !== ''
+  const resetFilters = () => { setFilter('all'); setActorFilter('all'); setDateFrom(''); setDateTo(''); setQuery('') }
   const actorName = (a: string) => a || 'système'
   if (dataSource !== 'supabase') {
     return (
@@ -2458,8 +2474,8 @@ function AuditManager() {
   }
   return (
     <div style={{ maxWidth: '900px' }}>
-      <PageHeader title="Journal d'activité" subtitle={`${entries.length} action${entries.length > 1 ? 's' : ''} tracée${entries.length > 1 ? 's' : ''}`} />
-      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+      <PageHeader title="Journal d'activité" subtitle={`${filtered.length} / ${entries.length} action${entries.length > 1 ? 's' : ''}${hasFilters ? ' (filtré)' : ''}`} />
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 8, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher (acteur, cible, détail)…" style={{ ...inp, paddingLeft: 32, fontSize: 13 }} />
           <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(14, t.muted)}</span>
@@ -2471,6 +2487,18 @@ function AuditManager() {
             {actions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={actorFilter} onValueChange={setActorFilter}>
+          <SelectTrigger style={{ ...inp, width: 180 }}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les utilisateurs</SelectItem>
+            {actors.map(a => <SelectItem key={a} value={a}>{a === 'système' ? 'système' : a.split('@')[0]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: t.muted }}>Du <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inp, width: 150, fontSize: 13 }} /></label>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: t.muted }}>Au <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inp, width: 150, fontSize: 13 }} /></label>
+        {hasFilters && <GhostButton color={t.muted} onClick={resetFilters}>Réinitialiser les filtres</GhostButton>}
       </div>
       {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
         filtered.length === 0 ? <EmptyState icon={Icon.eye(26, t.muted)} title="Aucune entrée" subtitle="Les actions sensibles du panneau seront tracées ici." /> :
