@@ -778,3 +778,55 @@ export async function deleteAdminUser(id: string): Promise<{ ok: boolean; error?
 }
 
 export const supabaseReady = isSupabaseConfigured
+
+export interface AuditEntry {
+  id?: string
+  created_at?: string
+  actor: string
+  action: string
+  target: string
+  detail: string
+}
+
+const AUDIT_TABLE = 'audit_log'
+
+export async function fetchAuditLog(): Promise<{ data: AuditEntry[]; fromDb: boolean }> {
+  const sb = getSupabase()
+  if (!sb) return { data: [], fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(AUDIT_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (error || !data) return { data: [], fromDb: false }
+    return {
+      data: (data as Array<Record<string, unknown>>).map(a => ({
+        id: String(a.id ?? ''),
+        created_at: String(a.created_at ?? ''),
+        actor: String(a.actor ?? ''),
+        action: String(a.action ?? ''),
+        target: String(a.target ?? ''),
+        detail: String(a.detail ?? ''),
+      })),
+      fromDb: true,
+    }
+  } catch {
+    return { data: [], fromDb: false }
+  }
+}
+
+export async function logAudit(entry: Omit<AuditEntry, 'id' | 'created_at'>): Promise<void> {
+  const sb = getSupabase()
+  if (!sb) return
+  try {
+    await sb.from(AUDIT_TABLE).insert({
+      actor: entry.actor,
+      action: entry.action,
+      target: entry.target,
+      detail: entry.detail,
+    })
+  } catch {
+    /* best-effort: silent fail */
+  }
+}
