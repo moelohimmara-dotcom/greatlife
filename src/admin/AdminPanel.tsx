@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
+const ADMIN_URL = 'https://greatlife-conakry.netlify.app/admin'
+
 const NAV_GROUPS: [string, [string, string, string][]][] = [
   ['Pilotage', [
     ['dashboard', 'Tableau de bord', 'grid'],
@@ -925,6 +927,8 @@ function UsersRoles() {
             const permText = `${permLabel} sur le module « ${MODULE_ACCESS[m].module} » ${granted ? 'vous a été accordée' : 'vous a été retirée'}.`
             for (const u of adminUsers.filter(u => u.role === role)) {
               mailTotal++
+              const rs = roleSummary(role)
+              const dateStr = new Date().toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })
               const r = await invokeReplyEmail({
                 to: u.email,
                 subject: `Greatlife - Mise à jour de vos permissions (${ROLE_LABELS[role] ?? role})`,
@@ -935,7 +939,12 @@ Vos permissions d'accès au panneau d'administration Greatlife ont été modifi�
 Rôle : ${ROLE_LABELS[role] ?? role}
 ${permText}
 
-Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
+Récapitulatif de votre rôle : ${rs.modulesWrite} module(s) en écriture, ${rs.modulesRead} en lecture, ${rs.actionsGranted}/${rs.actionsTotal} actions autorisées.
+
+Pour accéder au panneau d'administration, cliquez sur le lien suivant :
+${ADMIN_URL}
+
+Cette modification a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
                 replyFromName: 'Greatlife',
@@ -970,6 +979,8 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
       logAudit({ actor: currentUser?.email ?? '', action: 'rbac_reset', target: 'Matrice globale', detail: 'Réinitialisation' })
       let mailFail = 0
       for (const u of adminUsers) {
+        const rs = roleSummary(u.role)
+        const dateStr = new Date().toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })
         const r = await invokeReplyEmail({
           to: u.email,
           subject: 'Greatlife - Réinitialisation des permissions',
@@ -978,8 +989,12 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
 La matrice des permissions d'accès au panneau d'administration Greatlife a été réinitialisée à ses valeurs par défaut.
 
 Rôle : ${ROLE_LABELS[u.role] ?? u.role}
+Récapitulatif : ${rs.modulesWrite} module(s) en écriture, ${rs.modulesRead} en lecture, ${rs.actionsGranted}/${rs.actionsTotal} actions autorisées.
 
-Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
+Pour accéder au panneau d'administration, cliquez sur le lien suivant :
+${ADMIN_URL}
+
+Cette réinitialisation a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
           replyFromName: 'Greatlife',
@@ -1033,16 +1048,22 @@ Connectez-vous au panneau pour consulter l'état de vos accès. Si vous n'êtes 
         detail: `Rôle : ${ROLE_LABELS[editing.role] ?? editing.role}`,
       })
       const dest = editing.email.trim().toLowerCase()
+      const rs = roleSummary(editing.role)
+      const dateStr = new Date().toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })
       const mail = await invokeReplyEmail({
         to: dest,
         subject: 'Greatlife - Votre accès au panneau d\'administration',
         replyMessage: `Bonjour ${editing.name.trim()},
 
-Votre compte d\'administration Greatlife a été ${editing.id ? 'modifié' : 'créé'}.
+Votre compte d'administration Greatlife a été ${editing.id ? 'modifié' : 'créé'}.
 
 Rôle attribué : ${ROLE_LABELS[editing.role] ?? editing.role}${ROLE_DESCRIPTIONS[editing.role] ? '\n' + ROLE_DESCRIPTIONS[editing.role] : ''}
+Récapitulatif de votre rôle : ${rs.modulesWrite} module(s) en écriture, ${rs.modulesRead} en lecture, ${rs.actionsGranted}/${rs.actionsTotal} actions autorisées.
 
-Vous pouvez vous connecter au panneau d\'administration avec cette adresse email. Si vous n\'êtes pas à l\'origine de cette demande, contactez le propriétaire.
+Pour accéder au panneau d'administration, cliquez sur le lien suivant :
+${ADMIN_URL}
+
+Vous pouvez vous connecter avec cette adresse email. Cette modification a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
         replyFromName: 'Greatlife',
