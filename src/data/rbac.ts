@@ -73,13 +73,8 @@ export const MODULE_GROUPS: [string, string[]][] = [
 
 export type RbacOverrides = Record<string, Partial<Record<CrudAction, string[]>>>
 
-let effectiveAccess: Record<string, ModuleAccess> = MODULE_ACCESS
-
-export function setRbacOverrides(overrides: RbacOverrides | null | undefined): void {
-  if (!overrides || Object.keys(overrides).length === 0) {
-    effectiveAccess = MODULE_ACCESS
-    return
-  }
+export function computeEffectiveAccess(overrides: RbacOverrides | null | undefined): Record<string, ModuleAccess> {
+  if (!overrides || Object.keys(overrides).length === 0) return MODULE_ACCESS
   const next: Record<string, ModuleAccess> = {}
   for (const key of ALL_MODULES) {
     const base = MODULE_ACCESS[key]
@@ -94,7 +89,13 @@ export function setRbacOverrides(overrides: RbacOverrides | null | undefined): v
       actions: { ...base.actions, ...ov },
     }
   }
-  effectiveAccess = next
+  return next
+}
+
+let effectiveAccess: Record<string, ModuleAccess> = MODULE_ACCESS
+
+export function setRbacOverrides(overrides: RbacOverrides | null | undefined): void {
+  effectiveAccess = computeEffectiveAccess(overrides)
 }
 
 export function getEffectiveModuleAccess(): Record<string, ModuleAccess> {
