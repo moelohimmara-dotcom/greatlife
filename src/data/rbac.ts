@@ -53,6 +53,7 @@ export const MODULE_ACCESS: Record<string, ModuleAccess> = {
   users: { module: 'Utilisateurs & rôles', roles: ['owner'], writeRoles: ['owner'] },
   forms: { module: 'Formulaires & emails', roles: ['owner', 'manager', 'marketing'], writeRoles: ['owner', 'manager'] },
   settings: { module: 'Réglages globaux', roles: ['owner', 'manager'], writeRoles: ['owner', 'manager'] },
+  audit: { module: "Journal d'activité", roles: ['owner', 'manager'], writeRoles: [] },
 }
 
 export function canAccessModule(moduleKey: string, role: string): boolean {
