@@ -144,13 +144,15 @@ Voir [docs/emails.md](./docs/emails.md). En résumé : l'Edge Function `send-con
 
 ## Sécurité
 
-> ⚠️ Plusieurs secrets ont été **volontairement retirés de cette doc** mais existent dans le code source — il faut les migrer vers des secrets plateforme.
+> ⚠️ Les identifiants SMTP étaient **codés en dur** dans l'Edge Function à l'origine. **Cela a été corrigé** : la fonction lit désormais `SMTP_USER` / `SMTP_PASS` / `SMTP_HOST` / `SMTP_PORT` depuis l'environnement (`Deno.env.get`) sans aucun fallback codé en dur. Les 4 actions d'envoi gardent une garde `if (SMTP_USER && SMTP_PASS)` et renvoient `no-credentials` si les secrets manquent.
 
-- **SMTP** (`SMTP_USER` / `SMTP_PASS`) : actuellement **codés en dur** dans `supabase/functions/send-contact-email/index.ts` avec des valeurs par défaut. **À déplacer absolument** vers les secrets de l'Edge Function (Supabase → Functions → send-contact-email → Secrets). Le code lit déjà `Deno.env.get("SMTP_USER")` / `SMTP_PASS` ; supprimez les fallbacks en dur après avoir configuré les secrets.
+- **SMTP (configuration requise)** : définissez `SMTP_USER` (compte Gmail émetteur) et `SMTP_PASS` (mot de passe d'application Gmail) dans Supabase → *Functions* → `send-contact-email* → *Secrets*. Sans eux, aucun email n'est envoyé (`{ ok: false, errors: ["no-credentials"] }`). Détails dans [docs/emails.md](./docs/emails.md).
+- **Email de destination des messages de contact** : provient de `site_content.emailContact` (configuré dans l'admin *Formulaires & emails*), avec repli optionnel sur la variable d'env `CONTACT_EMAIL`. Si ni l'un ni l'autre n'est défini → erreur 500 explicite (plus d'adresse personnelle codée en dur).
 - **Mots de passe admin** (`greatlife2026`) : uniquement des secours locaux pour le mode démo. En production Supabase, l'auth réelle est gérée par Supabase Auth — changez ces mots de passe et ne réutilisez pas `greatlife2026`.
 - **Clé anon Supabase** : c'est une clé **publique** (role `anon`), sûre dans `.env.example`. La sécurité repose sur **RLS**, pas sur le secret de cette clé. Ne confondez pas avec la `service_role` (qui doit rester secrète et n'est **pas** utilisée côté client).
 - **RLS** : jamais de policy `USING (true)` en écriture. Les insert publics (contact, commandes, réservations) sont intentionnels et limités à `INSERT` uniquement.
-- Avant de committer, vérifiez l'absence de secrets : `git diff --cached | grep -iE "password|secret|apikey|smtp_pass"`.
+- **Vérifier l'historique** : si un dépôt a déjà été cloné/publié avec les anciens secrets en dur, **faites pivoter le mot de passe d'application Gmail** et révoquez l'ancien (il a été exposé dans l'historique Git).
+- Avant de committer, vérifiez l'absence de secrets : `git diff --cached | grep -iE "password|secret|apikey|smtp_pass|@gmail"`.
 
 ## 7. Checklist avant de livrer une PR
 
@@ -168,7 +170,7 @@ Voir [docs/emails.md](./docs/emails.md). En résumé : l'Edge Function `send-con
 
 Idées non implémentées, identifiées au passage :
 
-- **Doubler la sécurité des secrets SMTP** : retirer les valeurs en dur de l'Edge Function (cf. section Sécurité).
+- **Migrer les secrets SMTP** : fait (retrait des valeurs en dur). Action restante côté ops : définir `SMTP_USER`/`SMTP_PASS` dans les secrets Supabase et **faire pivoter** l'ancien mot de passe d'application Gmail exposé dans l'historique Git.
 - **Harmoniser les appels directs** : certaines sections (`Reservation`, `Contact`) appellent `insertReservation`/`insertMessage` + `invokeContactEmail` directement au lieu de passer par une couche unique. Une fonction `submitContact` / `submitReservation` centralisée dans `repository.ts` clarifierait le flux.
 - **RBAC réel** : `src/data/rbac.ts` décrit 6 rôles, mais seuls `owner`/`manager` accèdent au panneau. Implémenter le gating par module (cacher/désactiver les modules selon `perms`).
 - **Paiement en ligne** : la commande génère un `ref` mais aucun paiement. Intégrer un prestataire (Wave, Orange Money, etc.) sur le checkout.

@@ -35,10 +35,10 @@ function corsResponse(body: string, status = 200, extra: Record<string, string> 
   });
 }
 
-const SMTP_USER = Deno.env.get("SMTP_USER") || "moelohimmara@gmail.com";
-const SMTP_PASS = Deno.env.get("SMTP_PASS") || "maki lqrj wivo cmha";
-const SMTP_HOST = "smtp.gmail.com";
-const SMTP_PORT = 465;
+const SMTP_USER = Deno.env.get("SMTP_USER");
+const SMTP_PASS = Deno.env.get("SMTP_PASS");
+const SMTP_HOST = Deno.env.get("SMTP_HOST") || "smtp.gmail.com";
+const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") || 465);
 
 interface ContactPayload {
   action?: "contact" | "reply" | "reservation-status" | "order-status";
@@ -112,7 +112,17 @@ async function handleContact(body: ContactPayload): Promise<Response> {
     emailReservation?: string;
     autoReply?: string;
   };
-  const destEmail = config.emailContact || "moelohimmara@gmail.com";
+  const destEmail = config.emailContact || Deno.env.get("CONTACT_EMAIL") || "";
+
+  if (!destEmail) {
+    return corsResponse(
+      JSON.stringify({
+        ok: false,
+        error: "Aucun email de destination configuré (site_content.emailContact ou CONTACT_EMAIL).",
+      }),
+      500,
+    );
+  }
 
   const sujetFinal = sujet || "contact";
   const autoReplies: Record<string, string> = {
