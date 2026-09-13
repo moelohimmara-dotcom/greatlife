@@ -2462,6 +2462,19 @@ function AuditManager() {
   const hasFilters = filter !== 'all' || actorFilter !== 'all' || dateFrom !== '' || dateTo !== '' || q !== ''
   const resetFilters = () => { setFilter('all'); setActorFilter('all'); setDateFrom(''); setDateTo(''); setQuery('') }
   const actorName = (a: string) => a || 'système'
+  const exportCsv = () => {
+    const rows = [['Date', 'Acteur', 'Action', 'Cible', 'Détail'].join(';')]
+    filtered.forEach(e => {
+      rows.push([e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : '', actorName(e.actor), e.action, (e.target || '').replace(/[\n\r]+/g, ' '), (e.detail || '').replace(/[\n\r]+/g, ' ')].map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    })
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
   if (dataSource !== 'supabase') {
     return (
       <div style={{ maxWidth: '640px' }}>
@@ -2499,6 +2512,7 @@ function AuditManager() {
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: t.muted }}>Du <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inp, width: 150, fontSize: 13 }} /></label>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: t.muted }}>Au <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inp, width: 150, fontSize: 13 }} /></label>
         {hasFilters && <GhostButton color={t.muted} onClick={resetFilters}>Réinitialiser les filtres</GhostButton>}
+        <GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0} style={{ marginLeft: 'auto' }}>Exporter CSV</GhostButton>
       </div>
       {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
         filtered.length === 0 ? <EmptyState icon={Icon.eye(26, t.muted)} title="Aucune entrée" subtitle="Les actions sensibles du panneau seront tracées ici." /> :
