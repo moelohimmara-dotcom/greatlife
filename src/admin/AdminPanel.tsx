@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, getEffectiveModuleAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, MODULE_GROUPS, getEffectiveModuleAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -1030,6 +1030,12 @@ Vous pouvez vous connecter au panneau d\'administration avec cette adresse email
       <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${t.shadow}` }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', background: t.surface, minWidth: 720 }}>
           <thead>
+            <tr style={{ background: t.surfaceAlt }}>
+              <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.muted, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}></th>
+              {MODULE_GROUPS.map(([label, mods]) => (
+                <th key={label} colSpan={mods.length} style={{ ...cellStyle, color: t.muted, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${t.shadow}` }}>{label}</th>
+              ))}
+            </tr>
             <tr style={{ background: t.surfaceAlt }}>
               <th style={{ ...cellStyle, textAlign: 'left', paddingLeft: 16, color: t.heading, position: 'sticky', left: 0, background: t.surfaceAlt, zIndex: 1 }}>Rôle</th>
               {ALL_MODULES.map(m => <th key={m} style={{ ...cellStyle, color: t.heading }}>{MODULE_ACCESS[m].module}</th>)}
