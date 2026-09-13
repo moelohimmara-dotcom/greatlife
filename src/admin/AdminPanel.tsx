@@ -40,6 +40,7 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
   ['Système', [
     ['users', 'Utilisateurs & rôles', 'users'],
     ['forms', 'Formulaires & emails', 'settings'],
+    ['settings', 'Réglages globaux', 'settings'],
   ]],
 ]
 
@@ -131,21 +132,50 @@ function DashCard({ label, value, sub, icon, color }: { label: string; value: Re
 }
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
   const recentMessages = messages.slice(0, 4)
+  const [period, setPeriod] = useState<'all' | '7' | '30'>('all')
+  const [orders, setOrders] = useState<Order[]>([])
+  useEffect(() => {
+    if (dataSource !== 'supabase') return
+    let active = true
+    fetchOrders().then(res => { if (active && res.fromDb) setOrders(res.data) })
+    return () => { active = false }
+  }, [dataSource])
+  const now = Date.now()
+  const periodMs = period === '7' ? 7 * 86400000 : period === '30' ? 30 * 86400000 : 0
+  const filteredOrders = period === 'all' ? orders : orders.filter(o => o.created_at && (now - new Date(o.created_at).getTime()) <= periodMs)
+  const confirmedOrders = filteredOrders.filter(o => o.status === 'confirmed')
+  const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
+  const revenue = confirmedOrders.reduce((sum, o) => sum + parsePrice(o.total), 0)
+  const pendingOrders = orders.filter(o => o.status === 'pending').length
+  const unhandledMessages = messages.filter(m => !m.handled).length
+  const fmt = (n: number) => n.toLocaleString('fr-FR')
+  const periodLabel = period === 'all' ? 'tout l\'historique' : `${period} derniers jours`
+  const periodOpts: [string, string][] = [['all', 'Tout'], ['30', '30 jours'], ['7', '7 jours']]
   return (
     <div>
       <PageHeader title="Tableau de bord" subtitle="Pilotez votre site en toute liberté."
         badge={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}</span>}
       />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '24px' }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+        {periodOpts.map(([k, l]) => (
+          <button key={k} onClick={() => setPeriod(k as 'all' | '7' | '30')} style={{
+            fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer',
+            border: `1px solid ${period === k ? t.primary : t.shadow}`, background: period === k ? t.primary : 'transparent',
+            color: period === k ? '#fff' : t.muted, transition: 'all 0.15s',
+          }}>{l}</button>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '16px' }}>
         <DashCard label="Produits" value={menu.length} sub="toutes catégories" icon={Icon.leaf(20, t.primary)} color={t.primary} />
-        <DashCard label="Messages" value={messages.length} sub="via formulaires" icon={Icon.mail(20, t.accent)} color={t.accent} />
-        <DashCard label="Commandes" value={ordersCount} sub="en ligne" icon={Icon.coin(20, t.gold)} color={t.gold} />
-        <DashCard label="Réservations" value={messages.length} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
+        <DashCard label="Messages" value={messages.length} sub={`${unhandledMessages} non traité${unhandledMessages > 1 ? 's' : ''}`} icon={Icon.mail(20, t.accent)} color={t.accent} />
+        <DashCard label="Commandes" value={ordersCount} sub={`${pendingOrders} en attente`} icon={Icon.coin(20, t.gold)} color={t.gold} />
+        <DashCard label="Réservations" value={reservationsCount} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
         <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
+        <DashCard label="Chiffre d\'affaires" value={<span>{fmt(revenue)} <span style={{ fontSize: 14, color: t.muted, fontWeight: 600 }}>{content.currency}</span></span>} sub={`${confirmedOrders.length} cmdes confirmées · ${periodLabel}`} icon={Icon.coin(20, t.primary)} color={t.primary} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Messages récents</h3>
@@ -225,6 +255,7 @@ function ContentEditor() {
         <div>
           <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Section histoire</SectionTitle></div>
           <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Titre de la section</FieldLabel><Input value={content.storyTitle} onChange={e => set('storyTitle', e.target.value)} style={inp} /></div>
             <div><FieldLabel>Notre histoire</FieldLabel><Textarea rows={5} value={content.story} onChange={e => set('story', e.target.value)} style={inp} /></div>
           </div>
         </div>
@@ -247,9 +278,11 @@ function MenuEditor() {
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const [query, setQuery] = useState('')
   const [confirmDel, setConfirmDel] = useState(false)
+  const [newCat, setNewCat] = useState('Burgers')
   const item = menu.find(m => m.name === sel)
   const filtered = query.trim() ? menu.filter(m => m.name.toLowerCase().includes(query.toLowerCase()) || m.cat.toLowerCase().includes(query.toLowerCase())) : menu
   const grouped = filtered.reduce((acc, m) => { (acc[m.cat] = acc[m.cat] || []).push(m); return acc }, {} as Record<string, typeof menu>)
+  const categories = Array.from(new Set(menu.map(m => m.cat))).sort()
   const update = (k: string, v: string | boolean | string[]) => {
     const next = menu.map(m => m.name === sel ? { ...m, [k]: v } : m)
     setMenu(next)
@@ -297,7 +330,8 @@ function MenuEditor() {
           ))}
         </div>
         <button onClick={() => {
-          const newItem = { cat: 'Burgers', name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
+          const cat = newCat.trim() || (categories[0] ?? 'Burgers')
+          const newItem = { cat, name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
           setMenu([...menu, newItem])
           if (dataSource === 'supabase') upsertMenuItem(newItem)
           setSel(newItem.name)
@@ -306,6 +340,14 @@ function MenuEditor() {
           borderRadius: 12, cursor: 'pointer', border: `1px dashed ${t.primary}55`,
           background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>{Icon.plus(14, t.primary)} Ajouter un produit</button>
+        <div style={{ marginTop: 8 }}>
+          <Select value={newCat} onValueChange={setNewCat}>
+            <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13 }}>{newCat}</SelectTrigger>
+            <SelectContent>
+              {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -315,8 +357,15 @@ function MenuEditor() {
         <div style={{ display: 'grid', gap: 14, maxWidth: '560px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
             <div><FieldLabel>Nom</FieldLabel><Input value={item.name} onChange={e => update('name', e.target.value)} style={inp} /></div>
-            <div><FieldLabel>Prix (FG)</FieldLabel><Input value={item.price} onChange={e => update('price', e.target.value)} style={inp} /></div>
+            <div><FieldLabel>Prix (FG)</FieldLabel><Input value={item.price} onChange={e => { const digits = e.target.value.replace(/[^0-9\s]/g, '').trim(); update('price', digits) }} style={inp} inputMode="numeric" placeholder="48 000" /></div>
           </div>
+          <div><FieldLabel>Catégorie</FieldLabel>
+          <Select value={item.cat} onValueChange={v => update('cat', v)}>
+            <SelectTrigger style={{ maxWidth: '340px', borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '11px 14px' }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select></div>
           <div><FieldLabel>Description percutante</FieldLabel><Textarea rows={3} value={item.desc} onChange={e => update('desc', e.target.value)} style={inp} /></div>
           <div><FieldLabel>Vertus (panneau dépliable)</FieldLabel><Textarea rows={2} value={item.vertus} onChange={e => update('vertus', e.target.value)} style={inp} /></div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1291,7 +1340,7 @@ function ReservationsManager() {
     const sb = getSupabase()
     if (sb) {
       channel = sb.channel('reservations-realtime', { config: { private: false } })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reservations' }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, refresh)
         .subscribe()
       timer = setInterval(refresh, 60000)
     } else {
@@ -1381,6 +1430,55 @@ function ReservationsManager() {
   )
 }
 
+function SettingsEditor() {
+  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
+  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
+  const inp = inputStyle(t)
+  const save = async () => {
+    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await saveContentToDb()
+    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
+    setTimeout(() => setSaveStatus('idle'), 4000)
+  }
+  return (
+    <div style={{ maxWidth: '760px' }}>
+      <PageHeader title="Réglages globaux" subtitle="Identité et coordonnées du restaurant, appliquées sur tout le site."
+        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
+      />
+      <div style={{ display: 'grid', gap: '22px', marginTop: '24px' }}>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.primary}>Identité</SectionTitle></div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Nom du restaurant</FieldLabel><Input value={content.restaurantName} onChange={e => set('restaurantName', e.target.value)} style={inp} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div><FieldLabel>Devise</FieldLabel><Input value={content.currency} onChange={e => set('currency', e.target.value)} style={inp} placeholder="FG" /></div>
+              <div><FieldLabel>Téléphone</FieldLabel><Input value={content.phone} onChange={e => set('phone', e.target.value)} style={inp} /></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Localisation & horaires</SectionTitle></div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Adresse</FieldLabel><Input value={content.address} onChange={e => set('address', e.target.value)} style={inp} /></div>
+            <div><FieldLabel>Horaires d'ouverture</FieldLabel><Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} /></div>
+          </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.gold}>Réseaux sociaux</SectionTitle></div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Facebook (URL)</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} placeholder="https://facebook.com/..." /></div>
+            <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
+            <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Admin() {
   const [active, setActive] = useState('dashboard')
   return (
@@ -1399,6 +1497,7 @@ export function Admin() {
           {active === 'visibility' && <VisibilityEditor />}
           {active === 'users' && <UsersRoles />}
           {active === 'forms' && <FormsConfig />}
+          {active === 'settings' && <SettingsEditor />}
         </motion.div>
       </AnimatePresence>
     </AdminShell>
