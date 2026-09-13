@@ -10,7 +10,7 @@ import { MODULES, ROLES, canAccessModule, canWriteModule, ROLE_LABELS } from '@/
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, fetchOrders, updateOrderStatus, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
@@ -1233,11 +1233,43 @@ function OrdersManager() {
     }
     return () => { active = false; if (channel) channel.unsubscribe(); if (timer) clearInterval(timer) }
   }, [dataSource])
-  const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
-  const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, preparing: t.gold || '#b8860b', ready: t.primary, delivered: t.muted, cancelled: t.muted }
+  const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', preparing: 'En préparation', ready: 'Prête', delivered: 'Récupérée', cancelled: 'Annulée' }
+  const STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'] as const
   const [filter, setFilter] = useState<string>('all')
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
-  const counts = { all: orders.length, pending: orders.filter(o => o.status === 'pending').length, confirmed: orders.filter(o => o.status === 'confirmed').length, cancelled: orders.filter(o => o.status === 'cancelled').length }
+  const [query, setQuery] = useState('')
+  const [sortKey, setSortKey] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc')
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
+  const q = query.trim().toLowerCase()
+  const matches = orders.filter(o => (filter === 'all' || o.status === filter) && (!q || o.nom.toLowerCase().includes(q) || o.email.toLowerCase().includes(q) || o.ref.toLowerCase().includes(q) || o.phone.toLowerCase().includes(q)))
+  const sorted = [...matches].sort((a, b) => {
+    if (sortKey === 'amount_desc') return parsePrice(b.total) - parsePrice(a.total)
+    if (sortKey === 'amount_asc') return parsePrice(a.total) - parsePrice(b.total)
+    const da = a.created_at ? new Date(a.created_at).getTime() : 0
+    const db = b.created_at ? new Date(b.created_at).getTime() : 0
+    return sortKey === 'date_asc' ? da - db : db - da
+  })
+  const counts = { all: orders.length, pending: orders.filter(o => o.status === 'pending').length, confirmed: orders.filter(o => o.status === 'confirmed').length, preparing: orders.filter(o => o.status === 'preparing').length, ready: orders.filter(o => o.status === 'ready').length, delivered: orders.filter(o => o.status === 'delivered').length, cancelled: orders.filter(o => o.status === 'cancelled').length }
+  const exportCsv = () => {
+    const rows = [['Réf', 'Nom', 'Email', 'Téléphone', 'Statut', 'Total', 'Retrait', 'Articles', 'Notes', 'Date'].join(';')]
+    sorted.forEach(o => {
+      rows.push([o.ref, o.nom, o.email, o.phone, statusLabel[o.status] || o.status, o.total, o.pickup_time, o.items.map(i => `${i.qty}x ${i.name}`).join(', '), (o.notes || '').replace(/[\n\r]+/g, ' '), o.created_at ? new Date(o.created_at).toLocaleString('fr-FR') : ''].map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    })
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `commandes-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  const removeOrder = async (id: string) => {
+    const res = await deleteOrder(id)
+    if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
+    setOrders(prev => prev.filter(o => o.id !== id))
+    setConfirmDel(null)
+  }
   const [statusSending, setStatusSending] = useState(false)
   const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
   const updateStatus = async (id: string, status: string) => {
@@ -1276,22 +1308,38 @@ function OrdersManager() {
       {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
         orders.length === 0 ? <div style={{ marginTop: 20 }}><EmptyState icon={Icon.coin(28, t.muted)} title="Aucune commande" subtitle="Les commandes en ligne des clients apparaîtront ici." /></div> :
         <>
-        <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
-          {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
+        <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 200 }}>
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher (nom, email, réf, téléphone)…" style={{ ...inputStyle(t), paddingLeft: 34, fontSize: 13 }} />
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(15, t.muted)}</span>
+          </div>
+          <Select value={sortKey} onValueChange={v => setSortKey(v as 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc')}>
+            <SelectTrigger style={{ width: 160, borderColor: t.shadow, borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13 }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_desc">Plus récentes</SelectItem>
+              <SelectItem value="date_asc">Plus anciennes</SelectItem>
+              <SelectItem value="amount_desc">Montant ↓</SelectItem>
+              <SelectItem value="amount_asc">Montant ↑</SelectItem>
+            </SelectContent>
+          </Select>
+          <GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter CSV</GhostButton>
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
+          {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['preparing', 'En préparation'], ['ready', 'Prêtes'], ['delivered', 'Récupérées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)} style={{
               fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${filter === k ? t.primary : t.shadow}`,
               background: filter === k ? t.primary : 'transparent', color: filter === k ? '#fff' : t.muted, transition: 'all 0.15s',
-            }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts]}</span></button>
+            }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts] ?? 0}</span></button>
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-          {filtered.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune commande dans ce filtre.</p> :
-          filtered.map(o => (
+          {sorted.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune commande dans ce filtre.</p> :
+          sorted.map(o => (
             <OrganicCard key={o.id} style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 240 }}>
                   <div style={{ fontSize: '15px', fontWeight: 600, color: t.heading }}>{o.nom} {o.ref && <span style={{ fontSize: '11px', color: t.muted, fontWeight: 600, fontFamily: 'var(--f-body)', marginLeft: 6 }}>· ref {o.ref}</span>}</div>
-                  <div style={{ fontSize: '13px', color: t.muted, marginTop: 4 }}>{o.email}{o.phone ? ` · ${o.phone}` : ''} · retrait {o.pickup_time || '—'}</div>
+                  <div style={{ fontSize: '13px', color: t.muted, marginTop: 4 }}>{o.email}{o.phone ? ` · ${o.phone}` : ''} · retrait {o.pickup_time || '—'}{o.created_at ? ` · ${new Date(o.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}</div>
                   {o.items.length > 0 && (
                     <div style={{ fontSize: '13px', color: t.text, marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {o.items.map((it, idx) => (
@@ -1303,13 +1351,24 @@ function OrdersManager() {
                   {o.notes && <div style={{ fontSize: '12px', color: t.muted, marginTop: 6, whiteSpace: 'pre-wrap' }}>Note : {o.notes}</div>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[o.status]}15`, color: statusColor[o.status] }}>{statusLabel[o.status]}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[o.status]}15`, color: statusColor[o.status] }}>{statusLabel[o.status] ?? o.status}</span>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
                     {statusErr && <span style={{ fontSize: '10px', color: t.accent, fontWeight: 600, maxWidth: 220 }} title={statusErr}>✗ {statusErr}</span>}
-                    {o.status !== 'confirmed' && <button onClick={() => updateStatus(o.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
-                    {o.status !== 'pending' && <button onClick={() => updateStatus(o.id!, 'pending')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>En attente</button>}
-                    {o.status !== 'cancelled' && <button onClick={() => updateStatus(o.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
+                    <Select value={o.status} onValueChange={v => updateStatus(o.id!, v)}>
+                      <SelectTrigger style={{ width: 150, borderColor: t.shadow, borderRadius: 8, background: t.surfaceAlt, padding: '6px 10px', fontSize: 11 }}>{statusLabel[o.status] ?? o.status}</SelectTrigger>
+                      <SelectContent>
+                        {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {confirmDel === o.id ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <button onClick={() => removeOrder(o.id!)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
+                        <button onClick={() => setConfirmDel(null)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(o.id ?? null)} title="Supprimer la commande" style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
+                    )}
                   </div>
                 </div>
               </div>
