@@ -16,4 +16,4 @@ export const ADMIN_ACCOUNTS = [
   { email: 'gerant@greatlife.com', password: 'greatlife2026', name: 'Aïcha Diallo', role: 'manager' },
 ]
 
-export const ADMIN_ROLES = ['owner', 'manager']
+export const ADMIN_ROLES = ['owner', 'manager', 'chef', 'editor', 'marketing', 'guest']
