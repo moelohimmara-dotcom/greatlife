@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryBut
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
-import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, getEffectiveModuleAccess, type RbacOverrides, type CrudAction } from '@/data/rbac'
+import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, getEffectiveModuleAccess, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
@@ -825,6 +825,17 @@ function UsersRoles() {
     if (!editing.email.trim() || !editing.name.trim()) {
       setStatus({ kind: 'err', msg: 'Email et nom requis.' }); return
     }
+    const isSelfEdit = !!editing.id && editing.email.trim().toLowerCase() === currentEmail
+    if (isSelfEdit && isOwner && editing.role !== 'owner') {
+      setStatus({ kind: 'err', msg: 'Vous ne pouvez pas rétrograder votre propre rôle propriétaire.' }); return
+    }
+    if (editing.id) {
+      const target = adminUsers.find(u => u.id === editing.id)
+      const otherOwners = adminUsers.filter(u => u.role === 'owner' && u.id !== editing.id).length
+      if (target?.role === 'owner' && editing.role !== 'owner' && otherOwners === 0) {
+        setStatus({ kind: 'err', msg: 'Impossible : il faut au moins un propriétaire.' }); return
+      }
+    }
     setStatus({ kind: 'busy', msg: 'Enregistrement…' })
     const res = await upsertAdminUser({
       id: editing.id,
@@ -848,6 +859,10 @@ function UsersRoles() {
   }
 
   const remove = async (id: string, name: string) => {
+    const target = adminUsers.find(u => u.id === id)
+    if (target?.role === 'owner' && adminUsers.filter(u => u.role === 'owner').length <= 1) {
+      setStatus({ kind: 'err', msg: 'Impossible : il faut au moins un propriétaire.' }); return
+    }
     setBusyId(id)
     const res = await deleteAdminUser(id)
     setBusyId(null)
@@ -913,6 +928,9 @@ function UsersRoles() {
                 {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {ROLE_DESCRIPTIONS[editing.role] && (
+              <span style={{ fontSize: 12, color: t.muted, lineHeight: 1.4 }}>{ROLE_DESCRIPTIONS[editing.role]}</span>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <PrimaryButton onClick={saveEdit}>Enregistrer</PrimaryButton>
@@ -929,7 +947,12 @@ function UsersRoles() {
           const isSelf = u.email.toLowerCase() === currentEmail
           return (
             <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
+                {ROLE_DESCRIPTIONS[role.id] && (
+                  <span style={{ fontSize: 11, color: t.muted, lineHeight: 1.3 }}>{ROLE_DESCRIPTIONS[role.id]}</span>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
                 <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id} onClick={() => startEdit(u)}>Modifier</GhostButton>
