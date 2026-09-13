@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 
 export interface SiteContent {
@@ -17,6 +17,14 @@ export interface SiteContent {
   emailContact: string
   emailReservation: string
   autoReply: string
+  restaurantName: string
+  currency: string
+  phone: string
+  address: string
+  hours: string
+  socialFacebook: string
+  socialInstagram: string
+  socialWhatsapp: string
 }
 
 export interface SiteVisibility {
@@ -80,6 +88,7 @@ interface SiteContextValue {
   adminUsers: AdminUser[]
   refreshAdminUsers: () => Promise<void>
   ordersCount: number
+  reservationsCount: number
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -96,8 +105,16 @@ const DEFAULT_CONTENT: SiteContent = {
   heroSub: "Produits bio, emballages écologiques, cuisson saine et saveurs tropicales — Greatlife prouve que le bien manger n'est pas un luxe.",
   storyTitle: 'Notre histoire',
   story: "Greatlife est né d'une frustration simple : aimer le fast-food, mais refuser de le payer avec sa santé. Ayant grandi avec la street-food africaine, j'ai vu qu'on pouvait allier vitesse, goût intense et produits sains. J'ai voulu prouver que le bio n'est pas un luxe — c'est juste une question d'honnêteté.",
+  restaurantName: 'Greatlife',
+  currency: 'FG',
+  phone: '+224 000 00 00 00',
+  address: 'Conakry, Guinée',
+  hours: 'Tous les jours · 11h00 — 23h00',
   emailContact: 'contact@greatlife.gn',
   emailReservation: 'resa@greatlife.gn',
+  socialFacebook: '',
+  socialInstagram: '',
+  socialWhatsapp: '',
   autoReply: 'Bonjour {nom}, merci pour votre message à Greatlife ! Nous revenons vers vous sous 24h. — L\'équipe Greatlife',
 }
 
@@ -137,6 +154,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [ordersCount, setOrdersCount] = useState(0)
+  const [reservationsCount, setReservationsCount] = useState(0)
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
   const [lastMessageCount, setLastMessageCount] = useState(0)
@@ -198,7 +216,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function load() {
-      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
@@ -206,9 +224,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         fetchMedia(),
         fetchAdminUsers(),
         fetchOrders(),
+        fetchReservations(),
       ])
       if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || resaRes.fromDb
       setDataSource(anyDb ? 'supabase' : 'local')
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
@@ -229,6 +248,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       }
       if (adminRes.fromDb) setAdminUsers(adminRes.data)
       if (ordersRes.fromDb) setOrdersCount(ordersRes.data.length)
+      if (resaRes.fromDb) setReservationsCount(resaRes.data.length)
       setLastMessageCount(messagesRes.data.length)
       setDataLoading(false)
     }
@@ -302,6 +322,11 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     if (res.fromDb) setOrdersCount(res.data.length)
   }
 
+  const refreshReservations = async () => {
+    const res = await fetchReservations()
+    if (res.fromDb) setReservationsCount(res.data.length)
+  }
+
   useEffect(() => {
     const sb = getSupabase()
     if (!sb) return
@@ -313,6 +338,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blog_posts' }, () => { if (active) refreshBlogPosts() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'media_assets' }, () => { if (active) refreshMedia() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { if (active) refreshOrders() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => { if (active) refreshReservations() })
       .subscribe()
     return () => {
       active = false
@@ -328,7 +354,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, markMessageHandled: handleMarkMessageHandled,
-    refreshMedia, adminUsers, refreshAdminUsers, ordersCount,
+    refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
