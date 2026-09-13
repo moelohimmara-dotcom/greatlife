@@ -10,7 +10,7 @@ import { MODULES, ROLES, canAccessModule, canWriteModule, ROLE_LABELS } from '@/
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
@@ -1410,9 +1410,42 @@ function ReservationsManager() {
   }, [dataSource])
   const statusColor: Record<string, string> = { pending: t.accent, confirmed: t.primary, cancelled: t.muted }
   const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' }
+  const STATUS_FLOW = ['pending', 'confirmed', 'cancelled'] as const
   const [filter, setFilter] = useState<string>('all')
-  const filteredResa = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
+  const [query, setQuery] = useState('')
+  const [sortKey, setSortKey] = useState<'date_desc' | 'date_asc' | 'guests_desc' | 'guests_asc'>('date_desc')
+  const [dateFilter, setDateFilter] = useState('')
+  const [view, setView] = useState<'list' | 'planning'>('list')
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const q = query.trim().toLowerCase()
+  const matches = reservations.filter(r => (filter === 'all' || r.status === filter) && (!dateFilter || r.date === dateFilter) && (!q || r.nom.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.phone.toLowerCase().includes(q) || r.date.toLowerCase().includes(q) || r.time.toLowerCase().includes(q)))
+  const sorted = [...matches].sort((a, b) => {
+    if (sortKey === 'guests_desc') return b.guests - a.guests
+    if (sortKey === 'guests_asc') return a.guests - b.guests
+    const ka = `${a.date} ${a.time}`
+    const kb = `${b.date} ${b.time}`
+    return sortKey === 'date_asc' ? ka.localeCompare(kb) : kb.localeCompare(ka)
+  })
   const counts = { all: reservations.length, pending: reservations.filter(r => r.status === 'pending').length, confirmed: reservations.filter(r => r.status === 'confirmed').length, cancelled: reservations.filter(r => r.status === 'cancelled').length }
+  const exportCsv = () => {
+    const rows = [['Nom', 'Email', 'Téléphone', 'Date', 'Heure', 'Couverts', 'Statut', 'Message', 'Créée le'].join(';')]
+    sorted.forEach(r => {
+      rows.push([r.nom, r.email, r.phone, r.date, r.time, String(r.guests), statusLabel[r.status] || r.status, (r.message || '').replace(/[\n\r]+/g, ' '), r.created_at ? new Date(r.created_at).toLocaleString('fr-FR') : ''].map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    })
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reservations-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  const removeResa = async (id: string) => {
+    const res = await deleteReservation(id)
+    if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
+    setReservations(prev => prev.filter(r => r.id !== id))
+    setConfirmDel(null)
+  }
   const [statusSending, setStatusSending] = useState(false)
   const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
   const updateStatus = async (id: string, status: string) => {
@@ -1444,46 +1477,132 @@ function ReservationsManager() {
       </div>
     )
   }
+  const today = new Date().toISOString().slice(0, 10)
+  const dates = Array.from(new Set(reservations.map(r => r.date))).sort()
+  const planningByDate = dates.map(d => ({ date: d, rows: sorted.filter(r => r.date === d) })).filter(g => g.rows.length > 0)
+  const fmtDate = (d: string) => {
+    try { return new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' }) } catch { return d }
+  }
+  const totalGuests = sorted.reduce((n, r) => n + (r.status !== 'cancelled' ? r.guests : 0), 0)
   return (
-    <div style={{ maxWidth: '840px' }}>
-      <PageHeader title="Réservations" subtitle={`${reservations.length} réservation${reservations.length > 1 ? 's' : ''} · actualisation auto`} />
+    <div style={{ maxWidth: '900px' }}>
+      <PageHeader title="Réservations" subtitle={`${reservations.length} réservation${reservations.length > 1 ? 's' : ''} · ${totalGuests} couverts (hors annulées) · actualisation auto`} />
       {loading ? <div style={{ marginTop: 20, color: t.muted, fontSize: 14 }}>Chargement…</div> :
         reservations.length === 0 ? <div style={{ marginTop: 20 }}><EmptyState icon={Icon.calendar(28, t.muted)} title="Aucune réservation" subtitle="Les demandes de table apparaîtront ici." /></div> :
         <>
-        <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 200 }}>
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher (nom, email, tel, date, heure)…" style={{ ...inputStyle(t), paddingLeft: 34, fontSize: 13 }} />
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(15, t.muted)}</span>
+          </div>
+          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ ...inputStyle(t), width: 160, fontSize: 13 }} title="Filtrer par date" />
+          {dateFilter && <GhostButton color={t.muted} onClick={() => setDateFilter('')} title="Effacer le filtre date">{Icon.x(13, t.muted)}</GhostButton>}
+          <Select value={sortKey} onValueChange={v => setSortKey(v as 'date_desc' | 'date_asc' | 'guests_desc' | 'guests_asc')}>
+            <SelectTrigger style={{ width: 160, borderColor: t.shadow, borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13 }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date_desc">Plus récentes</SelectItem>
+              <SelectItem value="date_asc">Plus anciennes</SelectItem>
+              <SelectItem value="guests_desc">Couverts ↓</SelectItem>
+              <SelectItem value="guests_asc">Couverts ↑</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={view} onValueChange={v => setView(v as 'list' | 'planning')}>
+            <SelectTrigger style={{ width: 140, borderColor: t.shadow, borderRadius: 10, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13 }}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="list">Liste</SelectItem>
+              <SelectItem value="planning">Planning</SelectItem>
+            </SelectContent>
+          </Select>
+          <GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter CSV</GhostButton>
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
           {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)} style={{
               fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${filter === k ? t.primary : t.shadow}`,
               background: filter === k ? t.primary : 'transparent', color: filter === k ? '#fff' : t.muted, transition: 'all 0.15s',
-            }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts]}</span></button>
+            }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts] ?? 0}</span></button>
           ))}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-          {filteredResa.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune réservation dans ce filtre.</p> :
-          filteredResa.map(r => (
+        {sorted.length === 0 ? <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucune réservation dans ce filtre.</p> :
+        view === 'planning' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 16 }}>
+            {planningByDate.map(g => (
+              <div key={g.date}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: t.heading, textTransform: 'capitalize' }}>{fmtDate(g.date)}</span>
+                  <span style={{ fontSize: '12px', color: t.muted }}>{g.rows.length} résa · {g.rows.reduce((n, r) => n + (r.status !== 'cancelled' ? r.guests : 0), 0)} couverts</span>
+                  {g.date === today && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: `${t.accent}18`, color: t.accent }}>Aujourd'hui</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 12, borderLeft: `2px solid ${t.shadow}` }}>
+                  {g.rows.map(r => (
+                    <OrganicCard key={r.id} style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{r.time} · {r.nom} <span style={{ fontSize: '12px', color: t.muted, fontWeight: 400 }}>· {r.guests} pers.</span></div>
+                          <div style={{ fontSize: '12px', color: t.muted, marginTop: 2 }}>{r.email}{r.phone ? ` · ${r.phone}` : ''}{r.message ? ` · ${r.message.slice(0, 60)}${r.message.length > 60 ? '…' : ''}` : ''}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status] ?? r.status}</span>
+                          <Select value={r.status} onValueChange={v => updateStatus(r.id!, v)}>
+                            <SelectTrigger style={{ width: 120, borderColor: t.shadow, borderRadius: 8, background: t.surfaceAlt, padding: '5px 9px', fontSize: 11 }}>{statusLabel[r.status] ?? r.status}</SelectTrigger>
+                            <SelectContent>
+                              {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          {confirmDel === r.id ? (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <button onClick={() => removeResa(r.id!)} style={{ fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>OK</button>
+                              <button onClick={() => setConfirmDel(null)} style={{ fontSize: 10, fontWeight: 600, padding: '4px 8px', borderRadius: 7, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Non</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer" style={{ fontSize: 10, fontWeight: 600, padding: '4px 7px', borderRadius: 7, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(11, '#dc2626')}</button>
+                          )}
+                        </div>
+                      </div>
+                    </OrganicCard>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+          {sorted.map(r => (
             <OrganicCard key={r.id} style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <div>
+                <div style={{ flex: 1, minWidth: 240 }}>
                   <div style={{ fontSize: '15px', fontWeight: 600, color: t.heading }}>{r.nom} <span style={{ fontSize: '13px', color: t.muted, fontWeight: 400 }}>· {r.guests} personne{r.guests > 1 ? 's' : ''}</span></div>
                   <div style={{ fontSize: '13px', color: t.muted, marginTop: 4 }}>
-                    {r.date} à {r.time} · {r.email}{r.phone ? ` · ${r.phone}` : ''}
+                    {r.date} à {r.time} · {r.email}{r.phone ? ` · ${r.phone}` : ''}{r.created_at ? ` · créée ${new Date(r.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
                   </div>
                   {r.message && <div style={{ fontSize: '13px', color: t.text, marginTop: 8, whiteSpace: 'pre-wrap' }}>{r.message}</div>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status]}</span>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status] ?? r.status}</span>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
                     {statusErr && <span style={{ fontSize: '10px', color: t.accent, fontWeight: 600, maxWidth: 220 }} title={statusErr}>✗ {statusErr}</span>}
-                    {r.status !== 'confirmed' && <button onClick={() => updateStatus(r.id!, 'confirmed')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>Confirmer</button>}
-                    {r.status !== 'pending' && <button onClick={() => updateStatus(r.id!, 'pending')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>En attente</button>}
-                    {r.status !== 'cancelled' && <button onClick={() => updateStatus(r.id!, 'cancelled')} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent }}>Annuler</button>}
+                    <Select value={r.status} onValueChange={v => updateStatus(r.id!, v)}>
+                      <SelectTrigger style={{ width: 140, borderColor: t.shadow, borderRadius: 8, background: t.surfaceAlt, padding: '6px 10px', fontSize: 11 }}>{statusLabel[r.status] ?? r.status}</SelectTrigger>
+                      <SelectContent>
+                        {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {confirmDel === r.id ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <button onClick={() => removeResa(r.id!)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
+                        <button onClick={() => setConfirmDel(null)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer la réservation" style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
+                    )}
                   </div>
                 </div>
               </div>
             </OrganicCard>
           ))}
-        </div>
+          </div>
+        )}
         </>
       }
     </div>
