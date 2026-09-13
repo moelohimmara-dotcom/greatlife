@@ -61,10 +61,12 @@ Sans `.env`, le site démarre en **mode démo** (données en mémoire, auth loca
 |---|---|---|
 | `VITE_SUPABASE_URL` | Vercel/Netlify (env client) | URL du projet Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Vercel/Netlify (env client) | Clé anonyme Supabase |
-| `SMTP_USER` | Supabase Edge Function secrets | Compte SMTP pour les emails |
-| `SMTP_PASS` | Supabase Edge Function secrets | Mot de passe d'application SMTP |
+| `SMTP_USER` | Supabase Edge Function secrets | Compte SMTP émetteur (**requis**) |
+| `SMTP_PASS` | Supabase Edge Function secrets | Mot de passe d'application SMTP (**requis**) |
+| `SMTP_HOST` / `SMTP_PORT` | Supabase Edge Function secrets | Hôte/port SMTP (optionnel, défaut `smtp.gmail.com:465`) |
+| `CONTACT_EMAIL` | Supabase Edge Function secrets | Email de destination des messages de contact (optionnel, défaut = `site_content.emailContact`) |
 
-> ⚠️ **Sécurité** — les secrets SMTP et les mots de passe admin ne doivent **jamais** être committés. Voir [DEVELOPMENT.md → Sécurité](./DEVELOPMENT.md#sécurité).
+> ⚠️ **Sécurité** — les secrets SMTP et les mots de passe admin ne doivent **jamais** être committés. Les identifiants SMTP ne sont **plus codés en dur** dans le code (corrigé) ; ils doivent être définis dans les secrets Supabase. Voir [DEVELOPMENT.md → Sécurité](./DEVELOPMENT.md#sécurité) et [docs/emails.md](./docs/emails.md).
 
 ## Deux modes de fonctionnement
 
