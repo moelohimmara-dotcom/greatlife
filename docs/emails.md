@@ -28,7 +28,8 @@ Fichier : `supabase/functions/send-contact-email/index.ts`
 - **Runtime** : Deno (Edge Function Supabase). Imports depuis `deno.land` et `esm.sh`.
 - **CORS** : headers `Access-Control-Allow-*` ; gère `OPTIONS`.
 - **Polyfill** : `Deno.writeAll` est recréé s'il manque (smtp@0.6.0 l'utilise, retiré du runtime Edge).
-- **SMTP** : `smtp.gmail.com:465` (SSL). Lecture de `SMTP_USER` / `SMTP_PASS` via `Deno.env.get(...)`.
+- **SMTP** : `smtp.gmail.com:465` (SSL) par défaut. Lecture de `SMTP_USER` / `SMTP_PASS` via `Deno.env.get(...)` — **aucun fallback codé en dur** (les secrets doivent être définis dans Supabase → Functions → `send-contact-email` → Secrets). `SMTP_HOST` et `SMTP_PORT` sont aussi surchargeables via des variables d'env (défaut `smtp.gmail.com:465`).
+- **Email de destination** des messages de contact : lu depuis `site_content.emailContact` (configuré dans l'admin *Formulaires & emails*), avec repli optionnel sur la variable d'env `CONTACT_EMAIL`. Si ni l'un ni l'autre n'est défini, la fonction renvoie une erreur 500 claire (au lieu d'envoyer vers une adresse codée en dur).
 
 ### Les 4 actions (`payload.action`)
 
@@ -75,18 +76,27 @@ En **mode démo** (Supabase non configuré), tous les helpers renvoient `ok: fal
 
 > ⚠️ **Action de sécurité requise** — voir [DEVELOPMENT.md → Sécurité](../DEVELOPMENT.md#sécurité).
 
-L'Edge Function lit :
+L'Edge Function lit ses **secrets depuis l'environnement** (`Deno.env.get`) — il n'y a **plus de valeurs codées en dur** dans le code source :
 ```ts
-const SMTP_USER = Deno.env.get("SMTP_USER") || "<valeur en dur>";
-const SMTP_PASS = Deno.env.get("SMTP_PASS") || "<valeur en dur>";
+const SMTP_USER = Deno.env.get("SMTP_USER");
+const SMTP_PASS = Deno.env.get("SMTP_PASS");
+const SMTP_HOST = Deno.env.get("SMTP_HOST") || "smtp.gmail.com";
+const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") || 465);
 ```
+L'email de destination des messages de contact vient de `site_content.emailContact` (admin) avec repli sur `CONTACT_EMAIL`, sinon erreur 500 explicite.
 
-Les valeurs en dur sont un **risque de sécurité** (mot de passe d'application Gmail committé). Procédure :
+### Configuration requise
 
 1. Dans Supabase → *Functions* → `send-contact-email` → *Secrets*.
-2. Ajoutez `SMTP_USER` (compte Gmail) et `SMTP_PASS` (mot de passe d'application, *pas* le mot de passe principal).
-3. **Supprimez** les fallbacks `|| "<valeur en dur>"` du fichier `index.ts` (laissez `Deno.env.get("SMTP_USER")` seul, avec une erreur claire s'il manque).
-4. Redéployez l'Edge Function.
+2. Ajoutez **au minimum** :
+   - `SMTP_USER` — compte Gmail émetteur.
+   - `SMTP_PASS` — mot de passe d'application Gmail (pas le mot de passe principal).
+3. *(Optionnel)* `SMTP_HOST` / `SMTP_PORT` si vous n'utilisez pas Gmail (`smtp.gmail.com:465` par défaut).
+4. *(Optionnel)* `CONTACT_EMAIL` — email de destination des messages de contact si `site_content.emailContact` n'est pas configuré. Préférez configurer l'email de contact dans l'admin (*Formulaires & emails*) plutôt que ce secret.
+5. Sans `SMTP_USER`/`SMTP_PASS`, les 4 actions renvoient `{ ok: false, errors: ["no-credentials"] }` (garde `if (SMTP_USER && SMTP_PASS)` déjà présente) — aucun envoi n'a lieu.
+6. Redéployez l'Edge Function après avoir défini les secrets.
+
+> Historique : ces identifiants étaient précédemment codés en dur dans `index.ts` (commit `ed5237c`→`docs`). Le retrait a été fait dans une étape dédiée de sécurité (voir PR correspondante et `DEVELOPMENT.md` → Sécurité).
 
 ## Déployer / modifier l'Edge Function
 

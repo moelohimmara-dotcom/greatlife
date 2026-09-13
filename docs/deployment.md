@@ -58,8 +58,11 @@ Config : `vercel.json`
 |---|---|---|---|
 | `VITE_SUPABASE_URL` | Netlify / Vercel | client (publique) | URL projet Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Netlify / Vercel | client (publique) | clé anon |
-| `SMTP_USER` | **Supabase Edge Function secrets** | serveur | compte SMTP Gmail |
-| `SMTP_PASS` | **Supabase Edge Function secrets** | serveur | mot de passe d'application Gmail |
+| `SMTP_USER` | **Supabase Edge Function secrets** | serveur | compte SMTP Gmail émetteur (**requis**) |
+| `SMTP_PASS` | **Supabase Edge Function secrets** | serveur | mot de passe d'application Gmail (**requis**) |
+| `SMTP_HOST` | **Supabase Edge Function secrets** | serveur | hôte SMTP (défaut `smtp.gmail.com`, optionnel) |
+| `SMTP_PORT` | **Supabase Edge Function secrets** | serveur | port SMTP (défaut `465`, optionnel) |
+| `CONTACT_EMAIL` | **Supabase Edge Function secrets** | serveur | email de destination des messages de contact (optionnel ; défaut = `site_content.emailContact`) |
 
 > ⚠️ Les secrets SMTP ne se mettent **pas** côté Netlify/Vercel mais dans Supabase → Functions → `send-contact-email` → Secrets. Voir [emails.md](./emails.md) et [DEVELOPMENT.md → Sécurité](../DEVELOPMENT.md#sécurité).
 
@@ -88,8 +91,9 @@ Fichier : `.github/workflows/build-test.yml`
 - [ ] `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` définis (Netlify/Vercel).
 - [ ] Migrations SQL appliquées sur la base de prod (001 → 012).
 - [ ] `is_admin()` présente ; utilisateurs créés dans *Auth* + rôles dans `admin_users`.
-- [ ] Secrets `SMTP_USER` / `SMTP_PASS` configurés dans Supabase ; **fallbacks en dur retirés** du code (voir [emails.md](./emails.md)).
-- [ ] Edge Function `send-contact-email` déployée.
+- [ ] Secrets `SMTP_USER` / `SMTP_PASS` configurés dans Supabase (les 4 actions d'email renvoient `no-credentials` sans eux). `SMTP_HOST`/`SMTP_PORT`/`CONTACT_EMAIL` optionnels.
+- [ ] **Ancien mot de passe d'application Gmail révoqué** (il était codé en dur dans l'historique Git avant la correction).
+- [ ] Edge Function `send-contact-email` déployée (version sans secrets codés en dur).
 - [ ] Realtime activé sur les tables (migrations 009, 012).
 - [ ] Buckets Storage créés (`media`, `food-photos`, `team-portraits`, `blog-images`).
 - [ ] `index.html` : meta/canonical pointant vers le bon domaine.
