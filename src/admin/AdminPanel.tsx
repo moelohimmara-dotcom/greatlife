@@ -48,7 +48,7 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
 
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
   const { theme: t, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
-  const { user, logout } = useAuth()
+  const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const [mobileNav, setMobileNav] = useState(false)
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
@@ -112,6 +112,13 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           <button onClick={() => setMobileNav(true)} className="admin-mobile-menu" style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20, border: `1px solid ${t.shadow}`, background: t.surface, borderRadius: 10, padding: '9px 11px', cursor: 'pointer', color: t.heading }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
+          {roleNotice && (
+            <div key={roleNotice.id} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60, maxWidth: 'min(92vw, 560px)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid ${t.accent}55`, background: t.surface, boxShadow: `0 8px 28px ${t.shadow}`, fontSize: '13px', fontWeight: 500, color: t.heading }}>
+              <span style={{ display: 'inline-flex', color: t.accent }}>{Icon.check(18, t.accent)}</span>
+              <span style={{ flex: 1 }}>{roleNotice.msg}</span>
+              <button onClick={dismissRoleNotice} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: t.muted, fontSize: 16, padding: '0 4px', lineHeight: 1 }}>×</button>
+            </div>
+          )}
           {children}
         </main>
       </div>
