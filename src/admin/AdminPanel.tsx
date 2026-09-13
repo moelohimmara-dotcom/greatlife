@@ -10,7 +10,7 @@ import { MODULES, ROLES, canAccessModule, canWriteModule, ROLE_LABELS } from '@/
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, type BlogPost, type Reservation, type Order } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, type BlogPost, type Reservation, type Order } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
@@ -1037,7 +1037,75 @@ function MessagesManager() {
   const [live, setLive] = useState(false)
   const [newCount, setNewCount] = useState(0)
   const [handling, setHandling] = useState(false)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unhandled' | 'handled'>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkErr, setBulkErr] = useState<string | undefined>(undefined)
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [delBusy, setDelBusy] = useState(false)
+  const [delErr, setDelErr] = useState<string | undefined>(undefined)
   const inp = inputStyle(t)
+  const TEMPLATES = [
+    "Bonjour, merci pour votre message. Nous revenons vers vous très vite. — L'équipe Greatlife",
+    "Merci pour votre intérêt ! Votre demande est prise en compte, nous vous confirmerons sous 24h.",
+    "Bonjour, votre réservation est bien confirmée. Au plaisir de vous accueillir !",
+  ]
+  const q = query.trim().toLowerCase()
+  const filtered = messages.filter(m =>
+    (statusFilter === 'all' || (statusFilter === 'unhandled' ? !m.handled : m.handled)) &&
+    (!q || m.nom.toLowerCase().includes(q) || m.email.toLowerCase().includes(q) || m.sujet.toLowerCase().includes(q) || m.message.toLowerCase().includes(q))
+  )
+  const toggleSelect = (id: string) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allSelected = filtered.length > 0 && filtered.every(m => m.id && selectedIds.has(m.id))
+  const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(filtered.map(m => m.id).filter((id): id is string => Boolean(id))))
+  const removeMessage = async (id: string) => {
+    setDelBusy(true); setDelErr(undefined)
+    const res = await deleteMessage(id)
+    setDelBusy(false)
+    if (!res.ok) { setDelErr(res.error || 'Échec de la suppression'); setTimeout(() => setDelErr(undefined), 4000); return }
+    setMessages(prev => prev.filter(m => m.id !== id))
+    setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+    setConfirmDel(null)
+    setSelectedIdx(prev => (prev !== null && messages[prev]?.id === id ? null : prev))
+  }
+  const bulkSetHandled = async (handled: boolean) => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setBulkBusy(true); setBulkErr(undefined)
+    let failed = 0
+    for (const id of ids) { const res = await markMessageHandled(id, handled); if (!res.ok) failed++ }
+    setBulkBusy(false)
+    if (failed > 0) { setBulkErr(`${failed} échec(s) sur ${ids.length}`); setTimeout(() => setBulkErr(undefined), 4000) }
+    setMessages(prev => prev.map(m => (m.id && selectedIds.has(m.id) ? { ...m, handled } : m)))
+    setSelectedIds(new Set())
+  }
+  const bulkDelete = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setBulkBusy(true); setBulkErr(undefined)
+    let failed = 0
+    for (const id of ids) { const res = await deleteMessage(id); if (!res.ok) failed++ }
+    setBulkBusy(false)
+    if (failed > 0) { setBulkErr(`${failed} échec(s) sur ${ids.length}`); setTimeout(() => setBulkErr(undefined), 4000) }
+    setMessages(prev => prev.filter(m => !(m.id && selectedIds.has(m.id))))
+    setSelectedIds(new Set())
+    setSelectedIdx(null)
+    setConfirmDel(null)
+  }
+  const exportCsv = () => {
+    const rows = [['Nom', 'Email', 'Sujet', 'Message', 'Date', 'Statut', 'Réponses'].join(';')]
+    filtered.forEach(m => {
+      rows.push([m.nom, m.email, m.sujet, (m.message || '').replace(/[\n\r]+/g, ' '), m.date || '', m.handled ? 'Traité' : 'Non traité', String(m.replies?.length ?? 0)].map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    })
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `messages-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   useEffect(() => {
     if (dataSource !== 'supabase') return
@@ -1060,7 +1128,7 @@ function MessagesManager() {
     if (sb) {
       channel = sb
         .channel('messages-realtime', { config: { private: false } })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
           refresh()
         })
         .subscribe((status: string) => {
@@ -1106,6 +1174,13 @@ function MessagesManager() {
     })
     if (result.ok) {
       setSending('sent')
+      const reply = { date: new Date().toISOString(), author: user?.name || 'Greatlife', content: replyText }
+      if (selected.id) {
+        const saved = await appendReply(selected.id, reply)
+        if (saved.ok) {
+          setMessages(prev => prev.map(m => m.id === selected.id ? { ...m, replies: [...(m.replies ?? []), reply] } : m))
+        }
+      }
       setReplyText('')
       setTimeout(() => setSending('idle'), 3000)
     } else {
@@ -1131,31 +1206,59 @@ function MessagesManager() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <PageHeader title="Messages" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: live ? t.primary : t.muted, animation: live ? 'pulse 2s infinite' : 'none' }} />
           <span style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{live ? 'Temps réel' : 'Actualisation périodique'}</span>
-          {newCount > 0 && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: t.accent, color: '#fff', marginLeft: 'auto' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>}
+          {newCount > 0 && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: t.accent, color: '#fff' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>}
+          <span style={{ fontSize: '11px', color: t.muted, marginLeft: 'auto' }}>{filtered.length} / {messages.length}</span>
         </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 160 }}>
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" style={{ ...inp, paddingLeft: 32, fontSize: 13 }} />
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(14, t.muted)}</span>
+          </div>
+          {([['all', 'Toutes'], ['unhandled', 'Non traitées'], ['handled', 'Traitées']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
+            <button key={k} onClick={() => setStatusFilter(k)} style={{ fontSize: '12px', fontWeight: 600, padding: '7px 12px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${statusFilter === k ? t.primary : t.shadow}`, background: statusFilter === k ? t.primary : 'transparent', color: statusFilter === k ? '#fff' : t.muted }}>{l}</button>
+          ))}
+          <GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter CSV</GhostButton>
+        </div>
+        {selectedIds.size > 0 && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, padding: '10px 12px', borderRadius: 12, background: `${t.primary}0a`, border: `1px solid ${t.primary}22`, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: t.heading }}>{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
+            <button onClick={() => bulkSetHandled(true)} disabled={bulkBusy} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>{bulkBusy ? '…' : 'Marquer traités'}</button>
+            <button onClick={() => bulkSetHandled(false)} disabled={bulkBusy} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>Non traités</button>
+            <button onClick={bulkDelete} disabled={bulkBusy} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(11, '#dc2626')} Supprimer</button>
+            {bulkErr && <span style={{ fontSize: '11px', color: t.accent, fontWeight: 600 }}>✗ {bulkErr}</span>}
+            <button onClick={() => setSelectedIds(new Set())} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, marginLeft: 'auto' }}>Tout désélectionner</button>
+          </div>
+        )}
         {messages.length === 0 ? (
           <EmptyState icon={Icon.mail(26, t.muted)} title="Aucun message" subtitle="Les soumissions du formulaire apparaîtront ici." />
+        ) : filtered.length === 0 ? (
+          <p style={{ color: t.muted, fontSize: 14, padding: '20px 0' }}>Aucun message dans ce filtre.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {messages.map((m, i) => (
-              <button key={i} onClick={() => { setSelectedIdx(i); setReplyText(''); setSending('idle') }} style={{
-                textAlign: 'left', padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
-                border: selectedIdx === i ? `2px solid ${t.primary}` : `1px solid ${t.shadow}`,
-                background: selectedIdx === i ? `${t.primary}08` : (m.handled ? t.surfaceAlt : t.surface),
-                transition: 'all 0.2s', position: 'relative',
-              }}>
-                {!m.handled && <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: t.accent }} />}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom} {m.handled && <span style={{ fontSize: '10px', color: t.primary, marginLeft: 6 }}>{Icon.check(10, t.primary)}</span>}</span>
-                  <span style={{ fontSize: '11px', color: t.muted }}>{m.date}</span>
-                </div>
-                <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '2px' }}>{m.sujet}</div>
-                <div style={{ fontSize: '13px', color: t.muted, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</div>
-              </button>
-            ))}
+            <button onClick={toggleSelectAll} style={{ textAlign: 'left', fontSize: '12px', fontWeight: 600, color: t.muted, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', marginBottom: 2 }}>{allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
+            {filtered.map(m => {
+              const i = messages.indexOf(m)
+              const checked = Boolean(m.id && selectedIds.has(m.id))
+              return (
+              <div key={m.id ?? i} style={{ display: 'flex', gap: 8, alignItems: 'stretch', border: selectedIdx === i ? `2px solid ${t.primary}` : `1px solid ${t.shadow}`, borderRadius: 14, background: selectedIdx === i ? `${t.primary}08` : (m.handled ? t.surfaceAlt : t.surface), transition: 'all 0.2s', position: 'relative' }}>
+                <label style={{ display: 'flex', alignItems: 'center', paddingLeft: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={checked} onChange={() => m.id && toggleSelect(m.id)} style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                </label>
+                <button onClick={() => { setSelectedIdx(i); setReplyText(''); setSending('idle') }} style={{ flex: 1, textAlign: 'left', padding: '14px 14px 14px 0', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  {!m.handled && <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: t.accent }} />}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom} {m.handled && <span style={{ fontSize: '10px', color: t.primary, marginLeft: 6 }}>{Icon.check(10, t.primary)}</span>}{(m.replies?.length ?? 0) > 0 && <span style={{ fontSize: '10px', color: t.muted, marginLeft: 6 }} title={`${m.replies!.length} réponse(s)`}>{Icon.mail(10, t.muted)} {m.replies!.length}</span>}</span>
+                    <span style={{ fontSize: '11px', color: t.muted }}>{m.date}</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '2px' }}>{m.sujet}</div>
+                  <div style={{ fontSize: '13px', color: t.muted, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</div>
+                </button>
+              </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -1174,6 +1277,15 @@ function MessagesManager() {
                 fontSize: '12px', fontWeight: 600, padding: '7px 14px', borderRadius: '10px', cursor: 'pointer',
                 border: `1px solid ${selected.handled ? t.primary : t.shadow}`, background: selected.handled ? `${t.primary}0d` : 'transparent', color: selected.handled ? t.primary : t.muted,
               }}>{selected.handled ? '✓ Traité' : 'Marquer traité'}</button>
+              {confirmDel === selected.id ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={() => selected.id && removeMessage(selected.id)} disabled={delBusy} style={{ fontSize: '12px', fontWeight: 700, padding: '7px 12px', borderRadius: '10px', border: 'none', background: '#dc2626', color: '#fff', cursor: delBusy ? 'wait' : 'pointer' }}>{delBusy ? '…' : 'Confirmer'}</button>
+                  <button onClick={() => setConfirmDel(null)} style={{ fontSize: '12px', fontWeight: 600, padding: '7px 12px', borderRadius: '10px', cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Annuler</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmDel(selected.id ?? null)} title="Supprimer le message" style={{ fontSize: '12px', fontWeight: 600, padding: '7px 10px', borderRadius: '10px', cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(13, '#dc2626')}</button>
+              )}
+              {delErr && <span style={{ fontSize: '11px', color: t.accent, fontWeight: 600 }} title={delErr}>✗ {delErr}</span>}
               <button onClick={() => { setSelectedIdx(null); setReplyText(''); setSending('idle') }} style={{
                 fontSize: '13px', fontWeight: 600, padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
                 border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted,
@@ -1184,9 +1296,31 @@ function MessagesManager() {
             <div style={{ fontSize: '11px', fontWeight: 700, color: t.muted, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message original</div>
             <p style={{ fontSize: '14px', color: t.text, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{selected.message}</p>
           </OrganicCard>
+          {(selected.replies?.length ?? 0) > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: t.muted, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Historique des réponses ({selected.replies!.length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {selected.replies!.map((rp, idx) => (
+                  <div key={idx} style={{ padding: '12px 14px', borderRadius: 12, background: t.surfaceAlt, border: `1px solid ${t.shadow}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: t.heading }}>{rp.author}</span>
+                      <span style={{ fontSize: '11px', color: t.muted }}>{rp.date ? new Date(rp.date).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                    </div>
+                    <p style={{ fontSize: '13px', color: t.text, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{rp.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <FieldLabel>Votre réponse</FieldLabel>
             <Textarea rows={5} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Tapez votre réponse au client…" style={inp} />
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', color: t.muted, fontWeight: 600, alignSelf: 'center' }}>Modèles :</span>
+              {TEMPLATES.map((tpl, idx) => (
+                <button key={idx} onClick={() => setReplyText(tpl)} title={tpl} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tpl.slice(0, 28)}…</button>
+              ))}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '12px', flexWrap: 'wrap' }}>
               <Button onClick={sendReply} disabled={!replyText.trim() || sending === 'sending'} style={{
                 background: sending === 'sending' ? t.muted : t.primary, color: '#fff', fontWeight: 600,
