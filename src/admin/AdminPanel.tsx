@@ -11,7 +11,7 @@ import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
-import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
+import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase, sendMagicLink } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -1063,19 +1063,26 @@ Récapitulatif de votre rôle : ${rs.modulesWrite} module(s) en écriture, ${rs.
 Pour accéder au panneau d'administration, cliquez sur le lien suivant :
 ${ADMIN_URL}
 
-Vous pouvez vous connecter avec cette adresse email. Cette modification a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
+Un lien de connexion sécurisé à usage unique vous a également été envoyé séparément par Supabase : cliquez dessus pour vous connecter sans mot de passe. Cette modification a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
         replyFromName: 'Greatlife',
       })
+      let magic: { ok: boolean; error?: string } = { ok: false }
+      if (isSupabase) {
+        magic = await sendMagicLink(dest)
+      }
       setEditing(null)
       await refreshAdminUsers()
       refreshRole().catch(() => {})
       const okMsg = editing.id ? 'Utilisateur modifié.' : 'Utilisateur ajouté.'
-      setStatus(mail.ok
-        ? { kind: 'ok', msg: `${okMsg} Email de notification envoyé à ${dest}.` }
-        : { kind: 'err', msg: `${okMsg} — Email non envoyé (${emailErrLabel(mail.error)}).` }
-      )
+      if (mail.ok && (!isSupabase || magic.ok)) {
+        setStatus({ kind: 'ok', msg: `${okMsg} Email de notification + lien de connexion envoyés à ${dest}.` })
+      } else if (mail.ok && isSupabase && !magic.ok) {
+        setStatus({ kind: 'ok', msg: `${okMsg} Email envoyé à ${dest}. Lien de connexion non envoyé (${emailErrLabel(magic.error)}).` })
+      } else {
+        setStatus({ kind: 'err', msg: `${okMsg} — Email non envoyé (${emailErrLabel(mail.error)}).` })
+      }
     } else {
       setStatus({ kind: 'err', msg: res.error || 'Échec.' })
     }
