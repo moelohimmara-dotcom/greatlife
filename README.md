@@ -12,6 +12,7 @@ Ce README est le **point d'entrée** de la documentation. Il est conçu pour qu'
 6. **[docs/database.md](./docs/database.md)** — Supabase : schéma, 12 migrations, RLS, `is_admin()`, Realtime
 7. **[docs/emails.md](./docs/emails.md)** — Edge Function `send-contact-email` : 4 actions d'envoi, SMTP
 8. **[docs/deployment.md](./docs/deployment.md)** — Déploiement Netlify / Vercel, domaine, CI
+9. **[docs/admin-roadmap.md](./docs/admin-roadmap.md)** — Feuille de route du panneau admin : historique des évolutions, état actuel, étapes suivantes
 
 > Commencez par ce README, puis suivez l'ordre ci-dessus. Chaque document renvoie au suivant.
 
