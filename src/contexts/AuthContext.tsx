@@ -97,10 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (session && active) {
             const email = (session.user.email ?? '').toLowerCase()
             const info = await resolveUserFromTable(email)
-            let role = info.role
-            if (!role || !ADMIN_ROLES.includes(role)) {
-              role = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
+            if (!info.role) {
+              try { await sb.auth.signOut() } catch { /* ignore */ }
+              writeLocalSession(null)
+              if (active) setLoading(false)
+              return
             }
+            const fallback = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
+            const role = (info.role && ADMIN_ROLES.includes(info.role)) ? info.role : fallback
             if (role && ADMIN_ROLES.includes(role) && info.active) {
               const u = buildUserFromEmail(email, role)
               setUser(u)
