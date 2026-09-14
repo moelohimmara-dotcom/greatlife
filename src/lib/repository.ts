@@ -804,6 +804,9 @@ export async function upsertAdminUser(
       name: user.name,
       role: user.role,
     })
+    if (error && /duplicate key|unique constraint/i.test(error.message)) {
+      return { ok: false, error: 'Un utilisateur avec cet email existe déjà.' }
+    }
     return { ok: !error, error: error?.message }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'network' }
