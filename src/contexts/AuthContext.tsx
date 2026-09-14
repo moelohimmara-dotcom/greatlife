@@ -52,19 +52,20 @@ function writeLocalSession(u: AuthUser | null) {
   }
 }
 
-async function resolveRoleFromTable(email: string): Promise<string | null> {
+async function resolveUserFromTable(email: string): Promise<{ role: string | null; active: boolean }> {
   const sb = getSupabase()
-  if (!sb) return null
+  if (!sb) return { role: null, active: true }
   try {
     const { data, error } = await sb
       .from('admin_users')
-      .select('role')
+      .select('role, active')
       .eq('email', email)
       .maybeSingle()
-    if (error || !data) return null
-    return (data as { role?: string }).role ?? null
+    if (error || !data) return { role: null, active: true }
+    const row = data as { role?: string; active?: boolean }
+    return { role: row.role ?? null, active: row.active === undefined ? true : Boolean(row.active) }
   } catch {
-    return null
+    return { role: null, active: true }
   }
 }
 
@@ -95,11 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const session = data.session
           if (session && active) {
             const email = (session.user.email ?? '').toLowerCase()
-            let role = await resolveRoleFromTable(email)
+            const info = await resolveUserFromTable(email)
+            let role = info.role
             if (!role || !ADMIN_ROLES.includes(role)) {
               role = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
             }
-            if (role && ADMIN_ROLES.includes(role)) {
+            if (role && ADMIN_ROLES.includes(role) && info.active) {
               const u = buildUserFromEmail(email, role)
               setUser(u)
               writeLocalSession(u)
@@ -130,8 +132,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshRole = async () => {
     const current = userRef.current
     if (!current) return
-    const fresh = await resolveRoleFromTable(current.email)
-    if (!fresh || !ADMIN_ROLES.includes(fresh)) return
+    const freshInfo = await resolveUserFromTable(current.email)
+    const fresh = freshInfo.role
+    if (!fresh || !ADMIN_ROLES.includes(fresh) || !freshInfo.active) return
     if (fresh !== current.role) {
       const u = buildUserFromEmail(current.email, fresh)
       setUser(u)
@@ -157,11 +160,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: sub } = sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session && !userRef.current) {
         const email = (session.user.email ?? '').toLowerCase()
-        let role = await resolveRoleFromTable(email)
+        const info = await resolveUserFromTable(email)
+        let role = info.role
         if (!role || !ADMIN_ROLES.includes(role)) {
           role = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
         }
-        if (role && ADMIN_ROLES.includes(role)) {
+        if (role && ADMIN_ROLES.includes(role) && info.active) {
           const u = buildUserFromEmail(email, role)
           setUser(u)
           writeLocalSession(u)
@@ -203,13 +207,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return { ok: false, error: error?.message ?? 'Identifiants incorrects.' }
       }
-      let role = await resolveRoleFromTable(normalized)
+      const info = await resolveUserFromTable(normalized)
+      let role = info.role
       if (!role || !ADMIN_ROLES.includes(role)) {
         role = ADMIN_ACCOUNTS.find(a => a.email === normalized)?.role ?? null
       }
       if (!role || !ADMIN_ROLES.includes(role)) {
         await sb.auth.signOut()
         return { ok: false, error: 'Accès non autorisé pour ce compte.' }
+      }
+      if (!info.active) {
+        await sb.auth.signOut()
+        return { ok: false, error: 'Ce compte est suspendu. Contactez le propriétaire.' }
       }
       const u = buildUserFromEmail(normalized, role)
       setUser(u)

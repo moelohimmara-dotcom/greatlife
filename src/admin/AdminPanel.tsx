@@ -10,7 +10,7 @@ import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRI
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
-import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
+import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, updateAdminUserStatus, setUserInvitedAt, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase, sendMagicLink } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { Input } from '@/components/ui/input'
@@ -1071,6 +1071,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
       let magic: { ok: boolean; error?: string } = { ok: false }
       if (isSupabase) {
         magic = await sendMagicLink(dest)
+        if (magic.ok) await setUserInvitedAt(dest)
       }
       setEditing(null)
       await refreshAdminUsers()
@@ -1110,6 +1111,55 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
     }
   }
 
+  const resendInvite = async (u: { id: string; email: string; name: string; role: string }) => {
+    if (!isSupabase) { setStatus({ kind: 'err', msg: 'Supabase non configuré.' }); return }
+    setBusyId(u.id)
+    const magic = await sendMagicLink(u.email)
+    if (magic.ok) await setUserInvitedAt(u.email)
+    setBusyId(null)
+    if (magic.ok) {
+      logAudit({ actor: currentUser?.email ?? '', action: 'user_invite_resend', target: u.email, detail: `Rôle : ${ROLE_LABELS[u.role] ?? u.role}` })
+      await refreshAdminUsers()
+      setStatus({ kind: 'ok', msg: `Lien de connexion renvoyé à ${u.email}.` })
+    } else {
+      setStatus({ kind: 'err', msg: `Lien non envoyé (${emailErrLabel(magic.error)}).` })
+    }
+    setTimeout(() => setStatus(s => s.kind === 'ok' ? { kind: 'idle', msg: '' } : s), 2500)
+  }
+
+  const toggleActive = async (u: { id: string; email: string; name: string; role: string; active?: boolean }) => {
+    if (u.role === 'owner') { setStatus({ kind: 'err', msg: 'Impossible de suspendre un propriétaire.' }); return }
+    const next = !u.active
+    setBusyId(u.id)
+    const res = await updateAdminUserStatus(u.id, next)
+    setBusyId(null)
+    if (res.ok) {
+      logAudit({ actor: currentUser?.email ?? '', action: next ? 'user_activate' : 'user_suspend', target: u.email, detail: next ? 'Compte réactivé' : 'Compte suspendu' })
+      await refreshAdminUsers()
+      setStatus({ kind: 'ok', msg: `${u.name} ${next ? 'réactivé' : 'suspendu'}.` })
+    } else {
+      setStatus({ kind: 'err', msg: res.error || 'Échec.' })
+    }
+    setTimeout(() => setStatus(s => s.kind === 'ok' ? { kind: 'idle', msg: '' } : s), 2500)
+  }
+
+  const inviteAllPending = async () => {
+    if (!isSupabase) { setStatus({ kind: 'err', msg: 'Supabase non configuré.' }); return }
+    const pending = adminUsers.filter(u => !u.invited_at && u.role !== 'owner')
+    if (pending.length === 0) { setStatus({ kind: 'ok', msg: 'Aucune invitation en attente.' }); return }
+    setStatus({ kind: 'busy', msg: `Envoi de ${pending.length} invitation(s)...` })
+    let ok = 0
+    let fail = 0
+    for (const u of pending) {
+      const r = await sendMagicLink(u.email)
+      if (r.ok) { await setUserInvitedAt(u.email); ok++ } else { fail++ }
+    }
+    await refreshAdminUsers()
+    if (fail === 0) setStatus({ kind: 'ok', msg: `${ok} invitation(s) envoyée(s).` })
+    else setStatus({ kind: 'err', msg: `${ok} envoyée(s), ${fail} échec(s).` })
+    setTimeout(() => setStatus(s => s.kind === 'ok' ? { kind: 'idle', msg: '' } : s), 3000)
+  }
+
   const currentEmail = currentUser?.email?.toLowerCase()
 
   return (
@@ -1124,9 +1174,12 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 10px', flexWrap: 'wrap' }}>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: 0 }}>Équipe</h3>
         <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 10px', borderRadius: 100 }}>{adminUsers.length}</span>
+        {isSupabase && isOwner && adminUsers.some(u => !u.invited_at && u.role !== 'owner') && (
+          <GhostButton color={t.primary} onClick={inviteAllPending} disabled={status.kind === 'busy'}>Inviter tous les non-invités</GhostButton>
+        )}
       </div>
 
       {status.kind !== 'idle' && (
@@ -1189,8 +1242,24 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                   </span>
                 ) })()}
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
+                {u.active === false ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: '#dc262612', color: '#dc2626' }}>Suspendu</span>
+                ) : isSupabase && !u.invited_at ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: `${t.gold || '#b8860b'}14`, color: t.gold || '#b8860b' }}>Invité</span>
+                ) : (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: '#16a34a12', color: '#16a34a' }}>Actif</span>
+                )}
+                {isSupabase && u.active !== false && !u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                  <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Inviter</GhostButton>
+                )}
+                {isSupabase && u.active !== false && u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                  <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Renvoyer</GhostButton>
+                )}
+                {isSupabase && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                  <GhostButton color={u.active === false ? '#16a34a' : '#b8860b'} disabled={busyId === u.id} onClick={() => toggleActive(u)}>{u.active === false ? 'Réactiver' : 'Suspendre'}</GhostButton>
+                )}
                 <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
                 <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
                 <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>

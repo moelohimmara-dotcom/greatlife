@@ -716,6 +716,8 @@ export interface AdminUser {
   email: string
   name: string
   role: string
+  active?: boolean
+  invited_at?: string | null
   created_at?: string
 }
 
@@ -734,12 +736,47 @@ export async function fetchAdminUsers(): Promise<{ data: AdminUser[]; fromDb: bo
         email: String(u.email ?? ''),
         name: String(u.name ?? ''),
         role: String(u.role ?? 'guest'),
+        active: u.active === undefined ? true : Boolean(u.active),
+        invited_at: u.invited_at ? String(u.invited_at) : null,
         created_at: u.created_at ? String(u.created_at) : undefined,
       })),
       fromDb: true,
     }
   } catch {
     return { data: [], fromDb: false }
+  }
+}
+
+export async function updateAdminUserStatus(
+  id: string,
+  active: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb
+      .from(ADMIN_USERS_TABLE)
+      .update({ active })
+      .eq('id', id)
+    return { ok: !error, error: error?.message }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
+export async function setUserInvitedAt(
+  email: string
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb
+      .from(ADMIN_USERS_TABLE)
+      .update({ invited_at: new Date().toISOString() })
+      .eq('email', email)
+    return { ok: !error, error: error?.message }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
   }
 }
 
