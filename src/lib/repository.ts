@@ -758,6 +758,9 @@ export async function updateAdminUserStatus(
       .from(ADMIN_USERS_TABLE)
       .update({ active })
       .eq('id', id)
+    if (error && /column.*active|schema cache/i.test(error.message)) {
+      return { ok: false, error: 'Migration manquante : exécutez la migration 018_admin_users_active.sql dans Supabase.' }
+    }
     return { ok: !error, error: error?.message }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'network' }
@@ -774,6 +777,9 @@ export async function setUserInvitedAt(
       .from(ADMIN_USERS_TABLE)
       .update({ invited_at: new Date().toISOString() })
       .eq('email', email)
+    if (error && /column.*invited_at|schema cache/i.test(error.message)) {
+      return { ok: false, error: 'Migration manquante : exécutez la migration 018_admin_users_active.sql dans Supabase.' }
+    }
     return { ok: !error, error: error?.message }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'network' }
