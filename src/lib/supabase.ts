@@ -48,6 +48,26 @@ export async function invokeContactEmail(payload: {
   }
 }
 
+export async function sendMagicLink(
+  email: string
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/admin`,
+        shouldCreateUser: true,
+      },
+    })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
 export async function invokeReplyEmail(payload: {
   to: string
   subject: string

@@ -151,6 +151,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(timer)
   }, [user])
 
+  useEffect(() => {
+    const sb = getSupabase()
+    if (!sb) return
+    const { data: sub } = sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session && !userRef.current) {
+        const email = (session.user.email ?? '').toLowerCase()
+        let role = await resolveRoleFromTable(email)
+        if (!role || !ADMIN_ROLES.includes(role)) {
+          role = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
+        }
+        if (role && ADMIN_ROLES.includes(role)) {
+          const u = buildUserFromEmail(email, role)
+          setUser(u)
+          writeLocalSession(u)
+        }
+      }
+    })
+    return () => { sub.subscription.unsubscribe() }
+  }, [])
+
   const login = async (email: string, password: string): Promise<LoginResult> => {
     const normalized = email.trim().toLowerCase()
     const sb = getSupabase()
