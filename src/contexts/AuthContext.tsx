@@ -58,12 +58,12 @@ async function resolveUserFromTable(email: string): Promise<{ role: string | nul
   try {
     const { data, error } = await sb
       .from('admin_users')
-      .select('role, active')
+      .select('*')
       .eq('email', email)
       .maybeSingle()
     if (error || !data) return { role: null, active: true }
-    const row = data as { role?: string; active?: boolean }
-    return { role: row.role ?? null, active: row.active === undefined ? true : Boolean(row.active) }
+    const row = data as Record<string, unknown>
+    return { role: (row.role as string) ?? null, active: row.active === undefined ? true : Boolean(row.active) }
   } catch {
     return { role: null, active: true }
   }
