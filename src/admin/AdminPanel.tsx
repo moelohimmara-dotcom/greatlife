@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { PageEditorWrapper } from '@/admin/editor/PageEditorWrapper'
 
 const ADMIN_URL = 'https://greatlife-conakry.netlify.app/admin'
 
@@ -30,7 +31,7 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
     ['reservations', 'Réservations', 'calendar'],
   ]],
   ['Contenu', [
-    ['content', 'Contenu', 'write'],
+    ['content', 'Modifier le site', 'write'],
     ['team', 'Équipe & contenus', 'users'],
     ['menu', 'Carte & prix', 'leaf'],
     ['blog', 'Blog', 'write'],
@@ -2744,7 +2745,7 @@ export function Admin() {
           {effective === 'messages' && <MessagesManager />}
           {effective === 'orders' && <OrdersManager />}
           {effective === 'reservations' && <ReservationsManager />}
-          {effective === 'content' && <ContentEditor />}
+          {effective === 'content' && <PageEditorWrapper />}
           {effective === 'team' && <TeamContentsEditor />}
           {effective === 'menu' && <MenuEditor />}
           {effective === 'theme' && <ThemeEditor />}
