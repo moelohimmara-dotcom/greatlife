@@ -78,9 +78,7 @@ Le site s'adapte automatiquement selon la présence des variables Supabase — v
 ## Accès admin
 
 - **URL** : `/login` puis `/admin` (protégé par `ProtectedRoute`)
-- **Comptes de secours locaux** (mode démo, dans `src/data/users.ts`) :
-  - Propriétaire : `owner@greatlife.com` / `greatlife2026`
-  - Gérant : `gerant@greatlife.com` / `greatlife2026`
+- **Comptes de secours locaux** (mode démo, dans `src/data/users.ts`) : ils ne sont définis qu'en **développement** (`import.meta.env.DEV`) et ne sont **jamais embarqués dans le build de production**. Aucun identifiant n'est documenté ici — pour un accès réel, créez le compte dans Supabase Auth et renseignez son rôle dans `admin_users`.
 - **En mode Supabase** : créez les comptes dans *Supabase → Authentication → Users* et renseignez leur rôle dans la table `admin_users` (colonne `role`). C'est cette table qui détermine les permissions (voir `docs/database.md` et `docs/admin-panel.md`).
 
 > Seuls les rôles `owner` et `manager` (`ADMIN_ROLES` dans `src/data/users.ts`) peuvent accéder au panneau. Le RBAC détaillé (chef, éditeur, marketing, invité) est défini dans `src/data/rbac.ts` mais sert aujourd'hui de référence ; la **vraie porte d'entrée** est la liste `ADMIN_ROLES`.

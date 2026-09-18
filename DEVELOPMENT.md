@@ -43,12 +43,9 @@ npm run dev      # dev server
 
 ### Comptes de test
 
-| Rôle | Email | Mot de passe | Note |
-|---|---|---|---|
-| Propriétaire | `owner@greatlife.com` | `greatlife2026` | secours local, tous droits |
-| Gérant | `gerant@greatlife.com` | `greatlife2026` | secours local |
+Les comptes de secours du mode démo sont définis dans `src/data/users.ts`, **exclusivement en développement** (`import.meta.env.DEV`). Ils ne sont donc pas embarqués dans le build de production et **aucun mot de passe n'est documenté ici**.
 
-En mode Supabase, ces comptes doivent aussi exister dans *Supabase → Authentication → Users*, **et** leur rôle doit être renseigné dans la table `admin_users` (colonne `role` = `owner` ou `manager`).
+Pour tester avec Supabase, créez le compte dans *Supabase → Authentication → Users* **et** renseignez son rôle dans la table `admin_users` (colonne `role`).
 
 ## 2. Le mode démo vs le mode Supabase
 
@@ -148,7 +145,7 @@ Voir [docs/emails.md](./docs/emails.md). En résumé : l'Edge Function `send-con
 
 - **SMTP (configuration requise)** : définissez `SMTP_USER` (compte Gmail émetteur) et `SMTP_PASS` (mot de passe d'application Gmail) dans Supabase → *Functions* → `send-contact-email* → *Secrets*. Sans eux, aucun email n'est envoyé (`{ ok: false, errors: ["no-credentials"] }`). Détails dans [docs/emails.md](./docs/emails.md).
 - **Email de destination des messages de contact** : provient de `site_content.emailContact` (configuré dans l'admin *Formulaires & emails*), avec repli optionnel sur la variable d'env `CONTACT_EMAIL`. Si ni l'un ni l'autre n'est défini → erreur 500 explicite (plus d'adresse personnelle codée en dur).
-- **Mots de passe admin** (`greatlife2026`) : uniquement des secours locaux pour le mode démo. En production Supabase, l'auth réelle est gérée par Supabase Auth — changez ces mots de passe et ne réutilisez pas `greatlife2026`.
+- **Mots de passe admin** : en production, l'authentification est gérée par Supabase Auth et les rôles par la table `admin_users`. Les seuls mots de passe codés en dur sont ceux du mode démo local, qui ne sont pas embarqués dans le build de production (`import.meta.env.DEV`) — ne les réutilisez jamais pour un compte réel.
 - **Clé anon Supabase** : c'est une clé **publique** (role `anon`), sûre dans `.env.example`. La sécurité repose sur **RLS**, pas sur le secret de cette clé. Ne confondez pas avec la `service_role` (qui doit rester secrète et n'est **pas** utilisée côté client).
 - **RLS** : jamais de policy `USING (true)` en écriture. Les insert publics (contact, commandes, réservations) sont intentionnels et limités à `INSERT` uniquement.
 - **Vérifier l'historique** : si un dépôt a déjà été cloné/publié avec les anciens secrets en dur, **faites pivoter le mot de passe d'application Gmail** et révoquez l'ancien (il a été exposé dans l'historique Git).

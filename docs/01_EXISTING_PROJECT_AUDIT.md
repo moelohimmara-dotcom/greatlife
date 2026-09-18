@@ -237,7 +237,7 @@ greatlife/
 
 **Atténuation — et sa limite, qui est le point important.** Une session forgée en `localStorage` n'ouvre que **l'interface** : les écritures restent bloquées par la RLS, car `is_admin()` relit le rôle en base à partir du claim JWT signé par Supabase.
 
-**Mais cette atténuation est nulle dans le scénario critique.** Si les identifiants affichés publiquement (`owner@greatlife.com` / `greatlife2026`) sont réellement ceux du compte `owner` en production — ce que le test de connexion réel effectué pendant cet audit accrédite (voir R1) — alors l'attaquant obtient un **jeton Supabase authentique et parfaitement légitime**. La RLS le laisse donc passer intégralement, y compris sur `admin_users`, et l'atténuation invoquée ci-dessus ne protège plus rien. **Le risque réel n'est pas le contournement du front, c'est la compromission du compte propriétaire** — voir R1, qui est le risque critique n°1 de cet audit.
+**Mais cette atténuation est nulle dans le scénario critique.** Si les identifiants affichés publiquement (le compte `owner@greatlife.com` et le mot de passe de démonstration affiché sur la page de connexion) sont réellement ceux du compte `owner` en production — ce que le test de connexion réel effectué pendant cet audit accrédite (voir R1) — alors l'attaquant obtient un **jeton Supabase authentique et parfaitement légitime**. La RLS le laisse donc passer intégralement, y compris sur `admin_users`, et l'atténuation invoquée ci-dessus ne protège plus rien. **Le risque réel n'est pas le contournement du front, c'est la compromission du compte propriétaire** — voir R1, qui est le risque critique n°1 de cet audit.
 
 ---
 

@@ -52,28 +52,45 @@ function writeLocalSession(u: AuthUser | null) {
   }
 }
 
-async function resolveUserFromTable(email: string): Promise<{ role: string | null; active: boolean }> {
+/** Résultat d'une vérification de rôle en base.
+ *  `ok: false` signifie que la vérification n'a PAS pu aboutir (panne réseau, erreur) :
+ *  c'est volontairement distinct d'une absence de ligne, pour ne pas détruire une
+ *  session légitime à cause d'un incident passager. Dans les deux cas, aucun accès
+ *  n'est accordé : l'échec est toujours fermé. */
+type AdminLookup =
+  | { ok: true; role: string | null; active: boolean; name: string | null }
+  | { ok: false }
+
+async function resolveUserFromTable(email: string): Promise<AdminLookup> {
   const sb = getSupabase()
-  if (!sb) return { role: null, active: true }
+  // Sans Supabase configuré, aucune vérification serveur n'est possible.
+  if (!sb) return { ok: false }
   try {
     const { data, error } = await sb
       .from('admin_users')
       .select('*')
       .eq('email', email)
       .maybeSingle()
-    if (error || !data) return { role: null, active: true }
+    if (error) return { ok: false }
+    // Aucune ligne : le compte n'a aucun rôle en base → accès refusé.
+    if (!data) return { ok: true, role: null, active: false, name: null }
     const row = data as Record<string, unknown>
-    return { role: (row.role as string) ?? null, active: row.active === undefined ? true : Boolean(row.active) }
+    return {
+      ok: true,
+      role: (row.role as string) ?? null,
+      // Seul un `active === true` explicite autorise l'accès (échec fermé).
+      active: row.active === true,
+      name: (row.name as string) ?? null,
+    }
   } catch {
-    return { role: null, active: true }
+    return { ok: false }
   }
 }
 
-function buildUserFromEmail(email: string, role: string): AuthUser {
-  const local = ADMIN_ACCOUNTS.find(a => a.email === email)
+function buildUserFromEmail(email: string, role: string, name?: string | null): AuthUser {
   return {
     email,
-    name: local?.name ?? email.split('@')[0],
+    name: name || email.split('@')[0],
     role,
   }
 }
@@ -97,24 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (session && active) {
             const email = (session.user.email ?? '').toLowerCase()
             const info = await resolveUserFromTable(email)
-            if (!info.role) {
+            if (!info.ok) {
+              // Vérification impossible (panne passagère) : aucun accès n'est accordé,
+              // mais la session Supabase n'est PAS détruite pour autant.
+              if (active) {
+                writeLocalSession(null)
+                setUser(null)
+              }
+            } else if (!info.role || !ADMIN_ROLES.includes(info.role) || !info.active) {
+              // Aucun rôle exploitable, ou compte suspendu : accès refusé et session close.
               try { await sb.auth.signOut() } catch { /* ignore */ }
               writeLocalSession(null)
-              if (active) setLoading(false)
-              return
-            }
-            const fallback = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
-            const role = (info.role && ADMIN_ROLES.includes(info.role)) ? info.role : fallback
-            if (role && ADMIN_ROLES.includes(role) && info.active) {
-              const u = buildUserFromEmail(email, role)
+              if (active) setUser(null)
+            } else {
+              const u = buildUserFromEmail(email, info.role, info.name)
               setUser(u)
               writeLocalSession(u)
-            } else {
-              // Compte suspendu ou rôle invalide : on ne rouvre PAS l'accès à partir
-              // d'une session locale non vérifiée par le serveur (sinon une suspension
-              // resterait sans effet sur l'interface).
-              writeLocalSession(null)
-              setUser(null)
             }
           } else if (active) {
             // Supabase est configuré mais il n'existe aucune session valide :
@@ -144,17 +159,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshRole = async () => {
     const current = userRef.current
     if (!current) return
-    const freshInfo = await resolveUserFromTable(current.email)
-    const fresh = freshInfo.role
-    if (!fresh || !ADMIN_ROLES.includes(fresh) || !freshInfo.active) return
-    if (fresh !== current.role) {
-      const u = buildUserFromEmail(current.email, fresh)
+    const info = await resolveUserFromTable(current.email)
+    if (!info.ok) return // panne passagère : on ne modifie rien
+    if (!info.role || !ADMIN_ROLES.includes(info.role) || !info.active) {
+      // Rôle retiré ou compte suspendu : la session doit être coupée immédiatement,
+      // sinon l'interface d'administration resterait ouverte jusqu'au rechargement.
+      const sb = getSupabase()
+      try { await sb?.auth.signOut() } catch { /* ignore */ }
+      writeLocalSession(null)
+      setUser(null)
+      return
+    }
+    if (info.role !== current.role) {
+      const u = buildUserFromEmail(current.email, info.role, info.name)
       setUser(u)
       writeLocalSession(u)
       noticeIdRef.current += 1
       setRoleNotice({
         id: noticeIdRef.current,
-        msg: `Vos rôles/permissions ont été mis à jour. Nouveau rôle : ${ROLE_LABELS[fresh] ?? fresh}.`,
+        msg: `Vos rôles/permissions ont été mis à jour. Nouveau rôle : ${ROLE_LABELS[info.role] ?? info.role}.`,
       })
     }
   }
@@ -173,12 +196,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session && !userRef.current) {
         const email = (session.user.email ?? '').toLowerCase()
         const info = await resolveUserFromTable(email)
-        let role = info.role
-        if (!role || !ADMIN_ROLES.includes(role)) {
-          role = ADMIN_ACCOUNTS.find(a => a.email === email)?.role ?? null
-        }
-        if (role && ADMIN_ROLES.includes(role) && info.active) {
-          const u = buildUserFromEmail(email, role)
+        // Le rôle vient EXCLUSIVEMENT de la base : aucun repli codé en dur.
+        if (info.ok && info.role && ADMIN_ROLES.includes(info.role) && info.active) {
+          const u = buildUserFromEmail(email, info.role, info.name)
           setUser(u)
           writeLocalSession(u)
         }
@@ -213,11 +233,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: error?.message ?? 'Identifiants incorrects.' }
       }
       const info = await resolveUserFromTable(normalized)
-      let role = info.role
-      if (!role || !ADMIN_ROLES.includes(role)) {
-        role = ADMIN_ACCOUNTS.find(a => a.email === normalized)?.role ?? null
+      if (!info.ok) {
+        await sb.auth.signOut()
+        return { ok: false, error: 'Vérification du compte impossible. Réessayez.' }
       }
-      if (!role || !ADMIN_ROLES.includes(role)) {
+      // Le rôle vient EXCLUSIVEMENT de la table admin_users : aucun repli codé en dur.
+      if (!info.role || !ADMIN_ROLES.includes(info.role)) {
         await sb.auth.signOut()
         return { ok: false, error: 'Accès non autorisé pour ce compte.' }
       }
@@ -225,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await sb.auth.signOut()
         return { ok: false, error: 'Ce compte est suspendu. Contactez le propriétaire.' }
       }
-      const u = buildUserFromEmail(normalized, role)
+      const u = buildUserFromEmail(normalized, info.role, info.name)
       setUser(u)
       writeLocalSession(u)
       return { ok: true }

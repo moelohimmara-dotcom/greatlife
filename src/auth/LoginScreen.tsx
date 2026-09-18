@@ -41,11 +41,11 @@ export function LoginScreen() {
         </div>
         <OrganicCard style={{ padding: '36px' }}>
           <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Connexion</h2>
-          <p style={{ fontSize: '13px', color: t.muted, margin: '0 0 24px' }}>Accès réservé au propriétaire et au gérant.</p>
+          <p style={{ fontSize: '13px', color: t.muted, margin: '0 0 24px' }}>Accès réservé à l'équipe du restaurant.</p>
           <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
             <div>
               <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="owner@greatlife.com" required
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.com" required
                 style={{ background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }} />
             </div>
             <div>
