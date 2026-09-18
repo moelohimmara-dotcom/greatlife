@@ -59,7 +59,7 @@ export const isSupabaseConfigured = Boolean(
 )
 ```
 
-- **Configuré** → `getSupabase()` renvoie un client ; `repository.ts` lit/écrit en base ; le Realtime est activé ; l'auth passe par Supabase Auth (avec repli local si la table `admin_users` ne donne pas de rôle).
+- **Configuré** → `getSupabase()` renvoie un client ; `repository.ts` lit/écrit en base ; le Realtime est activé ; l'auth passe **exclusivement** par Supabase Auth, le rôle étant lu dans `admin_users` (aucun repli codé en dur).
 - **Non configuré** → `getSupabase()` renvoie `null` ; `repository.ts` renvoie `{ fromDb: false, data: <fallback> }` ; auth 100 % locale (comptes `src/data/users.ts`).
 
 **Implication** : chaque fonction de `repository.ts` teste `getSupabase()` et a un chemin fallback silencieux. Quand vous ajoutez une fonction CRUD, reproduisez ce pattern (renvoyez `fromDb: false` + donnée par défaut au lieu de planter).
@@ -134,7 +134,7 @@ Voir [docs/emails.md](./docs/emails.md). En résumé : l'Edge Function `send-con
 - **Le thème est dynamique** : les couleurs viennent de `SiteContext.rootStyle` via variables CSS. En admin, beaucoup de composants lisent `const { theme: t } = useSite()` puis `t.surface`, `t.primary`, etc. Ne hardcodez pas de couleurs.
 - **`AdminPanel.tsx` est un gros fichier** (~1400 lignes, 12 modules). Ce n'est pas idéal mais c'est ainsi. Si vous le découpez, gardez `Admin` comme point d'entrée et exportez les modules depuis des fichiers dédiés.
 - **Realtime** : il faut que les tables soient ajoutées à la publication `supabase_realtime` (voir migration 009 / 012). Sans ça, le canal ne reçoit rien.
-- **Auth repli** : si Supabase Auth réussit mais que `admin_users` ne renvoie pas un rôle dans `ADMIN_ROLES`, l'utilisateur est **déconnecté** ("Accès non autorisé"). Vérifiez d'abord la table `admin_users`.
+- **Auth (rôle introuvable)** : si l'authentification Supabase réussit mais que `admin_users` ne renvoie aucun rôle, ou que la colonne `active` est fausse, l'utilisateur est **refusé** et sa session est fermée. Il n'existe **aucun repli** sur des comptes codés en dur lorsque Supabase est configuré : vérifiez la table `admin_users` (et que l'email y figure **exactement**, la comparaison étant insensible à la casse depuis la migration 020).
 - **`noUnusedLocals` / `noUnusedParameters`** : le build échoue sur une variable non utilisée. Nettoyez vos imports.
 - **Favicon / SEO** : `index.html` contient les meta OG/Twitter et la balise canonical pointant vers `greatlife-gn.netlify.app`. Si le domaine change, mettez à jour.
 - **Pas de `.env` committé** (`.gitignore` l'exclut). Seul `.env.example` (valeurs publiques client) est versionné.

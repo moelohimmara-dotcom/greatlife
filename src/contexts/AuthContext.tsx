@@ -159,13 +159,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshRole = async () => {
     const current = userRef.current
     if (!current) return
-    const info = await resolveUserFromTable(current.email)
+    const sb = getSupabase()
+    // En mode démo local, il n'y a aucune session Supabase à vérifier.
+    if (!sb) return
+    // Sans session active, la requête serait évaluée en `anon` et renverrait 0 ligne :
+    // la confondre avec une suspension déconnecterait un utilisateur légitime.
+    try {
+      const { data } = await sb.auth.getSession()
+      if (!data.session) return
+    } catch {
+      return
+    }
+    let info = await resolveUserFromTable(current.email)
     if (!info.ok) return // panne passagère : on ne modifie rien
     if (!info.role || !ADMIN_ROLES.includes(info.role) || !info.active) {
-      // Rôle retiré ou compte suspendu : la session doit être coupée immédiatement,
-      // sinon l'interface d'administration resterait ouverte jusqu'au rechargement.
-      const sb = getSupabase()
-      try { await sb?.auth.signOut() } catch { /* ignore */ }
+      // Une seconde vérification avant de conclure : une suspension ne doit pas être
+      // déduite d'un aléa réseau, mais elle doit couper la session sans délai.
+      await new Promise((r) => setTimeout(r, 1500))
+      info = await resolveUserFromTable(current.email)
+      if (!info.ok) return
+      if (info.role && ADMIN_ROLES.includes(info.role) && info.active) return
+      try { await sb.auth.signOut() } catch { /* ignore */ }
       writeLocalSession(null)
       setUser(null)
       return

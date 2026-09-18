@@ -12,9 +12,9 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     // Jamais de source map en production : les `.map` publient le code source
-    // intégral sur un CDN public (donc tout littéral qu'il contient). Elles
-    // restent disponibles en développement local.
-    sourcemap: mode !== 'production',
+    // intégral sur un CDN public (donc tout littéral qu'il contient).
+    // Elles ne sont générées qu'en mode développement explicite.
+    sourcemap: mode === 'development',
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {

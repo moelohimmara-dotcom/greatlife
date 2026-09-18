@@ -46,7 +46,7 @@ Une seule ligne utile : `key = 'site_config'`, `value` = `{ content, themeId, fo
 ```
 id uuid PK · email text unique · name · role (default 'guest') · created_at
 ```
-**C'est la table de vérité pour les rôles.** `AuthContext.resolveRoleFromTable` la lit pour déterminer le rôle d'un utilisateur connecté.
+**C'est la table de vérité pour les rôles.** `AuthContext.resolveUserFromTable` la lit pour déterminer le rôle d'un utilisateur connecté. Depuis la migration 019, `is_admin()` exige aussi `active = true` ; depuis la 020, la comparaison d'email est insensible à la casse.
 
 **`blog_posts`** (005)
 ```

@@ -5,8 +5,9 @@
 ## Accès & authentification
 
 - Route `/admin` protégée par `ProtectedRoute` (`src/contexts/AuthContext.tsx`) : redirige vers `/login` si non connecté, ou vers `/` si le rôle n'est pas dans `ADMIN_ROLES`.
-- `ADMIN_ROLES = ['owner', 'manager']` (`src/data/users.ts`) — ce sont les **seuls** rôles qui entrent dans le panneau.
-- En mode Supabase : `AuthContext.login` tente `signInWithPassword`, lit le rôle dans la table `admin_users`, puis construit l'objet `user`. Repli sur les comptes locaux (`ADMIN_ACCOUNTS`) si Supabase échoue ou ne renvoie pas de rôle valide.
+- `ADMIN_ROLES = ['owner', 'manager', 'chef', 'editor', 'marketing', 'guest']` (`src/data/users.ts`) — rôles admis dans le panneau (le rôle effectif vient de la table `admin_users`).
+- En mode Supabase : `AuthContext.login` appelle `signInWithPassword`, lit le rôle dans la table `admin_users`, puis construit l'objet `user`. **Aucun repli** sur des comptes codés en dur : un compte sans rôle en base, ou dont la colonne `active` est fausse, est refusé et sa session est fermée.
+- Les comptes de `ADMIN_ACCOUNTS` (`src/data/users.ts`) ne servent qu'au **mode démo local** (Supabase non configuré) et ne sont définis qu'en développement.
 - Voir [DEVELOPMENT.md → Comptes de test](../DEVELOPMENT.md#1-mise-en-route).
 
 ## RBAC

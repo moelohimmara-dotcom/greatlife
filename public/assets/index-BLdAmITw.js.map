@@ -1,0 +1,3 @@
+{
+  "x-note-fr": "Jeton d'invalidation de cache. Cette URL servait auparavant une source map publiee par erreur (build index-BLdAmITw.js, commit b3bc483) qui exposait du code source integral. Les source maps sont desormais desactivees en production (vite.config.ts) et l'ancien deploiement a ete supprime. Le mot de passe qui y figurait a ete remplace par rotation et les comptes de demonstration concernes sont bannis et desactives. Voir docs/cache-tombstone-index-BLdAmITw.md."
+}

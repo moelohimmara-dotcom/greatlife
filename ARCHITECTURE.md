@@ -53,7 +53,7 @@ src/
 ├── data/                Données de référence / fallback (mode démo)
 │   ├── menu.ts            MENU: 38 items + CATEGORY_ORDER + type MenuItem
 │   ├── rbac.ts            ROLES: 6 rôles + matrice de permissions (référence)
-│   └── users.ts           ADMIN_ACCOUNTS (secours local) + ADMIN_ROLES + USERS
+│   └── users.ts           ADMIN_ACCOUNTS (mode démo local, développement seulement) + ADMIN_ROLES + USERS
 │
 ├── lib/                 Logique réutilisable
 │   ├── supabase.ts        createClient paresseux, isSupabaseConfigured,
@@ -70,7 +70,7 @@ src/
 │   ├── SiteContext.tsx    THÈME + POLICE + CONTENU + VISIBILITÉ + MENU + MÉDIAS
 │   │                      + MESSAGES + BLOG + ADMIN_USERS + ORDERS_COUNT + REALTIME
 │   │                      (charge tout au montage, souscrit au Realtime)
-│   ├── AuthContext.tsx    user, login (Supabase Auth + repli local), logout,
+│   ├── AuthContext.tsx    user, login (Supabase Auth uniquement), logout,
 │   │                      ProtectedRoute
 │   └── CartContext.tsx    items, add/remove/setQty/clear, totalNum, totalLabel
 │                          (persisté dans localStorage `greatlife-cart`)
@@ -129,7 +129,7 @@ Les modules admin appellent `repository.ts` (`upsertMenuItem`, `saveContent`, `u
 3. Admin voit la commande dans `OrdersManager` (realtime), change le statut (`updateOrderStatus`), et `invokeOrderStatusEmail` notifie le client.
 
 ### Auth
-`AuthContext.login` essaie `sb.auth.signInWithPassword`, puis lit le rôle dans `admin_users` (`resolveRoleFromTable`). Si la table ne renvoie pas un rôle valide, repli sur `ADMIN_ACCOUNTS` local. `ProtectedRoute` redirige les non-connectés vers `/login`.
+`AuthContext.login` appelle `sb.auth.signInWithPassword`, puis lit le rôle dans `admin_users` (`resolveUserFromTable`). **Le rôle provient exclusivement de cette table** : il n'existe aucun repli codé en dur lorsque Supabase est configuré. Un compte sans rôle, ou dont la colonne `active` est fausse, est refusé (et sa session fermée). `ProtectedRoute` redirige les non-connectés vers `/login`.
 
 ## Conventions de code
 
