@@ -15,7 +15,7 @@
  * C'est pourquoi l'enregistrement est séparé :
  *
  *   registry.ts (ce fichier)   → le CONTRAT : types + point d'extension. Vide.
- *   ../register-sections.ts    → l'ENREGISTREMENT applicatif des 9 composants.
+ *   ../register-sections.ts    → l'ENREGISTREMENT applicatif des 10 composants.
  *
  * `@/cms` (point d'entrée complet) déclenche l'enregistrement. Un script Node
  * qui génère le HTML doit fournir son propre enregistrement, ou passer par

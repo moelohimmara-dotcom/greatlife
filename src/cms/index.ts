@@ -110,7 +110,7 @@ export {
 export type { SectionComponentProps, SectionComponent, SectionDataSource } from './renderer/registry'
 
 // ---- Câblage applicatif
-// Enregistre les 9 composants de section pour effet de bord. Ce module dépend du
+// Enregistre les 10 composants de section pour effet de bord. Ce module dépend du
 // navigateur (il tire `@/lib/supabase` via `SiteContext`) : il n'est donc
 // volontairement PAS importé par `@/cms/renderer`, qui doit rester isomorphe.
 import './register-sections'

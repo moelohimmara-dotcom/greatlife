@@ -1,5 +1,31 @@
 import React from 'react'
 
+/** Signature d'une icône du catalogue. */
+export type IconRenderer = (size?: number, color?: string) => React.ReactElement
+
+/**
+ * Accès sûr à une icône par son NOM.
+ *
+ * ⚠️ `Icon[nom]` seul est DANGEREUX dès que le nom vient du contenu : un accès
+ * par crochets remonte la chaîne de prototypes. Mesuré sur ce catalogue :
+ *
+ *   Icon['__proto__']   → TypeError: Icon[e.icon] is not a function
+ *   Icon['constructor'] → rendu d'un objet → « Objects are not valid as a React child »
+ *   Icon['valueOf']     → idem
+ *
+ * Le projet n'a aucun ErrorBoundary : une seule valeur de contenu suffirait à
+ * blanchir TOUT le site public. On vérifie donc que la clé est une propriété
+ * PROPRE du catalogue, et que sa valeur est bien une fonction de rendu.
+ *
+ * Un nom inconnu renvoie `undefined` — à l'appelant de décider du repli.
+ */
+export function iconByName(name: unknown): IconRenderer | undefined {
+  if (typeof name !== 'string' || name.length === 0) return undefined
+  if (!Object.prototype.hasOwnProperty.call(Icon, name)) return undefined
+  const candidate = (Icon as Record<string, unknown>)[name]
+  return typeof candidate === 'function' ? (candidate as IconRenderer) : undefined
+}
+
 export const Icon: Record<string, (size?: number, color?: string) => React.ReactElement> = {
   leaf: (s = 16, c = 'currentColor') => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 4 13C4 8 8 4 13 4c4 0 7 3 7 7 0 5-4 9-9 9Z"/><path d="M4 20c4-6 8-8 14-10"/></svg>,
   fire: (s = 16, c = 'currentColor') => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1 .5-2 1-3 0 2 1 3 2 3-1-3 0-6 1-9Z"/><path d="M8 14a4 4 0 0 0 8 0c0-2-1-3-2-4"/></svg>,

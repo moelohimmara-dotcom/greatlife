@@ -37,7 +37,8 @@ import { dirname, resolve } from 'node:path'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..').replace(/\\/g, '/')
 const WORK = `${ROOT}/node_modules/.cms-verify`
-const HEAD_DIR = `${WORK}/head`
+/** Arbre COMPLET de la révision de référence, extrait par `git archive`. */
+const BASE_DIR = `${WORK}/base`
 const SHOW_DIFF = process.env.SHOW_DIFF === '1'
 const SELFTEST = process.argv.includes('--selftest')
 
@@ -95,10 +96,10 @@ async function rest(path) {
   return JSON.parse(text)
 }
 
-mkdirSync(HEAD_DIR, { recursive: true })
+mkdirSync(WORK, { recursive: true })
 
 /** Bundle un point d'entrée et le renvoie. React est embarqué dans le bundle. */
-async function bundleFile(name, contents, { define = true } = {}) {
+async function bundleFile(name, contents, { define = true, alias } = {}) {
   const entry = `${WORK}/${name}.tsx`
   const outfile = `${WORK}/${name}.cjs`
   writeFileSync(entry, contents, 'utf8')
@@ -114,7 +115,7 @@ async function bundleFile(name, contents, { define = true } = {}) {
     // Vite injecte `import.meta.env` ; Node non. On le neutralise pour que le
     // repli local de l'application s'applique, à l'identique des deux versions.
     define: define ? { 'import.meta.env': '{}' } : {},
-    alias: { '@': `${ROOT}/src` },
+    alias: alias ?? { '@': `${ROOT}/src` },
     loader: { '.tsx': 'tsx', '.ts': 'ts' },
     logLevel: 'warning',
   })
@@ -155,7 +156,30 @@ for (const s of sections) {
 }
 check(errors === 0, `${sections.length} sections validées sans erreur`, `${errors} erreur(s), ${warnings} remarque(s)`)
 check(typeUnknown === 0, 'tous les types en base existent au catalogue')
-check(pages.length === 1, 'une seule page en base', `${pages.length} trouvée(s)`)
+// Informatif seulement : le Lot 2 créera d'autres pages, ce n'est pas un
+// critère d'échec du Lot 1.
+console.log(
+  `  ℹ pages en base : ${pages.length} — ${pages.map((p) => p.slug || '(racine)').join(', ')}`,
+)
+
+// Les icônes stockées doivent TOUTES être résolvables par `iconByName`. Un nom
+// hors catalogue ne plante plus (garde `hasOwnProperty`), mais se replierait
+// silencieusement sur l'icône par défaut : autant le savoir.
+const iconsMod = await bundleFile('icons', `export { iconByName } from '@/lib/icons'`, {
+  define: false,
+})
+const usedIcons = new Set()
+for (const s of sections) {
+  for (const it of s.content?.items ?? []) {
+    if (it && typeof it === 'object' && typeof it.icon === 'string') usedIcons.add(it.icon)
+  }
+}
+const unresolved = [...usedIcons].filter((n) => !iconsMod.iconByName(n))
+check(
+  unresolved.length === 0,
+  `les ${usedIcons.size} icônes du contenu existent au catalogue`,
+  unresolved.join(', '),
+)
 
 // Les 10 types migrés doivent être déclarés « implémentés » au registre.
 const notImplemented = SECTIONS.map(([t]) => t).filter(
@@ -211,17 +235,23 @@ console.log(`\nC. NON-RÉGRESSION (TDR §41) — rendu identique à ${BASE_REF} 
 // normalise AVANT toute comparaison de contenu.
 const norm = (s) => s.replace(/\r\n/g, '\n')
 
+/*
+  On extrait l'ARBRE COMPLET de la référence, pas les seuls 10 fichiers de
+  section. Comparer 10 fichiers isolés ne détecterait pas une régression dans
+  un composant PARTAGÉ (`SectionHead`, `OrganicCard`, `Reveal`, contextes…) :
+  ces fichiers viendraient de l'arbre courant dans les DEUX branches, et 7
+  sections pourraient se dégrader sans que le contrôle bronche. Démontré par
+  la revue indépendante.
+*/
+mkdirSync(BASE_DIR, { recursive: true })
+const tarPath = `${WORK}/base.tar`
+execFileSync('git', ['archive', '--format=tar', '-o', tarPath, baseRev], { cwd: ROOT })
+execFileSync('tar', ['-xf', tarPath, '-C', BASE_DIR], { cwd: ROOT })
+const BASE_SECTIONS_DIR = `${BASE_DIR}/src/sections`
+
 const baseSources = new Map()
 for (const [, name] of SECTIONS) {
-  const src = norm(
-    execFileSync('git', ['show', `${baseRev}:src/sections/${name}.tsx`], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      maxBuffer: 32 * 1024 * 1024,
-    }),
-  )
-  baseSources.set(name, src)
-  writeFileSync(`${HEAD_DIR}/${name}.tsx`, src, 'utf8')
+  baseSources.set(name, norm(readFileSync(`${BASE_SECTIONS_DIR}/${name}.tsx`, 'utf8')))
 }
 
 // GARDE-FOU. Si la référence est identique à l'arbre courant, la comparaison
@@ -277,10 +307,14 @@ export function renderCms(contentByType) {
 `
 }
 
-const headR = await bundleFile('harness-head', harness(HEAD_DIR))
+// Chaque branche est bundlée avec SON PROPRE arbre : c'est ce qui rend la
+// comparaison sensible à une régression dans un fichier partagé.
+const baseR = await bundleFile('harness-base', harness(BASE_SECTIONS_DIR), {
+  alias: { '@': `${BASE_DIR}/src` },
+})
 const workR = await bundleFile('harness-work', harness(`${ROOT}/src/sections`))
 
-const before = headR.renderLegacy()
+const before = baseR.renderLegacy()
 const after = workR.renderLegacy()
 
 const diffTypes = []
@@ -385,6 +419,32 @@ if (SELFTEST) {
       changed.length === 1,
       'seule la section altérée est signalée',
       changed.filter((t) => t !== 'hero').join(', ') || 'aucune section signalée à tort',
+    )
+  }
+
+  // E2 — le contrôle doit aussi voir une régression dans un composant PARTAGÉ
+  // (`SectionHead`, utilisé par 8 sections). On altère l'arbre de RÉFÉRENCE :
+  // si la branche de référence n'était pas bundlée avec SON PROPRE arbre, cette
+  // altération resterait totalement invisible.
+  const shPath = `${BASE_DIR}/src/components/ui/SectionHead.tsx`
+  const shOriginal = readFileSync(shPath, 'utf8')
+  const shPatched = shOriginal.replace(`'"opsz" 144'`, `'"opsz" 999'`)
+  if (shPatched === shOriginal) {
+    check(false, 'autotest : la chaîne à altérer est introuvable dans SectionHead.tsx')
+  } else {
+    writeFileSync(shPath, shPatched, 'utf8')
+    const sharedR = await bundleFile('harness-shared', harness(BASE_SECTIONS_DIR), {
+      alias: { '@': `${BASE_DIR}/src` },
+    })
+    const sharedHtml = sharedR.renderLegacy()
+    const blind = SECTIONS.filter(([t]) => sharedHtml[t] !== before[t]).map(([t]) => t)
+    writeFileSync(shPath, shOriginal, 'utf8')
+    check(
+      blind.length > 1,
+      'une régression dans un composant PARTAGÉ est détectée',
+      blind.length
+        ? `${blind.length} sections en écart (SectionHead)`
+        : 'AUCUN écart — la comparaison serait AVEUGLE aux fichiers partagés',
     )
   }
 }

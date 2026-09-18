@@ -3,7 +3,7 @@ import { useSite } from '@/contexts/SiteContext'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { OrganicCard } from '@/components/ui/OrganicCard'
-import { Icon } from '@/lib/icons'
+import { Icon, iconByName } from '@/lib/icons'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 
@@ -19,13 +19,12 @@ export function Engagements({ content: cms }: Partial<SectionComponentProps> = {
 
   // Bloc piloté par le CMS si un contenu est fourni, sinon données historiques.
   const source: EngagementItem[] = pick(cmsList<EngagementItem>(cms, 'items'), legacy.engagements)
-  const items: [ReactNode, string, string][] = source.map((e, i) => [
-    e.icon && Icon[e.icon]
-      ? (Icon[e.icon] as (s: number, c: string) => ReactNode)(28, iconColor(i))
-      : Icon.leaf(28, iconColor(i)),
-    e.title ?? '',
-    e.desc ?? '',
-  ])
+  const items: [ReactNode, string, string][] = source.map((e, i) => {
+    // `iconByName` garde contre `__proto__` / `constructor` / `valueOf`, qui
+    // remonteraient la chaîne de prototypes et feraient planter le rendu.
+    const render = iconByName(e.icon) ?? Icon.leaf
+    return [render(28, iconColor(i)), e.title ?? '', e.desc ?? '']
+  })
 
   const title = pick(cmsText(cms, 'title'), 'Ce qui nous distingue')
   const sub = pick(cmsText(cms, 'subtitle'), 'Six engagements concrets qui font de Greatlife un fast-food à part.')

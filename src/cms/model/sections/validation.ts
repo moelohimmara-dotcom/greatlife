@@ -36,6 +36,12 @@ function isBlank(value: unknown): boolean {
   if (typeof value === 'number' || typeof value === 'boolean') return false
   if (Array.isArray(value)) return value.length === 0
   if (isTranslation(value)) return resolveI18n(value).trim().length === 0
+  // Un objet SANS aucune clé est vide au sens éditorial : le renderer le traite
+  // comme absent (`cmsGroup` → repli sur l'historique). La validation doit dire
+  // la même chose, sinon un `group` vide passe pour renseigné, ses sous-champs
+  // obligatoires ne sont jamais signalés, et le restaurateur ne comprend pas
+  // pourquoi ses saisies ne s'affichent pas.
+  if (typeof value === 'object') return Object.keys(value as object).length === 0
   return false
 }
 

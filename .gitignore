@@ -35,3 +35,8 @@ supabase/.temp
 
 # Local Netlify folder
 .netlify
+
+# Sorties de vérification locales (tsc, build, npm run verify:lot1)
+/tsc-out.txt
+/build-out.txt
+/verify-out.txt

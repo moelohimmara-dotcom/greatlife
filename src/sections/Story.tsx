@@ -6,8 +6,8 @@ import { Icon } from '@/lib/icons'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
 
-/** Icônes historiques des pastilles, conservées par position. */
-const CHIP_ICONS_FALLBACK = ['Bio accessible', 'Circuit court', 'Transparence totale']
+/** Pastilles historiques, conservées par position (repli avant bascule CMS). */
+const LEGACY_CHIPS = ['Bio accessible', 'Circuit court', 'Transparence totale']
 
 export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
@@ -17,7 +17,7 @@ export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
   const body = pick(cmsText(cms, 'body'), legacy.story)
   const signature = pick(cmsText(cms, 'signature'), 'Mister Marcket')
   const signerole = pick(cmsText(cms, 'signerole'), 'Le fondateur')
-  const chipLabels = pick(cmsTextList(cms, 'chips'), CHIP_ICONS_FALLBACK)
+  const chipLabels = pick(cmsTextList(cms, 'chips'), LEGACY_CHIPS)
 
   const chipIcons = [Icon.coin(16, t.accent), Icon.leaf(16, t.primary), Icon.search(16, t.gold)]
 

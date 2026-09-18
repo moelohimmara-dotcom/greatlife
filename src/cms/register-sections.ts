@@ -1,7 +1,7 @@
 /**
  * Greatlife — CMS : enregistrement des composants de section
  * ===========================================================
- * Câble les 9 sections existantes sur le registre du renderer.
+ * Câble les 10 sections existantes sur le registre du renderer.
  *
  * ⚠️ MODULE À EFFET DE BORD, RÉSERVÉ AU NAVIGATEUR (ou à un build Vite).
  *

@@ -98,12 +98,24 @@ export function resolveI18nList(
  *        ↓  resolveDeep(…, 'en')
  *   { title: "…", items: ["…"] }
  */
+/**
+ * Clés qui ne doivent JAMAIS être recopiées dans un objet résolu.
+ *
+ * `Object.entries` ne remonte pas la chaîne de prototypes, mais une affectation
+ * simple `out[key] = …` avec `key === '__proto__'` MODIFIE LE PROTOTYPE de
+ * `out` au lieu de créer une clé. Une valeur hostile stockée en jsonb suffirait
+ * donc à polluer l'objet résolu. Ces clés n'ont aucun usage éditorial légitime :
+ * on les ignore.
+ */
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
 export function resolveDeep(value: unknown, locale: Locale): unknown {
   if (isTranslation(value)) return resolveI18n(value, locale)
   if (Array.isArray(value)) return value.map((v) => resolveDeep(v, locale))
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {}
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      if (FORBIDDEN_KEYS.has(key)) continue
       out[key] = resolveDeep(v, locale)
     }
     return out

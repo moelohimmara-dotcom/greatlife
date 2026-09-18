@@ -15,7 +15,10 @@ export function Localisation({ content: cms, restaurant }: Partial<SectionCompon
 
   // TDR §16 : les coordonnées du restaurant sont une source unique, saisie une
   // fois dans les réglages. Repli explicite sur les valeurs historiques tant que
-  // la bascule n'a pas eu lieu — les réglages du CMS sont vides aujourd'hui.
+  // la bascule n'a pas eu lieu.
+  // Note : la ligne `restaurant` (migration 024) EST déjà peuplée et porte les
+  // mêmes textes que l'historique — le repli ne sert donc qu'en secours, pas
+  // parce que les réglages seraient vides.
   const address = restaurant?.address || legacy.address || 'Kaloum, Conakry — Guinée'
   const hours = restaurant?.hours || legacy.hours || 'Lun–Dim · 7h00 – 23h00'
   const phone = restaurant?.phone || legacy.phone || '+224 620 00 00 00'
