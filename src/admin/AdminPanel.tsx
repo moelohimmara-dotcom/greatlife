@@ -292,52 +292,6 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
   )
 }
 
-function ContentEditor() {
-  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
-  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
-  const inp = inputStyle(t)
-  const save = async () => {
-    if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
-    setSaveStatus('saving'); setSaveErr(undefined)
-    const res = await saveContentToDb()
-    setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
-    setTimeout(() => setSaveStatus('idle'), 4000)
-  }
-  return (
-    <div style={{ maxWidth: '760px' }}>
-      <PageHeader title="Contenu du site" subtitle="Modifiez tous les textes. Les changements sont appliqués en direct."
-        actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
-      />
-      <div style={{ display: 'grid', gap: '22px', marginTop: '24px' }}>
-        <div>
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.primary}>Section d'accueil</SectionTitle></div>
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div><FieldLabel>Slogan</FieldLabel><Input value={content.slogan} onChange={e => set('slogan', e.target.value)} style={inp} /></div>
-            <div><FieldLabel>Titre principal (Hero)</FieldLabel><Input value={content.heroTitle} onChange={e => set('heroTitle', e.target.value)} style={inp} /></div>
-            <div><FieldLabel>Sous-titre Hero</FieldLabel><Textarea rows={3} value={content.heroSub} onChange={e => set('heroSub', e.target.value)} style={inp} /></div>
-          </div>
-        </div>
-        <div>
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Section histoire</SectionTitle></div>
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div><FieldLabel>Titre de la section</FieldLabel><Input value={content.storyTitle} onChange={e => set('storyTitle', e.target.value)} style={inp} /></div>
-            <div><FieldLabel>Notre histoire</FieldLabel><Textarea rows={5} value={content.story} onChange={e => set('story', e.target.value)} style={inp} /></div>
-          </div>
-        </div>
-        <div>
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.gold}>Coordonnées</SectionTitle></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div><FieldLabel>Email contact</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} /></div>
-            <div><FieldLabel>Email réservation</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} /></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function MenuEditor() {
   const { menu, setMenu, theme: t, dataSource } = useSite()
   const [sel, setSel] = useState(menu[0]?.name ?? '')

@@ -40,7 +40,7 @@ const DEFAULT_RESTAURANT: ResolvedRestaurant = {
  */
 export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   // Injecter le style du site public dans l'iframe
   useEffect(() => {

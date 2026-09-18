@@ -8,6 +8,8 @@ import type { MenuItem } from '@/data/menu'
 import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
+import { fetchAllPages as fetchAllPagesCms } from '@/cms/repository/pages'
+import { fetchSectionsForPage as fetchSectionsForPageCms } from '@/cms/repository/sections'
 
 export interface SiteContent {
   slogan: string
@@ -101,6 +103,7 @@ interface SiteContextValue {
   setMedia: (m: MediaSlot[]) => void
   messages: ContactMessage[]
   setMessages: React.Dispatch<React.SetStateAction<ContactMessage[]>>
+  cmsSections: unknown[]
   rootStyle: React.CSSProperties
   isDark: boolean
   dataSource: 'loading' | 'supabase' | 'local'
@@ -201,6 +204,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [media, setMedia] = useState(DEFAULT_MEDIA)
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [cmsSections, setCmsSections] = useState<unknown[]>([])
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [ordersCount, setOrdersCount] = useState(0)
   const [reservationsCount, setReservationsCount] = useState(0)
@@ -387,6 +391,15 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     if (res.fromDb) setBlogPosts(res.data)
   }
 
+  const refreshCmsSections = async () => {
+    try {
+      const pagesRes = await fetchAllPagesCms()
+      if (!pagesRes.ok || pagesRes.data.length === 0) return
+      const sectionsRes = await fetchSectionsForPageCms(pagesRes.data[0].id, { includeHidden: true })
+      if (sectionsRes.ok) setCmsSections(sectionsRes.data)
+    } catch { /* CMS pas encore prêt */ }
+  }
+
   const refreshOrders = async () => {
     const res = await fetchOrders()
     if (res.fromDb) {
@@ -415,6 +428,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'media_assets' }, () => { if (active) refreshMedia() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { if (active) refreshOrders() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => { if (active) refreshReservations() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'page_sections' }, () => { if (active) refreshCmsSections() })
       .subscribe()
     return () => {
       active = false
@@ -427,6 +441,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     themeId, setThemeId, theme, fontId, setFontId, font,
     content, setContent, visibility, setVisibility,
     menu, setMenu, media, setMedia, messages, setMessages,
+    cmsSections,
     rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveSiteConfigToDb, rbacOverrides, setRbacOverridesState, saveRbac, markMessageHandled: handleMarkMessageHandled,

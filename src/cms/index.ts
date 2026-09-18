@@ -114,3 +114,6 @@ export type { SectionComponentProps, SectionComponent, SectionDataSource } from 
 // navigateur (il tire `@/lib/supabase` via `SiteContext`) : il n'est donc
 // volontairement PAS importé par `@/cms/renderer`, qui doit rester isomorphe.
 import './register-sections'
+
+// ---- Hooks
+export { useCmsSections, isCmsEnabled, setCmsEnabled } from './hooks'

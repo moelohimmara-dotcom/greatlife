@@ -79,7 +79,6 @@ export function SectionList({
               key={`section-${index}`}
               id={`section-${index}`}
               section={section}
-              index={index}
               isSelected={selected === index}
               onSelect={() => onSelect(selected === index ? null : index)}
               onToggleVisibility={() => onToggleVisibility(index)}

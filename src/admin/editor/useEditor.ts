@@ -21,7 +21,6 @@ import { resolveContentObject } from '@/cms/model/i18n'
 import {
   updateSection,
   reorderSections,
-  createSection,
 } from '@/cms/repository/sections'
 
 export interface EditorState {
@@ -98,7 +97,9 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
     const def = getSectionDefinition(type)
     if (!def) return
 
-    const newSection = {
+    const now = new Date().toISOString()
+    const newSection: PageSection = {
+      id: `temp-${Date.now()}`,
       pageId,
       type,
       variant: defaultVariant(type),
@@ -107,6 +108,8 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
       visible: true,
       position: state.sections.length,
       anchor: null,
+      createdAt: now,
+      updatedAt: now,
     }
 
     setState((s) => ({

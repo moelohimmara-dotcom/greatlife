@@ -108,8 +108,6 @@ interface FieldEditorProps {
 }
 
 function FieldEditor({ field, value, locale, onChange }: FieldEditorProps) {
-  const { theme: t } = useSite()
-
   switch (field.type) {
     case 'text':
       return <TextField field={field} value={value} locale={locale} onChange={onChange} />
@@ -207,7 +205,7 @@ function SelectField({ field, value, onChange }: { field: FieldDef; value: unkno
   )
 }
 
-function ListField({ field, value, locale, onChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void }) {
+function ListField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
   const { theme: t } = useSite()
   const items = Array.isArray(value) ? value : []
 
