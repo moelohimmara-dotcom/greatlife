@@ -98,7 +98,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         label: 'Nombre de plats affichés',
         type: 'number',
         translatable: false,
-        help: 'Laisser vide pour tout afficher.',
+        help: 'Limite globale. Si la valeur est inférieure au nombre total, les dernières catégories de la liste pourront être masquées. Laisser vide pour tout afficher.',
       },
     ],
     providesFrom: 'menu',
@@ -170,8 +170,9 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         itemFields: [
           { name: 'name', label: 'Nom du client', type: 'text', required: true },
           { name: 'text', label: 'Son avis', type: 'multiline', required: true },
-          { name: 'rating', label: 'Note sur 5', type: 'number', translatable: false },
-          { name: 'photo', label: 'Photo', type: 'image', translatable: false },
+          // Note et photo volontairement ABSENTES du registre : aucun composant
+          // ne les rend. Les déclarerait offrir au restaurateur un champ sans
+          // effet visible. À réajouter quand `Testimonials` les affichera.
         ],
       },
     ],
@@ -180,7 +181,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'team',
     label: 'Équipe',
-    description: 'Les membres de l’équipe, avec leur rôle et leur portrait.',
+    description: 'Les membres de l’équipe, avec leur rôle et leur présentation.',
     variants: [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
@@ -196,7 +197,9 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
           { name: 'name', label: 'Nom', type: 'text', required: true },
           { name: 'role', label: 'Rôle', type: 'text' },
           { name: 'desc', label: 'Présentation', type: 'multiline' },
-          { name: 'photo', label: 'Portrait', type: 'image', translatable: false },
+          // Portrait : volontairement ABSENT du registre — `Team` affiche les
+          // photos de la médiathèque par emplacements (`equipe-1`…`equipe-4`),
+          // pas par membre. À réajouter quand le composant lit `photo`.
         ],
       },
     ],
@@ -233,7 +236,26 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         label: 'Engagements',
         type: 'list',
         itemFields: [
-          { name: 'icon', label: 'Icône', type: 'text', translatable: false },
+          {
+            name: 'icon',
+            label: 'Icône',
+            type: 'select',
+            translatable: false,
+            help: 'Choisie dans une liste fermée — saisie libre impossible, donc aucune valeur ne peut casser l’affichage.',
+            options: [
+              { value: 'leaf', label: 'Feuille — bio, nature' },
+              { value: 'fire', label: 'Flamme — cuisson, four' },
+              { value: 'recycle', label: 'Recyclage — emballages éco' },
+              { value: 'search', label: 'Loupe — transparence' },
+              { value: 'coin', label: 'Pièce — prix, accessibilité' },
+              { value: 'pin', label: 'Repère — local, ancrage' },
+              { value: 'clock', label: 'Horloge — service, rapidité' },
+              { value: 'phone', label: 'Téléphone — contact' },
+              { value: 'mail', label: 'Envelope — écrit' },
+              { value: 'star', label: 'Étoile — qualité' },
+              { value: 'users', label: 'Personnes — équipe, clients' },
+            ],
+          },
           { name: 'title', label: 'Titre', type: 'text', required: true },
           { name: 'desc', label: 'Description', type: 'multiline' },
         ],
@@ -313,9 +335,10 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       SUBTITLE,
       {
         name: 'maxItems',
-        label: 'Nombre d’articles affichés',
+        label: 'Nombre d\u2019articles affich\u00e9s',
         type: 'number',
         translatable: false,
+        help: 'Les articles les plus r\u00e9cents sont affich\u00e9s en premier. Laisser vide pour tout afficher.',
       },
     ],
     providesFrom: 'blog',

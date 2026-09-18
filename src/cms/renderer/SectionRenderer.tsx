@@ -21,8 +21,10 @@ import type { PageSection } from '../model/section'
 import type { Locale } from '../model/i18n'
 import { resolveContentObject } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
+import { getSectionDefinition } from '../model/sections/schemas'
 import { getSectionComponent, type SectionComponentProps, type SectionDataSource } from './registry'
 import { SectionFallback } from './SectionFallback'
+import { SectionErrorBoundary } from './ErrorBoundary'
 
 export interface SectionRendererProps {
   section: PageSection
@@ -61,7 +63,14 @@ export function SectionRenderer({
     (composant dédié ou rendu de secours). Sans cette enveloppe, l'ancre
     disparaîtrait dès qu'un composant est branché — et les 10 ancres migrées
     (`#carte`, `#histoire`…) cesseraient de fonctionner.
+
+    Le `SectionErrorBoundary` garantit la règle §5.5 : une section dont le
+    rendu échoue (donnée malformée, défaut dans un composant) n'entraîne PAS
+    le reste de la page. Sans lui, un seul contenu hostile blanchirait tout
+    le site public.
   */
+  const label = getSectionDefinition(section.type)?.label
+
   return (
     <div
       id={section.anchor ?? undefined}
@@ -69,17 +78,19 @@ export function SectionRenderer({
       data-cms-anchor={section.anchor ?? undefined}
       style={SECTION_SCROLL_STYLE}
     >
-      {Component ? (
-        <Component {...props} />
-      ) : (
-        <SectionFallback
-          type={section.type}
-          content={props.content}
-          variant={props.variant}
-          restaurant={restaurant}
-          preview={preview}
-        />
-      )}
+      <SectionErrorBoundary sectionType={section.type} sectionLabel={label}>
+        {Component ? (
+          <Component {...props} />
+        ) : (
+          <SectionFallback
+            type={section.type}
+            content={props.content}
+            variant={props.variant}
+            restaurant={restaurant}
+            preview={preview}
+          />
+        )}
+      </SectionErrorBoundary>
     </div>
   )
 }
