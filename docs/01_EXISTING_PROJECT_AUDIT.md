@@ -855,6 +855,8 @@ Les constats marqués comme provenant de la **base déployée** (§10, §11, com
 
 Risques **encore ouverts** (hors périmètre de ce lot) : R2 (pas de versioning/undo — traité par le Lot 3 du TDR), R3 (édition directe en production — Lot 3), R6 à R21.
 
+**Réactivation ultérieure (18/09/2026, sur demande du propriétaire)** : `owner@greatlife.com` a été **réactivé** (bannissement levé, `active = true`) afin de redonner au propriétaire un accès opérationnel immédiat. Son mot de passe est celui issu de la rotation — **fort et non public** — et non l'ancien mot de passe exposé, qui reste invalide. `gerant@greatlife.com` demeure banni et désactivé. La posture de sécurité de R1 n'est donc pas affectée : l'ancien identifiant public ne fonctionne toujours pas, et l'encart de démonstration comme le repli codé en dur ont été retirés.
+
 Compléments apportés par la revue de ce lot :
 
 - **Migration `020`** : comparaison d'email insensible à la casse dans `is_admin()` et dans la policy de lecture de soi. Sans cela, une seule divergence de casse entre `auth.users` et `admin_users` verrouillait définitivement un propriétaire légitime, sans recours côté client.
