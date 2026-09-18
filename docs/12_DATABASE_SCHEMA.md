@@ -364,7 +364,7 @@ La première version affirmait que **toutes** les migrations seraient idempotent
 | Réf | Décision | Recommandation |
 |---|---|---|
 | **DB-1** | Créer `page_versions` au Lot 1 (vide) ou au Lot 3 | **Au Lot 1** — coût nul, évite une migration sur données vivantes |
-| **DB-2** | Périmètre de rôle sur les nouvelles tables : `owner`/`manager` (existant) ou ajout d'`editor` (TDR §27) | **`owner`/`manager`** au Lot 1 — n'élargit aucun droit ; l'ajout d'`editor` après arbitrage D4 |
+| **DB-2** | Périmètre de rôle sur les nouvelles tables : `owner`/`manager` (existant) ou ajout d'`editor` (TDR §27) | ✅ **ARBITRÉ : `owner`/`manager`** (2026-09-18) — aucun droit élargi ; l'ajout d'`editor` reste possible par un simple `ALTER POLICY` après arbitrage D4 |
 | **DB-3** | Découpage en 5 migrations séparées (structure / réglages / contenu) | **Oui** — permet de rejouer la migration de contenu seule |
 | **DB-4** | Conservation intégrale de la ligne `site_config` historique (et de `rbacOverrides`) | **Oui** — aucune destruction, bascule réversible |
 | **DB-5** | `slug` comparé en minuscules | **Oui** — leçon de la migration 020 |

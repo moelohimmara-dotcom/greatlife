@@ -153,6 +153,27 @@ Un renderer piloté par les données rencontre des situations qu'un site figé n
 | Page en brouillon demandée par un visiteur | **Refus en base** (RLS), donc introuvable — pas de filtrage côté client |
 | Base indisponible | Échec **explicite**. Aucun repli silencieux sur des données codées en dur (règle héritée du Lot 0.5) |
 
+### 5.6 Contrainte majeure : le renderer doit être **isomorphe**
+
+Décision **CM-7** (arbitrée le 2026-09-18) : le SEO par page est obtenu par **génération de HTML statique à la publication**. Cette décision — que le TDR ne couvrait dans aucun de ses 10 lots — impose une contrainte forte au renderer :
+
+> **Le renderer doit produire le même HTML dans deux contextes différents** :
+> - **au build** (Node, hors navigateur) → pour générer les pages statiques ;
+> - **dans le navigateur** → pour l'aperçu en direct dans l'éditeur (Lot 2).
+
+Conséquences de conception, dès le Lot 1 :
+
+| Contrainte | Règle |
+|---|---|
+| Aucune dépendance au navigateur dans le renderer | Pas d'accès direct à `window`, `document`, `localStorage` dans le chemin de rendu d'une page |
+| Le renderer reçoit ses **données**, il ne les **charge** pas | Il reçoit page + sections + réglages + données métier en paramètres ; le chargement est la responsabilité de l'appelant (Node ou navigateur) |
+| Les composants de section doivent être **rendus côté serveur sans erreur** | Aucun composant ne s'appuie sur un effet de bord au premier rendu |
+| Les images sont des `<img>` avec `alt`, `srcset` et dimensions | Nécessaire pour un HTML statique réellement exploitable par les robots (et corrige le défaut d'accessibilité relevé dans l'audit §12) |
+
+**Périmètre :** cette contrainte est **structurelle dès le Lot 1** (l'architecture du renderer en dépend), mais **l'outil de génération** (script Node produisant les fichiers, déclenché à la publication) n'est **pas** dans le Lot 1 — il n'est pas non plus dans les 10 lots du TDR. **C'est un lot supplémentaire à créer** (proposition : après le Lot 3, une fois le workflow de publication en place). Décision à confirmer.
+
+
+
 ---
 
 ## 6. Structure de dossiers cible (Lot 1)
@@ -165,7 +186,7 @@ src/
 │   ├── model/            Types TypeScript du modèle de contenu
 │   │   ├── page.ts             Page, statuts
 │   │   ├── section.ts          Section, variantes
-│   │   ├── sections/           Un schéma de contenu par type (19 fichiers)
+│   │   ├── sections/           Un schéma de contenu par type (20 : 18 du TDR + 2 ajouts)
 │   │   └── i18n.ts             Type Bilingue<T> + helpers de résolution
 │   ├── repository/       Accès aux nouvelles tables (TDR §30)
 │   │   ├── pages.ts
@@ -288,6 +309,8 @@ La première version de ce document posait le principe sans le rendre exécutabl
 | **AR-4** | Les nouvelles fonctions du repository échouent explicitement (pas de repli local) | **Oui** — corrige le défaut hérité le plus dangereux |
 | **AR-5** | Cohabitation temporaire ancien/nouveau site, basculement sur preuve | **Oui** — respecte le TDR §41 |
 | **AR-6** | **Drapeau d'activation** du renderer plutôt que remplacement de code | **Oui** — retour arrière instantané, sans redéploiement |
-| **AR-7** | Sort des 4 composants rendus inconditionnellement (`PublicNav`, `Footer`, `OrderCart`, `Reservation`) | **Devenir des sections administrables** — voir **CM-8** |
+| **AR-7** | Sort des 4 composants rendus inconditionnellement | ✅ **ARBITRÉ (2026-09-18)** : `OrderCart` et `Reservation` deviennent des **sections de page** ; `PublicNav` et `Footer` deviennent **éditables mais restent globaux** (TDR §19). Voir `04_CONTENT_MODEL.md` §11.0 |
 | **AR-8** | Comportement quand aucune page publiée ne correspond à l'URL | **À trancher** — voir **DB-9** |
 | **AR-9** | Validation du `type` de section : registre applicatif plutôt que contrainte en base | **Oui** — voir **DB-10** |
+| **AR-10** | **Renderer isomorphe** (build Node + navigateur), imposé par la génération statique | **Oui** — contrainte structurelle du Lot 1 (§5.6) |
+| **AR-11** | Créer un **lot supplémentaire** pour l'outil de génération statique (absent des 10 lots du TDR) | **Oui** — proposition : juste après le Lot 3 |

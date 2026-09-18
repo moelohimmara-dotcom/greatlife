@@ -365,6 +365,29 @@ Pour éviter toute ambiguïté sur le périmètre :
 
 ## 11. Décisions soumises à validation
 
+### 11.0 Décisions arbitrées le 2026-09-18
+
+| Réf | Décision retenue | Conséquence sur ce document |
+|---|---|---|
+| **CM-6** | **Préfixe d'URL** : le français à la racine (`/`, `/carte`), l'anglais préfixé (`/en`, `/en/carte`) | **Un seul slug par page** (`pages.slug`) : la langue vit dans le chemin, pas dans la donnée. Le schéma reste inchangé — c'est le point heureux de ce choix |
+| **CM-7** | **Génération de HTML statique à la publication** | Le renderer doit être **isomorphe** : exécutable au build (Node) *et* dans le navigateur (aperçu en direct). Voir `03_CMS_ARCHITECTURE.md` §5.6 |
+| **CM-8** | Les blocs globaux deviennent **administrables** | Voir la nuance importante ci-dessous |
+
+⚠️ **Nuance à confirmer sur CM-8.** La formulation retenue (« les rendre administrables comme des sections ») entre en tension avec le TDR §19, qui impose que **header et footer soient globaux** : « une modification doit être répercutée sur toutes les pages ».
+
+Interprétation appliquée, qui satisfait les deux :
+
+| Bloc | Traitement retenu | Motif |
+|---|---|---|
+| `PublicNav` (header) | **Éditable** depuis l'admin, **global** (une seule définition, appliquée à toutes les pages) | TDR §19 : global |
+| `Footer` | **Éditable**, **global** | TDR §19 : global |
+| `OrderCart` (panier) | **Section de page** (positionnable, masquable) | C'est un élément de contenu, pas un cadre |
+| `Reservation` | **Section de page** | Idem — et c'était le risque principal : ne plus pouvoir déplacer le formulaire |
+
+Si tu voulais au contraire que le header et le footer soient **propres à chaque page**, dis-le : cela contredit le TDR §19 et demanderait de le réviser.
+
+### 11.1 Autres décisions
+
 | Réf | Décision | Recommandation |
 |---|---|---|
 | **CM-1** | Pattern de traduction : objet par champ / ligne par langue / table de traductions | **Option A** — objet de traduction par champ, appliqué uniformément |
