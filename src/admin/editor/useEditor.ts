@@ -19,11 +19,9 @@ import type { SectionType } from '@/cms/model/section'
 import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
 import { resolveContentObject } from '@/cms/model/i18n'
 import {
-  fetchSections,
   updateSection,
   reorderSections,
-  insertSection,
-  updateSectionVisibility,
+  createSection,
 } from '@/cms/repository/sections'
 
 export interface EditorState {
@@ -100,9 +98,8 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
     const def = getSectionDefinition(type)
     if (!def) return
 
-    const newSection: PageSection = {
-      id: `temp-${Date.now()}`, // ID temporaire, remplacé par la DB
-      page_id: pageId,
+    const newSection = {
+      pageId,
       type,
       variant: defaultVariant(type),
       content: {},
@@ -110,8 +107,6 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
       visible: true,
       position: state.sections.length,
       anchor: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     }
 
     setState((s) => ({

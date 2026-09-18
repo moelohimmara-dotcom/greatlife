@@ -30,7 +30,7 @@ export function Testimonials({ content: cms }: Partial<SectionComponentProps> = 
   const sub = pick(cmsText(cms, 'subtitle'), 'Ce que disent nos clients.')
 
   return (
-    <section id="temoignages" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1100px', margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1100px', margin: '0 auto' }}>
       <Reveal>
         <SectionHead title={title} sub={sub} align="center" />
       </Reveal>

@@ -82,7 +82,7 @@ export function Contact({ content: cms }: Partial<SectionComponentProps> = {}) {
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
   return (
-    <section id="contact" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
+    <section className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: '680px', margin: '0 auto' }}>
         <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
         <Reveal delay={0.1}>

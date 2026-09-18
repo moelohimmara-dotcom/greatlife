@@ -9,9 +9,11 @@
  */
 
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
+import { SectionRenderer } from '@/cms/renderer/SectionRenderer'
 
 interface PreviewPaneProps {
   sections: PageSection[]
@@ -19,53 +21,61 @@ interface PreviewPaneProps {
   restaurant?: ResolvedRestaurant
 }
 
+/** Réglages restaurant par défaut pour la prévisualisation. */
+const DEFAULT_RESTAURANT: ResolvedRestaurant = {
+  name: 'Greatlife',
+  address: 'Conakry, Guinée',
+  hours: 'Tous les jours · 11h00 — 23h00',
+  phone: '+224 000 00 00 00',
+  emailContact: 'contact@greatlife.gn',
+  emailReservation: 'resa@greatlife.gn',
+  slogan: 'Manger vite. Manger bio. Manger gourmand.',
+  currency: 'FG',
+  social: { facebook: '', whatsapp: '', instagram: '' },
+}
+
 /**
  * L'aperçu est rendu dans un iframe pour éviter les conflits de styles
- * entre le CMS et le site public. Le contenu est injecté en HTML
- * via `srcdoc`.
- *
- * Alternative : un rendu React direct (plus rapide, mais risque de
- * fuites de styles). On garde l'iframe pour la sécurité.
+ * entre le CMS et le site public. Le contenu est injecté via un portail React.
  */
 export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
+  // Injecter le style du site public dans l'iframe
   useEffect(() => {
     if (!iframeRef.current) return
+    const doc = iframeRef.current.contentDocument
+    if (!doc) return
 
-    // Construire le HTML des sections
-    const sectionsHtml = sections
-      .filter((s) => s.visible)
-      .map((s) => {
-        const content = JSON.stringify(s.content)
-        return `<div data-section="${s.type}" data-anchor="${s.anchor ?? ''}" data-content='${content.replace(/'/g, "&#39;")}'>[${s.type}]</div>`
-      })
-      .join('\n')
-
-    const html = `<!DOCTYPE html>
+    // Nettoyer et injecter le HTML de base
+    doc.open()
+    doc.write(`<!DOCTYPE html>
 <html lang="${locale}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/index.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; }
-    [data-section] { padding: 32px 24px; border-bottom: 1px dashed #e5e7eb; }
-    [data-section]::before {
-      content: attr(data-section);
-      display: inline-block; padding: 2px 8px; margin-bottom: 8px;
-      background: #f3f4f6; border-radius: 4px; font-size: 11px; color: #6b7280;
-      text-transform: uppercase; letter-spacing: 0.05em;
-    }
   </style>
 </head>
 <body>
-  ${sectionsHtml || '<div style="padding: 48px; text-align: center; color: #9ca3af;">Aucune section à afficher.</div>'}
+  <div id="preview-root"></div>
 </body>
-</html>`
+</html>`)
+    doc.close()
 
-    iframeRef.current.srcdoc = html
-  }, [sections, locale])
+    // Trouver le conteneur pour le portail React
+    const root = doc.getElementById('preview-root')
+    if (root) {
+      containerRef.current = root as HTMLDivElement
+    }
+  }, [locale])
+
+  // Ne rendre que les sections visibles
+  const visibleSections = sections.filter((s) => s.visible)
 
   return (
     <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -83,6 +93,18 @@ export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPane
           style={{ width: '100%', height: '100%', border: 'none' }}
           sandbox="allow-same-origin"
         />
+        {containerRef.current && createPortal(
+          visibleSections.map((section, i) => (
+            <SectionRenderer
+              key={section.id || `section-${i}`}
+              section={section}
+              locale={locale}
+              restaurant={restaurant ?? DEFAULT_RESTAURANT}
+              preview
+            />
+          )),
+          containerRef.current,
+        )}
       </div>
     </div>
   )

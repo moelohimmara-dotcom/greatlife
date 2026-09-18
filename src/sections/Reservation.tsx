@@ -70,7 +70,7 @@ export function Reservation({ content: cms }: Partial<SectionComponentProps> = {
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
   const today = new Date().toISOString().split('T')[0]
   return (
-    <section id="reservation" className="section-pad" style={{ padding: '100px 24px', background: t.surface }}>
+    <section className="section-pad" style={{ padding: '100px 24px', background: t.surface }}>
       <div style={{ maxWidth: '680px', margin: '0 auto' }}>
         <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
         <Reveal delay={0.1}>

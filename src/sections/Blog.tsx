@@ -48,7 +48,7 @@ export function Blog({ content: cms, data }: Partial<SectionComponentProps> = {}
     return 'sain'
   }
   return (
-    <section id="blog" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
       <div className="blog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
         {posts.map((post, i) => {

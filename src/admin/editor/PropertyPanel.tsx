@@ -15,11 +15,12 @@
  * - image → input URL (placeholder Lot 6)
  */
 
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
 import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
+import type { ThemePalette } from '@/config/themes'
 import { getSectionDefinition } from '@/cms/model/sections/schemas'
 import type { FieldDef } from '@/cms/model/sections/fields'
 
@@ -326,11 +327,11 @@ function isTranslationObject(v: unknown): boolean {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && ('fr' in (v as Record<string, unknown>) || 'en' in (v as Record<string, unknown>))
 }
 
-function labelStyle(t: Record<string, string>): React.CSSProperties {
+function labelStyle(t: ThemePalette): React.CSSProperties {
   return { display: 'block', fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 5 }
 }
 
-function inputStyle(t: Record<string, string>): React.CSSProperties {
+function inputStyle(t: ThemePalette): React.CSSProperties {
   return {
     width: '100%', padding: '7px 10px', borderRadius: 8,
     border: `1px solid ${t.shadow}`, background: t.bg,

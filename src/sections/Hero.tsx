@@ -51,7 +51,7 @@ export function Hero({ content: cms }: Partial<SectionComponentProps> = {}) {
   const chipIcons = [Icon.leaf(18, t.primary), Icon.recycle(18, t.accent), Icon.coin(18, t.gold)]
 
   return (
-    <section id="home" className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '40px 24px 100px' }}>
+    <section className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '40px 24px 100px' }}>
       <div style={{ position: 'absolute', top: '-100px', right: '-80px', width: '500px', height: '500px', borderRadius: '50%', background: `radial-gradient(circle, ${t.primary}15, transparent 70%)`, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-60px', left: '-120px', width: '400px', height: '400px', borderRadius: '50%', background: `radial-gradient(circle, ${t.gold}12, transparent 70%)`, pointerEvents: 'none' }} />
 

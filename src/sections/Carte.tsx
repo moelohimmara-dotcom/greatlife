@@ -137,7 +137,7 @@ export function Carte({ content: cms, data }: Partial<SectionComponentProps> = {
   }
 
   return (
-    <section id="carte" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
       {cats.map((cat, ci) => {
         const all = menu.filter(m => m.cat === cat)

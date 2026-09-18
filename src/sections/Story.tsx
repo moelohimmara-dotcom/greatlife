@@ -22,7 +22,7 @@ export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
   const chipIcons = [Icon.coin(16, t.accent), Icon.leaf(16, t.primary), Icon.search(16, t.gold)]
 
   return (
-    <section id="histoire" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
+    <section className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div className="story-grid" style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '60px', alignItems: 'center' }}>
         <Reveal>
           <div style={{

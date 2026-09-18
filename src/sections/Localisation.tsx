@@ -25,7 +25,7 @@ export function Localisation({ content: cms, restaurant }: Partial<SectionCompon
   const email = restaurant?.emailContact || legacy.emailContact || 'contact@greatlife.gn'
 
   return (
-    <section id="loca" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1000px', margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1000px', margin: '0 auto' }}>
       <Reveal>
         <SectionHead title={title} sub={subtitle} />
         <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>

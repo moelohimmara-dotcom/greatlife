@@ -22,7 +22,6 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -114,14 +113,13 @@ export function SectionList({
 interface SortableItemProps {
   id: string
   section: PageSection
-  index: number
   isSelected: boolean
   onSelect: () => void
   onToggleVisibility: () => void
   onRemove: () => void
 }
 
-function SortableItem({ id, section, index, isSelected, onSelect, onToggleVisibility, onRemove }: SortableItemProps) {
+function SortableItem({ id, section, isSelected, onSelect, onToggleVisibility, onRemove }: SortableItemProps) {
   const { theme: t } = useSite()
   const {
     attributes,

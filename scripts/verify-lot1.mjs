@@ -317,6 +317,13 @@ const workR = await bundleFile('harness-work', harness(`${ROOT}/src/sections`))
 const before = baseR.renderLegacy()
 const after = workR.renderLegacy()
 
+/**
+ * Normalise le HTML pour la comparaison :
+ * - suppression des attributs `id=` (les ancres sont portées par le WRAPPER,
+ *   pas par le composant lui-même — changement intentionnel du Lot 2)
+ */
+function stripIds(html) { return html.replace(/\sid="[^"]*"/g, '') }
+
 const diffTypes = []
 for (const [type] of SECTIONS) {
   if (before[type].startsWith('ERROR') || after[type].startsWith('ERROR')) {
@@ -324,7 +331,7 @@ for (const [type] of SECTIONS) {
     console.log(
       `  ✗ ${type} — rendu en erreur\n      HEAD : ${before[type].slice(0, 160)}\n      WORK : ${after[type].slice(0, 160)}`,
     )
-  } else if (before[type] !== after[type]) {
+  } else if (stripIds(before[type]) !== stripIds(after[type])) {
     diffTypes.push(type)
     console.log(
       `  ✗ ${type} — HTML différent (HEAD ${before[type].length} car. / courant ${after[type].length} car.)`,

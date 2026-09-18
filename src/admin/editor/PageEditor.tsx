@@ -8,7 +8,7 @@
  * AdminPanel à la place de l'écran `content` existant.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
 import { useEditor } from './useEditor'

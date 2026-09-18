@@ -31,7 +31,7 @@ export function Team({ content: cms }: Partial<SectionComponentProps> = {}) {
   )
 
   return (
-    <section id="equipe" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
+    <section className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <Reveal><SectionHead title={title} sub={sub} align="center" /></Reveal>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: '24px' }}>

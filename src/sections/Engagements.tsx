@@ -30,7 +30,7 @@ export function Engagements({ content: cms }: Partial<SectionComponentProps> = {
   const sub = pick(cmsText(cms, 'subtitle'), 'Six engagements concrets qui font de Greatlife un fast-food à part.')
 
   return (
-    <section id="engagements" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Reveal><SectionHead title={title} sub={sub} align="center" /></Reveal>
       <div className="engagements-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px,1fr))', gap: '20px' }}>
         {items.map(([ic, itemTitle, desc], i) => (
