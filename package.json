@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "verify:lot1": "node scripts/verify-lot1.mjs",
     "lint": "eslint . --ext ts,tsx"
   },
   "dependencies": {

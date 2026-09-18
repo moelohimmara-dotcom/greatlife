@@ -3,16 +3,27 @@
  * =====================================================
  * Fait le lien entre un `type` de section et son composant visuel.
  *
- * ⚠️ ÉTAT AU LOT 1 : aucun composant n'est encore branché sur les données.
+ * ⚠️ CE FICHIER RESTE ISOMORPHE — il ne doit JAMAIS importer un composant.
  *
- * Les 9 sections existantes (`Hero`, `Carte`, `Story`, `Engagements`, `Team`,
- * `Testimonials`, `Localisation`, `Contact`, `Blog`) lisent aujourd'hui leurs
- * valeurs dans les contextes et dans des constantes codées en dur. Les brancher
- * sur `content` est l'étape suivante du Lot 1 — c'est la partie risquée, car
- * elle doit produire un rendu **identique** (TDR §41).
+ * Pourquoi : `@/cms/renderer` doit rester utilisable dans Node, pour générer le
+ * HTML statique à la publication (décision CM-7 / AR-10). Or un composant de
+ * section dépend de `@/contexts/SiteContext`, qui dépend de `@/lib/supabase`,
+ * qui lit `import.meta.env` au chargement du module — une API Vite absente de
+ * Node. Vérifié : brancher un composant ici fait échouer l'import Node avec
+ * `TypeError: Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')`.
  *
- * Tant qu'un type n'a pas de composant, le renderer utilise un rendu générique
- * de secours : la page reste lisible et jamais vide (§5.5 de l'architecture).
+ * C'est pourquoi l'enregistrement est séparé :
+ *
+ *   registry.ts (ce fichier)   → le CONTRAT : types + point d'extension. Vide.
+ *   ../register-sections.ts    → l'ENREGISTREMENT applicatif des 9 composants.
+ *
+ * `@/cms` (point d'entrée complet) déclenche l'enregistrement. Un script Node
+ * qui génère le HTML doit fournir son propre enregistrement, ou passer par
+ * Vite (qui sait résoudre `import.meta.env`).
+ *
+ * Tant qu'un type n'a pas de composant enregistré, le renderer utilise un rendu
+ * générique de secours : la page reste lisible et jamais vide (§5.5 de
+ * l'architecture).
  */
 
 import type { ComponentType } from 'react'
@@ -57,9 +68,8 @@ export interface SectionComponentProps {
 }
 
 /**
- * Table type → composant.
- * Volontairement vide au Lot 1 : elle sera remplie composant par composant,
- * au fur et à mesure de leur branchement sur les données.
+ * Table type → composant, remplie par `../register-sections.ts`.
+ * Vide à l'import de ce module : c'est l'enregistrement qui la peuple.
  */
 const COMPONENTS: Partial<Record<SectionType, ComponentType<SectionComponentProps>>> = {}
 

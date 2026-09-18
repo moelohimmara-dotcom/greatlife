@@ -1,19 +1,28 @@
 /**
  * Greatlife — CMS : registre des types de sections
  * =================================================
- * Source unique de vérité du catalogue (TDR §12 + décision CM-4).
+ * SOURCE UNIQUE DE VÉRITÉ du catalogue (TDR §12 + décision CM-4 : 20 types).
  *
  * Chaque entrée décrit, en langage restaurateur :
- *   - ce que la section affiche,
- *   - les variantes disponibles (TDR §13),
- *   - ce qu'elle tire d'un module (menu, blog) ou des réglages du restaurant.
+ *   - ce que la section affiche (`label`, `description`),
+ *   - ses variantes (`variants`, TDR §13),
+ *   - **ses champs de contenu** (`fields`) — c'est cette description qui
+ *     permettra à l'éditeur du Lot 2 de générer ses formulaires, et au futur
+ *     AI Copilot (TDR §35) de savoir quoi manipuler.
  *
- * `implemented` indique si le composant visuel a déjà été branché sur les
+ * `implemented` indique si le composant visuel est déjà branché sur les
  * données. Tant qu'il vaut `false`, le renderer utilise un rendu générique de
- * secours — jamais un écran vide (voir `renderer/SectionRenderer.tsx`).
+ * secours — jamais un écran vide.
  */
 
 import type { SectionType, SectionTypeDefinition } from '../section'
+import { CHIPS, IMAGE_FIELD, SUBTITLE, TITLE, ctaField, type FieldDef } from './fields'
+
+/** Bouton principal — un objet `{ label, target }`, pas une liste. */
+const CTA = ctaField('primaryCta', 'Bouton principal')
+
+/** Bouton secondaire — facultatif : beaucoup de blocs n'en proposent qu'un. */
+const CTA_SECONDARY = ctaField('secondaryCta', 'Bouton secondaire', false)
 
 export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
@@ -26,7 +35,28 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'centered', label: 'Centré' },
       { id: 'video', label: 'Vidéo' },
     ],
-    implemented: false,
+    fields: [
+      TITLE,
+      SUBTITLE,
+      { name: 'tagline', label: 'Accroche', type: 'text', help: 'La phrase courte affichée en haut du bloc.' },
+      CHIPS,
+      {
+        name: 'badge',
+        label: 'Étiquette du plat vedette',
+        type: 'group',
+        help: 'La petite carte affichée sur l’image (ex. le prix du plat signature).',
+        itemFields: [
+          { name: 'label', label: 'Mention', type: 'text' },
+          { name: 'name', label: 'Nom du plat', type: 'text' },
+          { name: 'value', label: 'Prix ou valeur', type: 'text' },
+        ],
+      },
+      { name: 'pill', label: 'Pastille sur l’image', type: 'text' },
+      CTA,
+      CTA_SECONDARY,
+      IMAGE_FIELD,
+    ],
+    implemented: true,
   },
   {
     type: 'text',
@@ -36,6 +66,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'one_column', label: 'Une colonne' },
       { id: 'two_columns', label: 'Deux colonnes' },
     ],
+    fields: [TITLE, { name: 'body', label: 'Texte', type: 'multiline' }],
     implemented: false,
   },
   {
@@ -46,19 +77,32 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'image_left', label: 'Image à gauche' },
       { id: 'image_right', label: 'Image à droite' },
     ],
+    fields: [TITLE, { name: 'body', label: 'Texte', type: 'multiline' }, IMAGE_FIELD],
     implemented: false,
   },
   {
     type: 'menu',
     label: 'Carte',
-    description: 'Affiche les plats. Les plats sont gérés dans le module Menu : ils ne sont jamais recopiés ici.',
+    description:
+      'Affiche les plats. Les plats sont gérés dans le module Menu : ils ne sont jamais recopiés ici.',
     variants: [
       { id: 'full', label: 'Carte complète' },
       { id: 'by_category', label: 'Par catégorie' },
       { id: 'tabs', label: 'Onglets' },
     ],
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'maxItems',
+        label: 'Nombre de plats affichés',
+        type: 'number',
+        translatable: false,
+        help: 'Laisser vide pour tout afficher.',
+      },
+    ],
     providesFrom: 'menu',
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'menu_featured',
@@ -67,6 +111,18 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     variants: [
       { id: 'grid', label: 'Grille' },
       { id: 'carousel', label: 'Carrousel' },
+    ],
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'items',
+        label: 'Plats mis en avant',
+        type: 'list',
+        maxItems: 8,
+        help: 'Choisis dans la carte — seule la sélection est enregistrée ici.',
+        itemFields: [{ name: 'ref', label: 'Plat', type: 'text', translatable: false }],
+      },
     ],
     providesFrom: 'menu',
     implemented: false,
@@ -80,6 +136,19 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'mosaic', label: 'Mosaïque' },
       { id: 'carousel', label: 'Carrousel' },
     ],
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'items',
+        label: 'Photos',
+        type: 'list',
+        itemFields: [
+          { name: 'media', label: 'Photo', type: 'image', translatable: false, required: true },
+          { name: 'caption', label: 'Légende', type: 'text' },
+        ],
+      },
+    ],
     implemented: false,
   },
   {
@@ -90,7 +159,23 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'cards', label: 'Cartes' },
       { id: 'quotes', label: 'Citations' },
     ],
-    implemented: false,
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'items',
+        label: 'Avis',
+        type: 'list',
+        help: 'Tant qu’aucun avis n’est saisi, le bloc reste masqué sur le site.',
+        itemFields: [
+          { name: 'name', label: 'Nom du client', type: 'text', required: true },
+          { name: 'text', label: 'Son avis', type: 'multiline', required: true },
+          { name: 'rating', label: 'Note sur 5', type: 'number', translatable: false },
+          { name: 'photo', label: 'Photo', type: 'image', translatable: false },
+        ],
+      },
+    ],
+    implemented: true,
   },
   {
     type: 'team',
@@ -100,14 +185,37 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
     ],
-    implemented: false,
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'members',
+        label: 'Membres',
+        type: 'list',
+        itemFields: [
+          { name: 'name', label: 'Nom', type: 'text', required: true },
+          { name: 'role', label: 'Rôle', type: 'text' },
+          { name: 'desc', label: 'Présentation', type: 'multiline' },
+          { name: 'photo', label: 'Portrait', type: 'image', translatable: false },
+        ],
+      },
+    ],
+    implemented: true,
   },
   {
     type: 'story',
     label: 'Notre histoire',
     description: 'Le récit de la maison, avec une signature.',
     variants: [],
-    implemented: false,
+    fields: [
+      TITLE,
+      { name: 'body', label: 'Récit', type: 'multiline', required: true },
+      { name: 'signature', label: 'Signature', type: 'text', help: 'Le nom affiché sur la photo.' },
+      { name: 'signerole', label: 'Fonction', type: 'text', help: 'Ex. « Le fondateur ».' },
+      CHIPS,
+      IMAGE_FIELD,
+    ],
+    implemented: true,
   },
   {
     type: 'engagements',
@@ -117,24 +225,46 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
     ],
-    implemented: false,
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'items',
+        label: 'Engagements',
+        type: 'list',
+        itemFields: [
+          { name: 'icon', label: 'Icône', type: 'text', translatable: false },
+          { name: 'title', label: 'Titre', type: 'text', required: true },
+          { name: 'desc', label: 'Description', type: 'multiline' },
+        ],
+      },
+    ],
+    implemented: true,
   },
   {
     type: 'location',
     label: 'Nous trouver',
-    description: 'Adresse et horaires. Ces informations viennent des réglages du restaurant, elles ne sont saisies qu’une fois.',
+    description:
+      'Adresse et horaires. Ces informations viennent des réglages du restaurant, elles ne sont saisies qu’une fois.',
     variants: [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
     ],
+    fields: [TITLE, SUBTITLE],
     usesRestaurantSettings: true,
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'map',
     label: 'Carte',
     description: 'Un plan de localisation.',
     variants: [],
+    fields: [
+      TITLE,
+      { name: 'latitude', label: 'Latitude', type: 'text', translatable: false },
+      { name: 'longitude', label: 'Longitude', type: 'text', translatable: false },
+      { name: 'zoom', label: 'Zoom', type: 'number', translatable: false },
+    ],
     implemented: false,
   },
   {
@@ -145,25 +275,51 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
     ],
-    implemented: false,
+    fields: [TITLE, SUBTITLE],
+    implemented: true,
   },
   {
     type: 'contact',
     label: 'Contact',
     description: 'Le formulaire de contact.',
     variants: [],
-    implemented: false,
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'subjects',
+        label: 'Motifs proposés',
+        type: 'list',
+        help: 'Les choix du menu déroulant du formulaire.',
+        itemFields: [
+          { name: 'value', label: 'Identifiant', type: 'text', translatable: false, required: true },
+          { name: 'label', label: 'Libellé affiché', type: 'text', required: true },
+        ],
+      },
+    ],
+    implemented: true,
   },
   {
     type: 'blog',
     label: 'Journal',
-    description: 'Vos articles. Ils sont gérés dans le module Blog : ils ne sont jamais recopiés ici.',
+    description:
+      'Vos articles. Ils sont gérés dans le module Blog : ils ne sont jamais recopiés ici.',
     variants: [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
     ],
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'maxItems',
+        label: 'Nombre d’articles affichés',
+        type: 'number',
+        translatable: false,
+      },
+    ],
     providesFrom: 'blog',
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'faq',
@@ -172,6 +328,19 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     variants: [
       { id: 'accordion', label: 'Accordéon' },
       { id: 'list', label: 'Liste' },
+    ],
+    fields: [
+      TITLE,
+      SUBTITLE,
+      {
+        name: 'items',
+        label: 'Questions',
+        type: 'list',
+        itemFields: [
+          { name: 'question', label: 'Question', type: 'text', required: true },
+          { name: 'answer', label: 'Réponse', type: 'multiline', required: true },
+        ],
+      },
     ],
     implemented: false,
   },
@@ -183,6 +352,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'banner', label: 'Bandeau' },
       { id: 'card', label: 'Encart' },
     ],
+    fields: [TITLE, { name: 'body', label: 'Texte', type: 'multiline' }, CTA],
     implemented: false,
   },
   {
@@ -190,6 +360,11 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     label: 'Vidéo',
     description: 'Une vidéo intégrée.',
     variants: [],
+    fields: [
+      TITLE,
+      { name: 'url', label: 'Adresse de la vidéo', type: 'text', translatable: false, required: true },
+      { name: 'poster', label: 'Image de prévisualisation', type: 'image', translatable: false },
+    ],
     implemented: false,
   },
   {
@@ -201,6 +376,19 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'md', label: 'Moyen' },
       { id: 'lg', label: 'Grand' },
     ],
+    fields: [
+      {
+        name: 'size',
+        label: 'Hauteur',
+        type: 'select',
+        translatable: false,
+        options: [
+          { value: 'sm', label: 'Petite' },
+          { value: 'md', label: 'Moyenne' },
+          { value: 'lg', label: 'Grande' },
+        ],
+      },
+    ],
     implemented: false,
   },
   {
@@ -208,6 +396,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     label: 'Contenu libre',
     description: 'Un bloc de contenu librement rédigé.',
     variants: [],
+    fields: [TITLE, { name: 'body', label: 'Contenu', type: 'multiline', required: true }],
     implemented: false,
   },
 ]
@@ -229,4 +418,14 @@ export function isKnownSectionType(type: string): boolean {
 /** Variante par défaut d'un type (première de la liste, ou `null`). */
 export function defaultVariant(type: SectionType): string | null {
   return BY_TYPE.get(type)?.variants[0]?.id ?? null
+}
+
+/** Champs de contenu d'un type, ou tableau vide si le type est inconnu. */
+export function fieldsFor(type: string): readonly FieldDef[] {
+  return BY_TYPE.get(type as SectionType)?.fields ?? []
+}
+
+/** Types dont le composant visuel est déjà branché sur les données. */
+export function implementedTypes(): SectionType[] {
+  return SECTION_TYPES.filter((d) => d.implemented).map((d) => d.type)
 }

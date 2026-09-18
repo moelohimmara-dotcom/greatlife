@@ -12,9 +12,18 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { getSupabase } from '@/lib/supabase'
 import { insertReservation } from '@/lib/repository'
 import { invokeContactEmail } from '@/lib/supabase'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsText, pick } from '@/cms/renderer/compat'
 
-export function Reservation() {
+export function Reservation({ content: cms }: Partial<SectionComponentProps> = {}) {
   const { theme: t } = useSite()
+
+  const title = pick(cmsText(cms, 'title'), 'Réservez votre table')
+  const subtitle = pick(
+    cmsText(cms, 'subtitle'),
+    'Réservez en quelques secondes — confirmation par email.',
+  )
+
   const [form, setForm] = useState({ nom: '', email: '', phone: '', date: '', time: '12:00', guests: '2', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -63,7 +72,7 @@ export function Reservation() {
   return (
     <section id="reservation" className="section-pad" style={{ padding: '100px 24px', background: t.surface }}>
       <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-        <Reveal><SectionHead title="Réservez votre table" sub="Réservez en quelques secondes — confirmation par email." align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
         <Reveal delay={0.1}>
           <OrganicCard style={{ padding: '32px' }}>
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>

@@ -5,6 +5,8 @@ import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { Icon } from '@/lib/icons'
 import type { BlogPost } from '@/lib/repository'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
 
 const FALLBACK_POSTS: BlogPost[] = [
   { title: 'Pourquoi le corossol mérite sa place dans votre assiette', excerpt: 'Découverte d\'un superfruit guinéen aux vertus digestives reconnues.', body: '', category: 'Découverte', published: true },
@@ -12,12 +14,25 @@ const FALLBACK_POSTS: BlogPost[] = [
   { title: 'Circuit court en Guinée : rencontre avec nos producteurs', excerpt: 'Derrière chaque burger, des femmes et des hommes de la Fouta-Djallon.', body: '', category: 'Producteurs', published: true },
 ]
 
-export function Blog() {
+export function Blog({ content: cms, data }: Partial<SectionComponentProps> = {}) {
   const { theme: t, blogPosts, media } = useSite()
   const [expanded, setExpanded] = useState<string | null>(null)
-  const posts = blogPosts.length > 0
-    ? blogPosts.filter(p => p.published)
+
+  const title = pick(cmsText(cms, 'title'), 'Le journal Greatlife')
+  const subtitle = pick(
+    cmsText(cms, 'subtitle'),
+    'Recettes, coulisses et rencontres avec nos producteurs.',
+  )
+
+  // TDR §16 : les articles viennent du module Blog, jamais recopiés dans le bloc.
+  const source = (data?.posts as BlogPost[] | undefined) ?? blogPosts
+  const published = source.length > 0
+    ? source.filter(p => p.published)
     : FALLBACK_POSTS
+
+  // Nombre d'articles affichés. Champ vide = tout afficher.
+  const limit = cmsNumber(cms, 'maxItems')
+  const posts = limit !== undefined ? published.slice(0, Math.max(0, limit)) : published
   const mediaMap = new Map(media.filter(m => m.url).map(m => [m.slot, m.url!]))
   const postCover = (post: BlogPost) => post.cover_url || mediaMap.get(`blog-${slugify(post.title)}`)
   const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -34,7 +49,7 @@ export function Blog() {
   }
   return (
     <section id="blog" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Reveal><SectionHead title="Le journal Greatlife" sub="Recettes, coulisses et rencontres avec nos producteurs." align="center" /></Reveal>
+      <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
       <div className="blog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
         {posts.map((post, i) => {
           const illus = getIllus(post.title, post.category)

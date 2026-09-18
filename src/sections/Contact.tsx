@@ -11,10 +11,38 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { getSupabase, invokeContactEmail } from '@/lib/supabase'
 import { insertMessage } from '@/lib/repository'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 
-export function Contact() {
+/** Motifs du formulaire, tels quels avant la bascule CMS. */
+const LEGACY_SUBJECTS = [
+  { value: 'contact', label: 'Message général' },
+  { value: 'reservation', label: 'Réservation de table' },
+  { value: 'commande', label: 'Commande en ligne' },
+  { value: 'recrutement', label: 'Recrutement' },
+]
+
+interface Subject {
+  value: string
+  label: string
+}
+
+export function Contact({ content: cms }: Partial<SectionComponentProps> = {}) {
   const { theme: t, setMessages } = useSite()
-  const [form, setForm] = useState({ nom: '', email: '', sujet: 'contact', message: '' })
+
+  const title = pick(cmsText(cms, 'title'), 'Écrivez-nous')
+  const subtitle = pick(
+    cmsText(cms, 'subtitle'),
+    'Réservation, commande, question — on vous répond sous 24h.',
+  )
+  const subjects: Subject[] = pick(cmsList<Subject>(cms, 'subjects'), LEGACY_SUBJECTS)
+
+  // Le motif par défaut doit exister dans la liste, sinon le menu s'affiche vide.
+  const defaultSubject = subjects.some((s) => s.value === 'contact')
+    ? 'contact'
+    : (subjects[0]?.value ?? '')
+
+  const [form, setForm] = useState({ nom: '', email: '', sujet: defaultSubject, message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
@@ -48,7 +76,7 @@ export function Contact() {
     }
     setSent(true)
     setLoading(false)
-    setForm({ nom: '', email: '', sujet: 'contact', message: '' })
+    setForm({ nom: '', email: '', sujet: defaultSubject, message: '' })
     setTimeout(() => setSent(false), 4000)
   }
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
@@ -56,7 +84,7 @@ export function Contact() {
   return (
     <section id="contact" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-        <Reveal><SectionHead title="Écrivez-nous" sub="Réservation, commande, question — on vous répond sous 24h." align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
         <Reveal delay={0.1}>
           <OrganicCard style={{ padding: '32px' }}>
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
@@ -78,10 +106,7 @@ export function Contact() {
  <Select value={form.sujet} onValueChange={v => setForm({ ...form, sujet: v })}>
                   <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="contact">Message général</SelectItem>
-                    <SelectItem value="reservation">Réservation de table</SelectItem>
-                    <SelectItem value="commande">Commande en ligne</SelectItem>
-                    <SelectItem value="recrutement">Recrutement</SelectItem>
+                    {subjects.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -104,7 +129,7 @@ export function Contact() {
                   {!loading && Icon.arrow(16)}
                 </Button>
                 <Button type="button" onClick={() => { setForm(
-{ nom: '', email: '', sujet: 'contact', message: '' }); setErrors({}) }}
+{ nom: '', email: '', sujet: defaultSubject, message: '' }); setErrors({}) }}
                   aria-label="Effacer le formulaire"
                   style={{
                   background: 'transparent', color: t.muted, fontWeight: 600,

@@ -2,20 +2,38 @@ import { useSite, useMedia } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 
-export function Team() {
-  const { theme: t, content } = useSite()
+interface TeamMember {
+  name: string
+  role?: string
+  desc?: string
+}
+
+export function Team({ content: cms }: Partial<SectionComponentProps> = {}) {
+  const { theme: t, content: legacy } = useSite()
   const teamImg1 = useMedia('equipe-1')
   const teamImg2 = useMedia('equipe-2')
   const teamImg3 = useMedia('equipe-3')
   const teamImg4 = useMedia('equipe-4')
   const teamImgs = [teamImg1, teamImg2, teamImg3, teamImg4]
   const palette = [t.primary, t.accent, t.gold, t.primary]
-  const team = content.team.map((m, i) => ({ ...m, color: palette[i % palette.length] }))
+
+  // Bloc piloté par le CMS si un contenu est fourni, sinon données historiques.
+  const source: TeamMember[] = pick(cmsList<TeamMember>(cms, 'members'), legacy.team)
+  const team = source.map((m, i) => ({ ...m, color: palette[i % palette.length] }))
+
+  const title = pick(cmsText(cms, 'title'), 'Les visages de Greatlife')
+  const sub = pick(
+    cmsText(cms, 'subtitle'),
+    'Une équipe qui croit que manger bien devrait être simple, accessible et délicieux.',
+  )
+
   return (
     <section id="equipe" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <Reveal><SectionHead title="Les visages de Greatlife" sub="Une équipe qui croit que manger bien devrait être simple, accessible et délicieux." align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={sub} align="center" /></Reveal>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: '24px' }}>
           {team.map((m, i) => (
             <Reveal key={m.name} delay={(i % 4) * 0.06}>

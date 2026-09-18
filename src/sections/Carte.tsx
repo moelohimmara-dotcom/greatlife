@@ -10,6 +10,8 @@ import { Icon } from '@/lib/icons'
 import { FoodIcon } from '@/lib/icons/FoodIcon'
 import { CATEGORY_ORDER } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
 
 function MenuCard({ item }: { item: MenuItem }) {
   const { theme: t, visibility } = useSite()
@@ -101,14 +103,45 @@ function MenuCard({ item }: { item: MenuItem }) {
   )
 }
 
-export function Carte() {
-  const { menu, visibility, theme: t } = useSite()
+export function Carte({ content: cms, data }: Partial<SectionComponentProps> = {}) {
+  const { menu: legacyMenu, visibility, theme: t } = useSite()
+
+  // TDR §16 : les plats viennent du module Menu, jamais recopiés dans le bloc.
+  // Le CMS les transmet par `data` ; sinon on garde la source historique.
+  const menu = pick(data?.menu as MenuItem[] | undefined, legacyMenu)
+  const title = pick(cmsText(cms, 'title'), 'La transgression saine')
+  const subtitle = pick(
+    cmsText(cms, 'subtitle'),
+    'Burgers, frites, milkshakes — en version bio, avec les fruits tropicaux de notre terroir. Chaque plat porte ses vertus affichées.',
+  )
+
+  // Plafond global du nombre de plats affichés. Champ vide = tout afficher.
+  // ⚠️ Sémantique (plafond global plutôt que par catégorie) à confirmer :
+  // aucune valeur n'est stockée aujourd'hui, l'effet est donc nul.
+  const limit = cmsNumber(cms, 'maxItems')
+
   const cats = CATEGORY_ORDER.filter(c => c !== 'Suggestions' || visibility.suggestions)
+
+  // Quota par catégorie, calculé SANS mutation : le corps d'un composant doit
+  // rester pur. React StrictMode l'exécute deux fois en développement, et un
+  // compteur incrémenté ici fausserait la répartition.
+  const quotaByCat = new Map<string, number>()
+  if (limit !== undefined) {
+    let remaining = Math.max(0, limit)
+    for (const cat of cats) {
+      const available = menu.filter(m => m.cat === cat).length
+      const take = Math.min(available, remaining)
+      quotaByCat.set(cat, take)
+      remaining -= take
+    }
+  }
+
   return (
     <section id="carte" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Reveal><SectionHead title="La transgression saine" sub="Burgers, frites, milkshakes — en version bio, avec les fruits tropicaux de notre terroir. Chaque plat porte ses vertus affichées." align="center" /></Reveal>
+      <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
       {cats.map((cat, ci) => {
-        const items = menu.filter(m => m.cat === cat)
+        const all = menu.filter(m => m.cat === cat)
+        const items = limit !== undefined ? all.slice(0, quotaByCat.get(cat) ?? 0) : all
         if (!items.length) return null
         return (
           <div key={cat} style={{ marginBottom: '56px' }}>

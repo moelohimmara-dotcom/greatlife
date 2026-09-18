@@ -71,13 +71,18 @@ export interface SectionTypeDefinition {
   /** Variantes proposées (TDR §13). Vide = pas de variante. */
   variants: readonly { id: string; label: string }[]
   /**
+   * Champs de contenu acceptés par ce type.
+   * Décision DB-10 : c'est le registre qui fait foi — pas une contrainte SQL.
+   */
+  fields: readonly import('./sections/fields').FieldDef[]
+  /**
    * Ce que la section tire d'un module externe plutôt que de son propre
    * contenu. Une section ne recopie JAMAIS une donnée métier (TDR §16).
    */
   providesFrom?: 'menu' | 'blog'
   /** Consomme les réglages globaux du restaurant (adresse, horaires…). */
   usesRestaurantSettings?: boolean
-  /** `true` si l'implémentation visuelle existe déjà dans `src/sections/`. */
+  /** `true` si l'implémentation visuelle est branchée sur les données. */
   implemented: boolean
 }
 

@@ -3,10 +3,24 @@ import { softShadow } from '@/components/ui/shadows'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { Icon } from '@/lib/icons'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
 
-export function Story() {
-  const { theme: t, content } = useSite()
+/** Icônes historiques des pastilles, conservées par position. */
+const CHIP_ICONS_FALLBACK = ['Bio accessible', 'Circuit court', 'Transparence totale']
+
+export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
+  const { theme: t, content: legacy } = useSite()
   const storyImg = useMedia('histoire')
+
+  const title = pick(cmsText(cms, 'title'), legacy.storyTitle)
+  const body = pick(cmsText(cms, 'body'), legacy.story)
+  const signature = pick(cmsText(cms, 'signature'), 'Mister Marcket')
+  const signerole = pick(cmsText(cms, 'signerole'), 'Le fondateur')
+  const chipLabels = pick(cmsTextList(cms, 'chips'), CHIP_ICONS_FALLBACK)
+
+  const chipIcons = [Icon.coin(16, t.accent), Icon.leaf(16, t.primary), Icon.search(16, t.gold)]
+
   return (
     <section id="histoire" className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div className="story-grid" style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '60px', alignItems: 'center' }}>
@@ -26,22 +40,18 @@ export function Story() {
               </svg>
             )}
             <div style={{ position: 'absolute', bottom: '24px', left: '24px', right: '24px', color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, opacity: 0.8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Le fondateur</div>
-              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '22px', fontWeight: 700, marginTop: '4px' }}>Mister Marcket</div>
+              <div style={{ fontSize: '12px', fontWeight: 600, opacity: 0.8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{signerole}</div>
+              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '22px', fontWeight: 700, marginTop: '4px' }}>{signature}</div>
             </div>
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <SectionHead title={content.storyTitle} />
-          <p style={{ fontSize: '17px', lineHeight: 1.75, color: t.text, margin: 0 }}>{content.story}</p>
+          <SectionHead title={title} />
+          <p style={{ fontSize: '17px', lineHeight: 1.75, color: t.text, margin: 0 }}>{body}</p>
           <div style={{ marginTop: '28px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {[
-              ['Bio accessible', Icon.coin(16, t.accent)],
-              ['Circuit court', Icon.leaf(16, t.primary)],
-              ['Transparence totale', Icon.search(16, t.gold)],
-            ].map(([label, ic], i) => (
+            {chipLabels.map((label, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.surface, padding: '8px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, color: t.text, border: `1px solid ${t.shadow}` }}>
-                {ic} {label}
+                {chipIcons[i % chipIcons.length]} {label}
               </span>
             ))}
           </div>

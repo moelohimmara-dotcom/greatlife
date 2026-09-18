@@ -4,26 +4,40 @@ import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { softShadow } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
+import type { SectionComponentProps } from '@/cms/renderer'
+import { cmsText, pick } from '@/cms/renderer/compat'
 
-export function Localisation() {
-  const { theme: t, isDark, content } = useSite()
+export function Localisation({ content: cms, restaurant }: Partial<SectionComponentProps> = {}) {
+  const { theme: t, isDark, content: legacy } = useSite()
+
+  const title = pick(cmsText(cms, 'title'), 'Nous trouver')
+  const subtitle = pick(cmsText(cms, 'subtitle'), legacy.address || 'Kaloum, Conakry — au cœur de la ville.')
+
+  // TDR §16 : les coordonnées du restaurant sont une source unique, saisie une
+  // fois dans les réglages. Repli explicite sur les valeurs historiques tant que
+  // la bascule n'a pas eu lieu — les réglages du CMS sont vides aujourd'hui.
+  const address = restaurant?.address || legacy.address || 'Kaloum, Conakry — Guinée'
+  const hours = restaurant?.hours || legacy.hours || 'Lun–Dim · 7h00 – 23h00'
+  const phone = restaurant?.phone || legacy.phone || '+224 620 00 00 00'
+  const email = restaurant?.emailContact || legacy.emailContact || 'contact@greatlife.gn'
+
   return (
     <section id="loca" className="section-pad" style={{ padding: '100px 24px', maxWidth: '1000px', margin: '0 auto' }}>
       <Reveal>
-        <SectionHead title="Nous trouver" sub={content.address || 'Kaloum, Conakry — au cœur de la ville.'} />
+        <SectionHead title={title} sub={subtitle} />
         <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           <OrganicCard style={{ padding: '32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {[
-                [Icon.pin(20, t.primary), content.address || 'Kaloum, Conakry — Guinée', 'Adresse du restaurant'],
-                [Icon.clock(20, t.accent), content.hours || 'Lun–Dim · 7h00 – 23h00', 'Service continu toute la journée'],
-                [Icon.phone(20, t.gold), content.phone || '+224 620 00 00 00', 'Appel & WhatsApp'],
-                [Icon.mail(20, t.primary), content.emailContact || 'contact@greatlife.gn', 'Réservations & commandes'],
-              ].map(([ic, title, sub], i) => (
+                [Icon.pin(20, t.primary), address, 'Adresse du restaurant'],
+                [Icon.clock(20, t.accent), hours, 'Service continu toute la journée'],
+                [Icon.phone(20, t.gold), phone, 'Appel & WhatsApp'],
+                [Icon.mail(20, t.primary), email, 'Réservations & commandes'],
+              ].map(([ic, rowTitle, sub], i) => (
                 <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${t.primary}0a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic}</div>
                   <div>
-                    <div style={{ fontWeight: 600, color: t.heading, fontSize: '15px' }}>{title}</div>
+                    <div style={{ fontWeight: 600, color: t.heading, fontSize: '15px' }}>{rowTitle}</div>
                     <div style={{ fontSize: '13px', color: t.muted, marginTop: '2px' }}>{sub}</div>
                   </div>
                 </div>
