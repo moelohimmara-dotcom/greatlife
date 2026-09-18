@@ -30,7 +30,7 @@ Ce README est le **point d'entrée** de la documentation. Il est conçu pour qu'
 | Routing | react-router-dom v6 (3 routes : `/`, `/login`, `/admin`) |
 | Backend | Supabase (PostgreSQL + Auth + Storage + Realtime + Edge Functions) |
 | Emails | Edge Function `send-contact-email` (Deno) via SMTP Gmail |
-| Déploiement | Netlify (actif) ou Vercel — build Vite, dossier `dist` |
+| Déploiement | Cloudflare Pages (principal) + Netlify (secours) — build Vite, dossier `dist` |
 | CI | GitHub Actions `build-test.yml` (`tsc --noEmit` + `vite build`) |
 | Code | GitHub : `moelohimmara-dotcom/greatlife` |
 
@@ -97,7 +97,9 @@ Le site s'adapte automatiquement selon la présence des variables Supabase — v
 
 ## Déploiement
 
-Le site est en production sur **Netlify** : https://greatlife-gn.netlify.app (build `npm run build`, publish `dist`, SPA fallback dans `netlify.toml`). Vercel est aussi supporté (`vercel.json`).
+Le site est en production sur **Cloudflare Pages** (principal) : https://greatlife-conakry.pages.dev
+**Netlify** reste actif comme plan de secours : https://greatlife-conakry.netlify.app
+Build `npm run build` → `dist` ; SPA fallback `_redirects` (Cloudflare) / `netlify.toml` (Netlify). Vercel est aussi supporté (`vercel.json`).
 
 → Détails complets : [docs/deployment.md](./docs/deployment.md)
 
