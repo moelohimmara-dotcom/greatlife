@@ -184,25 +184,44 @@ Ajouts uniquement ; rien n'est déplacé sans nécessité :
 src/
 ├── cms/
 │   ├── model/            Types TypeScript du modèle de contenu
-│   │   ├── page.ts             Page, statuts
-│   │   ├── section.ts          Section, variantes
-│   │   ├── sections/           Un schéma de contenu par type (20 : 18 du TDR + 2 ajouts)
-│   │   └── i18n.ts             Type Bilingue<T> + helpers de résolution
+│   │   ├── page.ts             Page, statuts, SEO
+│   │   ├── section.ts          Section, variantes, type des 20 sections
+│   │   ├── sections/
+│   │   │   └── schemas.ts      Catalogue : libellé, variantes, source métier
+│   │   └── i18n.ts             Bilingue<T>, résolution, routage de langue
 │   ├── repository/       Accès aux nouvelles tables (TDR §30)
+│   │   ├── client.ts           Résultats explicites, messages d'erreur lisibles
 │   │   ├── pages.ts
 │   │   ├── sections.ts
-│   │   └── navigation.ts
+│   │   ├── navigation.ts
+│   │   └── settings.ts         Réglages (`restaurant`, `email_templates`, `theme`)
 │   ├── renderer/
+│   │   ├── index.ts            ⚠️ Point d'entrée SANS navigateur (génération statique)
 │   │   ├── PageRenderer.tsx       Assemble une page
-│   │   ├── SectionRenderer.tsx    Choisit le composant selon le type
-│   │   └── registry.ts            type → composant + schéma de contenu
-│   └── migration/
-│       └── fromSiteContent.ts     Conversion blob → page (utilisé une fois)
-├── sections/            Composants publics existants, branchés sur props
+│   │   ├── SectionRenderer.tsx    Choisit le composant + porte l'ancre
+│   │   ├── SectionFallback.tsx    Rendu de secours des types non encore branchés
+│   │   └── registry.ts            type → composant (+ canal `data` des modules)
+│   └── index.ts          Point d'entrée COMPLET (dépend de Vite/Supabase)
+├── sections/            Composants publics existants (à brancher sur `content`)
 └── ... (existant inchangé)
 ```
 
+**Deux points d'entrée, volontairement distincts :**
+
+| Import | Contenu | Utilisable en Node (génération statique) |
+|---|---|---|
+| `@/cms/renderer` | Modèle + rendu uniquement | **Oui** — aucune dépendance à Supabase ni au navigateur |
+| `@/cms` | Tout, y compris le repository | **Non** — `@/lib/supabase` lit `import.meta.env` au chargement |
+
 **Le registre (`registry.ts`) est la pièce maîtresse future** : c'est lui qui permettra à l'éditeur du Lot 2 de générer automatiquement ses formulaires, et au futur AI Copilot (TDR §35) de connaître les types disponibles sans coder en dur.
+
+### État réel du registre au Lot 1
+
+`schemas.ts` contient aujourd'hui, pour chacun des 20 types : son libellé en langage restaurateur, ses variantes, et l'indication de sa source (module Menu, module Blog, ou réglages du restaurant).
+
+**Ce qui reste à ajouter** pour que le registre tienne la promesse du §5.2 (génération automatique des formulaires) : la **description des champs de contenu** de chaque type, et la **validation** associée (décision DB-10 : la validation appartient au registre, pas à une contrainte en base). C'est la première tâche du Lot 2.
+
+**La migration de contenu n'est pas dans `src/cms/migration/`** : elle a été écrite en SQL (`025_migrate_home_content.sql`). C'est plus sûr — elle garantit que la migration et le schéma évoluent ensemble, et qu'aucune donnée ne transite par le navigateur.
 
 ---
 

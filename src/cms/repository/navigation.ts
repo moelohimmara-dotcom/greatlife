@@ -5,7 +5,8 @@
  * toutes les pages. TDR §20 : sous-menus et bouton principal.
  */
 
-import type { Bilingue } from '../model/i18n'
+import type { Bilingue, Locale } from '../model/i18n'
+import { DEFAULT_LOCALE, pathFor } from '../model/i18n'
 import { asObject, cmsErr, cmsOk, describeError, requireClient, type CmsResult } from './client'
 
 const NAV_TABLE = 'navigation'
@@ -236,12 +237,39 @@ export async function reorderNavigationItems(
   }
 }
 
-/** Résout la cible d'une entrée en lien utilisable. */
-export function resolveNavHref(item: NavigationItem): string {
+/**
+ * Résout la cible d'une entrée en lien utilisable.
+ *
+ * Décision CM-6 : quand l'URL porte la langue (préfixe `/en`), le lien doit
+ * être construit POUR cette langue — sinon toute la navigation pointerait vers
+ * la version française depuis la version anglaise.
+ *
+ * `pageSlugsById` fait le lien entre une cible de type `page` (un identifiant)
+ * et l'adresse à utiliser. Le renderer le fournit à partir du catalogue de pages.
+ */
+export function resolveNavHref(
+  item: NavigationItem,
+  locale: Locale = DEFAULT_LOCALE,
+  pageSlugsById: Record<string, string> = {},
+): string {
   if (item.targetType === 'url') return item.targetValue ?? '#'
+  // Une ancre désigne une section de la page courante : pas de préfixe de langue.
   if (item.targetType === 'anchor') return '#' + (item.targetValue ?? '')
-  // Cible « page » : le slug sera résolu par le renderer via le catalogue de pages.
-  return item.targetValue ?? '/'
+
+  const slug = item.targetPageId
+    ? pageSlugsById[item.targetPageId] ?? ''
+    : item.targetValue ?? ''
+  return pathFor(locale, slug)
+}
+
+/** `true` si l'entrée pointe vers une page publiée connue du catalogue fourni. */
+export function isNavItemResolvable(
+  item: NavigationItem,
+  pageSlugsById: Record<string, string>,
+): boolean {
+  if (item.targetType !== 'page') return true
+  if (!item.targetPageId) return false
+  return Object.prototype.hasOwnProperty.call(pageSlugsById, item.targetPageId)
 }
 
 /** Convertit un objet non typé en entrée de navigation sûre. */

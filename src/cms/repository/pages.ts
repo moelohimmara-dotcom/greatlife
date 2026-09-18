@@ -60,7 +60,9 @@ export async function fetchPublishedPage(slug: string): Promise<CmsResult<Page |
     const { data, error } = await client.data
       .from(TABLE)
       .select(COLUMNS)
-      .ilike('slug', normalizeSlug(slug))
+      // `eq` et non `ilike` : le slug est normalisé en minuscules à l'écriture,
+      // et `ilike` interpréterait `%` ou `_` présents dans une adresse.
+      .eq('slug', normalizeSlug(slug))
       .eq('status', 'published')
       .maybeSingle()
 
@@ -126,6 +128,8 @@ export async function createPage(input: PageInput): Promise<CmsResult<Page>> {
         status: input.status ?? 'draft',
         sort_order: input.sortOrder ?? 0,
         seo: input.seo ?? {},
+        // Une page créée directement en « publié » doit porter sa date de publication.
+        published_at: (input.status ?? 'draft') === 'published' ? new Date().toISOString() : null,
       })
       .select(COLUMNS)
       .single()
@@ -150,7 +154,9 @@ export async function updatePage(id: string, patch: Partial<PageInput>): Promise
     if (patch.seo !== undefined) payload.seo = patch.seo
     if (patch.status !== undefined) {
       payload.status = patch.status
-      payload.published_at = patch.status === 'published' ? new Date().toISOString() : null
+      // `published_at` garde la date de la DERNIÈRE publication : la remettre à
+      // null à chaque dépublication effacerait une information d'historique.
+      if (patch.status === 'published') payload.published_at = new Date().toISOString()
     }
 
     const { data, error } = await client.data

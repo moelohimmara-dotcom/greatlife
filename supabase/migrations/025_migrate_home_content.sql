@@ -154,8 +154,9 @@ BEGIN
       'subtitle', jsonb_build_object('fr', 'Réservez en quelques secondes — confirmation par email.')
     )),
 
-    -- 9. Temoignages  (liste vide en base : section presente mais sans contenu)
-    (pid, 'testimonials', 'cards', 8, true, 'temoignages', jsonb_build_object(
+    -- 9. Temoignages  (liste vide en base : section creee mais MASQUEE tant
+    --    qu'aucun avis n'existe — un bloc vide ne doit pas apparaitre en public)
+    (pid, 'testimonials', 'cards', 8, false, 'temoignages', jsonb_build_object(
       'title',    jsonb_build_object('fr', 'Ils ont goûté Greatlife'),
       'subtitle', jsonb_build_object('fr', 'Ce que disent nos clients.'),
       'items',    coalesce((

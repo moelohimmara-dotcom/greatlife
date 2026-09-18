@@ -16,6 +16,7 @@ import type { Page } from '../model/page'
 import type { PageSection } from '../model/section'
 import type { Locale } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
+import type { SectionDataSource } from './registry'
 import { SectionRenderer } from './SectionRenderer'
 
 export interface PageRendererProps {
@@ -24,6 +25,8 @@ export interface PageRendererProps {
   sections: readonly PageSection[]
   locale: Locale
   restaurant: ResolvedRestaurant
+  /** Données des modules métier (plats, articles), transmises aux sections concernées. */
+  data?: SectionDataSource
   /** `true` en prévisualisation d'administration. */
   preview?: boolean
 }
@@ -33,6 +36,7 @@ export function PageRenderer({
   sections,
   locale,
   restaurant,
+  data,
   preview = false,
 }: PageRendererProps) {
   return (
@@ -47,6 +51,7 @@ export function PageRenderer({
           section={section}
           locale={locale}
           restaurant={restaurant}
+          data={data}
           preview={preview}
         />
       ))}

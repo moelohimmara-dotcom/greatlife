@@ -20,7 +20,14 @@ const TABLE = 'site_content'
 export const SETTING_KEYS = {
   restaurant: 'restaurant',
   emailTemplates: 'email_templates',
-  theme: 'theme_v2',
+  /**
+   * Réglages visuels du Theme Engine.
+   * ⚠️ La ligne n'est PAS créée par le Lot 1 : elle appartient au Lot 4 (TDR §40,
+   * « Theme Engine »). `fetchSetting` renvoie donc `null` jusque-là, ce qui est
+   * un état normal — ne pas confondre avec une panne.
+   * La clé reprend le nom documenté (`docs/04_CONTENT_MODEL.md` §8).
+   */
+  theme: 'theme',
 } as const
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS]

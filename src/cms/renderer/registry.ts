@@ -16,9 +16,27 @@
  */
 
 import type { ComponentType } from 'react'
-import type { PageSection, SectionType } from '../model/section'
+import type { SectionType } from '../model/section'
 import type { Locale } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
+
+/**
+ * Données issues des modules métier, transmises aux sections qui les affichent.
+ *
+ * TDR §16 : une section `menu` ou `blog` ne RECOPIE jamais son contenu — elle
+ * reçoit les données du module et les présente. C'est le canal prévu par
+ * `docs/03_CMS_ARCHITECTURE.md` §5.2.
+ *
+ * Les types sont volontairement génériques ici : le CMS ne dépend pas des
+ * modules existants. Chaque composant de section affine le type de ce qu'il
+ * consomme.
+ */
+export interface SectionDataSource {
+  /** Plats du module Menu — sections `menu` et `menu_featured`. */
+  menu?: readonly unknown[]
+  /** Articles du module Blog — section `blog`. */
+  posts?: readonly unknown[]
+}
 
 /** Ce que reçoit TOUT composant de section. */
 export interface SectionComponentProps {
@@ -34,6 +52,8 @@ export interface SectionComponentProps {
   restaurant: ResolvedRestaurant
   /** Ancre de la section, sans `#`. */
   anchor: string | null
+  /** Données des modules métier, pour les sections qui en affichent. */
+  data?: SectionDataSource
 }
 
 /**
@@ -74,8 +94,3 @@ export function pendingSectionTypes(types: readonly SectionType[]): SectionType[
 
 /** Signature du composant attendu, pour vérification de type à l'enregistrement. */
 export type SectionComponent = ComponentType<SectionComponentProps>
-
-/** Raccourci : une section est-elle affichable (visible et connue) ? */
-export function isRenderable(section: PageSection): boolean {
-  return section.visible
-}

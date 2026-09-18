@@ -10,6 +10,10 @@
  * ISOMORPHISME (décision CM-7 / AR-10) : ce composant ne touche ni à `window`,
  * ni à `document`, ni au réseau. Il ne fait que rendre ce qu'on lui donne —
  * il est donc exécutable au build (Node) comme dans le navigateur.
+ *
+ * ⚠️ Import : passer par `@/cms/renderer` et NON par `@/cms` dans un contexte
+ * sans navigateur — le point d'entrée global réexporte le repository, qui
+ * dépend de `@/lib/supabase` et lit `import.meta.env` au chargement.
  */
 
 import type { CSSProperties } from 'react'
@@ -17,21 +21,27 @@ import type { PageSection } from '../model/section'
 import type { Locale } from '../model/i18n'
 import { resolveContentObject } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
-import { getSectionComponent, type SectionComponentProps } from './registry'
+import { getSectionComponent, type SectionComponentProps, type SectionDataSource } from './registry'
 import { SectionFallback } from './SectionFallback'
 
 export interface SectionRendererProps {
   section: PageSection
   locale: Locale
   restaurant: ResolvedRestaurant
+  /** Données des modules métier (plats, articles) pour les sections concernées. */
+  data?: SectionDataSource
   /** `true` en prévisualisation d'administration : affiche les cas limites. */
   preview?: boolean
 }
+
+/** Marge de défilement : compense la hauteur de la barre de navigation fixe. */
+export const SECTION_SCROLL_STYLE: CSSProperties = { scrollMarginTop: 80 }
 
 export function SectionRenderer({
   section,
   locale,
   restaurant,
+  data,
   preview = false,
 }: SectionRendererProps) {
   const Component = getSectionComponent(section.type)
@@ -43,31 +53,33 @@ export function SectionRenderer({
     locale,
     restaurant,
     anchor: section.anchor,
+    data,
   }
 
-  if (Component) return <Component {...props} />
-
+  /*
+    L'ancre est portée par une ENVELOPPE UNIQUE, quel que soit le cas
+    (composant dédié ou rendu de secours). Sans cette enveloppe, l'ancre
+    disparaîtrait dès qu'un composant est branché — et les 10 ancres migrées
+    (`#carte`, `#histoire`…) cesseraient de fonctionner.
+  */
   return (
-    <SectionFallback
-      type={section.type}
-      content={props.content}
-      variant={props.variant}
-      settings={props.settings}
-      locale={locale}
-      restaurant={restaurant}
-      anchor={section.anchor}
-      preview={preview}
-    />
+    <div
+      id={section.anchor ?? undefined}
+      data-cms-section={section.type}
+      data-cms-anchor={section.anchor ?? undefined}
+      style={SECTION_SCROLL_STYLE}
+    >
+      {Component ? (
+        <Component {...props} />
+      ) : (
+        <SectionFallback
+          type={section.type}
+          content={props.content}
+          variant={props.variant}
+          restaurant={restaurant}
+          preview={preview}
+        />
+      )}
+    </div>
   )
 }
-
-/**
- * Enveloppe de section : porte l'ancre et la marge de défilement.
- * L'ancre est stockée SANS `#` en base ; le lien est construit ici.
- */
-export function sectionAnchorId(section: PageSection): string | undefined {
-  return section.anchor ?? undefined
-}
-
-/** Style commun : compense la hauteur de la barre de navigation fixe. */
-export const SECTION_SCROLL_STYLE: CSSProperties = { scrollMarginTop: 80 }

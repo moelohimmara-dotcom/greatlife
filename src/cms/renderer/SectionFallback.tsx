@@ -16,7 +16,6 @@
  */
 
 import type { CSSProperties } from 'react'
-import type { Locale } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
 import { getSectionDefinition } from '../model/sections/schemas'
 
@@ -24,10 +23,7 @@ export interface SectionFallbackProps {
   type: string
   content: Record<string, unknown>
   variant: string | null
-  settings: Record<string, unknown>
-  locale: Locale
   restaurant: ResolvedRestaurant
-  anchor: string | null
   /** `true` en prévisualisation d'administration : affiche les signalements. */
   preview?: boolean
 }
@@ -41,7 +37,6 @@ export function SectionFallback({
   content,
   variant,
   restaurant,
-  anchor,
   preview = false,
 }: SectionFallbackProps) {
   const definition = getSectionDefinition(type)
@@ -78,8 +73,7 @@ export function SectionFallback({
   }
 
   return (
-    <section
-      id={anchor ?? undefined}
+    <div
       data-cms-section={type}
       data-cms-variant={variant ?? undefined}
       style={{
@@ -119,7 +113,7 @@ export function SectionFallback({
           Aperçu générique : la mise en forme définitive de « {definition.label} » arrive avec l’éditeur.
         </div>
       )}
-    </section>
+    </div>
   )
 }
 

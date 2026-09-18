@@ -37,9 +37,14 @@ export type Bilingue = string | Partial<Record<Locale, string>>
  */
 export function isTranslation(value: unknown): value is Partial<Record<Locale, string>> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
-  const keys = Object.keys(value as Record<string, unknown>)
-  if (keys.length === 0) return false
-  return keys.every((k) => (LOCALES as readonly string[]).includes(k))
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length === 0) return false
+  // Toutes les clés doivent être des codes de langue ET toutes les valeurs des
+  // chaînes. Sans le second test, `{ fr: 42 }` passerait pour une traduction
+  // et se résoudrait en chaîne vide — la donnée serait silencieusement perdue.
+  return entries.every(
+    ([k, v]) => (LOCALES as readonly string[]).includes(k) && typeof v === 'string',
+  )
 }
 
 /** Enveloppe une chaîne en objet de traduction français. */
@@ -69,13 +74,17 @@ export function resolveI18n(value: Bilingue | null | undefined, locale: Locale =
   return ''
 }
 
-/** Résout une liste de valeurs traduisibles. */
+/**
+ * Résout une liste de valeurs traduisibles.
+ * L'ordre et la longueur sont PRÉSERVÉS (index alignés), pour permettre
+ * d'associer une liste de libellés à une liste d'icônes.
+ */
 export function resolveI18nList(
   values: readonly Bilingue[] | null | undefined,
   locale: Locale = DEFAULT_LOCALE,
 ): string[] {
   if (!values) return []
-  return values.map((v) => resolveI18n(v, locale)).filter((s) => s.length > 0)
+  return values.map((v) => resolveI18n(v, locale))
 }
 
 /**
@@ -125,7 +134,10 @@ export function hasTranslation(value: Bilingue | null | undefined, locale: Local
 export function localeFromPath(pathname: string): { locale: Locale; path: string } {
   const segments = pathname.split('/').filter(Boolean)
   const first = segments[0]?.toLowerCase()
-  if (first && (LOCALES as readonly string[]).includes(first) && first !== DEFAULT_LOCALE) {
+  // Tout préfixe de langue est retiré, y compris celui de la langue par défaut :
+  // sinon `/fr/x` rendrait `/fr/x` alors que `pathFor('fr', 'x')` rend `/x`,
+  // et l'aller-retour serait incohérent.
+  if (first && (LOCALES as readonly string[]).includes(first)) {
     return {
       locale: first as Locale,
       path: '/' + segments.slice(1).join('/'),

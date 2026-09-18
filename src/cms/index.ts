@@ -1,10 +1,18 @@
 /**
- * Greatlife — CMS : point d'entrée public du module
- * ==================================================
+ * Greatlife — CMS : point d'entrée COMPLET
+ * =========================================
  * Le reste de l'application importe depuis `@/cms` et non depuis les fichiers
  * internes : cela garde la frontière entre le CMS et l'existant lisible
  * (décision AR-1), et permettra plus tard d'exposer les mêmes fonctions au
  * futur AI Copilot (TDR §35).
+ *
+ * ⚠️ Ce point d'entrée réexporte la couche `repository`, qui dépend de
+ * `@/lib/supabase` — donc de Vite (`import.meta.env`). Il n'est PAS utilisable
+ * dans un script Node.
+ *
+ * Pour générer du HTML statique (décision CM-7), utiliser `@/cms/renderer`,
+ * qui n'expose que le modèle et le rendu, sans dépendance à Supabase ni au
+ * navigateur.
  */
 
 // ---- Modèle
@@ -70,6 +78,8 @@ export {
   deleteNavigationItem,
   reorderNavigationItems,
   resolveNavHref,
+  isNavItemResolvable,
+  asNavigationItemInput,
 } from './repository/navigation'
 export type { NavigationItem, NavigationTree, NavigationKey, NavTargetType } from './repository/navigation'
 
@@ -97,4 +107,4 @@ export {
   hasSectionComponent,
   pendingSectionTypes,
 } from './renderer/registry'
-export type { SectionComponentProps, SectionComponent } from './renderer/registry'
+export type { SectionComponentProps, SectionComponent, SectionDataSource } from './renderer/registry'
