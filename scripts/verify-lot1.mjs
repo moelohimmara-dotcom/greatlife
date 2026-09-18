@@ -5,31 +5,49 @@
  *
  *   A. CONFORMITÉ   le contenu stocké en base correspond au registre
  *   B. ISOMORPHIE   `@/cms/renderer` reste importable dans Node (CM-7 / AR-10)
- *   C. NON-RÉGRESSION (TDR §41) le rendu est byte-identique à celui de HEAD
+ *   C. NON-RÉGRESSION (TDR §41) le rendu est byte-identique à celui de la
+ *                   référence `BASE_REF`, antérieure au branchement CMS
  *   D. CONSOMMATION le contenu CMS pilote réellement le rendu des sections
  *
  * Ce script n'écrit rien en base et ne modifie pas l'arbre de travail : les
- * versions HEAD sont extraites avec `git show`.
+ * versions de référence sont extraites avec `git show`.
  *
  * Usage :  node scripts/verify-lot1.mjs        (ou `npm run verify:lot1`)
- * Env    :  SHOW_DIFF=1 pour afficher la première divergence de chaque écart.
+ *          node scripts/verify-lot1.mjs --selftest
+ * Env    :  SHOW_DIFF=1   affiche la première divergence de chaque écart
+ *           BASE_REF=…    révision de comparaison (défaut : PRE_CMS_WIRING_REF)
+ *
+ * ⚠️ Le contrôle C compare à une révision FIXE, jamais à `HEAD`. Comparer à
+ * `HEAD` rendrait le test tautologique dès que le branchement est commité —
+ * il comparerait le nouveau code à lui-même et passerait toujours. Un
+ * garde-fou refuse désormais de rapporter un succès si la référence est
+ * identique à l'arbre courant.
+ *
+ * `--selftest` prouve que le contrôle C peut ÉCHOUER : il rend une copie
+ * volontairement altérée d'un composant et vérifie que l'écart est détecté.
  *
  * Les bundles temporaires sont écrits dans `node_modules/.cms-verify`, qui est
  * ignoré par Git et sert de racine de résolution pour React.
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, cpSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
-// Chemins en slashes : sur Windows, `resolve()` renvoie des antislashs, qui
-// seraient interprétés comme des échappements dans les chaînes d'import
-// générées plus bas.
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..').replace(/\\/g, '/')
 const WORK = `${ROOT}/node_modules/.cms-verify`
 const HEAD_DIR = `${WORK}/head`
 const SHOW_DIFF = process.env.SHOW_DIFF === '1'
+const SELFTEST = process.argv.includes('--selftest')
+
+/**
+ * Dernier commit AVANT le branchement des composants sur le CMS.
+ * C'est la seule référence qui donne un sens au contrôle de non-régression :
+ * elle porte le rendu historique du site public.
+ */
+const PRE_CMS_WIRING_REF = '9e5efb7'
+const BASE_REF = process.env.BASE_REF ?? PRE_CMS_WIRING_REF
 
 const require = createRequire(`${ROOT}/package.json`)
 const { build } = require('esbuild')
@@ -183,15 +201,41 @@ const missing = SECTIONS.map(([t]) => t).filter((t) => !full.hasSectionComponent
 check(missing.length === 0, '@/cms enregistre les 10 composants de section', missing.join(', '))
 
 // ===========================================================================
-console.log('\nC. NON-RÉGRESSION (TDR §41) — rendu identique à HEAD\n')
+const baseRev = execFileSync('git', ['rev-parse', '--verify', BASE_REF], {
+  cwd: ROOT,
+  encoding: 'utf8',
+}).trim()
+console.log(`\nC. NON-RÉGRESSION (TDR §41) — rendu identique à ${BASE_REF} (${baseRev.slice(0, 7)})\n`)
 
+// Git stocke des LF, l'arbre de travail Windows peut être en CRLF : on
+// normalise AVANT toute comparaison de contenu.
+const norm = (s) => s.replace(/\r\n/g, '\n')
+
+const baseSources = new Map()
 for (const [, name] of SECTIONS) {
-  const src = execFileSync('git', ['show', `HEAD:src/sections/${name}.tsx`], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024,
-  })
+  const src = norm(
+    execFileSync('git', ['show', `${baseRev}:src/sections/${name}.tsx`], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 32 * 1024 * 1024,
+    }),
+  )
+  baseSources.set(name, src)
   writeFileSync(`${HEAD_DIR}/${name}.tsx`, src, 'utf8')
+}
+
+// GARDE-FOU. Si la référence est identique à l'arbre courant, la comparaison
+// ne prouve rien du tout : on refuse de rapporter un succès.
+const unchanged = SECTIONS.filter(
+  ([, n]) => norm(readFileSync(`${ROOT}/src/sections/${n}.tsx`, 'utf8')) === baseSources.get(n),
+)
+const vacuous = unchanged.length === SECTIONS.length
+if (vacuous) {
+  check(
+    false,
+    `comparaison impossible : ${BASE_REF} est identique à l'arbre courant`,
+    'la référence doit être ANTÉRIEURE au branchement — passez BASE_REF=<révision>',
+  )
 }
 
 const harness = (dir) => {
@@ -253,11 +297,13 @@ for (const [type] of SECTIONS) {
     )
   }
 }
-check(
-  diffTypes.length === 0,
-  `rendu identique à HEAD pour les ${SECTIONS.length} sections`,
-  diffTypes.length ? `écarts : ${diffTypes.join(', ')}` : 'comparaison caractère par caractère',
-)
+if (!vacuous) {
+  check(
+    diffTypes.length === 0,
+    `rendu identique à ${BASE_REF} pour les ${SECTIONS.length} sections`,
+    diffTypes.length ? `écarts : ${diffTypes.join(', ')}` : 'comparaison caractère par caractère',
+  )
+}
 
 if (SHOW_DIFF && diffTypes.length) {
   for (const type of diffTypes) {
@@ -312,9 +358,41 @@ if (SHOW_DIFF) {
 }
 
 // ===========================================================================
+// E. CAPACITÉ À ÉCHOUER — un test qui ne peut pas échouer n'est pas un test.
+if (SELFTEST) {
+  console.log('\nE. AUTOTEST — le contrôle de non-régression peut-il échouer ?\n')
+
+  const MUT_DIR = `${WORK}/mutated`
+  cpSync(`${ROOT}/src/sections`, MUT_DIR, { recursive: true })
+  const heroPath = `${MUT_DIR}/Hero.tsx`
+  const heroSrc = readFileSync(heroPath, 'utf8')
+  const marker = 'LIBELLE-ALTERE-PAR-AUTOTEST'
+  const patched = heroSrc.replace("'Découvrir la carte'", `'${marker}'`)
+  if (patched === heroSrc) {
+    check(false, 'autotest : la chaîne à altérer est introuvable dans Hero.tsx')
+  } else {
+    writeFileSync(heroPath, patched, 'utf8')
+    const mutR = await bundleFile('harness-mutated', harness(MUT_DIR))
+    const mutated = mutR.renderLegacy()
+    const changed = SECTIONS.filter(([t]) => mutated[t] !== after[t]).map(([t]) => t)
+
+    check(
+      changed.includes('hero'),
+      'une altération volontaire du Hero est bien détectée',
+      changed.length ? `sections en écart : ${changed.join(', ')}` : 'AUCUN écart — le test ne peut pas échouer',
+    )
+    check(
+      changed.length === 1,
+      'seule la section altérée est signalée',
+      changed.filter((t) => t !== 'hero').join(', ') || 'aucune section signalée à tort',
+    )
+  }
+}
+
+// ===========================================================================
 console.log(
   failures.length === 0
-    ? `\n✅ LOT 1 VÉRIFIÉ — ${sections.length} sections, ${SECTIONS.length} composants, 4 contrôles au vert.`
+    ? `\n✅ LOT 1 VÉRIFIÉ — ${sections.length} sections, ${SECTIONS.length} composants, contrôles au vert.`
     : `\n❌ ${failures.length} contrôle(s) en échec :\n   - ${failures.join('\n   - ')}`,
 )
 process.exit(failures.length === 0 ? 0 : 1)
