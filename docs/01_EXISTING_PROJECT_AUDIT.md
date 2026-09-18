@@ -841,4 +841,26 @@ Les constats marqués comme provenant de la **base déployée** (§10, §11, com
 
 ---
 
+## 26. Suivi de remédiation
+
+> Section ajoutée après coup pour éviter toute confusion : les sections précédentes décrivent l'état **à la date de l'audit**. Cette section suit ce qui a été corrigé depuis.
+
+### Lot 0.5 — Remédiation sécurité (18/09/2026)
+
+| Risque | État | Ce qui a été fait |
+|---|---|---|
+| **R1** — identifiants de démonstration publics | 🟢 **Clos** | Compte réel promu `owner` ; mots de passe des comptes de démo remplacés par rotation ; ces comptes **bannis** (auth) et **désactivés** (`admin_users.active = false`) ; encart d'identifiants retiré de `LoginScreen` ; repli sur identifiants codés en dur supprimé du chemin Supabase (les comptes de démo ne sont plus définis qu'en développement, `import.meta.env.DEV`) ; littéral purgé de `README.md`, `DEVELOPMENT.md` et du présent document ; **source maps désactivées en production** et cache de l'ancienne carte invalidé |
+| **R4** — contournement d'authentification côté client | 🟢 **Clos** | Suppression du repli sur identifiants codés en dur et de la restauration de session `localStorage` non validée par le serveur ; le rôle vient **exclusivement** de `admin_users` |
+| **R5** — `is_admin()` ignorait `active` | 🟢 **Clos** | Migration `019` : `is_admin()` exige `active = true` ; policy `admin_users_self_read` ajoutée ; l'Edge Function `send-contact-email` contrôle aussi `active` ; `refreshRole` coupe la session en cas de suspension |
+
+Risques **encore ouverts** (hors périmètre de ce lot) : R2 (pas de versioning/undo — traité par le Lot 3 du TDR), R3 (édition directe en production — Lot 3), R6 à R21.
+
+Compléments apportés par la revue de ce lot :
+
+- **Migration `020`** : comparaison d'email insensible à la casse dans `is_admin()` et dans la policy de lecture de soi. Sans cela, une seule divergence de casse entre `auth.users` et `admin_users` verrouillait définitivement un propriétaire légitime, sans recours côté client.
+- **Jeton d'invalidation de cache** (`public/assets/index-BLdAmITw.js.map`) : une source map déjà mise en cache au niveau edge continuait d'être servie malgré sa suppression du déploiement. Détail dans `docs/cache-tombstone-index-BLdAmITw.md`.
+- `public/` ne contient volontairement que ce jeton — il est retirable dès que l'URL ne sert plus l'ancienne carte.
+
+---
+
 *Fin de l'audit — document de lecture seule, à valider avant la phase suivante.*
