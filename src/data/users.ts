@@ -11,6 +11,11 @@ export const USERS: UserRecord[] = [
   { name: 'Fatou Bérété', email: 'redac@greatlife.gn', role: 'editor' },
 ]
 
+// Comptes du mode démo LOCAL uniquement.
+// Ces identifiants ne sont utilisés QUE lorsque Supabase n'est pas configuré
+// (`getSupabase()` renvoie null) : ils ne servent plus de repli lorsque Supabase
+// est configuré. Ils ne sont donc pas des identifiants de production — les comptes
+// de production correspondants ont été neutralisés (cf. docs/01_EXISTING_PROJECT_AUDIT.md).
 export const ADMIN_ACCOUNTS = [
   { email: 'owner@greatlife.com', password: 'greatlife2026', name: 'Mister Marcket', role: 'owner' },
   { email: 'gerant@greatlife.com', password: 'greatlife2026', name: 'Aïcha Diallo', role: 'manager' },

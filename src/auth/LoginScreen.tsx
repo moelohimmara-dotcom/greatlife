@@ -68,12 +68,6 @@ export function LoginScreen() {
               {loading ? 'Vérification…' : 'Se connecter'} {!loading && Icon.arrow(16)}
             </Button>
           </form>
-          <div style={{ marginTop: '20px', padding: '14px', borderRadius: '14px', background: t.surfaceAlt, border: `1px dashed ${t.shadow}`, fontSize: '12px', color: t.muted, lineHeight: 1.7 }}>
-            <strong style={{ color: t.heading }}>Comptes de démonstration</strong><br />
-            Propriétaire : owner@greatlife.com<br />
-            Gérant : gerant@greatlife.com<br />
-            Mot de passe : greatlife2026
-          </div>
         </OrganicCard>
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
           <Link to="/" style={{ fontSize: '13px', color: t.muted, textDecoration: 'none' }}>← Retour au site</Link>

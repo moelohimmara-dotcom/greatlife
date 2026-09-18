@@ -110,16 +110,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(u)
               writeLocalSession(u)
             } else {
-              const local = readLocalSession()
-              if (local && ADMIN_ROLES.includes(local.role)) setUser(local)
+              // Compte suspendu ou rôle invalide : on ne rouvre PAS l'accès à partir
+              // d'une session locale non vérifiée par le serveur (sinon une suspension
+              // resterait sans effet sur l'interface).
+              writeLocalSession(null)
+              setUser(null)
             }
           } else if (active) {
-            const local = readLocalSession()
-            if (local && ADMIN_ROLES.includes(local.role)) setUser(local)
+            // Supabase est configuré mais il n'existe aucune session valide :
+            // l'accès administrateur est refusé.
+            writeLocalSession(null)
+            setUser(null)
           }
         } catch {
-          const local = readLocalSession()
-          if (local && active && ADMIN_ROLES.includes(local.role)) setUser(local)
+          // Échec de lecture de session : on échoue en mode fermé.
+          if (active) {
+            writeLocalSession(null)
+            setUser(null)
+          }
         }
       } else if (active) {
         const local = readLocalSession()
@@ -200,15 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       })
       if (error || !data.user) {
-        const account = ADMIN_ACCOUNTS.find(
-          a => a.email === normalized && a.password === password
-        )
-        if (account && ADMIN_ROLES.includes(account.role)) {
-          const u = buildUserFromEmail(account.email, account.role)
-          setUser(u)
-          writeLocalSession(u)
-          return { ok: true }
-        }
+        // Aucun repli sur des identifiants codés en dur : lorsque Supabase est
+        // configuré, seule une authentification réelle ouvre l'accès administrateur.
         return { ok: false, error: error?.message ?? 'Identifiants incorrects.' }
       }
       const info = await resolveUserFromTable(normalized)

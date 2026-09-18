@@ -355,10 +355,12 @@ serve(async (req: Request) => {
       const adminEmail = userData.user.email || "";
       const { data: adminRow } = await supabase
         .from("admin_users")
-        .select("role")
+        .select("role, active")
         .eq("email", adminEmail)
         .maybeSingle();
-      if (!adminRow || !["owner", "manager"].includes(adminRow.role)) {
+      // `active` doit être vérifié ici aussi : cette fonction utilise la clé service
+      // et contourne donc la RLS. Un compte suspendu ne doit pas pouvoir agir.
+      if (!adminRow || !["owner", "manager"].includes(adminRow.role) || adminRow.active !== true) {
         return corsResponse(
           JSON.stringify({ ok: false, error: "Acces non autorise" }),
           403,
