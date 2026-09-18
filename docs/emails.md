@@ -102,7 +102,7 @@ L'email de destination des messages de contact vient de `site_content.emailConta
 
 ```bash
 # Via Supabase CLI (si configuré)
-supabase functions deploy send-contact-email --project-ref gpvfryvmghjenwfqhnkd
+supabase functions deploy send-contact-email --project-ref atsujzoozqnjelngqkab
 
 # Ou via le dashboard Supabase → Functions → éditer en ligne
 ```

@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS idx_reservations_date ON public.reservations(date);
 ALTER TABLE public.reservations ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "reservations_public_insert" ON public.reservations
-  FOR INSERT TO anon WITH (true);
+  FOR INSERT TO anon WITH CHECK (true);
 
 CREATE POLICY "reservations_admin_read" ON public.reservations
   FOR SELECT TO authenticated

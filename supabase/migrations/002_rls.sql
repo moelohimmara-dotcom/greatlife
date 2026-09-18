@@ -49,7 +49,7 @@ CREATE POLICY "messages_admin_read" ON public.messages
 
 -- Insertion publique des messages (le formulaire de contact est public)
 CREATE POLICY "messages_public_insert" ON public.messages
-  FOR INSERT TO anon WITH (true);
+  FOR INSERT TO anon WITH CHECK (true);
 
 -- Gestion des admin_users réservée au propriétaire
 CREATE POLICY "admin_users_owner_manage" ON public.admin_users

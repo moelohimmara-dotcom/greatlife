@@ -24,7 +24,7 @@ CREATE POLICY "media_public_read" ON storage.objects
 -- Politique : upload réservé aux admins
 CREATE POLICY "media_admin_upload" ON storage.objects
   FOR INSERT TO authenticated
-  WITH (
+  WITH CHECK (
     bucket_id IN ('food-photos', 'team-portraits', 'blog-images')
     AND EXISTS (
       SELECT 1 FROM public.admin_users au

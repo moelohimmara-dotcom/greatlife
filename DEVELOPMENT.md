@@ -180,7 +180,7 @@ Idées non implémentées, identifiées au passage :
 
 ## Liens utiles
 
-- Dashboard Supabase (projet `gpvfryvmghjenwfqhnkd`)
+- Dashboard Supabase (projet `atsujzoozqnjelngqkab`)
 - Production : https://greatlife-gn.netlify.app
 - Doc Supabase : Realtime, RLS, Edge Functions, Storage
 - Doc associée : [docs/public-site.md](./docs/public-site.md), [docs/admin-panel.md](./docs/admin-panel.md), [docs/database.md](./docs/database.md), [docs/emails.md](./docs/emails.md), [docs/deployment.md](./docs/deployment.md)

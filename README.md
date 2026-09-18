@@ -9,7 +9,7 @@ Ce README est le **point d'entrée** de la documentation. Il est conçu pour qu'
 3. **[DEVELOPMENT.md](./DEVELOPMENT.md)** — Guide de reprise : lancer, développer, tâches courantes, pièges, sécurité
 4. **[docs/public-site.md](./docs/public-site.md)** — Le site public : sections, panier, commande en ligne, réservations
 5. **[docs/admin-panel.md](./docs/admin-panel.md)** — Le panneau admin : shell, 12 modules, RBAC
-6. **[docs/database.md](./docs/database.md)** — Supabase : schéma, 12 migrations, RLS, `is_admin()`, Realtime
+6. **[docs/database.md](./docs/database.md)** — Supabase : schéma, 18 migrations, RLS, `is_admin()`, Realtime
 7. **[docs/emails.md](./docs/emails.md)** — Edge Function `send-contact-email` : 4 actions d'envoi, SMTP
 8. **[docs/deployment.md](./docs/deployment.md)** — Déploiement Netlify / Vercel, domaine, CI
 
@@ -87,11 +87,11 @@ Le site s'adapte automatiquement selon la présence des variables Supabase — v
 
 ## Supabase — en bref
 
-- **Projet** : `gpvfryvmghjenwfqhnkd` (région eu-west-1)
-- **Tables** : `menu_items`, `messages`, `site_content`, `admin_users`, `blog_posts`, `reservations`, `orders`, `media_assets`
+- **Projet** : `atsujzoozqnjelngqkab` (région eu-west-1) — base **dédiée Greatlife**, créée le 2026-09-18 (l'ancien projet partagé `gpvfryvmghjenwfqhnkd` est en pause, récupérable 7 jours)
+- **Tables** : `menu_items`, `messages`, `site_content`, `admin_users`, `blog_posts`, `reservations`, `orders`, `media_assets`, `audit_log`
 - **Storage buckets** : `media` (général), `food-photos`, `team-portraits`, `blog-images`
 - **Edge Function** : `send-contact-email` (active)
-- **Migrations** : 12 fichiers numérotés dans `supabase/migrations/` (à rejouer dans l'ordre)
+- **Migrations** : 18 fichiers numérotés dans `supabase/migrations/` (à rejouer dans l'ordre)
 
 → Détails complets : [docs/database.md](./docs/database.md)
 
@@ -123,7 +123,7 @@ src/
 ├── App.tsx          Router + Providers
 └── main.tsx         Entry point
 supabase/
-├── migrations/      12 migrations SQL (schéma + RLS + Realtime)
+├── migrations/      18 migrations SQL (schéma + RLS + Realtime)
 └── functions/       send-contact-email (Edge Function Deno)
 ```
 

@@ -4,8 +4,8 @@
 
 ## Projet
 
-- **Projet Supabase** : `gpvfryvmghjenwfqhnkd`
-- **URL** : `https://gpvfryvmghjenwfqhnkd.supabase.co`
+- **Projet Supabase** : `atsujzoozqnjelngqkab`
+- **URL** : `https://atsujzoozqnjelngqkab.supabase.co`
 - **Région** : eu-west-1
 - Le client est créé dans `src/lib/supabase.ts` (`getSupabase`, paresseux, clé anon).
 
