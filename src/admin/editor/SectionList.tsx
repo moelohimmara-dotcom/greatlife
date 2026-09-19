@@ -8,10 +8,10 @@
  * - une poignée de drag
  * - le type de section (label du registre)
  * - un bouton de visibilité (œil)
- * - un bouton de suppression (poubelle)
+ * - un bouton de suppression (poubelle), en DEUX TEMPS
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -120,6 +120,7 @@ interface SortableItemProps {
 
 function SortableItem({ id, section, isSelected, onSelect, onToggleVisibility, onRemove }: SortableItemProps) {
   const { theme: t } = useSite()
+  const [confirming, setConfirming] = useState(false)
   const {
     attributes,
     listeners,
@@ -186,14 +187,40 @@ function SortableItem({ id, section, isSelected, onSelect, onToggleVisibility, o
           {section.visible ? Icon.eye(13, t.muted) : Icon.eye(13, '#dc2626')}
         </span>
 
-        {/* Supprimer */}
-        <span
-          onClick={(e) => { e.stopPropagation(); onRemove() }}
-          style={{ cursor: 'pointer', color: t.muted, display: 'flex', flexShrink: 0, opacity: 0.5 }}
-          title="Masquer la section"
-        >
-          {Icon.trash(13, t.muted)}
-        </span>
+        {/*
+          Supprimer — EN DEUX TEMPS.
+          Le premier clic ne supprime pas : il demande confirmation. Retirer une
+          section efface le texte que le restaurateur y a écrit, et l'éditeur
+          n'offre aucun retour en arrière après enregistrement. L'infobulle
+          annonçait auparavant « Masquer la section » alors que le geste ne
+          masquait rien — l'œil juste à gauche fait déjà cela, et il persiste.
+        */}
+        {confirming ? (
+          <>
+            <span
+              onClick={(e) => { e.stopPropagation(); onRemove() }}
+              style={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#dc2626', display: 'flex', flexShrink: 0 }}
+              title="Confirmer : la section sera supprimée à l'enregistrement"
+            >
+              Supprimer
+            </span>
+            <span
+              onClick={(e) => { e.stopPropagation(); setConfirming(false) }}
+              style={{ cursor: 'pointer', fontSize: 11, fontWeight: 600, color: t.muted, display: 'flex', flexShrink: 0 }}
+              title="Ne pas supprimer"
+            >
+              Annuler
+            </span>
+          </>
+        ) : (
+          <span
+            onClick={(e) => { e.stopPropagation(); setConfirming(true) }}
+            style={{ cursor: 'pointer', color: t.muted, display: 'flex', flexShrink: 0, opacity: 0.5 }}
+            title="Supprimer la section"
+          >
+            {Icon.trash(13, t.muted)}
+          </span>
+        )}
       </button>
     </div>
   )
