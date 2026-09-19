@@ -49,7 +49,16 @@ export const MODULE_ACCESS: Record<string, ModuleAccess> = {
   orders: { module: 'Commandes', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'], delete: ['owner', 'manager'] } },
   messages: { module: 'Messages', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'], delete: ['owner', 'manager'] } },
   reservations: { module: 'R\u00e9servations', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'], delete: ['owner', 'manager'] } },
-  content: { module: 'Contenu', roles: ['owner', 'manager', 'chef', 'editor', 'guest'], actions: { create: ['owner', 'manager'], update: ['owner', 'manager'] } },
+  // ⚠️ Aligné sur la RLS. `page_sections` / `pages` / `page_versions` ne sont
+  // lisibles qu'en `owner`/`manager` (`sections_admin_read`, `pages_admin_read`).
+  // Ce module listait AUSSI `chef`, `editor` et `guest` : ces rôles voyaient
+  // donc « Contenu » dans la barre latérale et ouvraient un éditeur VIDE, sans
+  // la moindre explication. Trois sources désignent la matrice comme fautive :
+  // la RLS, et les descriptions des rôles ci-dessus — `chef` est « responsable
+  // de la carte », `editor` « rédacteur du blog », `guest` « consultation seule
+  // des contenus PUBLICS ». Seul `manager` mentionne « contenu ».
+  // Restreindre est aussi le sens sûr : on ne donne aucun droit nouveau.
+  content: { module: 'Contenu', roles: ['owner', 'manager'], actions: { create: ['owner', 'manager'], update: ['owner', 'manager'] } },
   team: { module: '\u00c9quipe & contenus', roles: ['owner', 'manager'], actions: { create: ['owner', 'manager'], update: ['owner', 'manager'] } },
   menu: { module: 'Carte & prix', roles: ['owner', 'manager', 'chef', 'guest'], actions: { create: ['owner', 'manager', 'chef'], update: ['owner', 'manager', 'chef'], delete: ['owner', 'manager', 'chef'] } },
   blog: { module: 'Blog', roles: ['owner', 'manager', 'editor', 'marketing', 'guest'], actions: { create: ['owner', 'manager', 'editor'], update: ['owner', 'manager', 'editor'], delete: ['owner', 'manager'], publish: ['owner', 'manager'] } },
