@@ -59,10 +59,21 @@ async function rest(path, method = 'GET', body, prefer) {
 }
 
 // --- Session d'administration ----------------------------------------------
+// ⚠️ AUCUN identifiant en dur dans ce fichier. Ce script a ete committe une fois
+// avec le mot de passe du compte proprietaire : le depot est PUBLIC, donc le
+// secret a fuite. Il se lit desormais dans `.env` (gitignore), comme les clefs.
+const EMAIL = ENV.PROBE_EMAIL
+const PASSWORD = ENV.PROBE_PASSWORD
+if (!EMAIL || !PASSWORD) {
+  throw new Error(
+    'PROBE_EMAIL et PROBE_PASSWORD doivent etre definis dans .env (compte de test).',
+  )
+}
+
 const authRes = await fetch(`${URL}/auth/v1/token?grant_type=password`, {
   method: 'POST',
   headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email: 'owner@greatlife.com', password: '***SECRET-ROTATIONNE***' }),
+  body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
 })
 if (!authRes.ok) throw new Error('Connexion impossible : ' + (await authRes.text()).slice(0, 200))
 const sess = await authRes.json()
