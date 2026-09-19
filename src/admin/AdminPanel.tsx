@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
@@ -10,6 +10,7 @@ import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRI
 import { THEMES } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
+import type { MenuItem } from '@/data/menu'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, updateAdminUserStatus, setUserInvitedAt, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase, sendMagicLink } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
@@ -300,22 +301,74 @@ function MenuEditor() {
   const [query, setQuery] = useState('')
   const [confirmDel, setConfirmDel] = useState(false)
   const [newCat, setNewCat] = useState('Burgers')
+  /** Des modifications attendent d'être écrites. */
+  const [dirty, setDirty] = useState(false)
+  /** Minuteur de la sauvegarde différée. */
+  const timerRef = useRef<number | null>(null)
+  /** Plat en attente d'écriture — permet de vider la file sans rien perdre. */
+  const pendingRef = useRef<MenuItem | null>(null)
+
+  // Les données de démonstration ne sont pas persistées : on n'arme pas de
+  // minuteur, pour ne pas afficher un état « non enregistré » trompeur.
+  const canPersist = dataSource === 'supabase'
+
   const item = menu.find(m => m.name === sel)
   const filtered = query.trim() ? menu.filter(m => m.name.toLowerCase().includes(query.toLowerCase()) || m.cat.toLowerCase().includes(query.toLowerCase())) : menu
   const grouped = filtered.reduce((acc, m) => { (acc[m.cat] = acc[m.cat] || []).push(m); return acc }, {} as Record<string, typeof menu>)
   const categories = Array.from(new Set(menu.map(m => m.cat))).sort()
+
+  /**
+   * Écrit UN plat en base. Chemin de sauvegarde UNIQUE : la sauvegarde
+   * automatique différée comme le bouton « Enregistrer » passent par ici.
+   * En cas d'échec, `dirty` reste vrai — le bouton sert alors de rattrapage.
+   */
+  const persist = useCallback(async (target: MenuItem) => {
+    if (!canPersist) { setDirty(false); setSaveStatus('saved'); return }
+    setSaveStatus('saving'); setSaveErr(undefined)
+    const res = await upsertMenuItem(target)
+    setSaveStatus(res.ok ? 'saved' : 'error')
+    setSaveErr(res.ok ? undefined : res.error)
+    setDirty(!res.ok)
+  }, [canPersist])
+
+  /** Vide immédiatement la file d'attente (bouton, changement de plat, sortie). */
+  const flush = useCallback(() => {
+    if (timerRef.current !== null) { window.clearTimeout(timerRef.current); timerRef.current = null }
+    const pending = pendingRef.current
+    if (pending) { pendingRef.current = null; persist(pending) }
+  }, [persist])
+
+  // Ne pas perdre une modification en attente en quittant l'écran.
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+    if (pendingRef.current) persist(pendingRef.current)
+  }, [persist])
+
   const update = (k: string, v: string | boolean | string[]) => {
     const next = menu.map(m => m.name === sel ? { ...m, [k]: v } : m)
     setMenu(next)
     const updated = next.find(m => m.name === sel)
-    if (updated && dataSource === 'supabase') {
-      setSaveStatus('saving'); setSaveErr(undefined)
-      upsertMenuItem(updated).then(res => {
-        setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
-        setTimeout(() => setSaveStatus('idle'), 4000)
-      })
-    }
+    if (!updated) return
+
+    // La sauvegarde n'est PAS déclenchée à chaque frappe : on attend une courte
+    // pause. Sans ce délai, taper un prix envoyait une requête par caractère,
+    // ce qui pouvait se chevaucher et laisser la dernière valeur non écrite.
+    setDirty(true)
+    pendingRef.current = updated
+    if (!canPersist) return
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => { pendingRef.current = null; persist(updated) }, 800)
   }
+
+  /** Change de plat sans perdre la modification en cours. */
+  const selectItem = (name: string) => {
+    if (name === sel) return
+    flush()
+    setSel(name)
+    setConfirmDel(false)
+    setSaveStatus('idle')
+  }
+
   const inp = inputStyle(t)
   if (!item) {
     return (
@@ -338,7 +391,7 @@ function MenuEditor() {
             <div key={cat}>
               <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.06em', background: t.surfaceAlt, position: 'sticky', top: 0 }}>{cat}</div>
               {items.map(m => (
-                <button key={m.name} onClick={() => setSel(m.name)} style={{
+                <button key={m.name} onClick={() => selectItem(m.name)} style={{
                   display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
                   fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
                   background: sel === m.name ? `${t.primary}0d` : 'transparent',
@@ -371,9 +424,23 @@ function MenuEditor() {
         </div>
       </div>
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
           <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>{item.name}</h3>
-          <SaveBar status={saveStatus} error={saveErr} />
+          {/*
+            Sauvegarde automatique différée (800 ms) + bouton explicite.
+            Le bouton a deux rôles : forcer l'écriture immédiatement, et servir
+            de RATTRAPAGE après un échec — l'indicateur « non enregistré » reste
+            affiché tant que l'écriture n'a pas réussi.
+          */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {dirty && saveStatus !== 'saving' && (
+              <span title="Modification en attente d'écriture" style={{ fontSize: 12, fontWeight: 600, color: t.accent }}>
+                ● Non enregistré
+              </span>
+            )}
+            <SaveBar status={saveStatus} error={saveErr} />
+            <PrimaryButton onClick={flush}>Enregistrer</PrimaryButton>
+          </div>
         </div>
         <div style={{ display: 'grid', gap: 14, maxWidth: '560px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 14 }}>
