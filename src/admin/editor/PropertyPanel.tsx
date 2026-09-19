@@ -118,7 +118,9 @@ function FieldEditor({ field, value, locale, onChange }: FieldEditorProps) {
     case 'select':
       return <SelectField field={field} value={value} onChange={onChange} />
     case 'list':
-      return <ListField field={field} value={value} onChange={onChange} />
+      // `locale` est transmis : les sous-champs d'une liste d'objets sont
+      // édités par le même FieldEditor, qui en a besoin (textes bilingues).
+      return <ListField field={field} value={value} locale={locale} onChange={onChange} />
     case 'group':
       return <GroupField field={field} value={value} locale={locale} onChange={onChange} />
     case 'image':
@@ -205,7 +207,7 @@ function SelectField({ field, value, onChange }: { field: FieldDef; value: unkno
   )
 }
 
-function ListField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+function ListField({ field, value, locale, onChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void }) {
   const { theme: t } = useSite()
   const items = Array.isArray(value) ? value : []
 
@@ -231,6 +233,26 @@ function ListField({ field, value, onChange }: { field: FieldDef; value: unknown
     onChange(arr)
   }
 
+  /**
+   * Écrit UN sous-champ d'un élément, en préservant les autres.
+   *
+   * `[f.name]: val` écrirait une clé littérale `"f.name"` : c'est le nom du
+   * champ, calculé, qu'il faut employer comme clé.
+   */
+  const updateSubField = (i: number, item: unknown, name: string, val: unknown) => {
+    const obj = typeof item === 'object' && item !== null ? { ...(item as Record<string, unknown>) } : {}
+    updateItem(i, { ...obj, [name]: val })
+  }
+
+  /** L'élément n'est-il qu'un emplacement vide (aucun sous-champ renseigné) ? */
+  const isEmptyItem = (item: unknown) => {
+    if (typeof item !== 'object' || item === null) return true
+    return Object.values(item as Record<string, unknown>).every(v => {
+      const r = resolveValue(v, locale)
+      return r === '' || r === null || r === undefined
+    })
+  }
+
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>
@@ -238,26 +260,51 @@ function ListField({ field, value, onChange }: { field: FieldDef; value: unknown
         {field.maxItems && <span style={{ fontWeight: 400, color: t.muted }}> ({items.length}/{field.maxItems})</span>}
       </label>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map((item, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div key={i} style={{
+            padding: '10px 12px', borderRadius: 10,
+            border: `1px solid ${t.shadow}`, background: `${t.primary}03`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                {field.itemType ? `Élément ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`}
+              </span>
+              <button onClick={() => removeItem(i)} title="Retirer"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4, opacity: 0.6 }}>
+                {Icon.trash(13)}
+              </button>
+            </div>
+
             {field.itemType ? (
               // Valeur simple
               <input value={typeof item === 'string' ? item : ''} onChange={(e) => updateItem(i, e.target.value)}
-                style={{ ...inputStyle(t), flex: 1 }} placeholder={`Élément ${i + 1}`} />
+                style={inputStyle(t)} placeholder={`Élément ${i + 1}`} />
             ) : field.itemFields ? (
-              // Objet complexe : on affiche le premier champ texte
-              <input value={typeof item === 'object' && item !== null ? String((item as Record<string, unknown>)[field.itemFields![0]?.name] ?? '') : ''}
-                onChange={(e) => {
-                  const obj = typeof item === 'object' && item !== null ? { ...(item as Record<string, unknown>) } : {}
-                  obj[field.itemFields![0]?.name] = e.target.value
-                  updateItem(i, obj)
-                }}
-                style={{ ...inputStyle(t), flex: 1 }} placeholder={field.itemFields[0]?.label} />
+              // Objet : TOUS les sous-champs sont édités, pas seulement le premier.
+              // Avant, seul `itemFields[0]` était affiché : le rôle et la
+              // présentation d'un membre d'équipe, le texte d'un avis, la légende
+              // d'une photo, la réponse d'une question restaient inaccessibles.
+              // Les sous-champs sont rendus par le FieldEditor habituel, donc
+              // chaque type (texte, texte long, image) garde son éditeur.
+              // Les libellés sont repris : hors d'un sous-formulaire, le champ
+              // n'est plus désigné par le titre de la liste.
+              <div>
+                {field.itemFields.map((sub, k) => (
+                  <FieldEditor
+                    key={sub.name}
+                    field={{
+                      ...sub,
+                      label: sub.label || (k === 0 ? field.label : ''),
+                      help: isEmptyItem(item) ? (k === 0 ? field.help ?? sub.help : sub.help) : sub.help,
+                    }}
+                    value={typeof item === 'object' && item !== null ? (item as Record<string, unknown>)[sub.name] : undefined}
+                    locale={locale}
+                    onChange={(v) => updateSubField(i, item, sub.name, v)}
+                  />
+                ))}
+              </div>
             ) : null}
-            <button onClick={() => removeItem(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4, opacity: 0.6 }}>
-              {Icon.trash(13)}
-            </button>
           </div>
         ))}
       </div>
@@ -271,7 +318,9 @@ function ListField({ field, value, onChange }: { field: FieldDef; value: unknown
           {Icon.plus(12, t.primary)} Ajouter
         </button>
       )}
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {/* L'aide n'est répétée dans aucun élément : elle ne s'affiche ici que si
+          la liste est vide, sinon elle apparaîtrait une fois par élément. */}
+      {field.help && items.length === 0 && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
