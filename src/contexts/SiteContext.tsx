@@ -98,7 +98,10 @@ interface SiteContextValue {
   visibility: SiteVisibility
   setVisibility: (v: SiteVisibility) => void
   menu: MenuItem[]
-  setMenu: (m: MenuItem[]) => void
+  // Vrai setter React : accepte aussi la forme fonctionnelle, indispensable pour
+  // ranger l'identité qu'attribue la base à un plat neuf sans écraser une frappe
+  // en cours. Déclarer `(m: MenuItem[]) => void` mentait sur ce qui est transmis.
+  setMenu: React.Dispatch<React.SetStateAction<MenuItem[]>>
   media: MediaSlot[]
   setMedia: (m: MediaSlot[]) => void
   messages: ContactMessage[]

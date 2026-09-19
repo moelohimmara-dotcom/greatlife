@@ -295,7 +295,19 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
 
 function MenuEditor() {
   const { menu, setMenu, theme: t, dataSource } = useSite()
-  const [sel, setSel] = useState(menu[0]?.name ?? '')
+  /**
+   * Plat sélectionné, désigné par sa POSITION dans la liste.
+   *
+   * ⚠️ Ne PAS revenir à une sélection par NOM. Le nom est précisément la donnée
+   * que le restaurateur renomme : s'en servir comme clé faisait qu'un renommage
+   * changeait la clé en cours de frappe. Conséquences mesurées : l'enregistrement
+   * INSÉRAIT une seconde ligne (doublon dans la carte) et l'éditeur perdait sa
+   * sélection (« Aucun produit »).
+   *
+   * La position ne bouge ni quand on renomme, ni quand la base attribue un
+   * identifiant à un plat neuf.
+   */
+  const [sel, setSel] = useState(0)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const [query, setQuery] = useState('')
@@ -305,14 +317,23 @@ function MenuEditor() {
   const [dirty, setDirty] = useState(false)
   /** Minuteur de la sauvegarde différée. */
   const timerRef = useRef<number | null>(null)
-  /** Plat en attente d'écriture — permet de vider la file sans rien perdre. */
-  const pendingRef = useRef<MenuItem | null>(null)
+  /**
+   * Plat en attente d'écriture — permet de vider la file sans rien perdre.
+   * La POSITION est mémorisée avec le plat : `persist` en a besoin pour ranger
+   * l'identité attribuée par la base, sans dépendre de la sélection courante
+   * (qui a pu changer entre-temps).
+   */
+  const pendingRef = useRef<{ index: number; item: MenuItem } | null>(null)
 
   // Les données de démonstration ne sont pas persistées : on n'arme pas de
   // minuteur, pour ne pas afficher un état « non enregistré » trompeur.
   const canPersist = dataSource === 'supabase'
 
-  const item = menu.find(m => m.name === sel)
+  // Le plat affiché se déduit de sa POSITION, jamais de son nom. La position est
+  // bornée : si la carte est rechargée depuis la base avec moins de plats, on ne
+  // doit pas tomber sur un écran vide.
+  const selIndex = menu.length ? Math.min(sel, menu.length - 1) : -1
+  const item: MenuItem | undefined = selIndex >= 0 ? menu[selIndex] : undefined
   const filtered = query.trim() ? menu.filter(m => m.name.toLowerCase().includes(query.toLowerCase()) || m.cat.toLowerCase().includes(query.toLowerCase())) : menu
   const grouped = filtered.reduce((acc, m) => { (acc[m.cat] = acc[m.cat] || []).push(m); return acc }, {} as Record<string, typeof menu>)
   const categories = Array.from(new Set(menu.map(m => m.cat))).sort()
@@ -322,49 +343,57 @@ function MenuEditor() {
    * automatique différée comme le bouton « Enregistrer » passent par ici.
    * En cas d'échec, `dirty` reste vrai — le bouton sert alors de rattrapage.
    */
-  const persist = useCallback(async (target: MenuItem) => {
+  const persist = useCallback(async (index: number, target: MenuItem) => {
     if (!canPersist) { setDirty(false); setSaveStatus('saved'); return }
     setSaveStatus('saving'); setSaveErr(undefined)
     const res = await upsertMenuItem(target)
     setSaveStatus(res.ok ? 'saved' : 'error')
     setSaveErr(res.ok ? undefined : res.error)
     setDirty(!res.ok)
+    // La base vient d'attribuer une identité (plat neuf) : on la range dans
+    // l'état. Sans cela le plat resterait sans identifiant, et l'écriture
+    // suivante INSÉRERAIT un second exemplaire.
+    if (res.ok && res.id) {
+      setMenu(prev => prev.map((m, i) => (i === index && !m.id ? { ...m, id: res.id } : m)))
+    }
   }, [canPersist])
 
   /** Vide immédiatement la file d'attente (bouton, changement de plat, sortie). */
   const flush = useCallback(() => {
     if (timerRef.current !== null) { window.clearTimeout(timerRef.current); timerRef.current = null }
     const pending = pendingRef.current
-    if (pending) { pendingRef.current = null; persist(pending) }
+    if (pending) { pendingRef.current = null; persist(pending.index, pending.item) }
   }, [persist])
 
   // Ne pas perdre une modification en attente en quittant l'écran.
   useEffect(() => () => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current)
-    if (pendingRef.current) persist(pendingRef.current)
+    const pending = pendingRef.current
+    if (pending) persist(pending.index, pending.item)
   }, [persist])
 
   const update = (k: string, v: string | boolean | string[]) => {
-    const next = menu.map(m => m.name === sel ? { ...m, [k]: v } : m)
+    if (selIndex < 0) return
+    const next = menu.map((m, i) => (i === selIndex ? { ...m, [k]: v } : m))
     setMenu(next)
-    const updated = next.find(m => m.name === sel)
+    const updated = next[selIndex]
     if (!updated) return
 
     // La sauvegarde n'est PAS déclenchée à chaque frappe : on attend une courte
     // pause. Sans ce délai, taper un prix envoyait une requête par caractère,
     // ce qui pouvait se chevaucher et laisser la dernière valeur non écrite.
     setDirty(true)
-    pendingRef.current = updated
+    pendingRef.current = { index: selIndex, item: updated }
     if (!canPersist) return
     if (timerRef.current !== null) window.clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => { pendingRef.current = null; persist(updated) }, 800)
+    timerRef.current = window.setTimeout(() => { pendingRef.current = null; persist(selIndex, updated) }, 800)
   }
 
   /** Change de plat sans perdre la modification en cours. */
-  const selectItem = (name: string) => {
-    if (name === sel) return
+  const selectItem = (index: number) => {
+    if (index === selIndex) return
     flush()
-    setSel(name)
+    setSel(index)
     setConfirmDel(false)
     setSaveStatus('idle')
   }
@@ -390,25 +419,43 @@ function MenuEditor() {
           {Object.entries(grouped).map(([cat, items]) => (
             <div key={cat}>
               <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.06em', background: t.surfaceAlt, position: 'sticky', top: 0 }}>{cat}</div>
-              {items.map(m => (
-                <button key={m.name} onClick={() => selectItem(m.name)} style={{
-                  display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
-                  fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
-                  background: sel === m.name ? `${t.primary}0d` : 'transparent',
-                  color: sel === m.name ? t.primary : t.text, borderBottom: `1px solid ${t.shadow}`,
-                }}>
-                  {m.sig ? '★ ' : ''}{m.name} <span style={{ color: t.muted, fontWeight: 400, fontSize: 12 }}>· {m.price}</span>
-                </button>
-              ))}
+              {items.map(m => {
+                // Position RÉELLE dans `menu` : la liste peut être filtrée par la
+                // recherche, on ne peut donc pas se fier à l'index du groupe.
+                const index = menu.indexOf(m)
+                const active = index === selIndex
+                return (
+                  <button key={m.id ?? `${m.cat}:${m.name}`} onClick={() => selectItem(index)} style={{
+                    display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
+                    fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
+                    background: active ? `${t.primary}0d` : 'transparent',
+                    color: active ? t.primary : t.text, borderBottom: `1px solid ${t.shadow}`,
+                  }}>
+                    {m.sig ? '★ ' : ''}{m.name} <span style={{ color: t.muted, fontWeight: 400, fontSize: 12 }}>· {m.price}</span>
+                  </button>
+                )
+              })}
             </div>
           ))}
         </div>
-        <button onClick={() => {
+        <button onClick={async () => {
           const cat = newCat.trim() || (categories[0] ?? 'Burgers')
-          const newItem = { cat, name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
-          setMenu([...menu, newItem])
-          if (dataSource === 'supabase') upsertMenuItem(newItem)
-          setSel(newItem.name)
+          const newItem: MenuItem = { cat, name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
+          const index = menu.length
+          setMenu(prev => [...prev, newItem])
+          setSel(index)
+          setConfirmDel(false)
+          setSaveStatus('idle')
+          if (dataSource !== 'supabase') return
+          // Enregistré tout de suite, pour que la base attribue son identité. Le
+          // restaurateur peut ensuite renommer : sans identité, la première
+          // écriture INSÉRERAIT un second exemplaire.
+          const res = await upsertMenuItem(newItem)
+          if (res.ok && res.id) {
+            setMenu(prev => prev.map((m, i) => (i === index ? { ...m, id: res.id } : m)))
+          } else if (!res.ok) {
+            setSaveStatus('error'); setSaveErr(res.error); setDirty(true)
+          }
         }} style={{
           marginTop: 12, width: '100%', fontSize: '13px', fontWeight: 600, padding: '10px',
           borderRadius: 12, cursor: 'pointer', border: `1px dashed ${t.primary}55`,
@@ -471,11 +518,23 @@ function MenuEditor() {
           {confirmDel ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid #dc262644`, background: '#dc262608' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#dc2626' }}>Supprimer « {item.name} » ?</span>
-              <button onClick={() => {
-                if (dataSource === 'supabase') deleteMenuItem(item.name)
-                setMenu(menu.filter(m => m.name !== item.name))
-                setSel(menu[0]?.name ?? '')
+              <button onClick={async () => {
+                // Suppression par IDENTITÉ, jamais par nom : le nom est modifiable
+                // et, après un renommage, cibler le nom supprimait la mauvaise
+                // ligne (ou aucune).
+                if (dataSource === 'supabase' && item.id) {
+                  const res = await deleteMenuItem(item.id)
+                  if (!res.ok) { setSaveStatus('error'); setSaveErr(res.error); setDirty(true); return }
+                }
+                // Annule toute écriture en attente : sans cela, le minuteur de
+                // sauvegarde différée remettrait en base le plat qu'on supprime.
+                if (timerRef.current !== null) { window.clearTimeout(timerRef.current); timerRef.current = null }
+                pendingRef.current = null
+                const next = menu.filter((_, i) => i !== selIndex)
+                setMenu(next)
+                setSel(next.length ? Math.min(selIndex, next.length - 1) : 0)
                 setConfirmDel(false)
+                setSaveStatus('idle'); setSaveErr(undefined); setDirty(false)
               }} style={{ fontSize: 12, fontWeight: 700, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
               <button onClick={() => setConfirmDel(false)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
             </div>

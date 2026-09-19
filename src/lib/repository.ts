@@ -18,6 +18,13 @@ export interface SiteConfig {
 }
 
 export type SaveResult = { ok: boolean; error?: string }
+
+/**
+ * Résultat d'un enregistrement de plat. Sur succès, `id` porte l'identité
+ * ATTRIBUÉE par la base : l'éditeur la range dans son état, sans quoi le plat
+ * neuf resterait sans identité et la frappe suivante insérerait encore.
+ */
+export type MenuItemSaveResult = { ok: boolean; error?: string; id?: string }
 function errMsg(error: unknown): string {
   if (!error) return ''
   if (error instanceof Error) return error.message
@@ -43,6 +50,7 @@ function rowToMenuItem(row: MenuRow): MenuItem {
     badges = (row.badges as unknown[]).filter((b): b is string => typeof b === 'string')
   }
   return {
+    id: row.id,
     cat: row.cat,
     name: row.name,
     sig: !!row.sig,
@@ -68,35 +76,71 @@ export async function fetchMenu(): Promise<{ data: MenuItem[]; fromDb: boolean }
   }
 }
 
-export async function upsertMenuItem(item: MenuItem): Promise<SaveResult> {
+/**
+ * Enregistre un plat : mise à jour si `item.id` est connu, insertion sinon.
+ *
+ * ⚠️ NE PAS revenir à `upsert(..., { onConflict: 'name' })`. `name` est le champ
+ * que le restaurateur renomme : s'en servir comme clé faisait qu'un renommage
+ * INSÉRAIT une nouvelle ligne (l'ancienne restait) au lieu de mettre à jour
+ * l'existante — doublon dans la carte. La migration `028` a rendu ce défaut
+ * silencieux en créant `UNIQUE (name)`.
+ *
+ * L'insertion renvoie l'identité ATTRIBUÉE, pour que l'éditeur cesse de croire
+ * qu'un plat neuf n'existe pas (sans quoi la frappe suivante insérerait encore).
+ */
+export async function upsertMenuItem(item: MenuItem): Promise<MenuItemSaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(MENU_TABLE).upsert(
-      {
-        cat: item.cat,
-        name: item.name,
-        sig: item.sig ?? false,
-        price: item.price,
-        description: item.desc,
-        vertus: item.vertus,
-        badges: item.badges,
-      },
-      { onConflict: 'name' }
-    )
+    // `id` est retiré du corps : sur insertion il est attribué par la base.
+    const { id, ...fields } = item
+    const payload = {
+      cat: fields.cat,
+      name: fields.name,
+      sig: fields.sig ?? false,
+      price: fields.price,
+      description: fields.desc,
+      vertus: fields.vertus,
+      badges: fields.badges,
+    }
+
+    if (id) {
+      const { data, error } = await sb
+        .from(MENU_TABLE)
+        .update(payload)
+        .eq('id', id)
+        .select('id')
+        .maybeSingle()
+      if (error) return { ok: false, error: errMsg(error) }
+      // Aucune ligne touchée = le plat a disparu en base (supprimé ailleurs,
+      // révision concurrente). Le dire, plutôt que de faire croire à un succès.
+      if (!data) {
+        return { ok: false, error: "Ce produit n'existe plus dans la carte. Rechargez la page." }
+      }
+      return { ok: true, id }
+    }
+
+    const { data, error } = await sb.from(MENU_TABLE).insert(payload).select('id').maybeSingle()
     if (error) return { ok: false, error: errMsg(error) }
-    return { ok: true }
+    if (!data) return { ok: false, error: "Le produit n'a pas pu être enregistré." }
+    return { ok: true, id: String((data as { id: string }).id) }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
   }
 }
 
-export async function deleteMenuItem(name: string): Promise<SaveResult> {
+/**
+ * Supprime un plat par son IDENTITÉ, jamais par son nom.
+ * Le nom est modifiable : le prendre pour clé pouvait supprimer un autre plat
+ * (ou aucun) après un renommage.
+ */
+export async function deleteMenuItem(id: string): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(MENU_TABLE).delete().eq('name', name)
+    const { data, error } = await sb.from(MENU_TABLE).delete().eq('id', id).select('id').maybeSingle()
     if (error) return { ok: false, error: errMsg(error) }
+    if (!data) return { ok: false, error: "Ce produit n'existe plus dans la carte. Rechargez la page." }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }

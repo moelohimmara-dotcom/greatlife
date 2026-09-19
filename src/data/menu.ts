@@ -4,6 +4,19 @@ export const CATEGORY_ORDER = [
 ]
 
 export interface MenuItem {
+  /**
+   * Identité STABLE du plat, attribuée par la base (`menu_items.id`).
+   *
+   * ⚠️ `name` ne doit JAMAIS servir d'identité : c'est la donnée que le
+   * restaurateur modifie, donc elle ne peut pas être la clé. S'en servir faisait
+   * qu'un renommage INSÉRAIT une seconde ligne au lieu de mettre à jour la
+   * première — et laissait l'éditeur sans sélection (« Aucun produit »).
+   *
+   * Absent dans deux cas seulement : les données de démonstration (`MENU`
+   * ci-dessous, jamais persistées) et un plat pas encore enregistré — voir
+   * `upsertMenuItem`, qui renvoie l'identité attribuée.
+   */
+  id?: string
   cat: string
   name: string
   sig?: boolean
