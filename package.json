@@ -12,6 +12,7 @@
     "verify:i18n": "node scripts/verify-i18n.mjs",
     "verify:publication": "node scripts/verify-publication.mjs",
     "verify:rbac": "node scripts/verify-rbac.mjs",
+    "verify:public": "node scripts/verify-public.mjs",
     "verify:lot3": "node scripts/verify-lot3.mjs",
     "lint": "eslint . --ext ts,tsx"
   },

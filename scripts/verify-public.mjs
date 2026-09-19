@@ -1,29 +1,35 @@
 /**
- * SONDE DU CHEMIN PUBLIC — STRICTEMENT EN LECTURE SEULE.
+ * CONTRÔLE DU CHEMIN PUBLIC — STRICTEMENT EN LECTURE SEULE.
  *
- * ⚠️ CE FICHIER A ECRIT EN PRODUCTION, ET C'ETAIT UN DEFAUT
- * Une version precedente faisait :
+ * POURQUOI CE CONTRÔLE EXISTE (constat I4 de la revue indépendante)
+ * `verify:lot1` lit `page_sections`, c'est-à-dire le BROUILLON, et compare le
+ * rendu historique à une révision fixe. Il n'exerce JAMAIS le chemin de
+ * l'instantané. Un « vert » de `verify:lot1` ne dit donc rien sur la chaîne de
+ * publication — c'est-à-dire précisément ce que ce lot a changé. Ce contrôle-ci
+ * ferme ce trou : il compare ce que le public REÇOIT à l'instantané PUBLIÉ.
+ *
+ * ⚠️ CE FICHIER A ÉCRIT EN PRODUCTION, ET C'ÉTAIT UN DÉFAUT
+ * Une version précédente faisait :
  *     PATCH pages?id=eq.<id> { status:'published', published_snapshot: snapshot }
- * avec la cle de SERVICE. Consequence mesuree : l'etat publie en production ne
- * correspondait plus a la version archivee (`pages.published_snapshot` !=
- * `page_versions[1].snapshot`), et `published_at` ne correspondait a rien.
- * Le critere 9 de `docs/10_PUBLISHING_VERSIONING.md` §10 l'interdit :
- * « Aucune ecriture n'est effectuee sur la base de production par un script de
- * verification. » Un script de verification qui ecrit ne verifie plus : il
- * fabrique l'etat qu'il pretend constater.
+ * avec la clé de SERVICE. Conséquence mesurée : l'état publié en production ne
+ * correspondait plus à la version archivée (`pages.published_snapshot` !=
+ * `page_versions[1].snapshot`), et `published_at` ne correspondait à rien.
+ * Le critère 9 de `docs/10_PUBLISHING_VERSIONING.md` §10 l'interdit :
+ * « Aucune écriture n'est effectuée sur la base de production par un script de
+ * vérification. » Un script qui fabrique l'état qu'il constate ne vérifie rien.
  *
- * Cette version ne fait que des `GET` et des appels de lecture. Elle echoue si
- * un ecrivain est necessaire : c'est volontaire.
+ * Cette version ne fait que des `GET` et des appels de lecture. Elle échoue si
+ * un écrivain était nécessaire : c'est volontaire.
  *
- * Ce qu'elle verifie :
- *   1. l'instantane publie est bien construit et relisible (fonctions reelles) ;
- *   2. ce que le public recoit correspond EXACTEMENT a l'instantane publie —
- *      c'est la preuve que le public lit l'etat fige, et non la table de travail ;
+ * Ce qu'elle vérifie :
+ *   1. l'instantané publié est bien construit et relisible (fonctions réelles) ;
+ *   2. ce que le public reçoit correspond EXACTEMENT à l'instantané publié —
+ *      la preuve que le public lit l'état figé, et non la table de travail ;
  *   3. le brouillon est illisible par un visiteur anonyme (TDR §22) ;
- *   4. le brouillon DIVERGE de l'instantane : la preuve que les deux etats sont
- *      bien separes, et non confondus par hasard.
+ *   4. le brouillon DIVERGE de l'instantané : la preuve que les deux états sont
+ *      bien séparés, et non confondus par hasard.
  *
- * Usage : node scripts/probe-snapshot.mjs
+ * Usage : node scripts/verify-public.mjs   (ou `npm run verify:public`)
  */
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -137,6 +143,25 @@ if (!res.ok || !res.data) {
   )
   console.log(`\n  >>> le public sert EXACTEMENT l'instantane stocke : ${identiques ? 'OUI' : 'NON'}`)
   if (!identiques) process.exitCode = 1
+
+  /*
+    AUTOTEST DE SENSIBILITÉ.
+    Une comparaison qui répondrait toujours « OUI » ne prouverait rien. On
+    vérifie donc qu'elle sait dire « NON » : mêmes données, avec UN champ
+    volontairement altéré. Si elle ne détecte pas cette différence, le « OUI »
+    ci-dessus n'a aucune valeur.
+  */
+  const falsifie = attendues.map((s, i) =>
+    i === 0 ? { ...s, content: { ...s.content, __falsifie: 'valeur differente' } } : s)
+  const detecte = !egaux(
+    servies.map((s) => ({ type: s.type, position: s.position, content: s.content })),
+    falsifie.map((s) => ({ type: s.type, position: s.position, content: s.content })),
+  )
+  console.log(`  autotest : la comparaison détecte une différence : ${detecte ? 'OUI' : 'NON'}`)
+  if (!detecte) {
+    console.log('      ÉCHEC : la comparaison est aveugle, le verdict ci-dessus ne vaut rien.')
+    process.exitCode = 1
+  }
 
   // --- 4. Le brouillon diverge-t-il de l'instantane ? ----------------------
   // S'ils etaient identiques, la preuve d'isolation ne serait pas concluante :
