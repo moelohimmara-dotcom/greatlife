@@ -201,6 +201,27 @@ export function validateSectionContent(
         level: 'warning',
       })
     }
+
+    /*
+      FORME BILINGUE PERDUE — un champ traduisible porte un texte simple.
+
+      Ce n'est pas un état normal : c'est le stigmate d'une destruction de
+      données. `MultilineField` écrivait une chaîne là où la valeur était un
+      objet `{ fr, en }`, ce qui effaçait l'anglais sans avertissement. Le
+      contrôle ci-dessus ne pouvait pas le voir : il ne s'applique qu'aux objets.
+
+      On le signale, sans bloquer : le contenu français, lui, est intact, et
+      refuser la publication pour cette raison punirait le restaurateur pour un
+      défaut qui n'est pas le sien.
+    */
+    if (field.translatable !== false && typeof value === 'string' && value.trim() !== '') {
+      issues.push({
+        path: field.name,
+        message: `« ${field.label} » a perdu sa version anglaise : sa valeur est un texte simple, ` +
+          `au lieu d'un texte bilingue. Le corriger rétablira la version anglaise.`,
+        level: 'warning',
+      })
+    }
   }
 
   // 2. Champs non déclarés : signalés, jamais bloquants

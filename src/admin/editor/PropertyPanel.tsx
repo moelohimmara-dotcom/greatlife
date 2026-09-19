@@ -167,6 +167,40 @@ function MultilineField({ field, value, locale, onChange }: { field: FieldDef; v
   const { theme: t } = useSite()
   const resolved = resolveValue(value, locale)
 
+  /*
+    Même branche bilingue que `TextField`. Elle manquait ici.
+
+    ⚠️ SON ABSENCE A DÉTRUIT DES DONNÉES EN PRODUCTION
+    Sans cette branche, le composant écrivait une CHAÎNE SIMPLE là où la valeur
+    était un objet `{ fr, en }` : `onChange(e.target.value)`. Conséquences :
+      - la version ANGLAISE était perdue, définitivement et sans le moindre
+        avertissement ;
+      - le validateur restait muet, puisqu'il ne teste `isTranslation` que sur
+        les objets — une chaîne lui échappait ;
+      - et comme le public lit l'instantané figé, RIEN ne changeait à l'écran :
+        le restaurateur ne pouvait pas s'en apercevoir.
+    Mesuré : `hero.subtitle` et `story.body` avaient été abîmés ainsi.
+
+    Les deux composants doivent rester symétriques : un champ déclaré
+    traduisible se présente de la même façon, qu'il soit court ou long.
+  */
+  if (field.translatable !== false && isTranslationObject(value)) {
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['fr', 'en'] as const).map((lang) => (
+            <textarea key={lang} value={(value as Record<string, string>)[lang] ?? ''} onChange={(e) => {
+              const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
+              onChange(obj)
+            }} rows={3} style={{ ...inputStyle(t), flex: 1, fontSize: 12, resize: 'vertical', minHeight: 72 }}
+              placeholder={lang.toUpperCase()} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
