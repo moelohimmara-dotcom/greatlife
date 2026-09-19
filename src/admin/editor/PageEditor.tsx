@@ -171,7 +171,7 @@ export function PageEditor({
           {/*
             Publier / depublier. C'est L'ACTION qui fait basculer le site public.
             Tant que la page est en brouillon, elle est absente de la lecture
-            publique (`pages_published_read` ne sert que les pages publiées) :
+            publique (`pages_public_read` ne sert que les pages publiées) :
             les visiteurs gardent donc l'ancien rendu.
           */}
           <button onClick={handlePublish} disabled={publishing || editor.saving} title={

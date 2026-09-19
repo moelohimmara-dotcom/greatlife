@@ -170,8 +170,8 @@ Le §22 n'est **pas** intégralement satisfait par l'option B. Listé ici pour n
 3. **`navigation_items` n'est pas isolée** (`nav_items_public_read`, 022/026) : un libellé de menu modifié est public immédiatement, alors que le contrôle n°2 du §24 valide la navigation *avant* publication.
 4. **`site_content`** reste lisible et modifiable en direct (`content_public_read USING (true)`, 002 ; écran « Modifier le site »). Hors périmètre du Lot 3, mais à ne pas confondre avec un oubli.
 5. **Signal de rafraîchissement** : `SiteContext.refreshCmsSections` lit les **tables vivantes**, pas le snapshot. Après 031, cette lecture renverra `[]` pour un visiteur et ne survivra que par effet de bord. Le rendu **et** le signal doivent lire la même source.
-6. **`docs/12_DATABASE_SCHEMA.md` (§181-188)** documente encore `sections_public_read`, que 031 supprime. À mettre à jour **au moment de l'application de 031**, pas avant (le document décrit aujourd'hui correctement la base).
-7. **Hors lot, à tracer** : `reservations` et `messages` sont lisibles par l'anon (`USING (true)`, 007). Sans rapport avec 030/031 ; le §31 cite explicitement l'accès aux réservations et aux clients.
+6. **`docs/12_DATABASE_SCHEMA.md`** documentait encore `sections_public_read`, que 031 supprime. ✅ **Fait le 2026-09-19** : le document porte désormais un tableau « le plan a été dépassé » (030/031/033) et la policy supprimée y est annotée « NE PAS RECRÉER ».
+7. **Correction du 2026-09-19** — ce point affirmait que `reservations` et `messages` sont **lisibles par l'anon** (`USING (true)`, 007). **C'est faux.** Mesuré dans `pg_policies` : l'anon n'a que `INSERT` sur ces deux tables (`reservations_public_insert`, `messages_public_insert`) et **aucune** policy `SELECT` ; un `GET` anonyme renvoie 0 ligne. La cible `anon` existe bien, mais pour **déposer** une demande, pas pour **lire**. Le document décrivait un état antérieur à un durcissement. Il n'y a donc pas d'exposition ouverte ici — le §31 reste à surveiller sur ce point, sans défaut actif.
 
 ---
 

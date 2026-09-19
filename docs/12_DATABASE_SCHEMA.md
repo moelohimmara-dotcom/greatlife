@@ -7,6 +7,16 @@
 > - **Projet Supabase** : `atsujzoozqnjelngqkab` (dédié Greatlife)
 > - **Migrations existantes** : `001` → `020` (20 fichiers, 9 tables publiques)
 > - **Références** : TDR §14, §16, §21, §22, §23, §29, §31 · `docs/04_CONTENT_MODEL.md`
+>
+> ⚠️ **Le plan de ce document a été appliqué, puis dépassé.** Il décrit l'état visé **avant** l'application de `021`. Les migrations `021` → `033` sont aujourd'hui appliquées en production, et trois d'entre elles changent ce qui est écrit plus bas :
+>
+> | Migration | Ce qu'elle change par rapport à ce document |
+> |---|---|
+> | `030` | Ajoute `pages.published_snapshot` (§2.1). Le public lit cet instantané, plus `page_sections` |
+> | `031` | **Supprime** la policy `sections_public_read` (§3.2) : un visiteur anonyme ne lit plus la table de travail |
+> | `033` | Ajoute la contrainte `pages_published_requires_snapshot` : une page publiée doit porter son instantané |
+>
+> Les passages concernés sont annotés ci-dessous. **La source de vérité du schéma réellement appliqué est `supabase/migrations/`** — ce document reste le plan.
 
 ---
 
@@ -40,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.pages (
   sort_order    integer NOT NULL DEFAULT 0,
   seo           jsonb NOT NULL DEFAULT '{}'::jsonb, -- title, description, image, canonical, noindex
   published_at  timestamptz,
+  published_snapshot jsonb,                         -- ajouté par la migration 030 (voir note)
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),
   updated_by    text
@@ -47,6 +58,8 @@ CREATE TABLE IF NOT EXISTS public.pages (
 
 CREATE UNIQUE INDEX IF NOT EXISTS pages_slug_key ON public.pages (lower(slug));
 ```
+
+**`published_snapshot` (migration `030`).** Le public ne lit **plus** `page_sections` : il lit cet instantané, écrit dans le **même** `UPDATE` que le statut (un seul aller-retour, donc aucun instant où la page serait publiée sans son contenu). C'est ce qui rend le TDR §22 vérifiable au lieu d'espéré : le brouillon ne peut plus fuiter parce qu'il n'est plus sur le chemin de lecture. La migration `033` garantit **en base** qu'une page `published` porte toujours son instantané.
 
 **Un seul marqueur d'accueil.** La première version de ce document utilisait **deux** désignations concurrentes : une colonne `is_home` *et* la convention `slug = ''`. C'était deux sources de vérité pour la même information, pouvant diverger. La colonne `is_home` est supprimée : **`slug = ''` désigne l'accueil**, et l'index unique `lower(slug)` garantit qu'il n'en existe qu'une seule.
 
@@ -180,7 +193,11 @@ CREATE POLICY "pages_admin_write" ON public.pages
 -- ---------- page_sections ----------
 ALTER TABLE public.page_sections ENABLE ROW LEVEL SECURITY;
 
--- Une section n'est publique que si sa page l'est ET si elle est visible
+-- ⚠️ SUPPRIMÉE par la migration 031 — NE PAS RECRÉER.
+-- Cette policy exposait la TABLE DE TRAVAIL au public : une section modifiée
+-- mais non publiée devenait immédiatement visible. Le public lit désormais
+-- `pages.published_snapshot` (030). La recréer rouvrirait la fuite du TDR §22.
+-- Vérifié en base : `sections_public_read` n'apparaît plus dans `pg_policies`.
 DROP POLICY IF EXISTS "sections_public_read" ON public.page_sections;
 CREATE POLICY "sections_public_read" ON public.page_sections
   FOR SELECT TO anon, authenticated

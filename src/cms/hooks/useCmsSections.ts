@@ -95,9 +95,15 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
   }, [reloadKey])
 
   /*
-    Realtime : `SiteContext` écoute déjà `page_sections` et `pages`. Quand l'une
-    change, `cmsSections` est réécrit — on relit alors la page publiée. C'est ce
-    qui rend une publication immédiatement visible côté visiteur.
+    Realtime : `SiteContext` écoute `pages` — qui porte le STATUT de publication
+    ET l'instantané publié — et non plus `page_sections`. La version précédente
+    de ce commentaire affirmait le contraire : `page_sections` n'est plus écouté
+    (voir `SiteContext.tsx:450`).
+
+    C'est le comportement voulu : modifier le brouillon ne doit pas recharger le
+    site public à chaque frappe. En revanche une publication change `pages`, donc
+    `cmsSections` est réécrit et cette relecture suit — c'est ce qui rend une
+    publication immédiatement visible côté visiteur.
   */
   useEffect(() => { reload() }, [cmsSections, reload])
 
