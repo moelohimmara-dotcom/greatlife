@@ -131,18 +131,33 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
     })
   }, [])
 
-  /** Sauvegarde toutes les modifications en base. */
-  const save = useCallback(async () => {
+  /**
+   * Sauvegarde toutes les modifications en base.
+   *
+   * Retourne `true` **seulement si tout a été écrit**. `reorderSections` et
+   * `updateSection` renvoient un `CmsResult` que la version précédente
+   * ignorait : une sauvegarde refusée par la base était donc indiscernable
+   * d'une réussite, et l'écran n'affichait rien.
+   *
+   * La publication s'appuie sur ce résultat : `publishPage` relit la BASE, pas
+   * l'état local. Sans cette information, on publierait un contenu qui n'est
+   * pas celui que le restaurateur vient de modifier, sans le lui dire.
+   */
+  const save = useCallback(async (): Promise<boolean> => {
     setState((s) => ({ ...s, saving: true, error: null }))
     try {
       // 1. Sauvegarder l'ordre des sections
       const orderedIds = state.sections.map((s) => s.id)
-      await reorderSections(orderedIds)
+      const orderResult = await reorderSections(orderedIds)
+      if (!orderResult.ok) {
+        setState((s) => ({ ...s, saving: false, error: orderResult.error }))
+        return false
+      }
 
       // 2. Sauvegarder chaque section
       for (let i = 0; i < state.sections.length; i++) {
         const section = state.sections[i]
-        await updateSection(section.id, {
+        const result = await updateSection(section.id, {
           content: section.content,
           variant: section.variant,
           visible: section.visible,
@@ -150,12 +165,18 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
           anchor: section.anchor,
           settings: section.settings,
         })
+        if (!result.ok) {
+          setState((s) => ({ ...s, saving: false, error: result.error }))
+          return false
+        }
       }
 
       setState((s) => ({ ...s, saving: false }))
+      return true
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur de sauvegarde'
       setState((s) => ({ ...s, saving: false, error: message }))
+      return false
     }
   }, [state.sections, pageId])
 

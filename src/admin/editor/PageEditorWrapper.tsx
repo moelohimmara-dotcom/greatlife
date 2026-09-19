@@ -12,20 +12,27 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useSite } from '@/contexts/SiteContext'
+import { useAuth } from '@/contexts/AuthContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
+import type { PublicationReport } from '@/cms/model/publishing'
 import { fetchAllPages, setPageStatus } from '@/cms/repository/pages'
 import { fetchSectionsForPage } from '@/cms/repository/sections'
+// Publier passe par le contrôle §24 et l'archivage d'une version (Lot 3).
+import { publishPage } from '@/cms/repository/publishing'
 import { PageEditor } from './PageEditor'
 
 export function PageEditorWrapper() {
   const { theme: t } = useSite()
+  const { user } = useAuth()
   const [pageId, setPageId] = useState<string | null>(null)
   const [status, setStatus] = useState<PageStatus>('draft')
   const [sections, setSections] = useState<PageSection[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false)
+  /** Renseigné quand une publication a été REFUSÉE par les contrôles du TDR §24. */
+  const [blockedReport, setBlockedReport] = useState<PublicationReport | null>(null)
 
   const load = useCallback(async (cancelled?: () => boolean) => {
     try {
@@ -57,16 +64,34 @@ export function PageEditorWrapper() {
     return () => { done = true }
   }, [load])
 
-  /** Bascule brouillon ⇄ publié. C'est L'action qui rend le CMS visible. */
+  /**
+   * Bascule brouillon ⇄ publié.
+   *
+   * Publier n'est plus un simple changement de statut : la page doit d'abord
+   * passer les 7 contrôles du TDR §24, et une version est archivée AVANT le
+   * basculement (TDR §23). Si un contrôle bloque, rien n'est publié et le
+   * panneau explique précisément ce qui manque.
+   */
   const togglePublish = useCallback(async () => {
     if (!pageId) return
-    const target: PageStatus = status === 'published' ? 'draft' : 'published'
     setPublishing(true)
-    const res = await setPageStatus(pageId, target)
+
+    if (status === 'published') {
+      const res = await setPageStatus(pageId, 'draft')
+      setPublishing(false)
+      if (!res.ok) { setError(res.error); return }
+      setStatus(res.data.status)
+      return
+    }
+
+    const res = await publishPage(pageId, user?.email ?? null)
     setPublishing(false)
     if (!res.ok) { setError(res.error); return }
-    setStatus(res.data.status)
-  }, [pageId, status])
+    if (!res.data.published) { setBlockedReport(res.data.report); return }
+
+    setBlockedReport(null)
+    await load()
+  }, [pageId, status, user?.email, load])
 
   if (loading) {
     return (
@@ -94,6 +119,7 @@ export function PageEditorWrapper() {
       status={status}
       publishing={publishing}
       onTogglePublish={togglePublish}
+      blockedReport={blockedReport}
     />
   )
 }

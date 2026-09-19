@@ -8,14 +8,16 @@
  * AdminPanel à la place de l'écran `content` existant.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
+import type { PublicationReport } from '@/cms/model/publishing'
 import { useEditor } from './useEditor'
 import { SectionList } from './SectionList'
 import { PreviewPane } from './PreviewPane'
 import { PropertyPanel } from './PropertyPanel'
+import { PublicationPanel } from './PublicationPanel'
 import { SectionTypePicker } from './SectionTypePicker'
 
 interface PageEditorProps {
@@ -29,17 +31,52 @@ interface PageEditorProps {
   publishing: boolean
   /** Bascule brouillon ⇄ publié. */
   onTogglePublish: () => void
+  /**
+   * Rapport d'une publication refusée par les contrôles du TDR §24.
+   * Non nul ⇒ le panneau s'ouvre de lui-même sur ce qui a bloqué.
+   */
+  blockedReport?: PublicationReport | null
 }
 
-export function PageEditor({ pageId, initialSections, status, publishing, onTogglePublish }: PageEditorProps) {
+export function PageEditor({
+  pageId,
+  initialSections,
+  status,
+  publishing,
+  onTogglePublish,
+  blockedReport = null,
+}: PageEditorProps) {
   const { theme: t } = useSite()
   const editor = useEditor(pageId, initialSections)
   const [showPicker, setShowPicker] = useState(false)
+  const [showPublication, setShowPublication] = useState(false)
+
+  // Une publication bloquée doit être EXPLIQUÉE, pas seulement refusée.
+  useEffect(() => {
+    if (blockedReport) setShowPublication(true)
+  }, [blockedReport])
 
   // Section actuellement sélectionnée (objet, pas juste l'index)
   const selectedSection = editor.selected !== null ? editor.sections[editor.selected] : null
 
   const isPublished = status === 'published'
+
+  /**
+   * Publier engage ce qui est EN BASE : `publishPage` relit la page et ses
+   * sections depuis la base, pas l'état local de l'éditeur. Une modification
+   * non sauvegardée serait donc silencieusement écartée de la publication —
+   * le restaurateur publierait autre chose que ce qu'il voit.
+   * On sauvegarde donc d'abord, et on s'arrête si la sauvegarde a échoué.
+   */
+  const handlePublish = async () => {
+    if (isPublished) {
+      onTogglePublish()
+      return
+    }
+    const saved = await editor.save()
+    if (!saved) return
+    onTogglePublish()
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 0 }}>
@@ -73,6 +110,24 @@ export function PageEditor({ pageId, initialSections, status, publishing, onTogg
         </span>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/*
+            Contrôle avant publication (TDR §24) et historique des versions
+            (TDR §23). Le restaurateur doit pouvoir savoir CE QUI BLOQUE et
+            retrouver un état antérieur, sans quitter l'éditeur.
+          */}
+          <button
+            onClick={() => setShowPublication((open) => !open)}
+            title="Vérifier la page avant publication et consulter les versions enregistrées."
+            style={{
+              padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              border: `1px solid ${showPublication ? t.primary : t.shadow}`,
+              background: showPublication ? `${t.primary}12` : 'transparent',
+              color: showPublication ? t.primary : t.text,
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+          >
+            Contrôle et versions
+          </button>
           {/* Sélecteur de langue */}
           <div style={{ display: 'flex', gap: 4, background: `${t.primary}0a`, borderRadius: 8, padding: 2 }}>
             {(['fr', 'en'] as const).map((lang) => (
@@ -103,7 +158,7 @@ export function PageEditor({ pageId, initialSections, status, publishing, onTogg
             tant que la page est en brouillon, la RLS ne sert aucune section aux
             visiteurs et ils voient encore l'ancien rendu.
           */}
-          <button onClick={onTogglePublish} disabled={publishing} title={
+          <button onClick={handlePublish} disabled={publishing || editor.saving} title={
             isPublished
               ? 'Repasser en brouillon : les visiteurs reverront l\'ancien site.'
               : 'Publier : les visiteurs verront ce contenu.'
@@ -146,12 +201,18 @@ export function PageEditor({ pageId, initialSections, status, publishing, onTogg
           <PreviewPane sections={editor.resolvedSections} />
         </div>
 
-        {/* Colonne 3 : Modifier */}
+        {/* Colonne 3 : Modifier — ou Contrôle avant publication */}
         <div style={{
           borderLeft: `1px solid ${t.shadow}`, background: t.surface,
           overflow: 'auto',
         }}>
-          {selectedSection ? (
+          {showPublication ? (
+            <PublicationPanel
+              pageId={pageId}
+              blockedReport={blockedReport}
+              onClose={() => setShowPublication(false)}
+            />
+          ) : selectedSection ? (
             <PropertyPanel
               section={selectedSection}
               locale={editor.locale}

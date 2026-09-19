@@ -95,6 +95,36 @@ export {
 } from './repository/settings'
 export type { RestaurantSettings, ResolvedRestaurant, EmailTemplates } from './repository/settings'
 
+// ---- Publication et versions (Lot 3)
+export { PUBLICATION_CHECKS, buildReport, runPublicationChecks } from './model/publishing'
+export type {
+  FindingLevel,
+  PublicationCheckId,
+  PublicationCheckResult,
+  PublicationFinding,
+  PublicationInput,
+  PublicationReport,
+} from './model/publishing'
+
+export { checkPublication, publishPage } from './repository/publishing'
+export type { PublishResult } from './repository/publishing'
+
+export {
+  SNAPSHOT_FORMAT_VERSION,
+  buildSnapshot,
+  createVersion,
+  fetchVersion,
+  fetchVersions,
+  parseSnapshot,
+} from './repository/versions'
+export type {
+  PageSnapshot,
+  PageVersionDetail,
+  PageVersionSummary,
+  SnapshotPage,
+  SnapshotSection,
+} from './repository/versions'
+
 // ---- Rendu
 export { PageRenderer } from './renderer/PageRenderer'
 export type { PageRendererProps } from './renderer/PageRenderer'

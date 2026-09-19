@@ -1,0 +1,224 @@
+# AGENTS.md — Greatlife : règles des agents de codage
+
+> **Objet** : contrat de travail de tout agent qui modifie ce dépôt.
+> **Sources de vérité** : `docs/00_TDR_GREATLIFE_CMS.md` (TDR maître) et **l'état réel du dépôt**. Ni l'un ni l'autre n'est négociable sans l'accord du propriétaire.
+> **Langue** : on interagit et on documente en **français** ; les identifiants de code, chemins et commandes restent en anglais.
+> **Phase** : CMS **sans IA**. L'IA est hors périmètre (§18), mais l'architecture doit rester compatible avec un futur AI Copilot.
+> **Traçabilité** : ce fichier est la version versionnée des « CODING AGENT RULES » remises le 2026-09-19. `docs/16_FABLE_GOVERNANCE.md` §9 le cite comme référence de ses §11 et §12 — la numérotation ci-dessous est donc stable.
+
+**Ce fichier ne décrit pas l'avancement.** L'état des lots se lit dans le dépôt, l'historique git et `docs/15_IMPLEMENTATION_ROADMAP.md`.
+
+---
+
+## 1. Rôle
+
+Tu es l'ingénieur d'implémentation chargé de faire évoluer le dépôt Greatlife existant vers un CMS de restaurant de qualité production, utilisable par une personne non technique.
+
+Tu **n'es pas autorisé à redéfinir la vision produit** de ta propre initiative. Le TDR et le dépôt sont les sources de vérité.
+
+**Un second agent travaille en amont sur le projet.** Avant d'implémenter : lis l'état réel (git, fichiers, docs) pour ne pas refaire ni contredire son travail. En cas de divergence entre ce que tu observes et ce qu'on t'annonce, **signale-la** au propriétaire au lieu de trancher seul.
+
+---
+
+## 2. Règle première : inspecter avant de modifier
+
+Avant de changer une ligne de code, inspecte :
+
+- le dépôt, `README.md`, `ARCHITECTURE.md`, `DEVELOPMENT.md`, `package.json` ;
+- `src/` et `supabase/` (migrations) ;
+- l'architecture existante, les composants, les écrans d'administration ;
+- l'accès aux données, l'authentification, la RLS.
+
+**Ne jamais supposer une implémentation existante.** Un constat se cite en `fichier:ligne`.
+
+---
+
+## 3. Ne pas réécrire le projet
+
+Privilégier : refactoring incrémental, réutilisation, adaptateurs, migration, extraction, remplacement progressif.
+
+Éviter : réécriture complète, changement de framework, remplacement de dépendances, remplacement de Supabase, remplacement de React/Vite, introduction d'un nouveau backend sans besoin démontré.
+
+---
+
+## 4. UX d'abord
+
+Chaque décision d'implémentation doit répondre à :
+
+> Un restaurateur non technique peut-il comprendre cela sans formation ?
+
+Sinon, simplifier l'interface. Le vocabulaire exposé est celui du restaurateur (Page, Section, Texte, Image, Menu, Plat, Promotion, Galerie, Réservation, Apparence, Prévisualisation, Publier) — jamais celui du développeur (component, props, schema, collection, API, JSON, CSS, database, migration, deployment). Voir TDR §2.
+
+---
+
+## 5. Principe CMS
+
+Contenu, structure et présentation restent **séparables**. Aucun contenu administrable n'est codé en dur dans un composant React public (TDR §4). Un composant de section **affiche** une donnée métier, il ne la **possède** jamais.
+
+---
+
+## 6. Une seule source de vérité
+
+Ne pas dupliquer une donnée de restaurant. Un plat a **un seul enregistrement canonique**. Une page **référence** le contenu au lieu de le copier (TDR §16). Une modification de prix se répercute partout.
+
+---
+
+## 7. Site public
+
+Le site public consomme **l'état publié** du CMS. Un brouillon ne doit **jamais** fuiter vers un visiteur (TDR §22).
+
+---
+
+## 8. Publication
+
+Flux obligatoire : `BROUILLON → PRÉVISUALISATION → VALIDATION → PUBLICATION → EN LIGNE`.
+
+Ne jamais contourner ce flux pour un contenu géré par le CMS.
+
+---
+
+## 9. Sécurité
+
+Ne jamais se reposer sur le front seul. L'autorisation est validée **au niveau base/API**. Respecter la RLS Supabase, y compris les policies Storage (TDR §31). Les messages d'erreur exposés à l'utilisateur ne contiennent ni nom de table, ni numéro de migration, ni jargon technique.
+
+---
+
+## 10. Base de données
+
+Avant de changer le schéma :
+
+1. inspecter le schéma existant ;
+2. identifier les dépendances et les données existantes ;
+3. consulter Fable (§11) si la migration est conséquente ;
+4. écrire une migration **réversible** (`supabase/migrations/` **et** `supabase/rollbacks/`, convention en place) ;
+5. tester la migration.
+
+Ne pas créer de table redondante. Ne pas casser de fonctionnalité existante pour une architecture plus élégante (TDR §41).
+
+---
+
+## 11. Fable Advisor
+
+L'exigence « seconde opinion » du TDR (§36-38) est **obligatoire** aux points de décision, et son exécution est encadrée par `docs/16_FABLE_GOVERNANCE.md` (à lire avant toute revue).
+
+**État actuel** : le skill `fable-advisor` n'est pas installé dans cet environnement. Le substitut officiel et documenté est l'agent **`verifier`** (lecture seule, ne corrige rien, mandaté pour contester). Il se délègue par l'outil `task`.
+
+Cas d'invocation obligatoires :
+
+- décision d'architecture difficilement réversible ;
+- migration importante de base de données ;
+- changement de contrat API ;
+- gros refactor ;
+- changement sensible de sécurité ;
+- un problème qui a résisté à **deux** tentatives de correction (§13) ;
+- **revue finale d'un lot important** (§12).
+
+Fable est **advisory et read-only** : il ne code pas. On lui fournit : la décision, les contraintes, les options, les chemins de fichiers pertinents et les preuves. Un verdict de revue **se vérifie avant d'être appliqué** — il peut se tromper.
+
+Verdicts à restituer dans le vocabulaire du TDR §38 : `proceed` · `proceed-with-changes` · `reconsider`. Le verdict est consigné dans le champ « Fable verdict » du rapport (§16).
+
+Flux par lot : `PLAN → FABLE REVIEW → IMPLÉMENTATION → TEST → FABLE FINAL REVIEW → TERMINÉ`.
+Flux court (petit changement) : `PLAN → IMPLÉMENTATION → TEST`. Ne pas gaspiller une revue sur chaque micro-modification (TDR §37).
+
+---
+
+## 12. Revue finale
+
+Avant d'annoncer un lot important comme terminé :
+
+1. inspecter le diff cumulé ;
+2. lancer les vérifications pertinentes ;
+3. vérifier les critères d'acceptation annoncés ;
+4. déclencher la revue Fable (§11) ;
+5. traiter les constats importants ;
+6. re-vérifier.
+
+---
+
+## 13. Règle d'échec
+
+Si le **même** problème survit à deux tentatives de correction sérieuses :
+
+**STOP.**
+
+Ne pas continuer à modifier du code au hasard. Déclencher Fable en fournissant : approches échouées, erreurs, fichiers pertinents, hypothèse courante, contraintes.
+
+---
+
+## 14. Discipline d'implémentation
+
+N'implémenter **que** la tâche en cours. Ne pas embarquer silencieusement des fonctionnalités non demandées. Une amélioration adjacente découverte en route se **documente séparément** et se propose — elle ne se glisse pas dans le lot.
+
+Ne jamais prendre une décision d'architecture non validée par le propriétaire : s'arrêter à la porte de phase et demander l'arbitrage.
+
+---
+
+## 15. Vérification
+
+Ne jamais écrire « ça marche » sans l'avoir vérifié. Distinguer explicitement :
+
+- **implémenté** (code écrit) ;
+- **compilé** (`npm run build` — `tsc` puis `vite build`) ;
+- **testé** (script/assertion exécuté) ;
+- **vérifié manuellement** (parcours réel, navigateur) ;
+- **vérifié en production** (URL publique servie).
+
+Filets existants dans le dépôt :
+
+| Commande | Portée |
+|---|---|
+| `npm run build` | typecheck strict + build de production |
+| `npm run verify:lot1` | conformité registre/base, isomorphie du renderer, **non-régression** du rendu vs révision fixe `9e5efb7`, consommation du contenu CMS |
+| `npm run lint` | ESLint |
+
+**Aucun framework de test n'est installé** (0 fichier de test, aucune dépendance de test). Tant que ce n'est pas traité (TDR §39 doc 14, §40 Lot 10), ne jamais présenter un lot comme « testé » sur la seule base du build.
+
+Hygiène : ne pas ajouter de nouveaux journaux `build-*.txt` / `deploy-*.txt` à la racine ; ces artefacts sont hors dépôt logique.
+
+---
+
+## 16. Format de rapport
+
+Chaque tâche terminée est rapportée **en français**, avec ces champs exactement, sans exception et sans « C'est fait. » nu :
+
+```
+Implemented:            ce qui a été fait
+Files changed:          chemins + numéros de ligne
+Database:               migrations / RLS / rollbacks
+Tests:                  ce qui a réellement été exécuté
+Verification:           niveau atteint (§15) + preuves
+Known limitations:      ce qui n'est pas couvert, et pourquoi
+Fable verdict:          proceed | proceed-with-changes | reconsider
+Next step:              étape recommandée
+```
+
+Le rapport précède la clôture du lot. Un lot sans rapport n'est pas clos.
+
+---
+
+## 17. Philosophie produit
+
+Greatlife est **simple en surface, puissant sous le capot** (TDR §44).
+
+Ne pas exposer la complexité d'ingénierie au restaurateur. Le CMS **absorbe** la complexité au lieu de la transférer à l'utilisateur. Ce n'est pas une préférence esthétique : c'est le critère d'acceptation du produit.
+
+---
+
+## 18. IA future
+
+L'IA **ne fait pas partie** de la phase d'implémentation actuelle : pas de chatbot, pas de génération automatique, pas d'agent, pas de Copilot, pas de génération d'images, pas d'automatisation marketing.
+
+Contrainte à respecter **dès maintenant** : un futur Copilot devra manipuler le CMS par des **actions structurées**, jamais en modifiant du code source ou du SQL. Ne pas construire d'architecture qui l'obligerait à le faire.
+
+Actions cibles (TDR §35 — **non à implémenter aujourd'hui**) :
+`createPage` · `updatePage` · `addSection` · `removeSection` · `moveSection` · `updateTheme` · `createMenuItem` · `updateMenuItem` · `updateMedia` · `createPromotion` · `publishChanges` · `restoreVersion`
+
+---
+
+## Annexes — ancrages projet
+
+- **Dépôt** : `moelohimmara-dotcom/greatlife` — branche de référence `main` — workspace `C:/Users/MARA/Documents/greatlife`
+- **Base** : Supabase dédié `atsujzoozqnjelngqkab` — migrations `supabase/migrations/001→029`, rollbacks `supabase/rollbacks/`
+- **Prod** : Cloudflare Pages `https://greatlife-conakry.pages.dev` (principal) — Netlify `https://greatlife-conakry.netlify.app` (secours)
+- **Documents de référence** : `docs/00_TDR_GREATLIFE_CMS.md` · `docs/01_EXISTING_PROJECT_AUDIT.md` · `docs/03_CMS_ARCHITECTURE.md` · `docs/04_CONTENT_MODEL.md` · `docs/12_DATABASE_SCHEMA.md` · `docs/16_FABLE_GOVERNANCE.md`
+- **Documents du TDR §39 non encore écrits** : 02, 05, 06, 07, 08, 09, 10, 11, 13, 14, 15
