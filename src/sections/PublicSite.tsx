@@ -91,7 +91,7 @@ export function PublicSite() {
               restaurant={restaurant}
             />
           ))}
-          <Footer />
+          <Footer restaurant={restaurant} />
           <OrderCart />
         </div>
       </CartProvider>
@@ -113,7 +113,7 @@ export function PublicSite() {
         <div id={ANCHORS.reservation}><Reservation /></div>
         {visibility.testimonials && <div id={ANCHORS.temoignages}><Testimonials /></div>}
         {visibility.sections.blog && <div id={ANCHORS.blog}><Blog /></div>}
-        <Footer />
+        <Footer restaurant={restaurant} />
         <OrderCart />
       </div>
     </CartProvider>
