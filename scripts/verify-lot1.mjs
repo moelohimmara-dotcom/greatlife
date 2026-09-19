@@ -30,7 +30,7 @@
  * ignoré par Git et sert de racine de résolution pour React.
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, readFileSync, cpSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, cpSync, existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -99,7 +99,7 @@ async function rest(path) {
 mkdirSync(WORK, { recursive: true })
 
 /** Bundle un point d'entrée et le renvoie. React est embarqué dans le bundle. */
-async function bundleFile(name, contents, { define = true, alias } = {}) {
+async function bundleFile(name, contents, { define = true, alias, loader, banner } = {}) {
   const entry = `${WORK}/${name}.tsx`
   const outfile = `${WORK}/${name}.cjs`
   writeFileSync(entry, contents, 'utf8')
@@ -116,7 +116,8 @@ async function bundleFile(name, contents, { define = true, alias } = {}) {
     // repli local de l'application s'applique, à l'identique des deux versions.
     define: define ? { 'import.meta.env': '{}' } : {},
     alias: alias ?? { '@': `${ROOT}/src` },
-    loader: { '.tsx': 'tsx', '.ts': 'ts' },
+    loader: loader ?? { '.tsx': 'tsx', '.ts': 'ts' },
+    ...(banner ? { banner: { js: banner } } : {}),
     logLevel: 'warning',
   })
   delete require.cache[require.resolve(outfile)]
@@ -223,6 +224,61 @@ const full = await bundleFile(
 )
 const missing = SECTIONS.map(([t]) => t).filter((t) => !full.hasSectionComponent(t))
 check(missing.length === 0, '@/cms enregistre les 10 composants de section', missing.join(', '))
+
+/*
+  F. BRANCHEMENT RÉEL DE L'APPLICATION
+  ------------------------------------
+  Ce contrôle existe à cause d'un défaut trouvé en production : le module
+  `register-sections` n'était importé QUE par `@/cms`. Or le site public
+  n'importe jamais `@/cms` — il passe par `@/cms/hooks` et `@/cms/renderer`.
+  Le registre restait donc VIDE chez les visiteurs : `SectionRenderer` ne
+  trouvait aucun composant et se rabattait sur `SectionFallback`, qui ne rend
+  RIEN pour les sections adossées à un module (`menu`, `blog`). Le site public
+  était amputé sans qu'aucune erreur ne soit levée.
+
+  Le contrôle B3 ci-dessus ne pouvait pas l'attraper : il importe `@/cms`
+  lui-même, donc il enregistre les composants… et réussit même quand
+  l'application ne le fait pas.
+
+  Pourquoi ce contrôle est STATIQUE et non un bundle du point d'entrée :
+  importer `src/main.tsx` tire react-dom et react-router, qui exigent un DOM
+  complet. Un stub minimal ne suffit pas (vérifié : `element.setAttribute`),
+  et entretenir un faux DOM rendrait le contrôle plus fragile que le défaut
+  qu'il surveille. On vérifie donc la seule chose qui compte ici — que le
+  point d'entrée déclenche l'enregistrement — puis on prouve séparément que le
+  module enregistre bien les 10 composants.
+*/
+const entryFiles = ['src/main.tsx', 'src/App.tsx']
+// Formes acceptées :
+//   import '@/cms/register-sections'      (effet de bord, SANS `from`)
+//   import { x } from '@/cms'             (enregistre aussi, par effet de bord)
+const REGISTRATION_IMPORT =
+  /import\s+(?:[^'";]*?\s+from\s+)?['"](?:@\/cms(?:\/register-sections)?|\.{1,2}\/cms(?:\/register-sections)?)['"]/
+
+const wired = entryFiles.filter((f) => {
+  const p = `${ROOT}/${f}`
+  if (!existsSync(p)) return false
+  return REGISTRATION_IMPORT.test(readFileSync(p, 'utf8'))
+})
+check(
+  wired.length > 0,
+  'le point d\u2019entrée de l\u2019application déclenche l\u2019enregistrement des composants',
+  wired.length ? `via ${wired.join(', ')}` : `AUCUN import de \`@/cms\` ni de \`register-sections\` dans ${entryFiles.join(' ni ')}`,
+)
+
+// Et l'on prouve que ce module enregistre réellement les 10.
+const registration = await bundleFile(
+  'registration-probe',
+  `import '@/cms/register-sections'
+   export { hasSectionComponent } from '@/cms/renderer/registry'`,
+  { define: true },
+)
+const unregistered = SECTIONS.map(([t]) => t).filter((t) => !registration.hasSectionComponent(t))
+check(
+  unregistered.length === 0,
+  `\`register-sections\` enregistre bien les ${SECTIONS.length} composants`,
+  unregistered.length ? `NON enregistrés : ${unregistered.join(', ')}` : 'table complète',
+)
 
 // ===========================================================================
 const baseRev = execFileSync('git', ['rev-parse', '--verify', BASE_REF], {
