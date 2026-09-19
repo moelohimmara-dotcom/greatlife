@@ -18,7 +18,9 @@ import { DEFAULT_LOCALE, type Locale } from '../model/i18n'
 import type { Page } from '../model/page'
 import type { PageSection } from '../model/section'
 import {
+  buildReport,
   runPublicationChecks,
+  snapshotEmptinessFinding,
   type PublicationInput,
   type PublicationNavInput,
   type PublicationReport,
@@ -138,8 +140,21 @@ export async function publishPage(
   if (!context.ok) return context
 
   const report = runPublicationChecks(context.data.input)
-  if (!report.publishable) {
-    return cmsOk({ published: false, report, version: null })
+
+  /*
+    PRÉCONDITION, distincte des 7 contrôles du TDR §24 : un instantané VIDE ne
+    peut pas être publié. Sans cela, le public retomberait sur le rendu
+    historique — l'ANCIEN site — pendant que l'éditeur afficherait « En ligne »,
+    sans aucune erreur. Le constat est ajouté au rapport pour que le panneau de
+    publication explique POURQUOI c'est refusé, au lieu d'un refus muet.
+  */
+  const videFinding = snapshotEmptinessFinding(context.data.sections)
+  const rapportFinal = videFinding
+    ? buildReport([...report.blockers, ...report.warnings, videFinding])
+    : report
+
+  if (!rapportFinal.publishable) {
+    return cmsOk({ published: false, report: rapportFinal, version: null })
   }
 
   // La version est construite avec l'état que la page PREND à cette

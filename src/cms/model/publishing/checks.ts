@@ -13,6 +13,42 @@ import { getSectionDefinition, isKnownSectionType } from '../sections/schemas'
 import { expectedFields, validateSectionContent } from '../sections/validation'
 import { buildReport, type PublicationFinding, type PublicationInput, type PublicationReport } from './types'
 
+/**
+ * PRÉCONDITION DE PUBLICATION — un instantané VIDE ne peut pas être publié.
+ *
+ * ⚠️ CE N'EST PAS UN DES 7 CONTRÔLES DU TDR §24
+ * Les 7 contrôles portent sur le CONTENU (pages, navigation, images, carte,
+ * prix, liens, informations essentielles). « La page n'a rien à montrer » est
+ * d'une autre nature : c'est une condition d'existence de la publication. On la
+ * garde donc séparée, pour que `runPublicationChecks` conserve exactement le
+ * contrat que le TDR lui donne.
+ *
+ * LE DÉFAUT QU'ELLE FERME (constat I2 de la revue indépendante)
+ * `PublicSite` n'emprunte le chemin CMS que si `resolvedSections.length > 0`.
+ * Avec un instantané vide, le visiteur retombe sur le RENDU HISTORIQUE — donc
+ * sur l'ancien site — pendant que l'éditeur affiche « ● En ligne ».
+ * Concrètement : le restaurateur masque ses sections une à une pour préparer une
+ * refonte, publie, lit « En ligne », et rien ne change à l'écran. Aucune erreur,
+ * aucun signal. C'est le repli silencieux que l'en-tête de la migration 030
+ * désigne comme le mode de panne le plus coûteux du lot.
+ *
+ * Renvoie `null` si la publication est possible.
+ */
+export function snapshotEmptinessFinding(
+  sections: readonly { visible: boolean }[],
+): PublicationFinding | null {
+  if (sections.some((s) => s.visible)) return null
+  return {
+    check: 'pages',
+    level: 'error',
+    message:
+      "Aucune section n'est visible : le site public continuerait d'afficher l'ancien " +
+      'contenu. Rendez au moins une section visible avant de publier.',
+    where: 'Structure',
+  }
+}
+
+
 export function runPublicationChecks(input: PublicationInput): PublicationReport {
   const locale: Locale = input.locale ?? DEFAULT_LOCALE
   const findings: PublicationFinding[] = []

@@ -19,7 +19,7 @@ export type {
 } from './types'
 export { PUBLICATION_CHECKS, buildReport } from './types'
 
-export { runPublicationChecks, sectionLabel, normalizeAnchor } from './checks'
+export { runPublicationChecks, sectionLabel, normalizeAnchor, snapshotEmptinessFinding } from './checks'
 
 export { SNAPSHOT_FORMAT_VERSION, buildSnapshot, parseSnapshot } from './snapshot'
 export type { PageSnapshot, SnapshotPage, SnapshotRead, SnapshotSection } from './snapshot'
