@@ -116,4 +116,4 @@ export type { SectionComponentProps, SectionComponent, SectionDataSource } from 
 import './register-sections'
 
 // ---- Hooks
-export { useCmsSections, isCmsEnabled, setCmsEnabled } from './hooks'
+export { useCmsSections } from './hooks'

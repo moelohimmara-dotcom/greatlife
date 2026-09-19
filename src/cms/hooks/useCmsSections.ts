@@ -1,57 +1,43 @@
 /**
- * Greatlife — CMS : hook de chargement des sections
- * ==================================================
- * Charge les sections de la page « Accueil » depuis la base.
- * Utilisé par le site public pour afficher le contenu CMS.
+ * Greatlife — CMS : sections publiées pour le site public
+ * =======================================================
+ * Charge les sections de la page d'accueil **publiée**.
  *
- * Le hook gère :
- * - le chargement initial des sections
- * - la subscription Realtime pour les mises à jour en direct
- * - le fallback vers les données legacy si le CMS n'est pas activé
+ * ⚠️ CE QUI A CHANGÉ (et pourquoi)
+ *
+ * La première version pilotait l'activation par un drapeau dans le
+ * `localStorage` (`greatlife_cms_enabled`). C'était une ERREUR DE CONCEPTION :
+ * le `localStorage` est propre à CHAQUE navigateur. Seul l'administrateur qui
+ * posait le drapeau voyait le contenu CMS ; aucun visiteur ne le voyait jamais.
+ * « Modifier le site » ne pouvait donc pas influencer le site public.
+ *
+ * L'interrupteur est désormais le STATUT DE LA PAGE (TDR §22, §3.5) :
+ *
+ *   page `draft`     → le site public garde son rendu historique
+ *   page `published` → le site public rend les sections du CMS
+ *
+ * Ce choix ne rajoute aucune mécanique : la RLS en base filtre déjà les
+ * sections non publiées pour les visiteurs anonymes (`sections_public_read`).
+ * La sécurité reste en base, jamais dans le navigateur (TDR §31).
  */
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
-import { fetchAllPages } from '@/cms/repository/pages'
-import { fetchSectionsForPage } from '@/cms/repository/sections'
+import { fetchPublicPageWithSections } from '@/cms/repository/sections'
 import { resolveContentObject } from '@/cms/model/i18n'
 import type { Locale } from '@/cms/model/i18n'
 
-/**
- * Flag de bascule CMS.
- * `true` = le site public utilise les données de `page_sections`
- * `false` = le site public utilise les données legacy (`site_content`)
- *
- * Ce flag est lu dans le `localStorage` pour persister le choix.
- * Il n'est modifiable que par un admin (pas de bouton public).
- */
-const CMS_ENABLED_KEY = 'greatlife_cms_enabled'
-
-export function isCmsEnabled(): boolean {
-  try {
-    return localStorage.getItem(CMS_ENABLED_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-export function setCmsEnabled(enabled: boolean): void {
-  try {
-    localStorage.setItem(CMS_ENABLED_KEY, enabled ? 'true' : 'false')
-  } catch { /* ignore */ }
-}
-
 interface UseCmsSectionsResult {
-  /** Sections chargées depuis la base. */
+  /** Sections publiées et visibles, dans l'ordre. */
   sections: PageSection[]
-  /** Sections résolues dans la langue donnée. */
-  resolvedSections: Record<string, unknown>[]
-  /** `true` pendant le chargement. */
+  /** Sections résolues dans la langue active, prêtes pour le renderer. */
+  resolvedSections: PageSection[]
+  /** `true` pendant le chargement initial. */
   loading: boolean
-  /** Erreur éventuelle. */
+  /** Erreur de lecture, le cas échéant. */
   error: string | null
-  /** `true` si le CMS est activé. */
+  /** `true` si une page publiée existe : le CMS pilote alors le rendu. */
   enabled: boolean
 }
 
@@ -60,52 +46,66 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
   const [sections, setSections] = useState<PageSection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [enabled] = useState(isCmsEnabled)
+  const [enabled, setEnabled] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
-  // Charger les sections depuis la base
+  const reload = useCallback(() => setReloadKey((k) => k + 1), [])
+
   useEffect(() => {
-    if (!enabled) { setLoading(false); return }
-
     let cancelled = false
+
     async function load() {
       try {
-        const pagesRes = await fetchAllPages()
+        /*
+          Lecture ANONYME. `fetchPublicPageWithSections` renvoie `null` tant que
+          la page n'est pas publiée — c'est exactement le signal qui distingue
+          « le CMS pilote le site » de « le site garde son rendu historique ».
+        */
+        const res = await fetchPublicPageWithSections('')
         if (cancelled) return
-        if (!pagesRes.ok || pagesRes.data.length === 0) {
-          setError('Aucune page trouvée')
+
+        if (!res.ok) {
+          setError(res.error)
+          setEnabled(false)
+          setSections([])
           return
         }
-        const sectionsRes = await fetchSectionsForPage(pagesRes.data[0].id, { includeHidden: false })
-        if (cancelled) return
-        if (!sectionsRes.ok) {
-          setError(sectionsRes.error)
+        if (!res.data) {
+          setError(null)
+          setEnabled(false)
+          setSections([])
           return
         }
-        setSections(sectionsRes.data)
+
+        setError(null)
+        setEnabled(true)
+        setSections(res.data.sections)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur de chargement')
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Erreur de chargement')
+          setEnabled(false)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
+
     load()
     return () => { cancelled = true }
-  }, [enabled])
+  }, [reloadKey])
 
-  // Mettre à jour les sections quand le Realtime notifie un changement
-  useEffect(() => {
-    if (!enabled || cmsSections.length === 0) return
-    setSections(cmsSections as PageSection[])
-  }, [cmsSections, enabled])
+  /*
+    Realtime : `SiteContext` écoute déjà `page_sections` et `pages`. Quand l'une
+    change, `cmsSections` est réécrit — on relit alors la page publiée. C'est ce
+    qui rend une publication immédiatement visible côté visiteur.
+  */
+  useEffect(() => { reload() }, [cmsSections, reload])
 
-  // Résoudre le contenu dans la langue active
   const resolvedSections = useMemo(() => {
-    return sections
-      .filter((s) => s.visible)
-      .map((s) => ({
-        ...s,
-        content: resolveContentObject(s.content, locale),
-      }))
+    return sections.map((s) => ({
+      ...s,
+      content: resolveContentObject(s.content, locale) as typeof s.content,
+    }))
   }, [sections, locale])
 
   return { sections, resolvedSections, loading, error, enabled }

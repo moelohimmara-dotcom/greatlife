@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
+import type { PageStatus } from '@/cms/model/page'
 import { useEditor } from './useEditor'
 import { SectionList } from './SectionList'
 import { PreviewPane } from './PreviewPane'
@@ -22,15 +23,23 @@ interface PageEditorProps {
   pageId: string
   /** Sections initiales (chargées depuis la base). */
   initialSections: PageSection[]
+  /** Statut de publication : c'est lui qui décide si le public voit le CMS. */
+  status: PageStatus
+  /** `true` pendant la bascule de publication. */
+  publishing: boolean
+  /** Bascule brouillon ⇄ publié. */
+  onTogglePublish: () => void
 }
 
-export function PageEditor({ pageId, initialSections }: PageEditorProps) {
+export function PageEditor({ pageId, initialSections, status, publishing, onTogglePublish }: PageEditorProps) {
   const { theme: t } = useSite()
   const editor = useEditor(pageId, initialSections)
   const [showPicker, setShowPicker] = useState(false)
 
   // Section actuellement sélectionnée (objet, pas juste l'index)
   const selectedSection = editor.selected !== null ? editor.sections[editor.selected] : null
+
+  const isPublished = status === 'published'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 0 }}>
@@ -42,6 +51,27 @@ export function PageEditor({ pageId, initialSections }: PageEditorProps) {
         <h2 style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0, letterSpacing: '-0.02em' }}>
           Modifier le site
         </h2>
+
+        {/*
+          Etat de publication, affiche en permanence.
+          Sans ce repere, on enregistre sans comprendre pourquoi le site public
+          ne bouge pas : une page en brouillon n'est JAMAIS servie aux visiteurs
+          (TDR §22 — la RLS en base filtre les sections non publiees).
+        */}
+        <span
+          title={isPublished
+            ? 'Les visiteurs voient le contenu de cet editeur.'
+            : 'Les visiteurs voient encore l\'ancien site. Publiez pour appliquer vos modifications.'}
+          style={{
+            fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 100,
+            background: isPublished ? `${t.primary}14` : 'rgba(220,38,38,0.08)',
+            color: isPublished ? t.primary : '#b91c1c',
+            border: `1px solid ${isPublished ? `${t.primary}33` : 'rgba(220,38,38,0.2)'}`,
+          }}
+        >
+          {isPublished ? '● En ligne' : '○ Brouillon — non visible sur le site'}
+        </span>
+
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Sélecteur de langue */}
           <div style={{ display: 'flex', gap: 4, background: `${t.primary}0a`, borderRadius: 8, padding: 2 }}>
@@ -67,6 +97,25 @@ export function PageEditor({ pageId, initialSections }: PageEditorProps) {
             color: '#fff', transition: 'background 0.15s',
           }}>
             {editor.saving ? 'Sauvegarde…' : 'Sauvegarder'}
+          </button>
+          {/*
+            Publier / depublier. C'est L'ACTION qui fait basculer le site public :
+            tant que la page est en brouillon, la RLS ne sert aucune section aux
+            visiteurs et ils voient encore l'ancien rendu.
+          */}
+          <button onClick={onTogglePublish} disabled={publishing} title={
+            isPublished
+              ? 'Repasser en brouillon : les visiteurs reverront l\'ancien site.'
+              : 'Publier : les visiteurs verront ce contenu.'
+          } style={{
+            padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            border: `1px solid ${isPublished ? t.shadow : t.primary}`,
+            cursor: publishing ? 'wait' : 'pointer',
+            background: isPublished ? 'transparent' : `${t.primary}12`,
+            color: isPublished ? t.text : t.primary,
+            transition: 'all 0.15s',
+          }}>
+            {publishing ? '…' : isPublished ? 'Repasser en brouillon' : 'Publier sur le site'}
           </button>
         </div>
       </div>

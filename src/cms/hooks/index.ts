@@ -1,1 +1,1 @@
-export { useCmsSections, isCmsEnabled, setCmsEnabled } from './useCmsSections'
+export { useCmsSections } from './useCmsSections'

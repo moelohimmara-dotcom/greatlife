@@ -393,9 +393,15 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCmsSections = async () => {
     try {
+      // Pour un visiteur anonyme, la RLS ne renvoie que les pages publiées et
+      // les sections visibles. Pour un administrateur, tout. Ce canal sert de
+      // SIGNAL de rafraîchissement : le rendu, lui, repasse par
+      // `useCmsSections`, qui interroge la page publiée.
       const pagesRes = await fetchAllPagesCms()
-      if (!pagesRes.ok || pagesRes.data.length === 0) return
-      const sectionsRes = await fetchSectionsForPageCms(pagesRes.data[0].id, { includeHidden: true })
+      if (!pagesRes.ok) return
+      const published = pagesRes.data.find((p) => p.status === 'published')
+      if (!published) { setCmsSections([]); return }
+      const sectionsRes = await fetchSectionsForPageCms(published.id, { includeHidden: true })
       if (sectionsRes.ok) setCmsSections(sectionsRes.data)
     } catch { /* CMS pas encore prêt */ }
   }
@@ -429,6 +435,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { if (active) refreshOrders() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => { if (active) refreshReservations() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'page_sections' }, () => { if (active) refreshCmsSections() })
+      // `pages` porte le STATUT de publication : c'est lui qui decide si le site
+      // public rend le CMS ou garde son rendu historique (TDR §22).
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pages' }, () => { if (active) refreshCmsSections() })
       .subscribe()
     return () => {
       active = false
