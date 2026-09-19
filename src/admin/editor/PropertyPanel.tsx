@@ -118,7 +118,7 @@ function FieldEditor({ field, value, locale, onChange }: FieldEditorProps) {
     case 'select':
       return <SelectField field={field} value={value} onChange={onChange} />
     case 'list':
-      return <ListField field={field} value={value} locale={locale} onChange={onChange} />
+      return <ListField field={field} value={value} onChange={onChange} />
     case 'group':
       return <GroupField field={field} value={value} locale={locale} onChange={onChange} />
     case 'image':
