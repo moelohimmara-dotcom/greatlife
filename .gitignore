@@ -36,10 +36,14 @@ supabase/.temp
 # Local Netlify folder
 .netlify
 
-# Sorties de vérification locales (tsc, build, npm run verify:lot1)
-/tsc-out.txt
-/build-out.txt
-/verify-out.txt
+# Sorties locales de vérification (tsc, build, npm run verify:*, déploiement).
+# AGENTS.md §15 : ces artefacts restent HORS dépôt logique. Une règle par motif
+# remplace la liste de trois noms exacts, qui ne couvrait que ceux-là : les 38
+# fichiers présents à la racine (`build-*.txt`, `deploy-*.txt`, `tsc-*.txt`, …)
+# n'étaient pas ignorés et restaient capturables par un `git add -A`.
+# Le préfixe `/` limite la règle à la RACINE : un `.txt` légitime dans un
+# sous-dossier (jeu de données, fixture) n'est pas concerné.
+/*.txt
 
 # Sauvegardes locales de la base (dumps avant migration) — données réelles, ne
 # doivent JAMAIS être versionnées.
