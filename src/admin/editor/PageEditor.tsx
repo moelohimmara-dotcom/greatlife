@@ -90,24 +90,39 @@ export function PageEditor({
         </h2>
 
         {/*
-          Etat de publication, affiche en permanence.
-          Sans ce repere, on enregistre sans comprendre pourquoi le site public
-          ne bouge pas : une page en brouillon n'est JAMAIS servie aux visiteurs
-          (TDR §22 — la RLS en base filtre les sections non publiees).
+          État de publication, affiché en permanence.
+
+          ⚠️ CE QUI A CHANGÉ (et pourquoi le libellé a été corrigé)
+          Depuis que le public lit `pages.published_snapshot` (migration 030/031),
+          il ne voit plus « le contenu de cet éditeur » : il voit la DERNIÈRE
+          VERSION PUBLIÉE. Une modification enregistrée mais non publiée reste
+          invisible — c'est le flux voulu (TDR §8), mais l'ancien libellé
+          promettait autre chose. Un repère faux est pire que pas de repère :
+          le restaurateur publierait en croyant que c'est déjà en ligne.
+
+          On ne peut pas afficher « des modifications restent à publier » :
+          l'éditeur ne compare pas son état local à la version publiée. La
+          formulation est donc choisie pour être VRAIE en toutes circonstances.
         */}
         <span
           title={isPublished
-            ? 'Les visiteurs voient le contenu de cet editeur.'
+            ? "Les visiteurs voient la dernière version publiée. Vos modifications ne seront visibles qu'après « Publier sur le site »."
             : 'Les visiteurs voient encore l\'ancien site. Publiez pour appliquer vos modifications.'}
           style={{
             fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 100,
             background: isPublished ? `${t.primary}14` : 'rgba(220,38,38,0.08)',
             color: isPublished ? t.primary : '#b91c1c',
             border: `1px solid ${isPublished ? `${t.primary}33` : 'rgba(220,38,38,0.2)'}`,
+            whiteSpace: 'nowrap',
           }}
         >
           {isPublished ? '● En ligne' : '○ Brouillon — non visible sur le site'}
         </span>
+        {isPublished && (
+          <span style={{ fontSize: 11, color: t.muted, whiteSpace: 'nowrap' }}>
+            Les visiteurs voient la dernière version publiée.
+          </span>
+        )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           {/*
@@ -154,9 +169,10 @@ export function PageEditor({
             {editor.saving ? 'Sauvegarde…' : 'Sauvegarder'}
           </button>
           {/*
-            Publier / depublier. C'est L'ACTION qui fait basculer le site public :
-            tant que la page est en brouillon, la RLS ne sert aucune section aux
-            visiteurs et ils voient encore l'ancien rendu.
+            Publier / depublier. C'est L'ACTION qui fait basculer le site public.
+            Tant que la page est en brouillon, elle est absente de la lecture
+            publique (`pages_published_read` ne sert que les pages publiées) :
+            les visiteurs gardent donc l'ancien rendu.
           */}
           <button onClick={handlePublish} disabled={publishing || editor.saving} title={
             isPublished
