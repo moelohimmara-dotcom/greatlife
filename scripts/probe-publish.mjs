@@ -1,4 +1,43 @@
 /**
+ * ⚠️⚠️  CE SCRIPT ECRIT DANS LA BASE DE PRODUCTION.  ⚠️⚠️
+ *
+ * Il est REFUSE par defaut. Pour l'executer, il faut poser explicitement
+ * `GLIFE_ALLOW_PROD_WRITE=1` — geste d'operateur, jamais une routine.
+ *
+ * Ce qu'il ecrit, precisement :
+ *   1. remet la page en `draft` et efface `published_snapshot` (PATCH direct,
+ *      avec la cle de service) ;
+ *   2. appelle `publishPage` — donc archive une version, ecrit l'instantane et
+ *      repasse la page en `published`.
+ *
+ * POURQUOI CE GARDE-FOU EXISTE
+ * Une version precedente s'executait sans precaution. Resultat mesure en
+ * production : `pages.published_snapshot` ne correspondait plus a
+ * `page_versions[1].snapshot`, et `published_at` ne correspondait a rien — un
+ * etat publie qu'aucun bouton n'aurait produit. Le critere 9 de
+ * `docs/10_PUBLISHING_VERSIONING.md` §10 interdit a un script de verification
+ * d'ecrire en production. Un script qui fabrique l'etat qu'il constate ne
+ * verifie rien.
+ *
+ * Un controle de la publication doit aujourd'hui se faire sur une base de
+ * recette, ou par une action humaine assumee — pas en silence sur la
+ * production.
+ */
+if (process.env.GLIFE_ALLOW_PROD_WRITE !== '1') {
+  console.log('='.repeat(66))
+  console.log('REFUS : ce script ECRIT dans la base de PRODUCTION.')
+  console.log('='.repeat(66))
+  console.log('Il remet la page en brouillon, efface l instantane publie,')
+  console.log('puis republie. Cela peut rendre le contenu en ligne incoherent')
+  console.log('avec l historique des versions.')
+  console.log('')
+  console.log('Pour l executer quand meme, et en connaissance de cause :')
+  console.log('  $env:GLIFE_ALLOW_PROD_WRITE=1 ; node scripts/probe-publish.mjs')
+  console.log('='.repeat(66))
+  process.exit(2)
+}
+
+/**
  * PREUVE du chemin d'ECRITURE réel : `publishPage` (bouton « Publier »).
  *
  * Appelle la VRAIE fonction du projet, avec une session d'administration, puis

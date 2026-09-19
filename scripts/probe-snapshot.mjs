@@ -1,16 +1,27 @@
 /**
- * PREUVE de bout en bout du chemin de LECTURE publique — sans navigateur.
+ * SONDE DU CHEMIN PUBLIC — STRICTEMENT EN LECTURE SEULE.
  *
- * 1. lit la page et ses sections en base (clé de service) ;
- * 2. construit l'instantané avec la fonction RÉELLE du projet (`buildSnapshot`) :
- *    le format est donc celui du code, pas une copie qui pourrait diverger ;
- * 3. l'écrit dans `pages.published_snapshot` et publie la page (une écriture) ;
- * 4. relit par `fetchPublicPageWithSections` AVEC LA CLÉ ANONYME — donc
- *    exactement comme un visiteur, RLS comprise.
+ * ⚠️ CE FICHIER A ECRIT EN PRODUCTION, ET C'ETAIT UN DEFAUT
+ * Une version precedente faisait :
+ *     PATCH pages?id=eq.<id> { status:'published', published_snapshot: snapshot }
+ * avec la cle de SERVICE. Consequence mesuree : l'etat publie en production ne
+ * correspondait plus a la version archivee (`pages.published_snapshot` !=
+ * `page_versions[1].snapshot`), et `published_at` ne correspondait a rien.
+ * Le critere 9 de `docs/10_PUBLISHING_VERSIONING.md` §10 l'interdit :
+ * « Aucune ecriture n'est effectuee sur la base de production par un script de
+ * verification. » Un script de verification qui ecrit ne verifie plus : il
+ * fabrique l'etat qu'il pretend constater.
  *
- * Ce que ça prouve : le public lit bien l'INSTANTANÉ, et la RLS `anon` suffit.
- * Ce que ça ne prouve pas : le clic « Publier » (chemin d'écriture de
- * `publishPage`), vérifié séparément.
+ * Cette version ne fait que des `GET` et des appels de lecture. Elle echoue si
+ * un ecrivain est necessaire : c'est volontaire.
+ *
+ * Ce qu'elle verifie :
+ *   1. l'instantane publie est bien construit et relisible (fonctions reelles) ;
+ *   2. ce que le public recoit correspond EXACTEMENT a l'instantane publie —
+ *      c'est la preuve que le public lit l'etat fige, et non la table de travail ;
+ *   3. le brouillon est illisible par un visiteur anonyme (TDR §22) ;
+ *   4. le brouillon DIVERGE de l'instantane : la preuve que les deux etats sont
+ *      bien separes, et non confondus par hasard.
  *
  * Usage : node scripts/probe-snapshot.mjs
  */
@@ -25,7 +36,6 @@ mkdirSync(WORK, { recursive: true })
 const require = createRequire(import.meta.url)
 const { build } = require('esbuild')
 
-// --- Variables d'environnement du projet -----------------------------------
 const ENV = {}
 for (const line of readFileSync(`${ROOT}/.env`, 'utf8').split(/\r?\n/)) {
   if (line.includes('=') && !line.startsWith('#')) {
@@ -51,8 +61,6 @@ async function bundleFile(name, contents, define) {
   return require(outfile)
 }
 
-// Le chemin PUBLIC est bundlé AVEC la clé anonyme : c'est ce que voit un
-// visiteur. Le bundle d'écriture reste sans clé (on écrit en REST direct).
 const pub = await bundleFile(
   'public-read',
   `export { fetchPublicPageWithSections } from '@/cms/repository/sections'`,
@@ -60,22 +68,33 @@ const pub = await bundleFile(
 )
 const model = await bundleFile(
   'snapshot-model',
-  `export { buildSnapshot, parseSnapshot, SNAPSHOT_FORMAT_VERSION } from '@/cms/model/publishing'`,
+  `export { buildSnapshot, parseSnapshot } from '@/cms/model/publishing'`,
   { 'import.meta.env': '{}' },
 )
 
-// --- Accès REST (clé de service) -------------------------------------------
-async function rest(path, method = 'GET', body, prefer) {
-  const headers = { apikey: SVC, Authorization: `Bearer ${SVC}`, 'Content-Type': 'application/json' }
-  if (prefer) headers.Prefer = prefer
+/** LECTURE seule. Toute methode d'ecriture est refusee ici, par principe. */
+async function lecture(path, key = SVC) {
   const r = await fetch(`${URL}/rest/v1/${path}`, {
-    method, headers, body: body ? JSON.stringify(body) : undefined,
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
   })
-  const text = await r.text()
-  if (!r.ok) throw new Error(`REST ${r.status} ${path} :: ${text.slice(0, 200)}`)
-  return text ? JSON.parse(text) : null
+  const t = await r.text()
+  if (!r.ok) throw new Error(`GET ${path} -> ${r.status} :: ${t.slice(0, 200)}`)
+  return t ? JSON.parse(t) : null
 }
 
+const egaux = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+console.log('='.repeat(66))
+console.log('1. ETAT DE TRAVAIL (brouillon) — lecture seule')
+console.log('='.repeat(66))
+const page = (await lecture('pages?select=id,slug,status,published_at,published_snapshot'))[0]
+const brouillon = await lecture('page_sections?select=*&order=position')
+console.log(`  page : slug="${page.slug}" | statut=${page.status} | published_at=${page.published_at}`)
+console.log(`  sections en travail : ${brouillon.length}`)
+
+console.log('\n' + '='.repeat(66))
+console.log('2. INSTANTANE PUBLIE — construit et relu par les fonctions REELLES')
+console.log('='.repeat(66))
 const mapPage = (r) => ({
   id: r.id, slug: r.slug ?? '', title: r.title_i18n ?? {}, status: r.status ?? 'draft',
   sortOrder: r.sort_order ?? 0, seo: r.seo ?? {}, publishedAt: r.published_at ?? null,
@@ -86,124 +105,65 @@ const mapSection = (r) => ({
   position: r.position ?? 0, visible: r.visible !== false, anchor: r.anchor ?? null,
   content: r.content ?? {}, settings: r.settings ?? {}, createdAt: '', updatedAt: '',
 })
-
-console.log('='.repeat(66))
-console.log('1. LECTURE EN BASE')
-console.log('='.repeat(66))
-
-const pages = await rest('pages?select=*')
-const page = mapPage(pages[0])
-console.log(`  page : slug="${page.slug}" statut=${page.status}`)
-
-const sectionRows = await rest('page_sections?select=*&order=position')
-const sections = sectionRows.map(mapSection)
-console.log(`  sections : ${sections.length}`)
-
-console.log('\n' + '='.repeat(66))
-console.log('2. CONSTRUCTION DE L\'INSTANTANE (fonction du projet)')
-console.log('='.repeat(66))
-
-const snapshot = model.buildSnapshot(page, sections, {
-  status: 'published',
-  publishedAt: new Date().toISOString(),
+const reconstruit = model.buildSnapshot(mapPage(page), brouillon.map(mapSection), {
+  status: 'published', publishedAt: page.published_at ?? new Date().toISOString(),
 })
-console.log(`  formatVersion : ${snapshot.formatVersion}`)
-console.log(`  sections figees : ${snapshot.sections.length}`)
-console.log(`  statut fige : ${snapshot.page.status}`)
-const relu = model.parseSnapshot(snapshot)
+const relu = model.parseSnapshot(reconstruit)
+console.log(`  formatVersion : ${reconstruit.formatVersion} | sections : ${reconstruit.sections.length}`)
 console.log(`  relecture du format : ${relu.ok ? 'OK' : 'REFUSEE — ' + relu.error}`)
 
-console.log('\n' + '='.repeat(66))
-console.log('3. ECRITURE (instantané + publication, une seule ecriture)')
-console.log('='.repeat(66))
-
-await rest(`pages?id=eq.${page.id}`, 'PATCH', {
-  status: 'published',
-  published_snapshot: snapshot,
-}, 'return=minimal')
-console.log('  ecrit.')
-
-const check = await rest(`pages?select=status,published_snapshot&id=eq.${page.id}`)
-console.log(`  statut en base : ${check[0].status}`)
-console.log(`  instantane en base : ${check[0].published_snapshot ? 'present (' +
-  JSON.stringify(check[0].published_snapshot).length + ' octets)' : 'NULL'}`)
+const enBase = page.published_snapshot
+console.log(`  instantane stocke en base : ${enBase ? JSON.stringify(enBase).length + ' octets' : 'NULL'}`)
 
 console.log('\n' + '='.repeat(66))
-console.log('4. LECTURE PUBLIQUE (cle ANONYME, comme un visiteur)')
+console.log('3. LECTURE PUBLIQUE (cle ANONYME, comme un visiteur)')
 console.log('='.repeat(66))
-
 const res = await pub.fetchPublicPageWithSections('')
-// Le public ne voit que les sections VISIBLES : on compare aux visibles figées,
-// pas au total (une section masquée ne doit jamais être servie — TDR §22).
-const visibles = snapshot.sections.filter((s) => s.visible).length
-if (!res.ok) {
-  console.log('  ECHEC :', res.error)
-  process.exitCode = 1
-} else if (!res.data) {
-  console.log('  aucune page publiee -> rendu historique')
+if (!res.ok || !res.data) {
+  console.log('  le public ne recoit pas de contenu CMS :', res.ok ? 'aucune page publiee' : res.error)
   process.exitCode = 1
 } else {
-  console.log(`  page : "${res.data.page.slug}"`)
-  console.log(`  sections servies : ${res.data.sections.length} (visibles figées : ${visibles})`)
-  const types = res.data.sections.map((s) => s.type)
-  console.log(`  types : ${types.join(', ')}`)
-  const titre = res.data.sections[0]?.content?.title
-  console.log(`  titre de la 1re section : ${JSON.stringify(titre).slice(0, 90)}`)
-  const ok = res.data.sections.length === visibles
-  console.log(`\n  >>> le public lit l'INSTANTANE : ${ok ? 'OUI' : 'NON'}`)
-  if (!ok) process.exitCode = 1
-}
+  const servies = res.data.sections
+  console.log(`  sections servies : ${servies.length}`)
+  console.log(`  types : ${servies.map((s) => s.type).join(', ')}`)
 
-console.log('\n' + '='.repeat(66))
-console.log('5. FUITE DU BROUILLON (ce que la migration 031 doit fermer)')
-console.log('='.repeat(66))
+  // --- 3. Le public sert-il EXACTEMENT l'instantane stocke ? ----------------
+  const attendues = (enBase?.sections ?? [])
+    .filter((s) => s.visible)
+    .sort((a, b) => a.position - b.position)
+  const identiques = egaux(
+    servies.map((s) => ({ type: s.type, position: s.position, content: s.content })),
+    attendues.map((s) => ({ type: s.type, position: s.position, content: s.content })),
+  )
+  console.log(`\n  >>> le public sert EXACTEMENT l'instantane stocke : ${identiques ? 'OUI' : 'NON'}`)
+  if (!identiques) process.exitCode = 1
 
-// Lecture ANONYME directe de la table de travail : c'est le trou. Tant que la
-// policy `sections_public_read` existe, le visiteur lit le BROUILLON.
-const anonSections = await (async () => {
-  const r = await fetch(`${URL}/rest/v1/page_sections?select=id,type,visible`, {
-    headers: { apikey: ANON, Authorization: `Bearer ${ANON}` },
+  // --- 4. Le brouillon diverge-t-il de l'instantane ? ----------------------
+  // S'ils etaient identiques, la preuve d'isolation ne serait pas concluante :
+  // on ne pourrait pas distinguer « lit l'instantane » de « lit le brouillon ».
+  const divergentes = brouillon.filter((s) => {
+    const inst = (enBase?.sections ?? []).find((x) => x.id === s.id)
+    return inst && !egaux(inst.content, s.content ?? {})
   })
-  return { status: r.status, body: await r.text() }
-})()
-const anonCount = anonSections.status === 200 ? JSON.parse(anonSections.body).length : 0
-console.log(`  sections lisibles par anon dans page_sections : ${anonCount}`)
-console.log(`  >>> FUITE ACTIVE : ${anonCount > 0 ? 'OUI — 031 necessaire' : 'non'}`)
+  console.log(`  sections ou le brouillon diverge de l'instantane : ${divergentes.length}` +
+    ` / ${brouillon.length}`)
+  if (divergentes.length > 0) {
+    const types = divergentes.map((s) => s.type).join(', ')
+    console.log(`  (${types})`)
+    console.log(`  >>> preuve par divergence : le public sert bien l'etat FIGE, pas le travail`)
+  } else {
+    console.log(`  >>> divergence nulle : la lecture croisee ne prouve rien de plus ici`)
+  }
+}
 
 console.log('\n' + '='.repeat(66))
-console.log('6. ISOLATION DU BROUILLON — le coeur du TDR §22')
+console.log('5. FUITE DU BROUILLON (TDR §22) — lecture ANONYME de la table de travail')
 console.log('='.repeat(66))
+const anon = await lecture('page_sections?select=id', ANON)
+console.log(`  sections lisibles par un visiteur anonyme : ${Array.isArray(anon) ? anon.length : anon}`)
+console.log(`  >>> brouillon ferme au public : ${Array.isArray(anon) && anon.length === 0 ? 'OUI' : 'NON'}`)
+if (!Array.isArray(anon) || anon.length !== 0) process.exitCode = 1
 
-// On modifie le BROUILLON (la table de travail) et on verifie que le visiteur
-// ne voit RIEN changer. C'est exactement ce que le CMS doit garantir : le
-// restaurateur edite librement, le public ne voit que le publie.
-const hero = sections.find((s) => s.type === 'hero')
-if (!hero) {
-  console.log('  aucune section hero — test ignore')
-} else {
-  const avant = await pub.fetchPublicPageWithSections('')
-  const titreAvant = avant.data?.sections.find((s) => s.type === 'hero')?.content?.title
-  console.log(`  titre servi AVANT modif : ${JSON.stringify(titreAvant).slice(0, 70)}`)
-
-  const modifie = {
-    ...hero.content,
-    title: { fr: 'BROUILLON MODIFIE ' + Date.now() },
-  }
-  await rest(`page_sections?id=eq.${hero.id}`, 'PATCH', { content: modifie }, 'return=minimal')
-  console.log('  brouillon modifie en base.')
-
-  const apres = await pub.fetchPublicPageWithSections('')
-  const titreApres = apres.data?.sections.find((s) => s.type === 'hero')?.content?.title
-  console.log(`  titre servi APRES modif : ${JSON.stringify(titreApres).slice(0, 70)}`)
-
-  const inchange = JSON.stringify(titreAvant) === JSON.stringify(titreApres)
-  console.log(`\n  >>> le BROUILLON ne fuit PAS vers le visiteur : ${inchange ? 'OUI' : 'NON'}`)
-  if (!inchange) {
-    console.log('      ECHEC : le visiteur voit le brouillon.')
-    process.exitCode = 1
-  }
-
-  // Remise en etat du brouillon
-  await rest(`page_sections?id=eq.${hero.id}`, 'PATCH', { content: hero.content }, 'return=minimal')
-  console.log('  brouillon restaure.')
-}
+console.log('\n' + '='.repeat(66))
+console.log('AUCUNE ECRITURE N\'A ETE EFFECTUEE — cette sonde ne fait que lire.')
+console.log('='.repeat(66))
