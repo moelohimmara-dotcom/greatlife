@@ -168,7 +168,7 @@ Filets existants dans le dépôt :
 | Commande | Portée |
 |---|---|
 | `npm run build` | typecheck strict + build de production |
-| `npm run verify:lot1` | conformité registre/base, isomorphie du renderer, **non-régression** du rendu vs révision fixe `9e5efb7`, consommation du contenu CMS |
+| `npm run verify:lot1` | conformité registre/base, isomorphie du renderer, **non-régression** du rendu vs révision fixe `0528c544` (ex-`9e5efb7`, SHA recalculé par la réécriture d'historique), consommation du contenu CMS |
 | `npm run lint` | ESLint |
 
 **Aucun framework de test n'est installé** (0 fichier de test, aucune dépendance de test). Tant que ce n'est pas traité (TDR §39 doc 14, §40 Lot 10), ne jamais présenter un lot comme « testé » sur la seule base du build.

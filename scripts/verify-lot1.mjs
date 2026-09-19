@@ -46,8 +46,22 @@ const SELFTEST = process.argv.includes('--selftest')
  * Dernier commit AVANT le branchement des composants sur le CMS.
  * C'est la seule référence qui donne un sens au contrôle de non-régression :
  * elle porte le rendu historique du site public.
+ *
+ * ⚠️ CE SHA A CHANGE SANS QUE LE CONTENU CHANGE.
+ * L'historique a été réécrit (`git filter-repo`) pour retirer un mot de passe
+ * committé par erreur : TOUS les SHA ont été recalculés. L'ancienne valeur
+ * `9e5efb7` n'existe plus et faisait échouer ce contrôle.
+ *
+ * La référence a été retrouvée par son ARBRE, pas par son message :
+ * l'ancien `9e5efb7` et l'actuel `0528c544` portent tous deux l'arbre
+ * `11b9928767a22d9008957f3d60585512731a1913`. Le rendu comparé est donc
+ * rigoureusement le même — la preuve de non-régression reste valable.
+ *
+ * Si l'historique est réécrit de nouveau, il faudra refaire cette recherche :
+ *   git log --all --format='%H|%T|%s'
+ * et retrouver la ligne portant cet arbre.
  */
-const PRE_CMS_WIRING_REF = '9e5efb7'
+const PRE_CMS_WIRING_REF = '0528c5443c6107ffcfb03bd6eab697138ca6b9bc'
 const BASE_REF = process.env.BASE_REF ?? PRE_CMS_WIRING_REF
 
 const require = createRequire(`${ROOT}/package.json`)
