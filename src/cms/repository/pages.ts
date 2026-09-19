@@ -42,6 +42,76 @@ function mapPage(row: PageRow): Page {
 const COLUMNS =
   'id, slug, title_i18n, status, sort_order, seo, published_at, created_at, updated_at, updated_by'
 
+/**
+ * Publie une page EN UNE SEULE écriture : statut, date, et instantané publié.
+ *
+ * ⚠️ POURQUOI ATOMIQUE, ET PAS DEUX APPELS SUCCESSIFS
+ * Le public bascule sur le rendu CMS dès que `status = 'published'`. Si le
+ * statut était écrit avant l'instantané, il existerait un court instant où la
+ * page est publiée avec un instantané `NULL` : le visiteur ne verrait RIEN.
+ * Un seul `UPDATE` supprime cette fenêtre — les deux colonnes changent dans la
+ * même transaction.
+ *
+ * Le chemin d'édition normale (`updatePage`) n'écrit JAMAIS l'instantané :
+ * modifier un brouillon ne doit pas le publier (TDR §22, §8).
+ */
+export async function publishPageWithSnapshot(
+  id: string,
+  snapshot: unknown,
+): Promise<CmsResult<Page>> {
+  const client = requireClient()
+  if (!client.ok) return client
+
+  try {
+    const { data, error } = await client.data
+      .from(TABLE)
+      .update({
+        status: 'published',
+        published_at: new Date().toISOString(),
+        published_snapshot: snapshot,
+      })
+      .eq('id', id)
+      .select(COLUMNS)
+      .single()
+
+    if (error) return cmsErr(describeError(error))
+    return cmsOk(mapPage(data as PageRow))
+  } catch (err) {
+    return cmsErr(describeError(err))
+  }
+}
+
+/**
+ * Récupère une page publiée ET son instantané — usage public.
+ *
+ * L'instantané est l'état FIGÉ au moment de la publication. Le lire plutôt que
+ * les tables de travail est ce qui garantit qu'un brouillon ne fuite jamais
+ * (TDR §22) : `page_sections` peut être modifié librement, le public ne voit
+ * que l'instantané.
+ */
+export async function fetchPublishedPageSnapshot(
+  slug: string,
+): Promise<CmsResult<{ page: Page; snapshot: unknown } | null>> {
+  const client = requireClient()
+  if (!client.ok) return client
+
+  try {
+    const { data, error } = await client.data
+      .from(TABLE)
+      .select(`${COLUMNS}, published_snapshot`)
+      .eq('slug', normalizeSlug(slug))
+      .eq('status', 'published')
+      .maybeSingle()
+
+    if (error) return cmsErr(describeError(error))
+    if (!data) return cmsOk(null)
+    const row = data as PageRow & { published_snapshot?: unknown }
+    return cmsOk({ page: mapPage(row), snapshot: row.published_snapshot ?? null })
+  } catch (err) {
+    return cmsErr(describeError(err))
+  }
+}
+
 /** Normalise un slug : minuscules, sans barre oblique superflue. */
 export function normalizeSlug(slug: string): string {
   return slug.trim().toLowerCase().replace(/^\/+|\/+$/g, '')

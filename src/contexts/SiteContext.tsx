@@ -9,7 +9,6 @@ import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, sa
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 import { fetchAllPages as fetchAllPagesCms } from '@/cms/repository/pages'
-import { fetchSectionsForPage as fetchSectionsForPageCms } from '@/cms/repository/sections'
 
 export interface SiteContent {
   slogan: string
@@ -396,16 +395,21 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCmsSections = async () => {
     try {
-      // Pour un visiteur anonyme, la RLS ne renvoie que les pages publiées et
-      // les sections visibles. Pour un administrateur, tout. Ce canal sert de
-      // SIGNAL de rafraîchissement : le rendu, lui, repasse par
-      // `useCmsSections`, qui interroge la page publiée.
+      /*
+        SIGNAL de rafraîchissement, pas source de rendu.
+
+        `page_sections` est désormais la table de TRAVAIL : on ne la lit plus
+        ici. Le rendu public repasse par `useCmsSections`, qui lit l'instantané
+        figé à la publication. Ce canal ne fait que signaler « quelque chose a
+        changé » pour déclencher cette relecture.
+
+        On se contente donc de l'identité de la page publiée : si elle existe,
+        `useCmsSections` ira chercher son instantané ; sinon, rendu historique.
+      */
       const pagesRes = await fetchAllPagesCms()
       if (!pagesRes.ok) return
       const published = pagesRes.data.find((p) => p.status === 'published')
-      if (!published) { setCmsSections([]); return }
-      const sectionsRes = await fetchSectionsForPageCms(published.id, { includeHidden: true })
-      if (sectionsRes.ok) setCmsSections(sectionsRes.data)
+      setCmsSections(published ? [published] : [])
     } catch { /* CMS pas encore prêt */ }
   }
 
@@ -437,9 +441,12 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'media_assets' }, () => { if (active) refreshMedia() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { if (active) refreshOrders() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => { if (active) refreshReservations() })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'page_sections' }, () => { if (active) refreshCmsSections() })
-      // `pages` porte le STATUT de publication : c'est lui qui decide si le site
-      // public rend le CMS ou garde son rendu historique (TDR §22).
+      // `pages` porte le STATUT de publication ET l'instantané publié : c'est
+      // donc LA table qui décide de ce que voit le visiteur (TDR §22).
+      //
+      // On n'écoute plus `page_sections` : c'est la table de TRAVAIL. L'écouter
+      // ferait recharger le site public à chaque frappe de l'éditeur, pour
+      // relire un contenu qui n'est pas encore publié.
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pages' }, () => { if (active) refreshCmsSections() })
       .subscribe()
     return () => {

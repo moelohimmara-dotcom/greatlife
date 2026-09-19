@@ -10,7 +10,8 @@
 import type { PageSection, SectionContent, SectionSettings, SectionType } from '../model/section'
 import type { Page } from '../model/page'
 import { asObject, cmsErr, cmsOk, describeError, requireClient, type CmsResult } from './client'
-import { fetchPublishedPage } from './pages'
+import { fetchPublishedPageSnapshot } from './pages'
+import { parseSnapshot } from '../model/publishing'
 
 const TABLE = 'page_sections'
 
@@ -75,21 +76,63 @@ export async function fetchSectionsForPage(
 }
 
 /**
- * Charge une page **publiée** et ses sections visibles.
- * C'est le point d'entrée du renderer public. La RLS filtre déjà côté base ;
- * le filtre `visible` est appliqué ici pour que l'intention soit explicite.
+ * Charge une page **publiée** et ses sections — point d'entrée du renderer public.
+ *
+ * ⚠️ CE QUI A CHANGÉ (et pourquoi)
+ * Cette fonction lisait `page_sections` en direct. Depuis que `page_sections` est
+ * la table de TRAVAIL (l'éditeur y écrit en continu), ce chemin servait le
+ * BROUILLON au visiteur dès que la page était publiée — exactement ce que le
+ * TDR §22 interdit. C'était aussi ce qui obligeait à retirer la policy
+ * `sections_public_read` : le seul rempart était la RLS, donc l'édition
+ * devenait impossible sans fuiter.
+ *
+ * Elle lit désormais l'INSTANTANÉ figé à la publication
+ * (`pages.published_snapshot`). `page_sections` redevient une table de travail,
+ * modifiable librement : le public ne voit que ce qui a été publié.
+ *
+ * Un instantané absent ou illisible renvoie `null` — donc le rendu historique.
+ * Jamais une page vide : mieux vaut l'ancien site qu'un écran blanc.
  */
 export async function fetchPublicPageWithSections(
   slug: string,
 ): Promise<CmsResult<{ page: Page; sections: PageSection[] } | null>> {
-  const pageResult = await fetchPublishedPage(slug)
-  if (!pageResult.ok) return pageResult
-  if (!pageResult.data) return cmsOk(null)
+  const result = await fetchPublishedPageSnapshot(slug)
+  if (!result.ok) return result
+  if (!result.data) return cmsOk(null)
 
-  const sectionsResult = await fetchSectionsForPage(pageResult.data.id, { includeHidden: false })
-  if (!sectionsResult.ok) return sectionsResult
+  const parsed = parseSnapshot(result.data.snapshot)
+  if (!parsed.ok) {
+    // Une page publiée sans instantané exploitable ne doit pas produire un site
+    // vide : on la traite comme non publiée et le rendu historique prend le
+    // relais. Le cas est signalé, jamais silencieux.
+    console.warn('[CMS] page publiée sans instantané exploitable :', parsed.error)
+    return cmsOk(null)
+  }
 
-  return cmsOk({ page: pageResult.data, sections: sectionsResult.data })
+  const { page, sections } = parsed.snapshot
+  return cmsOk({
+    // Le titre et le SEO viennent de l'INSTANTANÉ, pas de la ligne courante :
+    // ce sont des données que le restaurateur peut modifier dans l'éditeur, et
+    // le public ne doit voir que la version publiée (TDR §22). L'identifiant et
+    // les dates, eux, n'existent que sur la ligne.
+    page: { ...result.data.page, slug: page.slug, title: page.title, seo: page.seo },
+    sections: sections
+      // Le public ne voit que les sections visibles (TDR §22).
+      .filter((s) => s.visible)
+      .map((s) => ({
+        id: s.id,
+        pageId: result.data!.page.id,
+        type: s.type as PageSection['type'],
+        variant: s.variant,
+        position: s.position,
+        visible: s.visible,
+        anchor: s.anchor,
+        content: s.content,
+        settings: s.settings,
+        createdAt: '',
+        updatedAt: '',
+      })),
+  })
 }
 
 export interface SectionInput {
