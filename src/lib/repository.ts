@@ -8,6 +8,11 @@ const MESSAGES_TABLE = 'messages'
 const BLOG_TABLE = 'blog_posts'
 const RESERVATIONS_TABLE = 'reservations'
 const CONTENT_KEY = 'site_config'
+/**
+ * Clé de la ligne de réglages que le SITE PUBLIC lit pour les coordonnées.
+ * Migration `024` ; `docs/04_CONTENT_MODEL.md`.
+ */
+const RESTAURANT_KEY = 'restaurant'
 
 export interface SiteConfig {
   content: SiteContent
@@ -167,6 +172,71 @@ export async function fetchContent(): Promise<{
   }
 }
 
+/**
+ * Écrit les coordonnées dans la ligne que le SITE PUBLIC lit en premier.
+ *
+ * DÉFAUT FERMÉ ICI, ET IL ÉTAIT BLOQUANT
+ * L'écran « Réglages globaux » annonce « Identité et coordonnées du restaurant,
+ * appliquées sur tout le site ». Il n'écrivait pourtant que `site_config` —
+ * tandis que le site public lit `site_content.restaurant` EN PREMIER
+ * (`Localisation.tsx`, et le pied de page depuis le 2026-09-20).
+ *
+ * Conséquence mesurée : `restaurant.phone` valant `+224 000 00 00 00` (valeur de
+ * remplacement, non vide), il l'emportait TOUJOURS sur ce que le restaurateur
+ * venait de saisir. **Il ne pouvait pas changer son numéro de téléphone.** Et
+ * `saveSetting`, le seul écrivain possible de cette ligne, était exporté sans
+ * être appelé nulle part (`npm run` : aucun appelant dans `src/`).
+ *
+ * Les deux lignes sont écrites : `site_config` continue d'alimenter l'écran
+ * d'administration, `restaurant` alimente le site. Les garder cohérentes vaut
+ * mieux que de laisser diverger silencieusement deux copies d'une même donnée
+ * (TDR §16). La consolidation sur une seule ligne est au backlog.
+ *
+ * `address` et `hours` sont BILINGUES dans cette ligne : on fusionne dans la
+ * forme existante au lieu de l'aplatir, sinon une éventuelle traduction
+ * anglaise serait détruite — c'est exactement le défaut corrigé par la
+ * migration `032` (revue du 2026-09-19, I6).
+ */
+async function ecrireCoordonneesCanoniques(
+  sb: NonNullable<ReturnType<typeof getSupabase>>,
+  content: SiteContent,
+): Promise<SaveResult> {
+  const { data: existant, error: lectureErr } = await sb
+    .from(CONTENT_TABLE)
+    .select('value')
+    .eq('key', RESTAURANT_KEY)
+    .maybeSingle()
+  if (lectureErr) return { ok: false, error: errMsg(lectureErr) }
+
+  const actuel = (existant?.value ?? {}) as Record<string, unknown>
+  const bilingue = (cle: string, valeur: string): Record<string, unknown> => {
+    const avant = actuel[cle]
+    const base =
+      avant && typeof avant === 'object' && !Array.isArray(avant)
+        ? (avant as Record<string, unknown>)
+        : {}
+    return { ...base, fr: valeur }
+  }
+
+  const { error } = await sb.from(CONTENT_TABLE).upsert(
+    {
+      key: RESTAURANT_KEY,
+      value: {
+        ...actuel,
+        address: bilingue('address', content.address),
+        hours: bilingue('hours', content.hours),
+        phone: content.phone,
+        emailContact: content.emailContact,
+        emailReservation: content.emailReservation,
+      },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'key' },
+  )
+  if (error) return { ok: false, error: errMsg(error) }
+  return { ok: true }
+}
+
 export async function saveContent(content: SiteContent): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
@@ -205,6 +275,17 @@ export async function saveContent(content: SiteContent): Promise<SaveResult> {
       { onConflict: 'key' }
     )
     if (error) return { ok: false, error: errMsg(error) }
+
+    /*
+      LA LIGNE QUE LE SITE PUBLIC LIT, ET QUI N'ÉTAIT JAMAIS ÉCRITE.
+      Sans cet appel, l'écran « Réglages globaux » enregistrait les coordonnées
+      à un endroit que le site ne lit pas — et `restaurant.phone`, valant la
+      valeur de remplacement `+224 000 00 00 00` (non vide), l'emportait.
+      Le restaurateur ne pouvait donc PAS changer son numéro.
+    */
+    const coordonnees = await ecrireCoordonneesCanoniques(sb, content)
+    if (!coordonnees.ok) return coordonnees
+
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
