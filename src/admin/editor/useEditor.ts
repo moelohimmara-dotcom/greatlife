@@ -54,7 +54,7 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
   const [state, setState] = useState<EditorState>({
     sections: initialSections,
     removedIds: [],
-    selected: null,
+    selected: initialSections.length > 0 ? 0 : null,
     locale: 'fr',
     saving: false,
     error: null,
@@ -154,7 +154,11 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
         ...s,
         sections,
         removedIds,
-        selected: s.selected === index ? null : (s.selected !== null && s.selected > index ? s.selected - 1 : s.selected),
+        selected: sections.length === 0
+          ? null
+          : s.selected === index
+            ? Math.min(index, sections.length - 1)
+            : (s.selected !== null && s.selected > index ? s.selected - 1 : s.selected),
       }
     })
   }, [])

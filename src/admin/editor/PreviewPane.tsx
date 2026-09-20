@@ -6,7 +6,11 @@
  * Bureau / Téléphone : l'iframe a la LARGEUR RÉELLE de l'appareil
  * (1200 px / 390 px), puis on réduit à l'échelle pour tenir dans la colonne.
  * Les mises en page (grille, écran partagé) réagissent donc comme sur le
- * site public — plus comme une colonne trop étroite qui les repliait toutes.
+ * site public.
+ *
+ * À chaque changement de mise en page, on ramène le défilement en haut :
+ * c'est là que le choix se voit (bannière). Rester sur « Notre histoire »
+ * donnait l'impression que rien ne bougeait.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -15,7 +19,7 @@ import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import { PageRenderer } from '@/cms/renderer/PageRenderer'
-import type { PageLayout } from '@/cms/model/page-layout'
+import { pageLayoutLabel, type PageLayout } from '@/cms/model/page-layout'
 import { CartProvider } from '@/contexts/CartContext'
 import { useSite } from '@/contexts/SiteContext'
 import { anneauFocus, CIBLE } from './chrome'
@@ -51,27 +55,17 @@ function PreviewShell({ children }: { children: React.ReactNode }) {
   return <div style={{ ...rootStyle, minHeight: '100%' }}>{children}</div>
 }
 
-export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: PreviewPaneProps) {
-  const { theme: t } = useSite()
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const sceneRef = useRef<HTMLDivElement>(null)
-  const [ready, setReady] = useState(0)
-  const [cadre, setCadre] = useState<CadreApercu>('bureau')
-  const [scene, setScene] = useState({ w: 0, h: 0 })
+function remplirIframe(iframe: HTMLIFrameElement, locale: string): HTMLDivElement | null {
+  const doc = iframe.contentDocument
+  if (!doc) return null
 
-  useEffect(() => {
-    if (!iframeRef.current) return
-    const doc = iframeRef.current.contentDocument
-    if (!doc) return
+  const feuilles = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map((n) => (n as HTMLLinkElement).href)
+    .filter(Boolean)
+  const polices = (document.getElementById('greatlife-fonts') as HTMLLinkElement | null)?.href
 
-    const feuilles = [...document.querySelectorAll('link[rel="stylesheet"]')]
-      .map((n) => (n as HTMLLinkElement).href)
-      .filter(Boolean)
-    const polices = (document.getElementById('greatlife-fonts') as HTMLLinkElement | null)?.href
-
-    doc.open()
-    doc.write(`<!DOCTYPE html>
+  doc.open()
+  doc.write(`<!DOCTYPE html>
 <html lang="${locale}">
 <head>
   <meta charset="UTF-8">
@@ -81,17 +75,33 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #preview-root { min-height: 100%; }
+    html { overflow-y: scroll; }
   </style>
 </head>
 <body>
   <div id="preview-root"></div>
 </body>
 </html>`)
-    doc.close()
+  doc.close()
+  return doc.getElementById('preview-root') as HTMLDivElement | null
+}
 
-    const root = doc.getElementById('preview-root')
+export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: PreviewPaneProps) {
+  const { theme: t } = useSite()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const sceneRef = useRef<HTMLDivElement>(null)
+  const [ready, setReady] = useState(0)
+  const [cadre, setCadre] = useState<CadreApercu>('bureau')
+  const [scene, setScene] = useState({ w: 0, h: 0 })
+  const miseEnPage = layout ?? 'single_column'
+
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const root = remplirIframe(iframe, locale)
     if (root) {
-      containerRef.current = root as HTMLDivElement
+      containerRef.current = root
       setReady((n) => n + 1)
     }
   }, [locale])
@@ -106,6 +116,13 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
     return () => ro.disconnect()
   }, [])
 
+  useEffect(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    doc.documentElement.scrollTop = 0
+    doc.body.scrollTop = 0
+  }, [miseEnPage, cadre, locale, ready])
+
   const visibleSections = sections.filter((s) => s.visible)
   const largeur = LARGEUR_CADRE[cadre]
   const scale = scene.w > 0 ? Math.min(1, (scene.w - 16) / largeur) : 1
@@ -116,6 +133,9 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: t.heading, paddingLeft: 4 }}>
           Aperçu
+        </div>
+        <div style={{ fontSize: 12, color: t.muted }}>
+          {pageLayoutLabel(miseEnPage)}
         </div>
         <div role="group" aria-label="Cadre de l’aperçu" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {([
@@ -175,6 +195,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
           <PreviewShell>
             <CartProvider>
               <PageRenderer
+                key={miseEnPage}
                 page={{
                   id: 'preview',
                   slug: '',
@@ -182,7 +203,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
                   status: 'draft',
                   sortOrder: 0,
                   seo: {},
-                  layout: layout ?? 'single_column',
+                  layout: miseEnPage,
                   publishedAt: null,
                   createdAt: '',
                   updatedAt: '',
@@ -192,7 +213,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
                 locale={locale}
                 restaurant={restaurant ?? RESTAURANT_ABSENT}
                 preview
-                layout={layout}
+                layout={miseEnPage}
               />
             </CartProvider>
           </PreviewShell>,

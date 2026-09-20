@@ -109,6 +109,7 @@ export function PageEditor({
       const imposee = dispositionBannierePourMiseEnPage(next, premiere.variant)
       if (imposee) editor.setVariant(0, imposee)
     }
+    if (editor.sections.length > 0) editor.select(0)
     onLayoutChange(next)
   }
 
@@ -274,8 +275,13 @@ export function PageEditor({
                 onVariantChange={(variant) => editor.setVariant(editor.selected!, variant)}
               />
             ) : (
-              <div style={{ padding: 32, textAlign: 'center', color: t.muted }}>
-                <p style={{ fontSize: 14, margin: 0 }}>Sélectionnez une section pour la modifier.</p>
+              <div style={{ padding: 32, color: t.muted }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: t.heading, margin: '0 0 8px' }}>
+                  Rien à modifier pour l’instant
+                </p>
+                <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+                  Ajoutez un bloc dans Structure (à gauche). Son texte et ses images s’afficheront ici.
+                </p>
               </div>
             )}
           </div>

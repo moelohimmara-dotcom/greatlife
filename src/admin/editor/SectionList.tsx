@@ -81,7 +81,7 @@ export function SectionList({
               id={`section-${index}`}
               section={section}
               isSelected={selected === index}
-              onSelect={() => onSelect(selected === index ? null : index)}
+              onSelect={() => onSelect(index)}
               onToggleVisibility={() => onToggleVisibility(index)}
               onRemove={() => onRemove(index)}
             />
