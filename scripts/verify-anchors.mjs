@@ -256,36 +256,66 @@ const heroPublication = publiee
   ? (publiee.published_snapshot.sections ?? []).find((s) => s.type === 'hero' && s.visible !== false)
   : null
 
+/**
+ * Confronte les cibles ÉDITABLES des boutons du Hero aux ancres servies.
+ *
+ * POURQUOI C'EST UNE FONCTION, ET PAS DU CODE EN LIGNE
+ * La première version du test de sensibilité se contentait de vérifier qu'une
+ * chaîne inventée n'était pas dans la liste des ancres — sans jamais APPELER le
+ * contrôle. Sa mutation l'a prouvé : supprimer la boucle du contrôle laissait le
+ * test afficher « OUI ». Le test ne testait rien (revue du 2026-09-20, B2).
+ * Ici, le rapport et le test de sensibilité exercent le MÊME code.
+ *
+ * Rend une ligne par cible : `{ quoi, origine, cible, ok, externe }`.
+ */
+function analyserCiblesHero(reelles, cibles) {
+  const lignes = []
+  for (const { quoi, valeur, repli } of cibles) {
+    for (const [origine, cible] of [['contenu publié', valeur], ['repli du code', repli]]) {
+      if (typeof cible !== 'string' || cible === '') {
+        lignes.push({ quoi, origine, cible: null, ok: true, externe: false })
+        continue
+      }
+      const externe = estUrl(cible)
+      lignes.push({
+        quoi,
+        origine,
+        cible,
+        externe,
+        ok: externe || reelles.includes(cible.replace(/^#/, '')),
+      })
+    }
+  }
+  return lignes
+}
+
 /*
   Ce sont les SEULES cibles qui viennent du CONTENU, et non du code : le
   restaurateur les saisit dans « Destination », un champ TEXTE LIBRE. Rien
   n'empêche une faute de frappe, et le bouton ne mène alors nulle part — sans
   aucun avertissement (revue du 2026-09-20, I-3).
 */
-const CIBLES_HERO = [
-  { quoi: 'Bouton principal (contenu publié)', valeur: heroPublication?.content?.primaryCta?.target, repli: constante(sourceHero, 'LEGACY_PRIMARY_TARGET') },
-  { quoi: 'Bouton secondaire (contenu publié)', valeur: heroPublication?.content?.secondaryCta?.target, repli: constante(sourceHero, 'LEGACY_SECONDARY_TARGET') },
-]
+const LIGNES_HERO = analyserCiblesHero(reelles, [
+  { quoi: 'Bouton principal', valeur: heroPublication?.content?.primaryCta?.target, repli: constante(sourceHero, 'LEGACY_PRIMARY_TARGET') },
+  { quoi: 'Bouton secondaire', valeur: heroPublication?.content?.secondaryCta?.target, repli: constante(sourceHero, 'LEGACY_SECONDARY_TARGET') },
+])
 
 if (!heroPublication) {
   console.log('  (aucune section « hero » visible dans l’instantané publié)')
 }
-for (const { quoi, valeur, repli } of CIBLES_HERO) {
-  for (const [origine, cible] of [['contenu publié', valeur], ['repli du code', repli]]) {
-    if (typeof cible !== 'string' || cible === '') {
-      console.log(`  ${quoi} — ${origine} : (absent)`)
-      continue
-    }
-    if (estUrl(cible)) {
-      console.log(`  ${quoi} — ${origine} : « ${cible} » (adresse externe, hors ancres)`)
-      continue
-    }
-    const ok = reelles.includes(cible.replace(/^#/, ''))
-    console.log(`  ${quoi} — ${origine} : « ${cible} » ${ok ? 'existe' : 'N’EXISTE PAS'}`)
-    if (!ok) {
-      console.log('    ECHEC : ce bouton ne mène nulle part (faute de frappe dans « Destination » ?)')
-      fautif = true
-    }
+for (const ligne of LIGNES_HERO) {
+  if (ligne.cible === null) {
+    console.log(`  ${ligne.quoi} — ${ligne.origine} : (absent)`)
+    continue
+  }
+  if (ligne.externe) {
+    console.log(`  ${ligne.quoi} — ${ligne.origine} : « ${ligne.cible} » (adresse externe, hors ancres)`)
+    continue
+  }
+  console.log(`  ${ligne.quoi} — ${ligne.origine} : « ${ligne.cible} » ${ligne.ok ? 'existe' : 'N’EXISTE PAS'}`)
+  if (!ligne.ok) {
+    console.log('    ECHEC : ce bouton ne mène nulle part (faute de frappe dans « Destination » ?)')
+    fautif = true
   }
 }
 
@@ -369,12 +399,21 @@ mesurer(
   ancresUtilisees(refonte, COMPOSANTS[0].listes).length < COMPOSANTS[0].minimum,
 )
 
-// Cible de Hero fausse : c'est le contrôle NOUVEAU, il doit mordre.
-const heroFaux = { content: { primaryCta: { target: 'cible-qui-nexiste-pas' }, secondaryCta: { target: 'carte' } } }
+// Cible de Hero fausse : c'est le contrôle NOUVEAU, il doit mordre — et la
+// sensibilité exerce désormais la MÊME fonction que le rapport (revue B2).
+const heroFaux = analyserCiblesHero(reelles, [
+  { quoi: 'Bouton principal', valeur: 'cible-qui-nexiste-pas', repli: null },
+])
 mesurer(
-  'une cible de bouton inventée est détectée',
-  !reelles.includes(heroFaux.content.primaryCta.target),
+  'une cible de bouton inventée est détectée par le contrôle lui-même',
+  heroFaux.some((l) => !l.ok),
 )
+// Témoin : avec une cible VALIDE, la même fonction ne signale rien — sinon le
+// « OUI » ci-dessus ne prouverait qu'une fonction qui dit toujours non.
+const heroJuste = analyserCiblesHero(reelles, [
+  { quoi: 'Bouton principal', valeur: reelles[0], repli: null },
+])
+mesurer('et une cible valide ne déclenche rien', heroJuste.every((l) => l.ok))
 
 console.log('\n' + '='.repeat(72))
 console.log(process.exitCode ? 'ECHEC — voir les lignes ci-dessus.' : 'LIENS DU SITE PUBLIC VÉRIFIÉS.')
