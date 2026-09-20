@@ -1,11 +1,13 @@
 # 18 — Dispositions de bloc et réglages d'affichage
 
-> **Statut : ARBITRÉ le 2026-09-20 — voir §11.** Le propriétaire a retenu le
-> **degré de liberté maximal** (« valeurs libres : couleurs, tailles, marges »),
-> et non le modèle borné que ce document recommandait. Le §11 consigne la
-> décision, ses conséquences et la réserve du rédacteur. Les sections §3.2, §5 et
-> §8 ont été révisées en conséquence ; §2 reste l'état de l'art comparé, qui n'a
-> pas changé.
+> **Statut : À REVALIDER — voir §11.5.** L'arbitrage du 2026-09-20 a retenu les
+> **valeurs libres** (couleurs, tailles, marges, sans CSS). En recherchant la
+> section à amender, **le TDR §13 a été retrouvé**, et il **interdit
+> explicitement** ce choix (« Ne pas permettre un design totalement libre de type
+> Webflow. Prévoir des variantes maîtrisées. »). La décision doit donc être
+> reprise à la lumière de cette règle : soit le §13 est amendé, soit on revient
+> aux variantes maîtrisées. **Rien n'est implémenté tant que ce point n'est pas
+> tranché** (AGENTS.md §14).
 >
 > **Date** : 2026-09-20 · **Demande** : « permettre au restaurateur de changer la
 > configuration de l'interface de son site, section par section, avec un système
@@ -328,25 +330,50 @@ Trois mécanismes, **tous non bloquants** :
 
 ### 11.4 Réserve du rédacteur, consignée
 
-Trois points, énoncés une fois : ce sont des constats, pas des objections de
-principe. La décision du propriétaire reste la décision.
+> ⚠️ **CITATION CORRIGÉE LE 2026-09-20.** La première rédaction de ce paragraphe
+> visait « le TDR §17 et §44 ». **C'était faux deux fois** : le TDR §17 s'intitule
+> « MEDIA LIBRARY » et n'a aucun rapport ; et la phrase « le CMS absorbe la
+> complexité » vient d'`AGENTS.md` §17, qui cite le TDR §44 — pas du TDR lui-même.
+> La recherche de la bonne section a mis au jour **TDR §13**, qui tranche la
+> question directement. Voir §11.5. Quatrième citation inexacte de la session,
+> relevée par moi-même : c'est le mode de défaillance principal de ce dépôt, et
+> il ne s'arrête pas aux documents de suivi.
 
-1. **Conflit avec le TDR.** Le §17 (« le CMS absorbe la complexité au lieu de la
-   transférer à l'utilisateur ») et le §44 (« simple en surface, puissant sous le
-   capot ») sont écrits comme des **critères d'acceptation**. Une interface à
-   valeurs libres les contredit. **Conséquence pratique** : si le TDR n'est pas
-   amendé, chaque revue future signalera l'implémentation comme une violation, et
-   `AGENTS.md` §1 fait du TDR une source de vérité non négociable sans l'accord du
-   propriétaire — accord qui existe, mais qui doit être **écrit dans le TDR**.
-   → **Action proposée** : un paragraphe d'amendement au §17, daté et signé.
+Les points ci-dessous restent valables pour ce qui n'est pas traité au §11.5 :
+
+1. **Conflit avec le contrat produit** — voir §11.5 pour la citation exacte.
 2. **Le filet de non-régression ne peut plus couvrir que le défaut.**
    `verify:lot1` continue de garantir que la disposition par défaut n'a pas bougé.
    Aucune valeur saisie par l'utilisateur n'est vérifiable — ni par nous, ni par
    un contrôle. C'est une conséquence acceptée, pas un défaut caché.
-3. **Le CSS libre soulève une question de sécurité, et c'est la seule.** C'est la
-   seule valeur qui peut : (a) affecter **tout** le site de façon invisible, (b)
-   exfiltrer des données via `url()` dans une feuille de style injectée, (c) servir
-   à recouvrir du contenu pour du hameçonnage depuis **ton domaine**. Aucune des
-   autres valeurs libres n'a cette portée. Je recommande donc de **ne pas exposer
-   de CSS arbitraire sur le site public** tant que ce n'est pas un choix explicite
-   et assumé. Les couleurs, tailles et marges libres ne posent pas ce problème.
+3. **Le CSS est écarté** — décision du propriétaire, et elle est **conforme au
+   TDR §2**, qui cite littéralement « CSS » dans la liste des choses à ne pas
+   exposer. Aucune réserve à formuler.
+
+### 11.5 Ce que le TDR dit déjà — et qui tranche ce point
+
+**TDR §13, « VARIANTES »**, dans son intégralité :
+
+> Ne pas permettre un design totalement libre de type Webflow.
+> Prévoir des variantes maîtrisées.
+> Exemple : `Hero` ○ Plein écran ○ Image + texte ○ Centré ○ Vidéo
+> Cela protège la cohérence du site.
+
+Trois conséquences, toutes mesurables :
+
+1. **Le TDR §13 interdit explicitement ce que l'arbitrage du §11.1 autorise.**
+   Ce n'est pas une préférence d'auteur ni un principe général : c'est une règle
+   nommée, qui désigne l'option retenue (« design totalement libre de type
+   Webflow »).
+2. **Le pilote proposé est exactement l'exemple du TDR** : les 4 dispositions de
+   la Bannière du §4 sont mot pour mot celles du §13, et ce sont aussi les 4 déjà
+   déclarées dans `schemas.ts:32-37`. Le §13 valide donc le pilote.
+3. **Le TDR §2 conforte la décision « sans CSS »** : « CSS » figure dans la liste
+   de ce qu'il ne faut pas exposer. Et le **TDR §3.2 « Puissante à la demande »**
+   est exactement le principe du mode « Avancé » replié.
+
+**Ce qui reste donc à trancher**, et c'est le seul point ouvert : **modifier le
+TDR §13 pour autoriser les valeurs libres**, ou **revenir aux variantes
+maîtrisées**. Dans les deux cas la décision doit être **écrite dans le TDR**, pour
+que le dépôt cesse de se contredire — sans quoi la prochaine revue signalera une
+violation du §13, à juste titre.
