@@ -29,9 +29,22 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     type: 'hero',
     label: 'Bannière d’accueil',
     description: 'Le grand bloc d’ouverture : titre, accroche, image, boutons.',
+    /*
+      L'ORDRE COMPTE : `defaultVariant()` renvoie `variants[0].id`, donc la
+      première entrée est la disposition par défaut d'une nouvelle section.
+
+      POURQUOI « Image + texte » EST EN PREMIER (2026-09-20)
+      Le rendu historique de la Bannière est une grille à deux colonnes : le
+      texte à gauche, la photo à droite. C'est *Image + texte* — pas *Plein
+      écran*. La section était pourtant enregistrée en `fullscreen`, ce qui
+      rendait le non-régression impossible à tenir : brancher les dispositions
+      aurait changé le site public, et `verify:lot1` l'aurait signalé à juste
+      titre. On corrige donc l'identité (la donnée et le schéma) AVANT de
+      brancher le rendu, plutôt que d'accommoder un libellé faux.
+    */
     variants: [
-      { id: 'fullscreen', label: 'Plein écran' },
       { id: 'image_text', label: 'Image + texte' },
+      { id: 'fullscreen', label: 'Plein écran' },
       { id: 'centered', label: 'Centré' },
       { id: 'video', label: 'Vidéo' },
     ],
@@ -55,6 +68,13 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       CTA,
       CTA_SECONDARY,
       IMAGE_FIELD,
+      {
+        name: 'video',
+        label: 'Adresse de la vidéo',
+        type: 'text',
+        translatable: false,
+        help: 'Utilisée par la disposition « Vidéo ». Laissez vide pour garder l’image : la bannière se rabat alors sur « Plein écran ».',
+      },
     ],
     implemented: true,
   },

@@ -18,7 +18,162 @@ const LEGACY_CHIPS = ['100% bio', 'Emballages éco', 'Prix accessibles']
 const LEGACY_PRIMARY_TARGET = 'carte'
 const LEGACY_SECONDARY_TARGET = 'contact'
 
-export function Hero({ content: cms }: Partial<SectionComponentProps> = {}) {
+/**
+ * LES DISPOSITIONS DE LA BANNIÈRE — TDR §13
+ * =========================================
+ * Le TDR §13 demande des « variantes maîtrisées » et donne cet exemple, mot pour
+ * mot : Plein écran · Image + texte · Centré · Vidéo. Ces quatre identifiants
+ * étaient déclarés, sélectionnables dans l'éditeur et enregistrés en base —
+ * **et lus par aucun composant** : choisir « Centré » ne changeait rien.
+ * C'est ce que ce fichier branche.
+ *
+ * UNE DISPOSITION INCONNUE RETOMBE SUR LE RENDU HISTORIQUE
+ * `variants` porte une valeur venue de la base. Si elle est absente, inattendue,
+ * ou écrite à la main, la bannière rend `image_text` — la mise en page qui est
+ * celle du site depuis toujours. Une donnée imprévue ne peut donc pas casser la
+ * page d'accueil, et `verify:lot1` continue de le prouver.
+ */
+const DISPOSITIONS = ['image_text', 'fullscreen', 'centered', 'video'] as const
+type Disposition = (typeof DISPOSITIONS)[number]
+
+export function normaliserDisposition(valeur: string | null | undefined): Disposition {
+  return typeof valeur === 'string' && (DISPOSITIONS as readonly string[]).includes(valeur)
+    ? (valeur as Disposition)
+    : 'image_text'
+}
+
+/** Valeurs résolues, partagées par les quatre dispositions. */
+interface HeroContent {
+  tagline: string
+  title: string
+  subtitle: string
+  chipLabels: readonly string[]
+  heroImg: string | undefined
+  pill: string
+  badgeLabel: string
+  badgeName: string
+  badgeValue: string
+  primaryLabel: string
+  primaryHref: string
+  secondaryLabel: string
+  secondaryHref: string
+  videoUrl: string
+}
+
+/**
+ * Bannière « Plein écran » — l'image occupe toute la largeur et le texte se pose
+ * dessus, sur un voile sombre qui garantit la lisibilité quel que soit le cliché.
+ */
+function HeroPleinEcran({
+  c,
+  video,
+}: {
+  c: HeroContent
+  video: string | null
+}) {
+  const { theme: t } = useSite()
+  const fond = c.heroImg ? `url(${c.heroImg}) center/cover` : `linear-gradient(135deg, ${t.primary}, ${t.primaryDark})`
+
+  return (
+    <section
+      className="section-pad-top"
+      style={{ position: 'relative', overflow: 'hidden', minHeight: 'min(78vh, 680px)', display: 'flex', alignItems: 'center' }}
+    >
+      {video ? (
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster={c.heroImg}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        >
+          <source src={video} />
+        </video>
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, background: fond }} />
+      )}
+      {/* Voile : sans lui, un titre clair sur une photo claire devient illisible. */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.62))' }} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: 'relative', maxWidth: '820px', margin: '0 auto', padding: '96px 24px', textAlign: 'center', color: '#fff' }}
+      >
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.14)', borderRadius: '100px', padding: '8px 16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.28)' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.gold }} />
+          <span style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>{c.tagline}</span>
+        </div>
+        <h1 style={{ fontFamily: 'var(--f-heading)', fontSize: 'clamp(38px, 6vw, 66px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, fontVariationSettings: '"opsz" 144' }}>
+          {c.title}
+        </h1>
+        <p style={{ fontSize: '18px', lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '620px', opacity: 0.92 }}>{c.subtitle}</p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a href={c.primaryHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
+            {c.primaryLabel} {Icon.arrow(16)}
+          </a>
+          <a href={c.secondaryHref} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', border: '2px solid rgba(255,255,255,0.4)' }}>
+            {c.secondaryLabel}
+          </a>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', marginTop: '36px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {c.chipLabels.map((label, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '13px', fontWeight: 500, opacity: 0.9 }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+/**
+ * Bannière « Centrée » — aucune image, un bloc compact. Pour un site qui veut
+ * aller droit au but, ou quand aucune photo n'est encore disponible.
+ */
+function HeroCentre({ c }: { c: HeroContent }) {
+  const { theme: t } = useSite()
+
+  return (
+    <section className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '88px 24px 96px' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        style={{ maxWidth: '760px', margin: '0 auto', textAlign: 'center' }}
+      >
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.surfaceAlt, borderRadius: '100px', padding: '8px 16px', marginBottom: '24px', border: `1px solid ${t.shadow}` }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.primary }} />
+          <span style={{ fontSize: '13px', fontWeight: 600, color: t.muted }}>{c.tagline}</span>
+        </div>
+        <h1 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: 'clamp(36px, 5.5vw, 56px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, fontVariationSettings: '"opsz" 144' }}>
+          {c.title}
+        </h1>
+        <p style={{ fontSize: '18px', color: t.muted, lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '560px' }}>{c.subtitle}</p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a href={c.primaryHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
+            {c.primaryLabel} {Icon.arrow(16)}
+          </a>
+          <a href={c.secondaryHref} style={{ display: 'inline-flex', alignItems: 'center', background: 'transparent', color: t.heading, fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', border: `2px solid ${t.primary}33` }}>
+            {c.secondaryLabel}
+          </a>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', marginTop: '36px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {c.chipLabels.map((label, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '13px', fontWeight: 500, color: t.muted }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+export function Hero({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
   const legacyHeroImg = useMedia('hero')
   const { scrollY } = useScroll()
@@ -46,10 +201,37 @@ export function Hero({ content: cms }: Partial<SectionComponentProps> = {}) {
   const secondaryLabel = pick(cmsText(secondaryCta, 'label'), 'Réserver une table')
   const secondaryHref = anchorHref(pick(cmsText(secondaryCta, 'target'), LEGACY_SECONDARY_TARGET))
 
+  const videoUrl = cmsText(cms, 'video') ?? ''
+
   // Les icônes restent associées à la POSITION, comme dans le rendu historique :
   // seule la couleur change, jamais l'ordre.
   const chipIcons = [Icon.leaf(18, t.primary), Icon.recycle(18, t.accent), Icon.coin(18, t.gold)]
 
+  const contenu: HeroContent = {
+    tagline, title, subtitle, chipLabels, heroImg, pill,
+    badgeLabel, badgeName, badgeValue,
+    primaryLabel, primaryHref, secondaryLabel, secondaryHref, videoUrl,
+  }
+
+  const disposition = normaliserDisposition(variant)
+
+  /*
+    « Vidéo » SANS VIDÉO SE RABAT SUR « PLEIN ÉCRAN ».
+    Le restaurateur peut choisir cette disposition avant d'avoir une adresse de
+    vidéo. Sans ce repli, la bannière n'aurait plus ni image ni fond — un écran
+    vide, sans que rien ne l'explique. Le champ le dit dans l'éditeur.
+  */
+  if (disposition === 'fullscreen' || disposition === 'video') {
+    return <HeroPleinEcran c={contenu} video={disposition === 'video' && videoUrl ? videoUrl : null} />
+  }
+  if (disposition === 'centered') {
+    return <HeroCentre c={contenu} />
+  }
+
+  // --- « Image + texte » : RENDU HISTORIQUE, INCHANGÉ ------------------------
+  // C'est la disposition enregistrée par défaut. Elle doit produire exactement
+  // ce qu'elle produisait avant ce lot — `npm run verify:lot1` le vérifie octet
+  // par octet contre la révision `0528c544`.
   return (
     <section className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '40px 24px 100px' }}>
       <div style={{ position: 'absolute', top: '-100px', right: '-80px', width: '500px', height: '500px', borderRadius: '50%', background: `radial-gradient(circle, ${t.primary}15, transparent 70%)`, pointerEvents: 'none' }} />

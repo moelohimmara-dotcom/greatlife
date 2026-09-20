@@ -14,6 +14,7 @@
     "verify:rbac": "node scripts/verify-rbac.mjs",
     "verify:public": "node scripts/verify-public.mjs",
     "verify:anchors": "node scripts/verify-anchors.mjs",
+    "verify:dispositions": "node scripts/verify-dispositions.mjs",
     "test:save-plan": "node --test scripts/test-save-plan.mjs",
     "verify:lot3": "node scripts/verify-lot3.mjs",
     "lint": "eslint . --ext ts,tsx"
