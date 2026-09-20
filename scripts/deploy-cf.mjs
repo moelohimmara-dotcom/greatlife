@@ -14,7 +14,7 @@
  *
  * Usage : node deploy-cf.mjs <jeton-jwt> [--dry]
  */
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, relative, extname, sep } from 'node:path'
 import { createRequire } from 'node:module'
 
@@ -76,8 +76,14 @@ console.log('exemples de manifest :', Object.entries(manifest).slice(0, 4).map((
 // Le manifest complet est ecrit sur disque : la creation du deploiement exige
 // un jeton de COMPTE (pas le jeton d'upload, scope aux assets), donc elle passe
 // par le connecteur Cloudflare, qui a besoin du manifest en clair.
-writeFileSync('dist-manifest.json', JSON.stringify(manifest, null, 1), 'utf8')
-console.log(`manifest ecrit : dist-manifest.json (${Object.keys(manifest).length} entrees)`)
+// Le manifest est ecrit dans `logs/`, qui est deja ignore par git (AGENTS.md §15 :
+// les artefacts de deploiement restent HORS depot logique). Il etait ecrit a la
+// RACINE sous `dist-manifest.json` : non ignore, il suffisait d'un `git add -A`
+// pour le versionner — defaut releve par la revue du 2026-09-19 (I-6), quelques
+// minutes apres la fermeture « officielle » de la famille *.txt.
+mkdirSync('logs', { recursive: true })
+writeFileSync('logs/dist-manifest.json', JSON.stringify(manifest, null, 1), 'utf8')
+console.log(`manifest ecrit : logs/dist-manifest.json (${Object.keys(manifest).length} entrees)`)
 
 if (DRY) {
   console.log('mode --dry : rien envoye.')

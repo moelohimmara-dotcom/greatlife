@@ -41,6 +41,17 @@ export function describeError(error: unknown): string {
   if (e.code === '23503' || /foreign key/i.test(e.message ?? '')) {
     return 'Cet élément est référencé ailleurs et ne peut pas être supprimé.'
   }
+  /*
+    Contrainte de validation violée (`CHECK`). Sans ce cas, `e.message` remontait
+    tel quel : « violates check constraint "pages_published_requires_snapshot" » —
+    soit un nom de table ET de contrainte dans le visage du restaurateur, ce que
+    AGENTS.md §9 interdit.
+    Atteignable depuis la migration `033` : publier une page sans instantané est
+    désormais refusé par la base, et non plus seulement par le client.
+  */
+  if (e.code === '23514' || /check constraint/i.test(e.message ?? '')) {
+    return "Cette action n'est pas possible dans l'état actuel de la page. Rechargez la page et réessayez."
+  }
   if (/fetch|network|Failed to fetch/i.test(e.message ?? '')) {
     return 'Connexion au serveur impossible. Vérifiez votre réseau et réessayez.'
   }
