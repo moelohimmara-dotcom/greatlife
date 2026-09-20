@@ -39,6 +39,7 @@ export {
   DEFAULT_PAGE_LAYOUT,
   normaliserPageLayout,
   pageLayoutLabel,
+  dispositionBannierePourMiseEnPage,
 } from './model/page-layout'
 
 export type { SectionType, SectionContent, SectionSettings, PageSection, SectionTypeDefinition } from './model/section'

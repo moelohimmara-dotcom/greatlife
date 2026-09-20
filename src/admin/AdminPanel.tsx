@@ -68,7 +68,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
       <nav style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, overflow: 'auto' }}>
         {NAV_GROUPS.map(([groupLabel, items]) => (
           <div key={groupLabel}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color: t.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: t.heading, marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => {
                 const isActive = active === k
@@ -113,8 +113,20 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minHeight: '100vh', background: t.bg }}>
       <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', minHeight: '100vh' }} className="admin-layout">
 <div className="admin-sidebar-desktop">{Sidebar}</div>
-        <main className="admin-main-pad" style={{ padding: '32px 36px', overflow: 'auto', position: 'relative' }}>
-          <button onClick={() => setMobileNav(true)} className="admin-mobile-menu" style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20, border: `1px solid ${t.shadow}`, background: t.surface, borderRadius: 10, padding: '9px 11px', cursor: 'pointer', color: t.heading }}>
+        <main className="admin-main-pad" style={{
+          padding: active === 'content' ? 0 : '32px 36px',
+          overflow: active === 'content' ? 'hidden' : 'auto',
+          position: 'relative',
+          minHeight: '100vh',
+          height: active === 'content' ? '100vh' : undefined,
+        }}>
+          <button
+            type="button"
+            onClick={() => setMobileNav(true)}
+            aria-label="Ouvrir le menu"
+            className="admin-mobile-menu"
+            style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20, border: `1px solid ${t.shadow}`, background: t.surface, borderRadius: 10, padding: '12px 14px', minHeight: 44, minWidth: 44, cursor: 'pointer', color: t.heading }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
           {roleNotice && (

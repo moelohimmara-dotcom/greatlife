@@ -23,18 +23,26 @@ import type { Locale } from '@/cms/model/i18n'
 import type { ThemePalette } from '@/config/themes'
 import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
 import type { FieldDef } from '@/cms/model/sections/fields'
+import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
+import { anneauFocus, boutonOutil, CIBLE, titreColonne } from './chrome'
 
 interface PropertyPanelProps {
   section: PageSection
   locale: Locale
   onUpdate: (content: Record<string, unknown>) => void
   onVariantChange: (variant: string | null) => void
+  pageLayout?: PageLayout
 }
 
-export function PropertyPanel({ section, locale, onUpdate, onVariantChange }: PropertyPanelProps) {
+export function PropertyPanel({ section, locale, onUpdate, onVariantChange, pageLayout }: PropertyPanelProps) {
   const { theme: t } = useSite()
   const def = getSectionDefinition(section.type)
   const content = section.content ?? {}
+  const banniereImposee =
+    section.type === 'hero' && pageLayout
+      ? dispositionBannierePourMiseEnPage(pageLayout, section.variant)
+      : null
+  const dispositionAffichee = banniereImposee ?? section.variant
 
   if (!def) return null
 
@@ -47,7 +55,7 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange }: Pr
     <div style={{ padding: '16px 16px 32px' }}>
       {/* En-tête : type + variante */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+        <div style={titreColonne(t)}>
           {def.label}
         </div>
         <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
@@ -60,18 +68,34 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange }: Pr
         <div style={{ marginBottom: 20 }}>
           <label style={labelStyle(t)}>Disposition</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {def.variants.map((v) => (
-              <button key={v.id} onClick={() => onVariantChange(v.id)} style={{
-                padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-                border: `1px solid ${section.variant === v.id ? t.primary : t.shadow}`,
-                background: section.variant === v.id ? `${t.primary}12` : 'transparent',
-                color: section.variant === v.id ? t.primary : t.text,
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}>
-                {v.label}
-              </button>
-            ))}
+            {def.variants.map((v) => {
+              const interdit = Boolean(banniereImposee) && v.id !== 'fullscreen' && v.id !== 'video'
+              const actif = dispositionAffichee === v.id
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  disabled={interdit}
+                  aria-pressed={actif}
+                  onClick={() => { if (!interdit) onVariantChange(v.id) }}
+                  title={interdit ? 'Cette mise en page affiche la bannière en plein écran. Pour Image + texte, choisissez Colonne unique.' : undefined}
+                  style={{
+                    ...boutonOutil(t, { actif, disabled: interdit }),
+                    opacity: interdit ? 0.45 : 1,
+                    cursor: interdit ? 'not-allowed' : 'pointer',
+                  }}
+                  {...anneauFocus(t)}
+                >
+                  {v.label}
+                </button>
+              )
+            })}
           </div>
+          {banniereImposee && (
+            <p style={{ fontSize: 11, color: t.muted, lineHeight: 1.4, margin: '8px 0 0' }}>
+              Cette mise en page affiche la bannière en plein écran. Vous pouvez garder Vidéo. Pour Image + texte ou Centré, choisissez Colonne unique.
+            </p>
+          )}
         </div>
       )}
 
@@ -79,11 +103,11 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange }: Pr
       <div style={{ height: 1, background: t.shadow, margin: '16px 0' }} />
 
       {/* Champs du contenu */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>
+      <div style={{ ...titreColonne(t), marginBottom: 12 }}>
         Contenu
       </div>
 
-      {def.fields.filter((field) => champVisible(field, section.variant, section.type)).map((field) => (
+      {def.fields.filter((field) => champVisible(field, dispositionAffichee, section.type)).map((field) => (
         <FieldEditor
           key={field.name}
           field={field}
@@ -145,12 +169,23 @@ function TextField({ field, value, locale, onChange }: { field: FieldDef; value:
     return (
       <div style={{ marginBottom: 14 }}>
         <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(['fr', 'en'] as const).map((lang) => (
-            <input key={lang} value={(value as Record<string, string>)[lang] ?? ''} onChange={(e) => {
-              const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
-              onChange(obj)
-            }} style={{ ...inputStyle(t), flex: 1, fontSize: 12 }} placeholder={lang.toUpperCase()} />
+            <div key={lang}>
+              <label htmlFor={`${field.name}-${lang}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.muted, marginBottom: 4 }}>
+                {lang === 'fr' ? 'Français' : 'English'}
+              </label>
+              <input
+                id={`${field.name}-${lang}`}
+                value={(value as Record<string, string>)[lang] ?? ''}
+                onChange={(e) => {
+                  const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
+                  onChange(obj)
+                }}
+                style={{ ...inputStyle(t), minHeight: CIBLE }}
+                {...anneauFocus(t)}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -160,7 +195,7 @@ function TextField({ field, value, locale, onChange }: { field: FieldDef; value:
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-      <input value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)} style={inputStyle(t)} />
+      <input value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle(t), minHeight: CIBLE }} {...anneauFocus(t)} />
       {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
@@ -191,13 +226,24 @@ function MultilineField({ field, value, locale, onChange }: { field: FieldDef; v
     return (
       <div style={{ marginBottom: 14 }}>
         <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(['fr', 'en'] as const).map((lang) => (
-            <textarea key={lang} value={(value as Record<string, string>)[lang] ?? ''} onChange={(e) => {
-              const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
-              onChange(obj)
-            }} rows={3} style={{ ...inputStyle(t), flex: 1, fontSize: 12, resize: 'vertical', minHeight: 72 }}
-              placeholder={lang.toUpperCase()} />
+            <div key={lang}>
+              <label htmlFor={`${field.name}-ml-${lang}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.muted, marginBottom: 4 }}>
+                {lang === 'fr' ? 'Français' : 'English'}
+              </label>
+              <textarea
+                id={`${field.name}-ml-${lang}`}
+                value={(value as Record<string, string>)[lang] ?? ''}
+                onChange={(e) => {
+                  const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
+                  onChange(obj)
+                }}
+                rows={3}
+                style={{ ...inputStyle(t), fontSize: 13, resize: 'vertical', minHeight: 72 }}
+                {...anneauFocus(t)}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -208,7 +254,7 @@ function MultilineField({ field, value, locale, onChange }: { field: FieldDef; v
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
       <textarea value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)}
-        rows={3} style={{ ...inputStyle(t), resize: 'vertical', minHeight: 72 }} />
+        rows={3} style={{ ...inputStyle(t), resize: 'vertical', minHeight: 72 }} {...anneauFocus(t)} />
     </div>
   )
 }
@@ -221,7 +267,7 @@ function NumberField({ field, value, onChange }: { field: FieldDef; value: unkno
       <input type="number" value={typeof value === 'number' ? value : ''} onChange={(e) => {
         const n = e.target.valueAsNumber
         onChange(isNaN(n) ? null : n)
-      }} style={inputStyle(t)} placeholder={field.help} />
+      }} style={inputStyle(t)} placeholder={field.help} {...anneauFocus(t)} />
       {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
@@ -233,8 +279,8 @@ function SelectField({ field, value, onChange }: { field: FieldDef; value: unkno
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>{field.label}</label>
       <select value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}
-        style={{ ...inputStyle(t), cursor: 'pointer' }}>
-        <option value="">— Choisir —</option>
+        style={{ ...inputStyle(t), cursor: 'pointer' }} {...anneauFocus(t)}>
+        <option value="">Choisir</option>
         {(field.options ?? []).map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -304,19 +350,20 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
             border: `1px solid ${t.shadow}`, background: `${t.primary}03`,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>
                 {field.itemType ? `Élément ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`}
               </span>
-              <button onClick={() => removeItem(i)} title="Retirer"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4, opacity: 0.6 }}>
-                {Icon.trash(13)}
+              <button type="button" onClick={() => removeItem(i)} aria-label="Retirer cet élément"
+                style={{ minWidth: CIBLE, minHeight: CIBLE, background: 'none', border: 'none', cursor: 'pointer', color: t.accent }}
+                {...anneauFocus(t)}>
+                {Icon.trash(16, t.accent)}
               </button>
             </div>
 
             {field.itemType ? (
               // Valeur simple
               <input value={typeof item === 'string' ? item : ''} onChange={(e) => updateItem(i, e.target.value)}
-                style={inputStyle(t)} placeholder={`Élément ${i + 1}`} />
+                style={inputStyle(t)} placeholder={`Élément ${i + 1}`} {...anneauFocus(t)} />
             ) : field.itemFields ? (
               // Objet : TOUS les sous-champs sont édités, pas seulement le premier.
               // Avant, seul `itemFields[0]` était affiché : le rôle et la
@@ -347,11 +394,10 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
       </div>
 
       {(!field.maxItems || items.length < field.maxItems) && (
-        <button onClick={addItem} style={{
-          marginTop: 6, padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-          border: `1px dashed ${t.primary}44`, background: 'transparent',
-          color: t.primary, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-        }}>
+        <button type="button" onClick={addItem} style={{
+          marginTop: 6, ...boutonOutil(t, {}),
+          display: 'flex', alignItems: 'center', gap: 4,
+        }} {...anneauFocus(t)}>
           {Icon.plus(12, t.primary)} Ajouter
         </button>
       )}
@@ -394,8 +440,9 @@ function VideoField({ field, value, onChange }: { field: FieldDef; value: unknow
           value={videos.some((m) => m.url === actuel) ? actuel : ''}
           onChange={(e) => { if (e.target.value) onChange(e.target.value) }}
           style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 8 }}
+          {...anneauFocus(t)}
         >
-          <option value="">— Choisir une vidéo téléversée —</option>
+          <option value="">Choisir une vidéo téléversée</option>
           {videos.map((m) => (
             <option key={m.id || m.url} value={m.url}>{m.filename || m.slot}</option>
           ))}
@@ -406,6 +453,7 @@ function VideoField({ field, value, onChange }: { field: FieldDef; value: unknow
         onChange={(e) => onChange(e.target.value)}
         style={inputStyle(t)}
         placeholder="https://… ou fichier déjà téléversé"
+        {...anneauFocus(t)}
       />
       {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
@@ -418,7 +466,7 @@ function ImageField({ field, value, onChange }: { field: FieldDef; value: unknow
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>{field.label}</label>
       <input value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}
-        style={inputStyle(t)} placeholder="URL de l'image" />
+        style={inputStyle(t)} placeholder="URL de l'image" {...anneauFocus(t)} />
       {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
@@ -454,7 +502,7 @@ function labelStyle(t: ThemePalette): React.CSSProperties {
 
 function inputStyle(t: ThemePalette): React.CSSProperties {
   return {
-    width: '100%', padding: '7px 10px', borderRadius: 8,
+    width: '100%', padding: '10px 12px', borderRadius: 8, minHeight: CIBLE,
     border: `1px solid ${t.shadow}`, background: t.bg,
     fontSize: 13, color: t.text, outline: 'none',
   }

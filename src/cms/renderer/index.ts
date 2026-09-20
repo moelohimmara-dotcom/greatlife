@@ -41,6 +41,7 @@ export {
   DEFAULT_PAGE_LAYOUT,
   normaliserPageLayout,
   pageLayoutLabel,
+  dispositionBannierePourMiseEnPage,
 } from '../model/page-layout'
 
 export type {

@@ -34,6 +34,12 @@ export interface SectionRendererProps {
   data?: SectionDataSource
   /** `true` en prévisualisation d'administration : affiche les cas limites. */
   preview?: boolean
+  /**
+   * Disposition imposée par la mise en page de la page (bannière).
+   * Prioritaire sur `section.variant` au rendu seulement — la donnée du bloc
+   * n'est pas réécrite ici.
+   */
+  variantOverride?: string | null
 }
 
 /** Marge de défilement : compense la hauteur de la barre de navigation fixe. */
@@ -45,12 +51,13 @@ export function SectionRenderer({
   restaurant,
   data,
   preview = false,
+  variantOverride,
 }: SectionRendererProps) {
   const Component = getSectionComponent(section.type)
 
   const props: SectionComponentProps = {
     content: resolveContentObject(section.content, locale),
-    variant: section.variant,
+    variant: variantOverride ?? section.variant,
     settings: section.settings,
     locale,
     restaurant,

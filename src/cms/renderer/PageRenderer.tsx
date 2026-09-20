@@ -7,10 +7,10 @@
  * Le renderer est **isomorphe** (décision CM-7 / AR-10).
  *
  * « Colonne unique » = défilement historique, sans enveloppe.
- * Les autres mises en page changent l'assemblage. En aperçu (`preview`),
- * on ne replie PAS la grille / l'écran partagé : l'iframe de l'éditeur
- * fait souvent moins de 900 px, ce qui faisait croire que le choix
- * n'agissait pas. Le repli téléphone ne s'applique que sur le site public.
+ * Les mises en page (grille, écran partagé) se replient sous 900 px —
+ * c'est le comportement téléphone du site public. L'aperçu de l'éditeur
+ * donne à l'iframe la largeur Bureau (1200) ou Téléphone (390) : le même
+ * CSS s'applique, sans tricher.
  */
 
 import type { Page } from '../model/page'
@@ -18,7 +18,11 @@ import type { PageSection } from '../model/section'
 import type { Locale } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
 import type { SectionDataSource } from './registry'
-import { normaliserPageLayout, type PageLayout } from '../model/page-layout'
+import {
+  dispositionBannierePourMiseEnPage,
+  normaliserPageLayout,
+  type PageLayout,
+} from '../model/page-layout'
 import { SectionRenderer } from './SectionRenderer'
 
 export interface PageRendererProps {
@@ -89,6 +93,27 @@ const CSS_TELEPHONE = `
 }
 `
 
+function rendreUne(
+  section: PageSection,
+  locale: Locale,
+  restaurant: ResolvedRestaurant,
+  data: SectionDataSource | undefined,
+  preview: boolean,
+  variantOverride?: string | null,
+) {
+  return (
+    <SectionRenderer
+      key={section.id}
+      section={section}
+      locale={locale}
+      restaurant={restaurant}
+      data={data}
+      preview={preview}
+      variantOverride={variantOverride ?? undefined}
+    />
+  )
+}
+
 function rendreSections(
   sections: readonly PageSection[],
   locale: Locale,
@@ -96,29 +121,16 @@ function rendreSections(
   data: SectionDataSource | undefined,
   preview: boolean,
   stripe: boolean,
+  surchargeBanniere?: string | null,
+  idBanniere?: string,
 ) {
   return sections.map((section, i) => {
-    if (!stripe) {
-      return (
-        <SectionRenderer
-          key={section.id}
-          section={section}
-          locale={locale}
-          restaurant={restaurant}
-          data={data}
-          preview={preview}
-        />
-      )
-    }
+    const override = section.id === idBanniere ? surchargeBanniere : undefined
+    const bloc = rendreUne(section, locale, restaurant, data, preview, override)
+    if (!stripe) return bloc
     return (
       <div key={section.id} data-cms-stripe={i % 2 === 1 ? 'alt' : 'plain'}>
-        <SectionRenderer
-          section={section}
-          locale={locale}
-          restaurant={restaurant}
-          data={data}
-          preview={preview}
-        />
+        {bloc}
       </div>
     )
   })
@@ -136,6 +148,11 @@ export function PageRenderer({
   const layout = normaliserPageLayout(layoutSurcharge ?? page.layout)
   const premiere = sections[0]
   const suivantes = sections.slice(1)
+  const surchargeBanniere =
+    premiere?.type === 'hero'
+      ? dispositionBannierePourMiseEnPage(layout, premiere.variant)
+      : null
+  const idBanniere = surchargeBanniere ? premiere.id : undefined
 
   const noticeVide = preview && sections.length === 0 && (
     <div
@@ -151,23 +168,16 @@ export function PageRenderer({
     </div>
   )
 
-  const une = premiere ? (
-    <SectionRenderer
-      key={premiere.id}
-      section={premiere}
-      locale={locale}
-      restaurant={restaurant}
-      data={data}
-      preview={preview}
-    />
-  ) : null
+  const une = premiere
+    ? rendreUne(premiere, locale, restaurant, data, preview, surchargeBanniere)
+    : null
 
   const corps = (() => {
     if (layout === 'single_column' || sections.length === 0) {
-      return rendreSections(sections, locale, restaurant, data, preview, false)
+      return rendreSections(sections, locale, restaurant, data, preview, false, surchargeBanniere, idBanniere)
     }
     if (layout === 'hero_alternating') {
-      return rendreSections(sections, locale, restaurant, data, preview, true)
+      return rendreSections(sections, locale, restaurant, data, preview, true, surchargeBanniere, idBanniere)
     }
     if (layout === 'magazine') {
       return (
@@ -211,7 +221,7 @@ export function PageRenderer({
       data-cms-preview={preview ? 'true' : undefined}
       lang={locale}
     >
-      <style>{preview ? CSS_STRUCTURE : `${CSS_STRUCTURE}${CSS_TELEPHONE}`}</style>
+      <style>{`${CSS_STRUCTURE}${CSS_TELEPHONE}`}</style>
       {corps}
       {noticeVide}
     </main>

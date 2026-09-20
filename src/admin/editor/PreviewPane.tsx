@@ -1,11 +1,12 @@
 /**
  * Greatlife — CMS : colonne Aperçu
  * ==================================
- * Rendu temps réel du site public dans la colonne centrale.
- * Utilise le renderer isomorphe : même code que le site public,
- * mais alimenté par les données locales de l'éditeur.
+ * Rendu temps réel dans une iframe, isolée des styles de la console.
  *
- * Le rendu est en iframe pour isoler les styles du CMS de ceux du site public.
+ * Bureau / Téléphone : l'iframe a la LARGEUR RÉELLE de l'appareil
+ * (1200 px / 390 px), puis on réduit à l'échelle pour tenir dans la colonne.
+ * Les mises en page (grille, écran partagé) réagissent donc comme sur le
+ * site public — plus comme une colonne trop étroite qui les repliait toutes.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -17,6 +18,14 @@ import { PageRenderer } from '@/cms/renderer/PageRenderer'
 import type { PageLayout } from '@/cms/model/page-layout'
 import { CartProvider } from '@/contexts/CartContext'
 import { useSite } from '@/contexts/SiteContext'
+import { anneauFocus, CIBLE } from './chrome'
+
+type CadreApercu = 'bureau' | 'telephone'
+
+const LARGEUR_CADRE: Record<CadreApercu, number> = {
+  bureau: 1200,
+  telephone: 390,
+}
 
 interface PreviewPaneProps {
   sections: PageSection[]
@@ -25,28 +34,6 @@ interface PreviewPaneProps {
   layout?: PageLayout
 }
 
-/**
- * Réglages de repli pour la prévisualisation.
- *
- * ⚠️ AUCUNE COORDONNÉE INVENTÉE (revue du 2026-09-20, I-4).
- * Cette constante portait les valeurs de démonstration — « Conakry, Guinée »,
- * « +224 000 00 00 00 », « contact@greatlife.gn ». Comme `PageEditor` appelait
- * `PreviewPane` SANS `restaurant`, c'est ce repli qui s'appliquait.
- *
- * CE QUI ÉTAIT FAUX DANS MA PREMIÈRE DESCRIPTION (revue du 2026-09-20, I-1)
- * J'ai écrit que l'aperçu montrait « un numéro de téléphone qui n'était pas le
- * sien ». C'est inexact : ces quatre valeurs étaient IDENTIQUES aux valeurs
- * réelles de `site_content.restaurant` — l'aperçu tombait juste, par coïncidence.
- * Le défaut réel, et il est plus grave qu'un affichage faux, était que l'aperçu
- * était DÉCONNECTÉ des réglages : dès que le restaurateur aurait mis son vrai
- * numéro, l'aperçu aurait continué d'afficher l'ancien — c'est-à-dire qu'il
- * aurait cessé de dire la vérité au moment précis où cela compte.
- *
- * `PageEditor` fournit désormais les réglages réels. Tant qu'ils ne sont pas
- * arrivés, l'aperçu n'affiche AUCUNE coordonnée — pas une fausse.
- * `name` et `currency` sont conservés : ce ne sont pas des coordonnées, et la
- * mise en page en a besoin.
- */
 const RESTAURANT_ABSENT: ResolvedRestaurant = {
   name: 'Greatlife',
   address: '',
@@ -64,14 +51,14 @@ function PreviewShell({ children }: { children: React.ReactNode }) {
   return <div style={{ ...rootStyle, minHeight: '100%' }}>{children}</div>
 }
 
-/**
- * L'aperçu est rendu dans un iframe pour éviter les conflits de styles
- * entre le CMS et le site public. Le contenu est injecté via un portail React.
- */
 export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: PreviewPaneProps) {
+  const { theme: t } = useSite()
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const sceneRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(0)
+  const [cadre, setCadre] = useState<CadreApercu>('bureau')
+  const [scene, setScene] = useState({ w: 0, h: 0 })
 
   useEffect(() => {
     if (!iframeRef.current) return
@@ -109,24 +96,80 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
     }
   }, [locale])
 
+  useEffect(() => {
+    const el = sceneRef.current
+    if (!el) return
+    const mesurer = () => setScene({ w: el.clientWidth, h: el.clientHeight })
+    mesurer()
+    const ro = new ResizeObserver(mesurer)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const visibleSections = sections.filter((s) => s.visible)
+  const largeur = LARGEUR_CADRE[cadre]
+  const scale = scene.w > 0 ? Math.min(1, (scene.w - 16) / largeur) : 1
+  const hauteurIframe = scene.h > 0 ? Math.max(scene.h / scale, 1) : 800
 
   return (
-    <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>
-        Aperçu
+    <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: t.heading, paddingLeft: 4 }}>
+          Aperçu
+        </div>
+        <div role="group" aria-label="Cadre de l’aperçu" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          {([
+            { id: 'bureau' as const, label: 'Bureau' },
+            { id: 'telephone' as const, label: 'Téléphone' },
+          ]).map((item) => {
+            const actif = cadre === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setCadre(item.id)}
+                aria-pressed={actif}
+                style={{
+                  minHeight: CIBLE, minWidth: CIBLE, padding: '10px 16px', borderRadius: 10,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  border: `1px solid ${actif ? t.primary : t.shadow}`,
+                  background: actif ? t.primary : t.surface,
+                  color: actif ? '#fff' : t.text,
+                }}
+                {...anneauFocus(t)}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
-      <div style={{
-        flex: 1, borderRadius: 12, overflow: 'hidden',
-        border: '1px solid #e5e7eb', background: '#fff',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-      }}>
+      <div
+        ref={sceneRef}
+        style={{
+          flex: 1, borderRadius: 12, overflow: 'hidden',
+          border: `1px solid ${t.shadow}`, background: t.surfaceAlt,
+          position: 'relative',
+        }}
+      >
         <iframe
           ref={iframeRef}
-          title="Aperçu du site"
+          title={cadre === 'telephone' ? 'Aperçu du site sur téléphone' : 'Aperçu du site sur bureau'}
           allow="autoplay; fullscreen"
-          style={{ width: '100%', height: '100%', border: 'none' }}
           sandbox="allow-same-origin allow-scripts"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: 8,
+            width: largeur,
+            height: hauteurIframe,
+            marginLeft: -largeur / 2,
+            border: cadre === 'telephone' ? `8px solid ${t.primaryDark}` : `1px solid ${t.shadow}`,
+            borderRadius: cadre === 'telephone' ? 20 : 4,
+            background: t.surface,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+          }}
         />
         {ready > 0 && containerRef.current && createPortal(
           <PreviewShell>

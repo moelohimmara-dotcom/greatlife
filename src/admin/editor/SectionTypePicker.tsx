@@ -6,10 +6,12 @@
  * en langage restaurateur (pas de jargon technique).
  */
 
+import { useEffect } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
 import { SECTION_TYPES } from '@/cms/model/sections/schemas'
 import type { SectionType } from '@/cms/model/section'
+import { anneauFocus, boutonOutil, CIBLE } from './chrome'
 
 interface SectionTypePickerProps {
   onSelect: (type: SectionType) => void
@@ -43,30 +45,38 @@ const TYPE_ICONS: Partial<Record<string, string>> = {
 export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps) {
   const { theme: t } = useSite()
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {/* Overlay */}
       <div onClick={onClose} style={{
         position: 'absolute', inset: 0,
-        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+        background: 'rgba(0,0,0,0.45)',
       }} />
 
-      {/* Modale */}
-      <div style={{
-        position: 'relative', background: t.surface, borderRadius: 16,
-        padding: '24px 28px', maxWidth: 640, width: '90%', maxHeight: '80vh',
-        overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-      }}>
-        {/* En-tête */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0 }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ajouter-section-titre"
+        style={{
+          position: 'relative', background: t.surface, borderRadius: 16,
+          padding: '24px 28px', maxWidth: 640, width: '90%', maxHeight: '80vh',
+          overflow: 'auto', boxShadow: `0 20px 60px ${t.shadowDeep}`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
+          <h3 id="ajouter-section-titre" style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0 }}>
             Ajouter une section
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.muted, padding: 4 }}>
-            {Icon.x(18, t.muted)}
+          <button type="button" onClick={onClose} aria-label="Fermer" style={{ ...boutonOutil(t, {}), minWidth: CIBLE }} {...anneauFocus(t)}>
+            Fermer
           </button>
         </div>
 
@@ -75,14 +85,14 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
           {SECTION_TYPES.filter((def) => def.implemented).map((def) => {
             const iconName = TYPE_ICONS[def.type] ?? 'write'
             return (
-              <button key={def.type} onClick={() => onSelect(def.type)} style={{
-                padding: '14px 14px', borderRadius: 12,
+              <button key={def.type} type="button" onClick={() => onSelect(def.type)} style={{
+                padding: '14px 14px', borderRadius: 12, minHeight: CIBLE,
                 border: `1px solid ${t.shadow}`, background: t.bg,
+                borderLeft: `3px solid ${t.primary}`,
                 cursor: 'pointer', textAlign: 'left',
-                transition: 'all 0.15s',
+                transition: 'background 0.15s, box-shadow 0.15s',
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.primary; e.currentTarget.style.background = `${t.primary}08` }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.shadow; e.currentTarget.style.background = t.bg }}
+                {...anneauFocus(t)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <span style={{ display: 'flex', color: t.primary }}>

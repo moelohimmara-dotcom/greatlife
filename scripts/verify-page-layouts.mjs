@@ -9,7 +9,7 @@
  *  2. Chaque choix produit un HTML différent (le restaurateur voit un changement).
  */
 import { createRequire } from 'node:module'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -94,6 +94,24 @@ for (let i = 0; i < IDS.length; i++) {
     if (identiques) fautif = true
   }
 }
+
+const pane = readFileSync(`${ROOT}/src/admin/editor/PreviewPane.tsx`, 'utf8')
+console.log('  aperçu Bureau : ' + (pane.includes("'Bureau'") || pane.includes('"Bureau"') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  aperçu Téléphone : ' + (pane.includes('Téléphone') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  cadre bureau 1200 px : ' + (pane.includes('1200') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  cadre téléphone 390 px : ' + (pane.includes('390') ? 'OUI' : 'NON  <-- ECHEC'))
+if (!pane.includes('Bureau') || !pane.includes('Téléphone') || !pane.includes('1200') || !pane.includes('390')) fautif = true
+
+const BANNIERE_PLEIN = 'min(78vh, 680px)'
+const BANNIERE_HISTO = 'hero-grid'
+for (const id of ['hero_parallax', 'magazine', 'split']) {
+  const ok = html[id].includes(BANNIERE_PLEIN)
+  console.log(`  ${id} oriente la bannière plein écran : ${ok ? 'OUI' : 'NON  <-- ECHEC'}`)
+  if (!ok) fautif = true
+}
+const colonneUnique = html.single_column.includes(BANNIERE_HISTO) && !html.single_column.includes(BANNIERE_PLEIN)
+console.log(`  colonne unique garde Image + texte : ${colonneUnique ? 'OUI' : 'NON  <-- ECHEC'}`)
+if (!colonneUnique) fautif = true
 
 console.log('='.repeat(72))
 if (fautif) {

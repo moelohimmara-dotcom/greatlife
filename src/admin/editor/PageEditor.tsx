@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
-import type { PageLayout } from '@/cms/model/page-layout'
+import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
 import { PageLayoutPicker } from './PageLayoutPicker'
 import type { PublicationReport } from '@/cms/model/publishing'
 import {
@@ -28,6 +28,7 @@ import { PreviewPane } from './PreviewPane'
 import { PropertyPanel } from './PropertyPanel'
 import { PublicationPanel } from './PublicationPanel'
 import { SectionTypePicker } from './SectionTypePicker'
+import { anneauFocus, boutonOutil, titreColonne } from './chrome'
 
 interface PageEditorProps {
   /** ID de la page à éditer. */
@@ -102,6 +103,15 @@ export function PageEditor({
 
   const isPublished = status === 'published'
 
+  const choisirMiseEnPage = (next: PageLayout) => {
+    const premiere = editor.sections[0]
+    if (premiere?.type === 'hero') {
+      const imposee = dispositionBannierePourMiseEnPage(next, premiere.variant)
+      if (imposee) editor.setVariant(0, imposee)
+    }
+    onLayoutChange(next)
+  }
+
   /**
    * Publier engage ce qui est EN BASE : `publishPage` relit la page et ses
    * sections depuis la base, pas l'état local de l'éditeur. Une modification
@@ -122,50 +132,28 @@ export function PageEditor({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 0 }}>
       {/* Barre d'outils */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
         borderBottom: `1px solid ${t.shadow}`, background: t.surface,
+        flexWrap: 'wrap',
       }}>
-        <h2 style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0, letterSpacing: '-0.02em' }}>
-          Modifier le site
-        </h2>
-
-        {/*
-          État de publication, affiché en permanence.
-
-          ⚠️ CE QUI A CHANGÉ (et pourquoi le libellé a été corrigé)
-          Depuis que le public lit `pages.published_snapshot` (migration 030/031),
-          il ne voit plus « le contenu de cet éditeur » : il voit la DERNIÈRE
-          VERSION PUBLIÉE. Une modification enregistrée mais non publiée reste
-          invisible — c'est le flux voulu (TDR §8), mais l'ancien libellé
-          promettait autre chose. Un repère faux est pire que pas de repère :
-          le restaurateur publierait en croyant que c'est déjà en ligne.
-
-          On ne peut pas afficher « des modifications restent à publier » :
-          l'éditeur ne compare pas son état local à la version publiée. La
-          formulation est donc choisie pour être VRAIE en toutes circonstances.
-        */}
         <span
           title={isPublished
             ? "Les visiteurs voient la dernière version mise en ligne. Pour qu'une mise en page ou un texte les atteigne, cliquez « Mettre à jour le site »."
-            : 'Les visiteurs voient encore l\'ancien site. Publiez pour appliquer vos modifications.'}
+            : 'Les visiteurs voient encore l’ancien site. Publiez pour appliquer vos modifications.'}
           style={{
-            fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 100,
-            background: isPublished ? `${t.primary}14` : 'rgba(220,38,38,0.08)',
-            color: isPublished ? t.primary : '#b91c1c',
-            border: `1px solid ${isPublished ? `${t.primary}33` : 'rgba(220,38,38,0.2)'}`,
+            fontSize: 13, fontWeight: 600, padding: '10px 14px', borderRadius: 100,
+            minHeight: 44, display: 'inline-flex', alignItems: 'center',
+            background: isPublished ? `${t.primary}14` : `${t.accent}14`,
+            color: isPublished ? t.primary : t.accent,
+            border: `1px solid ${isPublished ? `${t.primary}33` : `${t.accent}44`}`,
             whiteSpace: 'nowrap',
           }}
         >
-          {isPublished ? '● En ligne' : '○ Brouillon — non visible sur le site'}
+          {isPublished ? 'En ligne' : 'Brouillon, pas encore sur le site'}
         </span>
-        {isPublished && (
-          <span style={{ fontSize: 11, color: t.muted, whiteSpace: 'nowrap' }}>
-            Les visiteurs voient la dernière version publiée.
-          </span>
-        )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           {/*
@@ -174,81 +162,70 @@ export function PageEditor({
             retrouver un état antérieur, sans quitter l'éditeur.
           */}
           <button
+            type="button"
             onClick={() => setShowPublication((open) => !open)}
+            aria-pressed={showPublication}
+            aria-expanded={showPublication}
             title="Vérifier la page avant publication et consulter les versions enregistrées."
-            style={{
-              padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: `1px solid ${showPublication ? t.primary : t.shadow}`,
-              background: showPublication ? `${t.primary}12` : 'transparent',
-              color: showPublication ? t.primary : t.text,
-              cursor: 'pointer', transition: 'all 0.15s',
-            }}
+            style={boutonOutil(t, { actif: showPublication, disabled: false })}
+            {...anneauFocus(t)}
           >
             Contrôle et versions
           </button>
-          {/* Sélecteur de langue */}
-          <div style={{ display: 'flex', gap: 4, background: `${t.primary}0a`, borderRadius: 8, padding: 2 }}>
-            {(['fr', 'en'] as const).map((lang) => (
-              <button key={lang} onClick={() => editor.setLocale(lang)} style={{
-                padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                border: 'none', cursor: 'pointer',
-                background: editor.locale === lang ? t.primary : 'transparent',
-                color: editor.locale === lang ? '#fff' : t.muted,
-                transition: 'all 0.15s',
-              }}>{lang.toUpperCase()}</button>
+          <div role="group" aria-label="Langue de l’aperçu" style={{ display: 'flex', gap: 8 }}>
+            {([
+              { id: 'fr' as const, label: 'Français' },
+              { id: 'en' as const, label: 'English' },
+            ]).map((lang) => (
+              <button
+                key={lang.id}
+                type="button"
+                onClick={() => editor.setLocale(lang.id)}
+                aria-pressed={editor.locale === lang.id}
+                style={boutonOutil(t, { actif: editor.locale === lang.id, primaire: editor.locale === lang.id })}
+                {...anneauFocus(t)}
+              >
+                {lang.label}
+              </button>
             ))}
           </div>
-          {/* Erreur */}
           {editor.error && (
-            <span style={{ fontSize: 12, color: '#dc2626', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{editor.error}</span>
+            <span role="alert" style={{ fontSize: 13, color: t.accent, maxWidth: 280 }}>{editor.error}</span>
           )}
-          {/* Avertissement — ni une erreur ni un succès : quelque chose reste à faire */}
           {editor.avertissement && !editor.error && (
-            <span
-              title={editor.avertissement}
-              style={{ fontSize: 12, fontWeight: 600, color: '#a16207', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
+            <span role="status" title={editor.avertissement} style={{ fontSize: 13, fontWeight: 600, color: t.gold, maxWidth: 280 }}>
               {editor.avertissement}
             </span>
           )}
-          {/* Bouton sauvegarder */}
-          <button onClick={editor.save} disabled={editor.saving} style={{
-            padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            border: 'none', cursor: editor.saving ? 'wait' : 'pointer',
-            background: editor.saving ? t.muted : t.primary,
-            color: '#fff', transition: 'background 0.15s',
-          }}>
+          <button
+            type="button"
+            onClick={editor.save}
+            disabled={editor.saving}
+            style={boutonOutil(t, { disabled: editor.saving })}
+            {...anneauFocus(t)}
+          >
             {editor.saving ? 'Sauvegarde…' : 'Sauvegarder'}
           </button>
-          {/*
-            Publier / depublier. C'est L'ACTION qui fait basculer le site public.
-            Tant que la page est en brouillon, elle est absente de la lecture
-            publique (`pages_public_read` ne sert que les pages publiées) :
-            les visiteurs gardent donc l'ancien rendu.
-          */}
-          <button onClick={handlePublish} disabled={publishing || editor.saving} title={
-            isPublished
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={publishing || editor.saving}
+            title={isPublished
               ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
-              : 'Publier : les visiteurs verront ce contenu.'
-          } style={{
-            padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            border: `1px solid ${t.primary}`,
-            cursor: publishing ? 'wait' : 'pointer',
-            background: `${t.primary}12`,
-            color: t.primary,
-            transition: 'all 0.15s',
-          }}>
-            {publishing ? '…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
+              : 'Publier : les visiteurs verront ce contenu.'}
+            style={boutonOutil(t, { primaire: true, disabled: publishing || editor.saving })}
+            {...anneauFocus(t)}
+          >
+            {publishing ? 'Publication…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
           </button>
           {isPublished && (
-            <button onClick={onUnpublish} disabled={publishing || editor.saving} title="Retirer cette version : les visiteurs reverront l'ancien site."
-              style={{
-                padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                border: `1px solid ${t.shadow}`,
-                cursor: publishing ? 'wait' : 'pointer',
-                background: 'transparent',
-                color: t.text,
-              }}
+            <button
+              type="button"
+              onClick={onUnpublish}
+              disabled={publishing || editor.saving}
+              title="Retirer cette version : les visiteurs reverront l’ancien site."
+              style={boutonOutil(t, { danger: true, disabled: publishing || editor.saving })}
+              {...anneauFocus(t)}
             >
               Retirer du site
             </button>
@@ -263,10 +240,10 @@ export function PageEditor({
           borderRight: `1px solid ${t.shadow}`, background: t.surface,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
-          <div style={{ padding: '14px 14px 8px', fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <div style={{ padding: '14px 14px 8px', ...titreColonne(t) }}>
             Structure
           </div>
-          <PageLayoutPicker value={layout} onChange={onLayoutChange} disabled={editor.saving} />
+          <PageLayoutPicker value={layout} onChange={choisirMiseEnPage} disabled={editor.saving} />
           <SectionList
             sections={editor.sections}
             selected={editor.selected}
@@ -279,31 +256,40 @@ export function PageEditor({
         </div>
 
         {/* Colonne 2 : Aperçu */}
-        <div style={{ overflow: 'auto', background: '#f5f5f5' }}>
+        <div style={{ overflow: 'hidden', background: t.bg }}>
           <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} layout={layout} />
         </div>
 
-        {/* Colonne 3 : Modifier — ou Contrôle avant publication */}
         <div style={{
           borderLeft: `1px solid ${t.shadow}`, background: t.surface,
-          overflow: 'auto',
+          overflow: 'hidden', position: 'relative',
         }}>
-          {showPublication ? (
-            <PublicationPanel
-              pageId={pageId}
-              blockedReport={blockedReport}
-              onClose={() => setShowPublication(false)}
-            />
-          ) : selectedSection ? (
-            <PropertyPanel
-              section={selectedSection}
-              locale={editor.locale}
-              onUpdate={(content) => editor.updateContent(editor.selected!, content)}
-              onVariantChange={(variant) => editor.setVariant(editor.selected!, variant)}
-            />
-          ) : (
-            <div style={{ padding: 32, textAlign: 'center', color: t.muted }}>
-              <p style={{ fontSize: 14, margin: 0 }}>Sélectionnez une section pour la modifier.</p>
+          <div style={{ height: '100%', overflow: 'auto' }}>
+            {selectedSection ? (
+              <PropertyPanel
+                section={selectedSection}
+                locale={editor.locale}
+                pageLayout={layout}
+                onUpdate={(content) => editor.updateContent(editor.selected!, content)}
+                onVariantChange={(variant) => editor.setVariant(editor.selected!, variant)}
+              />
+            ) : (
+              <div style={{ padding: 32, textAlign: 'center', color: t.muted }}>
+                <p style={{ fontSize: 14, margin: 0 }}>Sélectionnez une section pour la modifier.</p>
+              </div>
+            )}
+          </div>
+          {showPublication && (
+            <div
+              style={{ position: 'absolute', inset: 0, background: t.surface, zIndex: 2, overflow: 'auto' }}
+              role="region"
+              aria-label="Contrôle avant publication"
+            >
+              <PublicationPanel
+                pageId={pageId}
+                blockedReport={blockedReport}
+                onClose={() => setShowPublication(false)}
+              />
             </div>
           )}
         </div>

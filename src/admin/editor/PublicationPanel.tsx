@@ -22,6 +22,7 @@ import {
   type PageVersionDetail,
   type PageVersionSummary,
 } from '@/cms/repository/versions'
+import { anneauFocus, boutonOutil, titreColonne } from './chrome'
 
 interface PublicationPanelProps {
   pageId: string
@@ -71,27 +72,24 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
-      <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontFamily: 'var(--f-heading)', fontSize: 14, fontWeight: 700, color: t.heading ?? t.text }}>
+      <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'var(--f-heading)', fontSize: 16, fontWeight: 700, color: t.heading, marginRight: 'auto' }}>
           Avant de publier
         </span>
         <button
+          type="button"
           onClick={load}
           disabled={loading}
-          style={{
-            marginLeft: 'auto', fontSize: 11, fontWeight: 600, padding: '4px 10px',
-            borderRadius: 6, border: `1px solid ${t.shadow}`, background: 'transparent',
-            color: t.muted, cursor: loading ? 'wait' : 'pointer',
-          }}
+          style={boutonOutil(t, { disabled: loading })}
+          {...anneauFocus(t)}
         >
-          {loading ? '…' : 'Revérifier'}
+          {loading ? 'Vérification…' : 'Revérifier'}
         </button>
         <button
+          type="button"
           onClick={onClose}
-          style={{
-            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6,
-            border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer',
-          }}
+          style={boutonOutil(t, {})}
+          {...anneauFocus(t)}
         >
           Fermer
         </button>
@@ -99,8 +97,8 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
 
       {error && (
         <div style={{
-          margin: '0 16px 10px', padding: '8px 10px', borderRadius: 8, fontSize: 12,
-          background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c',
+          margin: '0 16px 10px', padding: '10px 12px', borderRadius: 8, fontSize: 13,
+          background: `${t.accent}12`, border: `1px solid ${t.accent}44`, color: t.accent,
         }}>
           {error}
         </div>
@@ -110,9 +108,9 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
         <>
           <div style={{
             margin: '0 16px 12px', padding: '9px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-            background: report.publishable ? `${t.primary}12` : '#fef2f2',
-            border: `1px solid ${report.publishable ? `${t.primary}33` : '#fecaca'}`,
-            color: report.publishable ? t.primary : '#b91c1c',
+            background: report.publishable ? `${t.primary}12` : `${t.accent}12`,
+            border: `1px solid ${report.publishable ? `${t.primary}33` : `${t.accent}44`}`,
+            color: report.publishable ? t.primary : t.accent,
           }}>
             {report.summary}
           </div>
@@ -121,7 +119,7 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
             {report.checks.map((check) => (
               <div key={check.id} style={{ marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-                  <span style={{ fontSize: 12, width: 12, flex: '0 0 12px', color: iconColor(check.level) }}>
+                  <span style={{ fontSize: 12, width: 12, flex: '0 0 12px', color: iconColor(check.level, t) }}>
                     {iconFor(check.level)}
                   </span>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: check.level === 'ok' || check.level === 'skipped' ? t.muted : t.text }}>
@@ -136,7 +134,7 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
                 )}
                 {check.findings.map((finding, index) => (
                   <div key={`${check.id}-${index}`} style={{ marginLeft: 19, marginTop: 3 }}>
-                    <div style={{ fontSize: 12, color: finding.level === 'error' ? '#b91c1c' : '#a16207', lineHeight: 1.45 }}>
+                    <div style={{ fontSize: 12, color: finding.level === 'error' ? t.accent : t.gold, lineHeight: 1.45 }}>
                       {finding.message}
                     </div>
                     {finding.where && (
@@ -151,7 +149,7 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
       )}
 
       <div style={{ borderTop: `1px solid ${t.shadow}`, padding: '12px 16px 20px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+        <div style={{ ...titreColonne(t), marginBottom: 8 }}>
           Versions
         </div>
 
@@ -169,14 +167,13 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
                 </span>
                 <span style={{ fontSize: 11, color: t.muted }}>
                   {formatDate(version.createdAt)}
-                  {version.createdBy ? ` — ${version.createdBy}` : ''}
+                  {version.createdBy ? ` · ${version.createdBy}` : ''}
                 </span>
                 <button
+                  type="button"
                   onClick={() => openVersion(version.id)}
-                  style={{
-                    marginLeft: 'auto', fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6,
-                    border: `1px solid ${t.shadow}`, background: 'transparent', color: t.primary, cursor: 'pointer',
-                  }}
+                  style={{ ...boutonOutil(t, { actif: true }), marginLeft: 'auto' }}
+                  {...anneauFocus(t)}
                 >
                   Voir
                 </button>
@@ -199,11 +196,10 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
               Version {detail.summary.version}
             </span>
             <button
+              type="button"
               onClick={() => setDetail(null)}
-              style={{
-                marginLeft: 'auto', fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6,
-                border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer',
-              }}
+              style={{ ...boutonOutil(t, {}), marginLeft: 'auto' }}
+              {...anneauFocus(t)}
             >
               Fermer
             </button>
@@ -239,12 +235,10 @@ function iconFor(level: CheckLevel): string {
   return level === 'warning' ? '!' : '✕'
 }
 
-function iconColor(level: CheckLevel): string {
-  if (level === 'ok') return '#16a34a'
-  // Un contrôle NON VÉRIFIÉ n'est ni vert ni rouge : il est neutre. Le peindre
-  // en vert laisserait croire qu'il a été exécuté et qu'il est conforme.
-  if (level === 'skipped') return '#9ca3af'
-  return level === 'warning' ? '#a16207' : '#b91c1c'
+function iconColor(level: CheckLevel, t: { primary: string; muted: string; gold: string; accent: string }): string {
+  if (level === 'ok') return t.primary
+  if (level === 'skipped') return t.muted
+  return level === 'warning' ? t.gold : t.accent
 }
 
 function formatDate(iso: string): string {

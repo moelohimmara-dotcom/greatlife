@@ -118,7 +118,7 @@ export function PageEditorWrapper() {
   if (error || !pageId || !sections) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-        <div style={{ textAlign: 'center', padding: 32, borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
+        <div role="alert" style={{ textAlign: 'center', padding: 32, borderRadius: 12, background: t.surface, border: `1px solid ${t.accent}44`, color: t.accent }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Erreur de chargement</div>
           <div style={{ fontSize: 13 }}>{error ?? 'Aucune page trouvée.'}</div>
         </div>

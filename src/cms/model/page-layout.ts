@@ -22,17 +22,17 @@ export const PAGE_LAYOUTS = [
   {
     id: 'magazine',
     label: 'Grille magazine',
-    help: 'La bannière en pleine largeur, les blocs suivants côte à côte comme un journal.',
+    help: 'La bannière en pleine largeur (plein écran), les blocs suivants côte à côte comme un journal.',
   },
   {
     id: 'hero_parallax',
     label: 'Bannière plein écran',
-    help: 'La bannière occupe l’écran et reste en fond pendant que le reste de la page défile par-dessus.',
+    help: 'La bannière occupe l’écran en plein écran et reste en fond pendant que le reste de la page défile par-dessus.',
   },
   {
     id: 'split',
     label: 'Écran partagé',
-    help: 'La bannière à gauche, le reste de la page à droite. Sur un petit écran, tout se remet en colonne.',
+    help: 'La bannière plein écran à gauche, le reste de la page à droite. Sur un petit écran, tout se remet en colonne.',
   },
 ] as const
 
@@ -50,4 +50,24 @@ export function normaliserPageLayout(valeur: string | null | undefined): PageLay
 
 export function pageLayoutLabel(id: PageLayout): string {
   return PAGE_LAYOUTS.find((item) => item.id === id)?.label ?? PAGE_LAYOUTS[0].label
+}
+
+/**
+ * Disposition de bannière imposée par la mise en page de la page.
+ *
+ * « Bannière plein écran », « Grille magazine » et « Écran partagé » n'ont
+ * de sens que si le premier bloc Bannière n'est plus Image + texte (sinon
+ * le restaurateur croit que le choix de page n'agit pas).
+ *
+ * `null` = on laisse la disposition du bloc. « Vidéo » est conservée :
+ * elle occupe déjà toute la largeur.
+ */
+export function dispositionBannierePourMiseEnPage(
+  layout: PageLayout,
+  varianteActuelle?: string | null,
+): string | null {
+  if (layout !== 'hero_parallax' && layout !== 'magazine' && layout !== 'split') {
+    return null
+  }
+  return varianteActuelle === 'video' ? 'video' : 'fullscreen'
 }
