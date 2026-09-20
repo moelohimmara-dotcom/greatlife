@@ -76,7 +76,7 @@ Chaîne de publication (instantané publié, `033`), filets `verify:lot1`,
 
 | # | Sujet | Couloir | Preuve du manque |
 |---|---|---|---|
-| **N-1** | `orders.total` est en **TEXTE** → chiffre d'affaires incalculable, affiché **0 FG** | fiabilité | `select sum(total) from orders` → `function sum(text) does not exist` |
+| **N-1** | Les **montants sont stockés comme texte d'affichage** (`"46 000"`) : aucune somme, aucun tri, aucune comparaison possibles **en base** — `select sum(total)` → `function sum(text) does not exist`. Le parseur est **dupliqué 3 fois** (`AdminPanel.tsx:170`, `AdminPanel.tsx:2095`, `CartContext.tsx:25`). | fiabilité | ⚠️ **Descriptif corrigé le 2026-09-20 — voir §4.4.** Ma première rédaction disait « chiffre d'affaires incalculable, affiché 0 FG » : **c'était faux**. |
 | **N-2** | `SiteContext.tsx` recopie les **4 coordonnées** du restaurant en dur, **sur le chemin public** | fiabilité | `verify:anchors` ne balaie que `src/sections` et `src/components` (26 fichiers) |
 | **N-3** | `LivePreview.tsx` et `PageRenderer` sont du **code mort** | fiabilité | aucun `import` dans `src/` |
 | **N-4** | `verify:anchors` ne vérifie qu'**une** page publiée (la première trouvée) | fiabilité | `find()` silencieux, revue 3 M-2 |
@@ -104,9 +104,39 @@ du propriétaire, parce que ce sont des **écritures de données**.
   le mode Avancé touchent le rendu des sections et le panneau de propriétés.
 - `N-14` → **décision du propriétaire** : quelle disposition doit être publiée.
 
-**Ordre recommandé** : `N-1` (le chiffre d'affaires est faux, et c'est un chiffre
-que le restaurateur lit), puis `N-9`/`N-10` (un client qui appelle ou écrit
-n'atteint personne), puis le reste.
+**Ordre recommandé** : **`N-9` et `N-10` d'abord** — un client qui appelle ou qui
+écrit **n'atteint personne** ; c'est une panne vivante, tournée vers l'extérieur.
+Puis `N-1` (les montants en texte), qui est une dette de maintenance et un
+obstacle aux états faits en base, mais qui ne casse **rien de visible**. Ensuite
+le reste.
+
+---
+
+## 4.4 Correction du 2026-09-20 : `N-1` était mal décrit
+
+**Ce que j'avais écrit** : « `orders.total` est en TEXTE → chiffre d'affaires
+incalculable, affiché **0 FG** », preuve citée : `sum(total)` échoue en base.
+
+**Ce qui est vrai, mesuré** :
+
+1. Le chiffre d'affaires affiche **0 FG parce qu'aucune commande n'est
+   confirmée** : les 4 commandes sont `pending`. Le 0 est **arithmétiquement
+   correct**, ce n'est pas un défaut.
+2. **L'application calcule correctement.** `AdminPanel.tsx:170-171` fait
+   `parseInt(String(s).replace(/[^0-9]/g, ''))` — elle sait lire `"46 000"`.
+   Mon raisonnement est parti d'un échec **côté SQL** et j'en ai conclu, à tort,
+   que **l'application** ne savait pas calculer.
+3. Le défaut réel est plus étroit, et il tient : les montants sont stockés comme
+   **chaîne d'affichage** (`"46 000"`, séparateur = espace ASCII `0x20`, mesuré).
+   Conséquence : **aucune agrégation, aucun tri, aucune comparaison en base** —
+   tout état ou export fait en SQL est impossible. Et le parseur est **dupliqué
+   trois fois**, donc un quatrième lecteur le réécrira ou l'oubliera.
+
+**Ce que cette erreur change** : `N-1` n'est **pas** une panne visible, c'est une
+**dette de maintenance**. Sa priorité descend, et `N-9`/`N-10` passent devant.
+C'est la cinquième affirmation inexacte de la session, et elle suit la même
+règle que les précédentes : **une preuve mesurée ne vaut que pour ce qu'elle
+mesure** — `sum(text)` échoue en SQL, cela ne disait rien du code de l'écran.
 
 ---
 
