@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useSite } from '@/contexts/SiteContext'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
 
@@ -72,12 +71,8 @@ export function Footer({ restaurant }: { restaurant: ResolvedRestaurant }) {
             </div>
           </div>
         </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
           <div style={{ fontSize: '12px', opacity: 0.5 }}>© 2026 Greatlife · Site vitrine pilotable · Fast-food bio sans culpabilité</div>
-          <Link to="/login" style={{ fontSize: '12px', opacity: 0.4, color: '#fff', textDecoration: 'none', transition: 'opacity 0.2s' }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'} onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}>
-            Espace admin
-          </Link>
         </div>
       </div>
     </footer>
