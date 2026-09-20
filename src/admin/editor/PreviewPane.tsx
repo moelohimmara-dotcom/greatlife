@@ -130,7 +130,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
   const hauteurIframe = scene.h > 0 ? Math.max(scene.h / scale, 1) : 800
 
   return (
-    <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ padding: 16, flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: t.heading, paddingLeft: 4 }}>
           Aperçu

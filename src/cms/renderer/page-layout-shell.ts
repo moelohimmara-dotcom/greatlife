@@ -20,6 +20,11 @@ export const CSS_GABARITS_PAGE = `
 [data-cms-layout="magazine"] .page-layout-hero .hero-plein {
   min-height: 100vh !important;
 }
+[data-cms-preview="true"][data-cms-layout="magazine"] .page-layout-hero .hero-plein,
+[data-cms-preview="true"][data-cms-layout="hero_parallax"] .hero-plein,
+[data-cms-preview="true"][data-cms-layout="split"] .hero-plein {
+  min-height: min(70vh, 560px) !important;
+}
 [data-cms-layout="magazine"] .page-layout-hero .hero-plein-inner {
   padding-top: 108px !important;
 }

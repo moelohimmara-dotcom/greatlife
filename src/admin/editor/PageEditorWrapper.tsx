@@ -127,6 +127,7 @@ export function PageEditorWrapper() {
   }
 
   return (
+    <div style={{ height: '100%', minHeight: 0 }}>
     <PageEditor
       pageId={pageId}
       initialSections={sections}
@@ -138,5 +139,6 @@ export function PageEditorWrapper() {
       onUnpublish={unpublishNow}
       blockedReport={blockedReport}
     />
+    </div>
   )
 }

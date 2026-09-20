@@ -27,11 +27,10 @@ import {
 import { CSS_GABARITS_PAGE } from './page-layout-shell'
 import { SectionRenderer } from './SectionRenderer'
 
-/** Blocs assez courts pour une carte magazine. Le menu, le contact, etc. restent en bande. */
+/** Blocs assez courts pour une carte magazine. Les grilles (équipe, engagements,
+ *  carte, journal) restent en bande — sinon une colonne haute laisse un trou. */
 const BLOCS_MAGAZINE_CELLULE = new Set([
   'story',
-  'engagements',
-  'team',
   'testimonials',
   'text',
   'image',

@@ -224,8 +224,10 @@ export function PageEditor({
         </div>
       </div>
 
-      {/* Layout 3 colonnes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', flex: 1, overflow: 'hidden' }}>
+      {/* Layout 3 colonnes — minmax(0,1fr) : sans ça la rangée grandit
+          avec la liste des blocs, l’aperçu a un 100vh de plusieurs écrans
+          et le bas de la fenêtre n’est plus que du fond crème. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', gridTemplateRows: 'minmax(0, 1fr)', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Colonne 1 : Structure */}
         <div style={{
           borderRight: `1px solid ${t.shadow}`, background: t.surface,
@@ -247,13 +249,13 @@ export function PageEditor({
         </div>
 
         {/* Colonne 2 : Aperçu */}
-        <div style={{ overflow: 'hidden', background: t.bg }}>
+        <div style={{ overflow: 'hidden', background: t.bg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} layout={layout} />
         </div>
 
         <div style={{
           borderLeft: `1px solid ${t.shadow}`, background: t.surface,
-          overflow: 'hidden', position: 'relative',
+          overflow: 'hidden', position: 'relative', minHeight: 0,
         }}>
           <div style={{ height: '100%', overflow: 'auto' }}>
             {selectedSection ? (
