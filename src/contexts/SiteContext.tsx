@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { THEMES } from '@/config/themes'
 import type { ThemePalette } from '@/config/themes'
 import { FONTS } from '@/config/fonts'
@@ -272,55 +272,105 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     document.head.appendChild(style)
   }, [])
 
-  useEffect(() => {
-    let active = true
-    async function load() {
-      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
-        fetchMenu(),
-        fetchContent(),
-        fetchMessages(),
-        fetchBlogPosts(),
-        fetchMedia(),
-        fetchAdminUsers(),
-        fetchOrders(),
-        fetchReservations(),
-      ])
-      if (!active) return
-      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || resaRes.fromDb
-      setDataSource(anyDb ? 'supabase' : 'local')
-      if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
-      if (contentRes.fromDb && contentRes.data) {
-        const cfg = contentRes.data as Partial<SiteConfig>
-        if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
-        if (cfg.themeId) setThemeId(cfg.themeId)
-        if (cfg.fontId) setFontId(cfg.fontId)
-        if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
-        if (cfg.rbacOverrides) {
-          const ov = cfg.rbacOverrides as RbacOverrides
-          setRbacOverridesState(ov)
-          setRbacOverrides(ov)
-        }
+  /*
+    LE CHARGEMENT DOIT SUIVRE LA SESSION (défaut bloquant, revue du 2026-09-20).
+
+    DÉFAUT MESURÉ
+    Se connecter depuis l'écran de connexion laissait la console sur
+    « 0 message · 0 commande · 0 réservation · 0 utilisateur », alors que la base
+    en contient 46, 4, 12 et 4. Un rechargement manuel les faisait apparaître.
+    Le restaurateur concluait donc avoir perdu ses données.
+
+    CAUSE
+    Ce chargement partait UNE SEULE FOIS, au montage (`useEffect(…, [])`), et
+    `SiteProvider` ENVELOPPE `AuthProvider` dans `App.tsx`. Les lectures
+    partaient donc avant que la session existe : les policies RLS
+    (`messages_admin_read`, `orders_admin_read`, `reservations_admin_read`,
+    `admin_users_owner_manage`) répondaient 0 ligne, et RIEN ne relançait le
+    chargement après la connexion.
+
+    CORRECTIF : le chargement est relancé quand l'état d'authentification change.
+    `load` est extrait pour être appelable des deux endroits ; il est différé
+    car appeler Supabase depuis le rappel de `onAuthStateChange` peut bloquer le
+    client (recommandation de supabase-js v2).
+  */
+  const estMonte = useRef(true)
+  useEffect(
+    () => () => {
+      estMonte.current = false
+    },
+    [],
+  )
+
+  const load = useCallback(async () => {
+    const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
+      fetchMenu(),
+      fetchContent(),
+      fetchMessages(),
+      fetchBlogPosts(),
+      fetchMedia(),
+      fetchAdminUsers(),
+      fetchOrders(),
+      fetchReservations(),
+    ])
+    if (!estMonte.current) return
+    const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || resaRes.fromDb
+    setDataSource(anyDb ? 'supabase' : 'local')
+    if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
+    if (contentRes.fromDb && contentRes.data) {
+      const cfg = contentRes.data as Partial<SiteConfig>
+      if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
+      if (cfg.themeId) setThemeId(cfg.themeId)
+      if (cfg.fontId) setFontId(cfg.fontId)
+      if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
+      if (cfg.rbacOverrides) {
+        const ov = cfg.rbacOverrides as RbacOverrides
+        setRbacOverridesState(ov)
+        setRbacOverrides(ov)
       }
-      if (messagesRes.fromDb && messagesRes.data.length > 0) {
-        setMessages(messagesRes.data)
-      }
-      if (blogRes.fromDb && blogRes.data.length > 0) {
-        setBlogPosts(blogRes.data)
-      }
-      if (mediaRes.fromDb && mediaRes.data.length > 0) {
-        setMedia(mediaRes.data.map(mediaAssetToSlot))
-      }
-      if (adminRes.fromDb) setAdminUsers(adminRes.data)
-      if (ordersRes.fromDb) setOrdersCount(ordersRes.data.length)
-      if (resaRes.fromDb) setReservationsCount(resaRes.data.length)
-      setLastMessageCount(messagesRes.data.length)
-      setDataLoading(false)
     }
-    load()
-    return () => {
-      active = false
+    if (messagesRes.fromDb && messagesRes.data.length > 0) {
+      setMessages(messagesRes.data)
     }
+    if (blogRes.fromDb && blogRes.data.length > 0) {
+      setBlogPosts(blogRes.data)
+    }
+    if (mediaRes.fromDb && mediaRes.data.length > 0) {
+      setMedia(mediaRes.data.map(mediaAssetToSlot))
+    }
+    if (adminRes.fromDb) setAdminUsers(adminRes.data)
+    if (ordersRes.fromDb) setOrdersCount(ordersRes.data.length)
+    if (resaRes.fromDb) setReservationsCount(resaRes.data.length)
+    setLastMessageCount(messagesRes.data.length)
+    setDataLoading(false)
   }, [])
+
+  // Chargement initial : inchangé (site public, premier rendu).
+  useEffect(() => {
+    load()
+  }, [load])
+
+  /*
+    ET LE CHARGEMENT SUIT LA SESSION.
+    `SIGNED_IN` couvre la connexion SANS rechargement — le cas qui affichait 0.
+    `SIGNED_OUT` remet les compteurs administrateur à zéro, ce qui est correct :
+    sans session, ces tables ne sont plus lisibles.
+    `INITIAL_SESSION` n'est PAS écouté : il ferait un second chargement inutile au
+    montage, et le cas « page rechargée avec session » fonctionne déjà.
+  */
+  useEffect(() => {
+    const sb = getSupabase()
+    if (!sb) return
+    const { data: sub } = sb.auth.onAuthStateChange((event) => {
+      if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT') return
+      setTimeout(() => {
+        load()
+      }, 0)
+    })
+    return () => {
+      sub.subscription.unsubscribe()
+    }
+  }, [load])
 
   const saveContentToDb = async () => saveContent(content)
 
