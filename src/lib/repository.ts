@@ -1,6 +1,7 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { MENU, type MenuItem } from '@/data/menu'
 import type { SiteContent, ContactMessage, MessageReply } from '@/contexts/SiteContext'
+import { fusionBilingue, clefsCoordonnees, fusionnePatch } from '@/cms/model/contenu-patch'
 
 const MENU_TABLE = 'menu_items'
 const CONTENT_TABLE = 'site_content'
@@ -175,22 +176,15 @@ export async function fetchContent(): Promise<{
 /**
  * Écrit les coordonnées dans la ligne que le SITE PUBLIC lit en premier.
  *
- * DÉFAUT FERMÉ ICI, ET IL ÉTAIT BLOQUANT
- * L'écran « Réglages globaux » annonce « Identité et coordonnées du restaurant,
- * appliquées sur tout le site ». Il n'écrivait pourtant que `site_config` —
- * tandis que le site public lit `site_content.restaurant` EN PREMIER
- * (`Localisation.tsx`, et le pied de page depuis le 2026-09-20).
+ * HISTORIQUE (défaut fermé le 2026-09-20) : l'écran « Réglages globaux »
+ * n'écrivait que `site_config`, tandis que le site public lit
+ * `site_content.restaurant` EN PREMIER (`Localisation.tsx`, `Footer.tsx`). La
+ * valeur de remplacement `+224 000 00 00 00` l'emportait donc sur la saisie du
+ * restaurateur : il ne pouvait pas changer son numéro.
  *
- * Conséquence mesurée : `restaurant.phone` valant `+224 000 00 00 00` (valeur de
- * remplacement, non vide), il l'emportait TOUJOURS sur ce que le restaurateur
- * venait de saisir. **Il ne pouvait pas changer son numéro de téléphone.** Et
- * `saveSetting`, le seul écrivain possible de cette ligne, était exporté sans
- * être appelé nulle part (`npm run` : aucun appelant dans `src/`).
- *
- * Les deux lignes sont écrites : `site_config` continue d'alimenter l'écran
- * d'administration, `restaurant` alimente le site. Les garder cohérentes vaut
- * mieux que de laisser diverger silencieusement deux copies d'une même donnée
- * (TDR §16). La consolidation sur une seule ligne est au backlog.
+ * MIROIR CIBLE (plan P0) : seule une clé PRÉSENTE dans `champ` est réécrite.
+ * Les autres garantissent leur valeur publiée : un écran qui n'affiche pas le
+ * téléphone ne peut pas l'écraser, même s'il ne l'envoie pas.
  *
  * `address` et `hours` sont BILINGUES dans cette ligne : on fusionne dans la
  * forme existante au lieu de l'aplatir, sinon une éventuelle traduction
@@ -199,7 +193,7 @@ export async function fetchContent(): Promise<{
  */
 async function ecrireCoordonneesCanoniques(
   sb: NonNullable<ReturnType<typeof getSupabase>>,
-  content: SiteContent,
+  champ: Record<string, unknown>,
 ): Promise<SaveResult> {
   const { data: existant, error: lectureErr } = await sb
     .from(CONTENT_TABLE)
@@ -209,26 +203,20 @@ async function ecrireCoordonneesCanoniques(
   if (lectureErr) return { ok: false, error: errMsg(lectureErr) }
 
   const actuel = (existant?.value ?? {}) as Record<string, unknown>
-  const bilingue = (cle: string, valeur: string): Record<string, unknown> => {
-    const avant = actuel[cle]
-    const base =
-      avant && typeof avant === 'object' && !Array.isArray(avant)
-        ? (avant as Record<string, unknown>)
-        : {}
-    return { ...base, fr: valeur }
-  }
+  // MIROIR CIBLE (plan P0) : seule une clé PRÉSENTE dans `champ` est réécrite.
+  // Les autres garantissent leur valeur publiée : un écran qui n'affiche pas le
+  // téléphone ne peut pas l'écraser, même s'il ne l'envoie pas.
+  const suivant: Record<string, unknown> = { ...actuel }
+  if ('phone' in champ) suivant.phone = String(champ.phone ?? '')
+  if ('emailContact' in champ) suivant.emailContact = String(champ.emailContact ?? '')
+  if ('emailReservation' in champ) suivant.emailReservation = String(champ.emailReservation ?? '')
+  if ('address' in champ) suivant.address = fusionBilingue(actuel.address, String(champ.address ?? ''))
+  if ('hours' in champ) suivant.hours = fusionBilingue(actuel.hours, String(champ.hours ?? ''))
 
   const { error } = await sb.from(CONTENT_TABLE).upsert(
     {
       key: RESTAURANT_KEY,
-      value: {
-        ...actuel,
-        address: bilingue('address', content.address),
-        hours: bilingue('hours', content.hours),
-        phone: content.phone,
-        emailContact: content.emailContact,
-        emailReservation: content.emailReservation,
-      },
+      value: suivant,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'key' },
@@ -237,9 +225,43 @@ async function ecrireCoordonneesCanoniques(
   return { ok: true }
 }
 
-export async function saveContent(content: SiteContent): Promise<SaveResult> {
+/*
+  NOTE — l'ancien `saveContent(content)` (écriture TOTALE de `site_config`)
+  a été RETIRÉ à ce lot : plus aucun appelant, et chaque écran de console passe
+  désormais par les écritures PAR DOMAINE ci-dessous. Le seul remplacement
+  complet restant est volontaire : l'import d'un fichier de configuration
+  (« Réglages globaux » → Importer), qui passe par `saveSiteConfig`.
+*/
+
+/**
+ * ÉCRITURE PAR DOMAINE — le correctif central du plan P0 (2026-09-20).
+ *
+ * DÉFAUT FERMÉ ICI : quatre écrans de contenu partageaient le même objet
+ * `content` et persistaient L'OBJET ENTIER à chaque « Enregistrer ». Un champ
+ * vide dans l'écran A écrasait donc la valeur publiée depuis l'écran B — c'est
+ * la cause première de la duplication des coordonnées et du piège documenté
+ * dans `docs/19 §7`. `saveSiteConfig` avait le même défaut masqué : les écrans
+ * Apparence réécrivaient le `content` global au passage.
+ *
+ * SÉMANTIQUE
+ *   - `patch` ne contient QUE les champs que l'écran actif affiche ;
+ *   - fusion sur la valeur actuelle (`fusionnePatch`, module pur testé) :
+ *     une clé absente du patch SURVIT INTACTE, y compris si l'état local de
+ *     l'écran portait une valeur obsolète ou vide ;
+ *   - canonique = les champs du contenu au NIVEAU RACINE de `value` — c'est la
+ *     forme que `saveContent` a toujours écrite, et celle où la vraie
+ *     coordonnée saisie par le restaurateur a atterri. Le lecteur
+ *     (`SiteContext`) lit le plat en premier depuis ce lot ;
+ *   - miroir `restaurant` UNIQUEMENT pour les clés de coordonnées présentes
+ *     dans le patch (site public : `Localisation.tsx`, `Footer.tsx`, la
+ *     fonction Edge).
+ */
+export async function updateSiteContentFields(
+  patch: Partial<SiteContent>,
+): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  if (Object.keys(patch).length === 0) return { ok: true }
   try {
     const { data: existing, error: readErr } = await sb
       .from(CONTENT_TABLE)
@@ -248,63 +270,79 @@ export async function saveContent(content: SiteContent): Promise<SaveResult> {
       .maybeSingle()
     if (readErr) return { ok: false, error: errMsg(readErr) }
     const currentValue = (existing?.value ?? {}) as Record<string, unknown>
-    const merged = {
-      ...currentValue,
-      slogan: content.slogan,
-      heroTitle: content.heroTitle,
-      heroSub: content.heroSub,
-      storyTitle: content.storyTitle,
-      story: content.story,
-      emailContact: content.emailContact,
-      emailReservation: content.emailReservation,
-      autoReply: content.autoReply,
-      restaurantName: content.restaurantName,
-      currency: content.currency,
-      phone: content.phone,
-      address: content.address,
-      hours: content.hours,
-      socialFacebook: content.socialFacebook,
-      socialInstagram: content.socialInstagram,
-      socialWhatsapp: content.socialWhatsapp,
-      team: content.team,
-      engagements: content.engagements,
-      testimonials: content.testimonials,
-    }
+
+    const merged = fusionnePatch(currentValue, patch)
     const { error } = await sb.from(CONTENT_TABLE).upsert(
       { key: CONTENT_KEY, value: merged, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
+      { onConflict: 'key' },
     )
     if (error) return { ok: false, error: errMsg(error) }
 
-    /*
-      LA LIGNE QUE LE SITE PUBLIC LIT, ET QUI N'ÉTAIT JAMAIS ÉCRITE.
-      Sans cet appel, l'écran « Réglages globaux » enregistrait les coordonnées
-      à un endroit que le site ne lit pas — et `restaurant.phone`, valant la
-      valeur de remplacement `+224 000 00 00 00` (non vide), l'emportait.
-      Le restaurateur ne pouvait donc PAS changer son numéro.
-    */
-    const coordonnees = await ecrireCoordonneesCanoniques(sb, content)
-    if (!coordonnees.ok) return coordonnees
-
+    if (clefsCoordonnees(patch as Record<string, unknown>).length > 0) {
+      const miroir = await ecrireCoordonneesCanoniques(sb, patch as Record<string, unknown>)
+      if (!miroir.ok) return miroir
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
   }
 }
 
-export async function saveSiteConfig(config: SiteConfig): Promise<SaveResult> {
+/**
+ * Écriture par domaine pour les ÉCRANS D'APPARENCE (thème, polices, visibilité).
+ *
+ * POURQUOI une seconde fonction : `saveSiteConfig` REMPLAÇAIT `site_config.value`
+ * ENTIER — y compris le `content` global. Changer un thème réécrivait donc le
+ * contenu de quatre autres écrans : le même défaut, par un autre chemin, et
+ * invisible puisque les valeurs repartaient de l'état en mémoire.
+ *
+ * Avec la fusion, un thème ou une visibilité ne touche JAMAIS le `content`.
+ */
+export async function updateSiteConfigFields(
+  patch: Record<string, unknown>,
+): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  if (Object.keys(patch).length === 0) return { ok: true }
   try {
+    const { data: existing, error: readErr } = await sb
+      .from(CONTENT_TABLE)
+      .select('value')
+      .eq('key', CONTENT_KEY)
+      .maybeSingle()
+    if (readErr) return { ok: false, error: errMsg(readErr) }
+    const currentValue = (existing?.value ?? {}) as Record<string, unknown>
+
+    const merged = fusionnePatch(currentValue, patch)
     const { error } = await sb.from(CONTENT_TABLE).upsert(
-      { key: CONTENT_KEY, value: config, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
+      { key: CONTENT_KEY, value: merged, updated_at: new Date().toISOString() },
+      { onConflict: 'key' },
     )
     if (error) return { ok: false, error: errMsg(error) }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
   }
+}
+
+/**
+ * Remplacement COMPLET de la configuration — réservé à l'IMPORT de
+ * configuration (« Réglages globaux » → Importer, choix volontaire de
+ * l'écrasement). Usage général : passez par les écritures par domaine
+ * (`updateSiteContentFields` / `updateSiteConfigFields`).
+ *
+ * Écrit la forme canonique (contenu plat + réglages), donc la coordonnée
+ * importée atteint aussi le miroir `restaurant`.
+ */
+export async function saveSiteConfig(config: SiteConfig): Promise<SaveResult> {
+  const contenu = await updateSiteContentFields(config.content)
+  if (!contenu.ok) return contenu
+  return updateSiteConfigFields({
+    themeId: config.themeId,
+    fontId: config.fontId,
+    visibility: config.visibility,
+    ...(config.rbacOverrides !== undefined ? { rbacOverrides: config.rbacOverrides } : {}),
+  })
 }
 
 export async function fetchMessages(): Promise<{

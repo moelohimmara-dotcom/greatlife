@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, saveContent, saveSiteConfig, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteContentFields, updateSiteConfigFields, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 import { fetchAllPages as fetchAllPagesCms } from '@/cms/repository/pages'
@@ -31,6 +31,23 @@ export interface SiteContent {
   engagements: Engagement[]
   testimonials: Testimonial[]
 }
+
+/*
+  Les clés du contenu, listées UNE FOIS.
+  POURQUOI : `site_config.value` porte ces champs au NIVEAU RACINE (plat) —
+  c'est la forme que `saveContent` puis `updateSiteContentFields` ont toujours
+  écrite. Un ancien lecteur ne regardait que `value.content` (imbriqué) : les
+  écrans pré-remplissaient donc VIDE ou avec d'anciennes valeurs, et la vraie
+  coordonnée saisie par le restaurateur restait prisonnière du plat que personne
+  ne lisait. Le lecteur applique les DEUX formes, le plat gagne.
+*/
+const CLES_SITE_CONTENT: (keyof SiteContent)[] = [
+  'slogan', 'heroTitle', 'heroSub', 'storyTitle', 'story',
+  'emailContact', 'emailReservation', 'autoReply',
+  'restaurantName', 'currency', 'phone', 'address', 'hours',
+  'socialFacebook', 'socialInstagram', 'socialWhatsapp',
+  'team', 'engagements', 'testimonials',
+]
 
 export interface SiteVisibility {
   sections: Record<string, boolean>
@@ -110,12 +127,12 @@ interface SiteContextValue {
   isDark: boolean
   dataSource: 'loading' | 'supabase' | 'local'
   dataLoading: boolean
-  saveContentToDb: () => Promise<SaveResult>
+  saveContentFields: (fields: Partial<SiteContent>) => Promise<SaveResult>
   refreshMessages: () => Promise<number>
   lastMessageCount: number
   blogPosts: BlogPost[]
   setBlogPosts: React.Dispatch<React.SetStateAction<BlogPost[]>>
-  saveSiteConfigToDb: () => Promise<SaveResult>
+  saveApparenceFields: (fields: { themeId?: string; fontId?: string; visibility?: SiteVisibility }) => Promise<SaveResult>
   rbacOverrides: RbacOverrides | null
   setRbacOverridesState: (o: RbacOverrides | null) => void
   saveRbac: (overrides: RbacOverrides | null) => Promise<SaveResult>
@@ -310,6 +327,39 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  /*
+    NORMALISATION DE LECTURE (plan P0, arbitrage du 2026-09-20).
+    `site_config.value` porte les champs du contenu AU NIVEAU RACINE (plat) :
+    c'est la forme que les écrivains (`saveContent`, puis
+    `updateSiteContentFields`) ont toujours écrite. Un lecteur ne regardait que
+    `value.content` (imbriqué) : les écrans pré-remplissaient VIDE ou avec
+    d'anciennes valeurs, et la vraie coordonnée saisie par le restaurateur
+    restait prisonnière du plat que personne ne lisait — mesuré :
+        value.phone        = +224 661 16 44 58  (le VRAI, écrit)
+        value.content.phone = +224 000 00 00 00 (l'ancien, lu)
+    Désormais : l'imbriqué est appliqué d'abord (pour les lignes qui n'existeraient
+    qu'en cette forme), puis les champs plats PRÉSENTS écrasent. Le plat gagne :
+    c'est la forme écrite par le seul écrivain que la base ait connu.
+  */
+  const appliquerContenuDeLaBase = useCallback((valeur: unknown) => {
+    const cfg = valeur as Partial<SiteConfig>
+    const imbric = ((cfg.content ?? {}) as Partial<SiteContent>) ?? {}
+    const plat = valeur as Partial<SiteContent>
+    const fusion: Partial<SiteContent> = { ...imbric }
+    for (const c of CLES_SITE_CONTENT) {
+      if (plat[c] !== undefined) (fusion as Record<string, unknown>)[c] = plat[c]
+    }
+    setContent(prev => ({ ...prev, ...fusion }))
+    if (typeof (cfg as Record<string, unknown>).themeId === 'string') setThemeId((cfg as Record<string, unknown>).themeId as string)
+    if (typeof (cfg as Record<string, unknown>).fontId === 'string') setFontId((cfg as Record<string, unknown>).fontId as string)
+    if ((cfg as Partial<SiteConfig>).visibility) setVisibility(prev => ({ ...prev, ...((cfg as Partial<SiteConfig>).visibility as Partial<SiteVisibility>) }))
+    if ((cfg as Partial<SiteConfig>).rbacOverrides) {
+      const ov = (cfg as Partial<SiteConfig>).rbacOverrides as RbacOverrides
+      setRbacOverridesState(ov)
+      setRbacOverrides(ov)
+    }
+  }, [])
+
   const load = useCallback(async () => {
     const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
       fetchMenu(),
@@ -326,16 +376,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     setDataSource(anyDb ? 'supabase' : 'local')
     if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
     if (contentRes.fromDb && contentRes.data) {
-      const cfg = contentRes.data as Partial<SiteConfig>
-      if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
-      if (cfg.themeId) setThemeId(cfg.themeId)
-      if (cfg.fontId) setFontId(cfg.fontId)
-      if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
-      if (cfg.rbacOverrides) {
-        const ov = cfg.rbacOverrides as RbacOverrides
-        setRbacOverridesState(ov)
-        setRbacOverrides(ov)
-      }
+      appliquerContenuDeLaBase(contentRes.data)
     }
     if (messagesRes.fromDb && messagesRes.data.length > 0) {
       setMessages(messagesRes.data)
@@ -380,18 +421,35 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     }
   }, [load])
 
-  const saveContentToDb = async () => saveContent(content)
+  /*
+    SAUVEGARDE PAR DOMAINE (plan P0).
+    Le restaurateur ne « tout enregistre » plus : chaque écran envoie SEULEMENT
+    les champs qu'il affiche. Ce qui règle à la racine le piège mesuré — un
+    champ vide dans l'écran A écrasait la valeur publiée depuis l'écran B.
+  */
+  const saveContentFields = useCallback(async (fields: Partial<SiteContent>): Promise<SaveResult> => {
+    setContent(prev => ({ ...prev, ...fields }))
+    return updateSiteContentFields(fields)
+  }, [])
 
-  const saveSiteConfigToDb = async () => {
-    const config: SiteConfig = { content, themeId, fontId, visibility, rbacOverrides: rbacOverrides ?? undefined }
-    return saveSiteConfig(config)
-  }
+  const saveApparenceFields = useCallback(async (
+    fields: { themeId?: string; fontId?: string; visibility?: SiteVisibility },
+  ): Promise<SaveResult> => {
+    if (fields.themeId) setThemeId(fields.themeId)
+    if (fields.fontId) setFontId(fields.fontId)
+    if (fields.visibility) setVisibility(prev => ({ ...prev, ...fields.visibility }))
+    return updateSiteConfigFields(fields as Record<string, unknown>)
+  }, [])
 
   const saveRbac = async (overrides: RbacOverrides | null) => {
     setRbacOverridesState(overrides)
     setRbacOverrides(overrides)
-    const config: SiteConfig = { content, themeId, fontId, visibility, rbacOverrides: overrides ?? undefined }
-    return saveSiteConfig(config)
+    /*
+      RBAC par domaine : ne plus passer par `saveSiteConfig(config)`, qui
+      REMPLACEAIT site_config.value entier (et le `content` global au passage).
+      Seul l'annuaire de rôles est écrit ici.
+    */
+    return updateSiteConfigFields({ rbacOverrides: overrides ?? undefined })
   }
 
   const handleMarkMessageHandled = async (id: string, handled: boolean) => {
@@ -433,16 +491,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const refreshContent = async () => {
     const res = await fetchContent()
     if (res.fromDb && res.data) {
-      const cfg = res.data as Partial<SiteConfig>
-      if (cfg.content) setContent(prev => ({ ...prev, ...cfg.content }))
-      if (cfg.themeId) setThemeId(cfg.themeId)
-      if (cfg.fontId) setFontId(cfg.fontId)
-      if (cfg.visibility) setVisibility(prev => ({ ...prev, ...(cfg.visibility as Partial<SiteVisibility>) }))
-      if (cfg.rbacOverrides) {
-        const ov = cfg.rbacOverrides as RbacOverrides
-        setRbacOverridesState(ov)
-        setRbacOverrides(ov)
-      }
+      appliquerContenuDeLaBase(res.data)
     }
   }
 
@@ -519,9 +568,9 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     content, setContent, visibility, setVisibility,
     menu, setMenu, media, setMedia, messages, setMessages,
     cmsSections,
-    rootStyle, isDark, dataSource, dataLoading, saveContentToDb,
+    rootStyle, isDark, dataSource, dataLoading, saveContentFields,
     refreshMessages, lastMessageCount,
-    blogPosts, setBlogPosts, saveSiteConfigToDb, rbacOverrides, setRbacOverridesState, saveRbac, markMessageHandled: handleMarkMessageHandled,
+    blogPosts, setBlogPosts, saveApparenceFields, rbacOverrides, setRbacOverridesState, saveRbac, markMessageHandled: handleMarkMessageHandled,
     refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
     pendingOrdersCount, pendingReservationsCount, unhandledMessagesCount,
   }

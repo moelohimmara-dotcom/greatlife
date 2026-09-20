@@ -26,6 +26,17 @@ import { Bouton } from '@/admin/editor/chrome'
 
 const ADMIN_URL = 'https://greatlife-conakry.netlify.app/admin'
 
+/*
+  Une date affichable, en français, sans afficher d'ISO brut.
+  `Invalid Date` ou vide -> on rend ce qui est reçu (les dates de test
+  historiques n'étaient pas toutes des ISO).
+*/
+function dateFr(iso: string | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
 const NAV_GROUPS: [string, [string, string, string][]][] = [
   ['Pilotage', [
     ['dashboard', 'Tableau de bord', 'grid'],
@@ -275,7 +286,7 @@ function Dashboard() {
                     <span style={{ fontSize: '12px', color: t.muted, marginLeft: 6 }}>{m.email}</span>
                   </div>
                 </div>
-                <span style={{ fontSize: '11px', color: t.muted, flexShrink: 0 }}>{m.date}</span>
+                <span style={{ fontSize: '11px', color: t.muted, flexShrink: 0 }}>{dateFr(m.date)}</span>
               </div>
               <div style={{ fontSize: '11px', color: t.accent, fontWeight: 600, marginTop: '6px', marginLeft: 40 }}>{m.sujet}</div>
               <p style={{ fontSize: '13px', color: t.text, margin: '6px 0 0 40px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</p>
@@ -563,13 +574,13 @@ function MenuEditor() {
 }
 
 function ThemeEditor() {
-  const { themeId, setThemeId, fontId, setFontId, theme: t, content, dataSource, saveSiteConfigToDb } = useSite()
+  const { themeId, setThemeId, fontId, setFontId, theme: t, content, dataSource, saveApparenceFields } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving'); setSaveErr(undefined)
-    const res = await saveSiteConfigToDb()
+    const res = await saveApparenceFields({ themeId, fontId })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
@@ -879,7 +890,7 @@ function MediaManager() {
 }
 
 function VisibilityEditor() {
-  const { visibility, setVisibility, theme: t, dataSource, saveSiteConfigToDb } = useSite()
+  const { visibility, setVisibility, theme: t, dataSource, saveApparenceFields } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const toggle = (k: string) => { setVisibility({ ...visibility, sections: { ...visibility.sections, [k]: !visibility.sections[k] } }); setSaveStatus('idle'); setSaveErr(undefined) }
@@ -887,7 +898,7 @@ function VisibilityEditor() {
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving'); setSaveErr(undefined)
-    const res = await saveSiteConfigToDb()
+    const res = await saveApparenceFields({ visibility })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
@@ -1713,7 +1724,7 @@ function BlogEditor() {
 }
 
 function FormsConfig() {
-  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const { content, setContent, theme: t, dataSource, saveContentFields } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
@@ -1721,24 +1732,27 @@ function FormsConfig() {
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving'); setSaveErr(undefined)
-    const res = await saveContentToDb()
+    /*
+      Écriture PAR DOMAINE : cet écran n'écrit QUE l'auto-réponse. Les
+      destinataires sont gérés dans « Réglages globaux » — les écrire ici
+      écraserait l'adresse réelle avec la valeur périmée affichée.
+    */
+    const res = await saveContentFields({ autoReply: content.autoReply })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
   return (
     <div style={{ maxWidth: '700px' }}>
-      <PageHeader title="Formulaires & emails" subtitle="Configurez les destinataires et l'auto-réponse."
+      <PageHeader title="Formulaires & emails" subtitle="L'auto-réponse envoyée aux visiteurs, et le chemin de la notification."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Destinataires</SectionTitle></div>
-      <div style={{ display: 'grid', gap: 14 }}>
-        <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} /></div>
-        <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} /></div>
-      </div>
-      <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.accent}>Auto-réponse</SectionTitle></div>
+      <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.accent}>Auto-réponse</SectionTitle></div>
       <div>
         <FieldLabel>Template d'auto-réponse (variable : {`{nom}`})</FieldLabel>
         <Textarea rows={4} value={content.autoReply} onChange={e => set('autoReply', e.target.value)} style={inp} />
+      </div>
+      <div style={{ fontSize: '12.5px', color: t.muted, marginBottom: 6 }}>
+        Les destinataires se règlent dans « Réglages globaux », section « Destinataires & notifications ».
       </div>
       <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.gold}>Pipeline d'envoi</SectionTitle></div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, color: t.muted, fontWeight: 500 }}>
@@ -1984,7 +1998,7 @@ function MessagesManager() {
                   {!m.handled && <span style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: '50%', background: t.accent }} />}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{m.nom} {m.handled && <span style={{ fontSize: '10px', color: t.primary, marginLeft: 6 }}>{Icon.check(10, t.primary)}</span>}{(m.replies?.length ?? 0) > 0 && <span style={{ fontSize: '10px', color: t.muted, marginLeft: 6 }} title={`${m.replies!.length} réponse(s)`}>{Icon.mail(10, t.muted)} {m.replies!.length}</span>}</span>
-                    <span style={{ fontSize: '11px', color: t.muted }}>{m.date}</span>
+                    <span style={{ fontSize: '11px', color: t.muted }}>{dateFr(m.date)}</span>
                   </div>
                   <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '2px' }}>{m.sujet}</div>
                   <div style={{ fontSize: '13px', color: t.muted, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</div>
@@ -2497,7 +2511,7 @@ function ReservationsManager() {
 const ENGAGEMENT_ICONS = ['leaf', 'recycle', 'fire', 'search', 'coin', 'star']
 
 function TeamContentsEditor() {
-  const { content, setContent, theme: t, dataSource, saveContentToDb } = useSite()
+  const { content, setContent, theme: t, dataSource, saveContentFields } = useSite()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
   const [tab, setTab] = useState<'team' | 'engagements' | 'testimonials'>('team')
@@ -2510,7 +2524,16 @@ function TeamContentsEditor() {
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving'); setSaveErr(undefined)
-    const res = await saveContentToDb()
+    /*
+      Écriture PAR DOMAINE (plan P0) : cet écran gère équipe, engagements et
+      témoignages — RAS. Surtout pas le `content` global : l'écrire avait le
+      pouvoir d'écraser des coordonnées saisies depuis un autre écran.
+    */
+    const res = await saveContentFields({
+      team: content.team,
+      engagements: content.engagements,
+      testimonials: content.testimonials,
+    })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
@@ -2721,7 +2744,7 @@ function AuditManager() {
 }
 
 function SettingsEditor() {
-  const { content, setContent, theme: t, dataSource, saveContentToDb, themeId, setThemeId, fontId, setFontId, visibility, setVisibility, rbacOverrides, setRbacOverridesState, saveRbac } = useSite()
+  const { content, setContent, theme: t, dataSource, saveContentFields, themeId, setThemeId, fontId, setFontId, visibility, setVisibility, rbacOverrides, setRbacOverridesState, saveRbac } = useSite()
   const { user } = useAuth()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErr, setSaveErr] = useState<string | undefined>(undefined)
@@ -2733,7 +2756,23 @@ function SettingsEditor() {
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
     setSaveStatus('saving'); setSaveErr(undefined)
-    const res = await saveContentToDb()
+    /*
+      Écriture PAR DOMAINE (plan P0) : identité, coordonnées, horaires, réseaux,
+      destinataires. Rien d'autre — la sauvegarde ne peut plus écraser l'équipe
+      ou les témoignages gérés par l'écran « Équipe & contenus ».
+    */
+    const res = await saveContentFields({
+      restaurantName: content.restaurantName,
+      currency: content.currency,
+      phone: content.phone,
+      address: content.address,
+      hours: content.hours,
+      socialFacebook: content.socialFacebook,
+      socialInstagram: content.socialInstagram,
+      socialWhatsapp: content.socialWhatsapp,
+      emailContact: content.emailContact,
+      emailReservation: content.emailReservation,
+    })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
@@ -2799,6 +2838,17 @@ function SettingsEditor() {
             <div><FieldLabel>Facebook (URL)</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} placeholder="https://facebook.com/..." /></div>
             <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
             <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
+          </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Destinataires & notifications</SectionTitle></div>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} placeholder="moelohimmara@gmail.com" /></div>
+            <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} placeholder="moelohimmara@gmail.com" /></div>
+            <div style={{ fontSize: '12px', color: t.muted, lineHeight: 1.5 }}>
+              Chaque message, réservation ou commande du site notifie ces adresses, et le visiteur
+              reçoit une auto-réponse (template dans « Formulaires & emails »).
+            </div>
           </div>
         </div>
         <div>
