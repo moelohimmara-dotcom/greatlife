@@ -108,6 +108,12 @@ const GOOD_RESTAURANT = {
   address: 'Conakry',
   hours: '8h–22h',
 }
+/*
+ * Liens de menu « cassés » — CONSERVÉS COMME TÉMOINS.
+ * Ils servaient à prouver qu'un lien cassé bloquait la publication. Ce
+ * comportement a été retiré le 2026-09-19 (voir section D) : ces objets servent
+ * maintenant à prouver que les fournir ne change PLUS rien.
+ */
 const BROKEN_ANCHOR_NAV = {
   label: { fr: 'Notre histoire', en: 'Our story' },
   targetType: 'anchor',
@@ -134,9 +140,6 @@ function makeInput(overrides = {}) {
   return {
     page: GOOD_PAGE,
     sections: [],
-    navigation: [],
-    publishedPageSlugs: [''],
-    pageSlugsById: {},
     menu: GOOD_MENU,
     restaurant: GOOD_RESTAURANT,
     locale: 'fr',
@@ -193,46 +196,60 @@ check(emptyMenuReport.blockers.some((f) => f.check === 'menu'), 'une carte sans 
 check(!emptyMenuReport.publishable, 'la publication est refusée')
 
 // ===========================================================================
-console.log('\nD. UN LIEN DE MENU CASSÉ BLOQUE\n')
-
-const brokenLinkReport = model.runPublicationChecks(makeInput({ navigation: [BROKEN_ANCHOR_NAV] }))
-check(
-  brokenLinkReport.blockers.some((f) => f.check === 'links'),
-  'une ancre sans section visée produit un bloqueur',
-)
-check(!brokenLinkReport.publishable, 'la publication est refusée')
-
-// ===========================================================================
-console.log('\nD-bis. LES LIENS DE TYPE « PAGE » ET « URL » SONT CONTRÔLÉS\n')
-
-const unknownPageReport = model.runPublicationChecks(makeInput({ navigation: [UNKNOWN_PAGE_NAV] }))
-check(
-  unknownPageReport.blockers.some((f) => f.check === 'navigation'),
-  'un lien vers une page introuvable produit un bloqueur',
-)
-check(!unknownPageReport.publishable, 'la publication est refusée')
-
-const blankUrlReport = model.runPublicationChecks(makeInput({ navigation: [BLANK_URL_NAV] }))
-check(
-  blankUrlReport.blockers.some((f) => f.check === 'navigation'),
-  'un lien sans adresse produit un bloqueur',
-)
-check(!blankUrlReport.publishable, 'la publication est refusée')
+console.log('\nD. LES CONTRÔLES n°2 ET n°6 SONT DÉCLARÉS NON VÉRIFIÉS\n')
 
 /*
- * Le catalogue est facultatif. S'il n'est PAS fourni, le contrôle ne peut rien
- * affirmer sur une cible de type « page » : il doit se taire, pas inventer un
- * faux positif. Fourni mais incomplet, il doit au contraire signaler — c'est la
- * distinction que ce contrôle protège.
+ * POURQUOI CES ASSERTIONS ONT CHANGÉ DE SENS (et pourquoi ce n'est pas un
+ * affaiblissement)
+ * Avant, cette section exigeait qu'un lien de menu cassé BLOQUE la publication.
+ * Ce comportement a été RETIRÉ sur décision du propriétaire le 2026-09-19 : le
+ * site public ne rend pas `navigation_items` (`PublicNav` et `Footer` portent
+ * des listes écrites en dur) et aucun écran d'administration ne la modifie.
+ * Bloquer une publication sur un lien que personne ne voit revenait à valider
+ * une fiction.
+ *
+ * Les assertions ci-dessous n'asservissent donc pas le code au hasard : elles
+ * vérifient le nouveau contrat ET elles prouvent le retrait — c'est-à-dire que
+ * l'ancienne entrée est devenue INERTE, et non qu'on l'a oubliée.
  */
-const noCatalogReport = model.runPublicationChecks({
-  ...makeInput({ navigation: [UNKNOWN_PAGE_NAV] }),
-  pageSlugsById: undefined,
+const rapportVide = model.runPublicationChecks(makeInput())
+const navCheck = rapportVide.checks.find((c) => c.id === 'navigation')
+const linksCheck = rapportVide.checks.find((c) => c.id === 'links')
+
+check(navCheck?.level === 'skipped', 'le contrôle « Navigation » est déclaré non vérifié, pas « conforme »')
+check(linksCheck?.level === 'skipped', 'le contrôle « Aucun lien cassé » est déclaré non vérifié, pas « conforme »')
+check(
+  Boolean(navCheck?.note) && Boolean(linksCheck?.note),
+  'chacun dit POURQUOI il n’a pas été exécuté',
+  (navCheck?.note ?? '').slice(0, 60),
+)
+check(
+  rapportVide.checks.length === EXPECTED_CHECKS.length,
+  'les 7 contrôles du TDR §24 restent tous présents dans le rapport',
+)
+check(
+  !rapportVide.checks.some((c) => c.level === 'ok' && (c.id === 'navigation' || c.id === 'links')),
+  'aucun des deux n’affiche un vert mensonger',
+)
+
+// Témoin du retrait : fournir les anciens liens cassés ne change PLUS rien.
+const avecLiensCasses = model.runPublicationChecks({
+  ...makeInput(),
+  navigation: [BROKEN_ANCHOR_NAV, UNKNOWN_PAGE_NAV, BLANK_URL_NAV],
 })
 check(
-  !noCatalogReport.blockers.some((f) => f.check === 'navigation'),
-  'sans catalogue de pages fourni, aucun faux positif n’est produit',
+  avecLiensCasses.publishable === true,
+  'un lien de menu cassé ne bloque plus la publication (retrait assumé, décision du 2026-09-19)',
 )
+check(
+  JSON.stringify(avecLiensCasses.checks) === JSON.stringify(rapportVide.checks),
+  'l’entrée « navigation » est INERTE : la fournir ne modifie pas le rapport',
+)
+
+// Les contrôles qui RESTENT doivent toujours mordre — sinon on aurait seulement
+// supprimé des assertions au lieu de changer de contrat.
+const temoinMenu = model.runPublicationChecks(makeInput({ menu: [{ name: 'X', price: '' }] }))
+check(temoinMenu.blockers.length > 0 && !temoinMenu.publishable, 'les contrôles restants bloquent toujours quand il faut')
 
 // ===========================================================================
 console.log('\nE. LE CONTRÔLE « IMAGES » AVERTIT, IL NE BLOQUE JAMAIS\n')
@@ -272,9 +289,7 @@ const cases = [
   ['un bloqueur', makeInput({ menu: [{ name: 'X', price: '' }] }), false],
   ['un avertissement seul', makeInput({ restaurant: { ...GOOD_RESTAURANT, phone: '' } }), true],
   ['carte vide', makeInput({ menu: [] }), false],
-  ['ancre cassée', makeInput({ navigation: [BROKEN_ANCHOR_NAV] }), false],
-  ['lien vers une page introuvable', makeInput({ navigation: [UNKNOWN_PAGE_NAV] }), false],
-  ['lien sans adresse', makeInput({ navigation: [BLANK_URL_NAV] }), false],
+  ['un lien de menu cassé (n’est plus bloquant)', { ...makeInput(), navigation: [BROKEN_ANCHOR_NAV] }, true],
   ['titre de page absent', makeInput({ page: { slug: '', title: '' } }), false],
 ]
 let coherent = true
@@ -311,9 +326,9 @@ const allMessages = [
   ...priceReport.blockers,
   ...priceReport.warnings,
   ...emptyMenuReport.blockers,
-  ...brokenLinkReport.blockers,
-  ...unknownPageReport.blockers,
-  ...blankUrlReport.blockers,
+  // Les rapports des liens de menu ne sont plus listés : ces contrôles ne
+  // produisent plus de message (voir section D). Les messages des contrôles
+  // restants sont tous couverts ci-dessus et ci-dessous.
   ...imageReport.warnings,
   ...hiddenReport.warnings,
 ].map((f) => f.message)
@@ -456,7 +471,6 @@ console.log('\nL. VÉRITÉ EN BASE — les données réelles passent-elles les 7
 
 const pages = await rest('pages?select=id,slug,title_i18n,status')
 const sections = await rest('page_sections?select=*&order=position')
-const navigation = await rest('navigation_items?select=label_i18n,target_type,target_page_id,target_value,visible')
 const menu = await rest('menu_items?select=name,price')
 const siteContent = await rest('site_content?select=key,value&key=eq.restaurant')
 
@@ -475,15 +489,6 @@ const realInput = {
     visible: s.visible,
     content: s.content ?? {},
   })),
-  navigation: navigation.map((n) => ({
-    label: n.label_i18n,
-    targetType: n.target_type,
-    targetPageId: n.target_page_id,
-    targetValue: n.target_value,
-    visible: n.visible,
-  })),
-  publishedPageSlugs: pages.filter((p) => p.status === 'published').map((p) => p.slug),
-  pageSlugsById: Object.fromEntries(pages.map((p) => [p.id, p.slug])),
   menu: menu.map((m) => ({ name: m.name, price: m.price ?? '' })),
   restaurant: {
     name: asText(restaurantRow.name),
@@ -504,7 +509,12 @@ for (const finding of realReport.warnings) {
 }
 check(
   realReport.publishable,
-  `la page d’accueil réelle passe les contrôles (${sections.length} sections, ${menu.length} plats, ${navigation.length} liens)`,
+  `la page d’accueil réelle passe les contrôles (${sections.length} sections, ${menu.length} plats)`,
+)
+check(
+  realReport.checks.filter((c) => c.level === 'skipped').length === 2,
+  'en base réelle aussi, exactement 2 contrôles sont déclarés non vérifiés (navigation, liens)',
+  realReport.checks.filter((c) => c.level === 'skipped').map((c) => c.id).join(', '),
 )
 
 // ===========================================================================

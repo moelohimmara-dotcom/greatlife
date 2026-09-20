@@ -6,6 +6,7 @@
  */
 
 export type {
+  CheckLevel,
   FindingLevel,
   PublicationCheckId,
   PublicationCheckResult,
@@ -17,9 +18,9 @@ export type {
   PublicationRestaurantInput,
   PublicationSectionInput,
 } from './types'
-export { PUBLICATION_CHECKS, buildReport } from './types'
+export { PUBLICATION_CHECKS, PUBLICATION_CHECKS_NOT_VERIFIED, buildReport } from './types'
 
-export { runPublicationChecks, sectionLabel, normalizeAnchor, snapshotEmptinessFinding } from './checks'
+export { runPublicationChecks, sectionLabel, snapshotEmptinessFinding } from './checks'
 
 export { SNAPSHOT_FORMAT_VERSION, buildSnapshot, parseSnapshot } from './snapshot'
 export type { PageSnapshot, SnapshotPage, SnapshotRead, SnapshotSection } from './snapshot'

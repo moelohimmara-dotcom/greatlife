@@ -4,8 +4,25 @@
  * La validation de SECTION n'est pas réécrite : elle est déléguée à
  * `validateSectionContent` (src/cms/model/sections/validation.ts), qui produit
  * déjà des messages en langage restaurateur. Ce module ajoute ce qu'elle ne
- * peut pas voir seule : la navigation, les images, la carte, les prix, les
- * ancres et les informations du restaurant.
+ * peut pas voir seule : les images, la carte, les prix et les informations du
+ * restaurant.
+ *
+ * ⚠️ DEUX DES SEPT CONTRÔLES NE SONT PLUS EXÉCUTÉS (décision du 2026-09-19, M3)
+ * Les contrôles n°2 (« Navigation valide ») et n°6 (« Aucun lien cassé »)
+ * portaient sur `navigation_items`. Or le site public ne rend PAS cette table :
+ * `PublicNav` et `Footer` portent des listes écrites en dur, et aucun écran
+ * d'administration ne touche la navigation. Les exécuter revenait à valider
+ * 13 entrées que personne ne voit — au prix d'un refus de publication sur une
+ * donnée sans effet visible.
+ *
+ * Ils ne sont ni supprimés (le TDR §24 en demande 7) ni affichés « conformes »
+ * (ce serait un vert mensonger) : ils sont déclarés NON VÉRIFIÉS, et le motif
+ * est visible dans le panneau de publication. Voir
+ * `PUBLICATION_CHECKS_NOT_VERIFIED` dans `./types`.
+ *
+ * Le jour où la navigation sera branchée (instantané publié + écran
+ * d'administration), les deux contrôles se réactivent en repassant l'entrée
+ * `navigation` à `PublicationInput`.
  */
 
 import { DEFAULT_LOCALE, resolveI18n, type Bilingue, type Locale } from '../i18n'
@@ -54,7 +71,6 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
   const findings: PublicationFinding[] = []
 
   const visibleSections = input.sections.filter((s) => s.visible)
-  const anchors = new Set<string>()
 
   // ---- 1. Pages valides ---------------------------------------------------
   if (!safeResolve(input.page.title, locale).trim()) {
@@ -87,57 +103,15 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
         where: `Section « ${label} »`,
       })
     }
-
-    const anchor = normalizeAnchor(section.anchor)
-    if (anchor) anchors.add(anchor)
   }
 
-  // ---- 2. Navigation valide ----------------------------------------------
-  const publishedSlugs = new Set(input.publishedPageSlugs.map((s) => normalizeAnchor(s) ?? ''))
-
-  for (const item of input.navigation.filter((i) => i.visible)) {
-    const label = navLabel(item.label, locale)
-    if (item.targetType === 'page') {
-      if (!item.targetPageId) {
-        findings.push({
-          check: 'navigation',
-          level: 'error',
-          message: `Le lien « ${label} » du menu ne désigne aucune page.`,
-          where: `Lien « ${label} »`,
-        })
-        continue
-      }
-      // Le catalogue est facultatif : sans lui, on ne peut RIEN affirmer sur
-      // cette cible, et signaler serait inventer un faux positif. Mais dès
-      // qu'il est fourni — même vide — un identifiant absent du catalogue EST
-      // une information : le lien ne peut mener nulle part.
-      if (!input.pageSlugsById) continue
-
-      const slug = input.pageSlugsById[item.targetPageId]
-      if (slug === undefined) {
-        findings.push({
-          check: 'navigation',
-          level: 'error',
-          message: `Le lien « ${label} » du menu pointe vers une page introuvable.`,
-          where: `Lien « ${label} »`,
-        })
-      } else if (!publishedSlugs.has(normalizeAnchor(slug) ?? '')) {
-        findings.push({
-          check: 'navigation',
-          level: 'error',
-          message: `Le lien « ${label} » du menu pointe vers une page qui n'est pas publiée.`,
-          where: `Lien « ${label} »`,
-        })
-      }
-    } else if (item.targetType === 'url' && !(item.targetValue ?? '').trim()) {
-      findings.push({
-        check: 'navigation',
-        level: 'error',
-        message: `Le lien « ${label} » du menu n'a pas d'adresse.`,
-        where: `Lien « ${label} »`,
-      })
-    }
-  }
+  /*
+    ---- 2. Navigation valide ------------------------------------------------
+    NON EXÉCUTÉ — voir l'en-tête de ce module et `PUBLICATION_CHECKS_NOT_VERIFIED`
+    (`./types`). Le contrôle portait sur `navigation_items`, que le site public
+    ne rend pas : il validait une fiction, et pouvait refuser une publication à
+    cause d'un lien que personne ne voyait.
+  */
 
   // ---- 3. Images valides --------------------------------------------------
   for (const section of visibleSections) {
@@ -189,29 +163,14 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
     }
   }
 
-  // ---- 6. Aucun lien cassé ------------------------------------------------
-  for (const item of input.navigation.filter((i) => i.visible && i.targetType === 'anchor')) {
-    const label = navLabel(item.label, locale)
-    const anchor = normalizeAnchor(item.targetValue)
-
-    if (!anchor) {
-      findings.push({
-        check: 'links',
-        level: 'error',
-        message: `Le lien « ${label} » du menu ne désigne aucune section.`,
-        where: `Lien « ${label} »`,
-      })
-      continue
-    }
-    if (!anchors.has(anchor)) {
-      findings.push({
-        check: 'links',
-        level: 'error',
-        message: `Le lien « ${label} » vise une section qui n'existe pas sur cette page.`,
-        where: `Lien « ${label} »`,
-      })
-    }
-  }
+  /*
+    ---- 6. Aucun lien cassé ------------------------------------------------
+    NON EXÉCUTÉ — ce contrôle ne savait vérifier que les ancres de
+    `navigation_items`, que le site public ne rend pas. Les ancres réellement
+    servies (celles des listes en dur de `PublicNav` et `Footer`) sont vérifiées
+    au moment de DÉVELOPPER, par `npm run verify:footer` : ce n'est pas un filet
+    de publication, et cette limite est assumée et documentée.
+  */
 
   // ---- 7. Informations essentielles présentes ----------------------------
   const essentials: [boolean, string][] = [
@@ -242,10 +201,6 @@ export function sectionLabel(
   return getSectionDefinition(type)?.label ?? type
 }
 
-function navLabel(label: Bilingue, locale: Locale): string {
-  return safeResolve(label, locale).trim() || 'sans nom'
-}
-
 /** `resolveI18n` renvoie une chaîne ; on protège contre une valeur non textuelle. */
 function safeResolve(value: Bilingue | undefined | null, locale: Locale): string {
   if (value === undefined || value === null) return ''
@@ -258,17 +213,4 @@ function isFilled(value: unknown): boolean {
   if (value === null || value === undefined) return false
   if (typeof value === 'object') return Object.keys(value as object).length > 0
   return true
-}
-
-/** Reproduit la normalisation d'ancre du dépôt, sans en dépendre. */
-export function normalizeAnchor(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim().replace(/^#/, '')
-  if (!trimmed) return null
-  return trimmed
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }

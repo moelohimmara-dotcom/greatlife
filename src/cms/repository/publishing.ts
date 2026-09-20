@@ -22,13 +22,11 @@ import {
   runPublicationChecks,
   snapshotEmptinessFinding,
   type PublicationInput,
-  type PublicationNavInput,
   type PublicationReport,
   type PublicationSectionInput,
 } from '../model/publishing'
 import { cmsErr, cmsOk, type CmsResult } from './client'
-import { fetchSiteNavigation } from './navigation'
-import { fetchAllPages, fetchPageById, publishPageWithSnapshot } from './pages'
+import { fetchPageById, publishPageWithSnapshot } from './pages'
 import { fetchSectionsForPage } from './sections'
 import { SETTING_KEYS, fetchSetting, resolveRestaurant, toRestaurantSettings } from './settings'
 import { buildSnapshot, createVersion, type PageVersionSummary } from './versions'
@@ -50,6 +48,12 @@ interface PublishContext {
  * Rassemble tout ce que la publication engage.
  * Les sections sont chargées **avec** les sections masquées : le snapshot doit
  * être fidèle pour qu'une restauration le soit aussi.
+ *
+ * NE CHARGE PLUS la navigation ni le catalogue des pages (décision du
+ * 2026-09-19, M3) : ces deux lectures n'alimentaient que les contrôles n°2 et
+ * n°6, qui ne sont plus exécutés parce que le site public ne rend pas
+ * `navigation_items`. Les garder aurait maintenu deux appels réseau et deux
+ * chemins d'échec pour une donnée sans effet sur la publication.
  */
 async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsResult<PublishContext>> {
   const pageResult = await fetchPageById(pageId)
@@ -59,12 +63,7 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
   const sectionsResult = await fetchSectionsForPage(pageId, { includeHidden: true })
   if (!sectionsResult.ok) return sectionsResult
 
-  const [navResult, restaurantResult, allPagesResult] = await Promise.all([
-    fetchSiteNavigation({ includeHidden: false }),
-    fetchSetting(SETTING_KEYS.restaurant),
-    fetchAllPages(),
-  ])
-  if (!navResult.ok) return navResult
+  const restaurantResult = await fetchSetting(SETTING_KEYS.restaurant)
   if (!restaurantResult.ok) return restaurantResult
 
   // `fetchMenu` ne renvoie pas d'erreur : il retombe sur des données de
@@ -75,19 +74,7 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
     return cmsErr("La carte n'a pas pu être vérifiée. Réessayez dans un instant.")
   }
 
-  const allPages = allPagesResult.ok ? allPagesResult.data : []
   const restaurant = resolveRestaurant(toRestaurantSettings(restaurantResult.data), locale)
-
-  const navigation: PublicationNavInput[] = [
-    ...(navResult.data.header?.items ?? []),
-    ...(navResult.data.footer?.items ?? []),
-  ].map((item) => ({
-    label: item.label,
-    targetType: item.targetType,
-    targetPageId: item.targetPageId,
-    targetValue: item.targetValue,
-    visible: item.visible,
-  }))
 
   const sections: PublicationSectionInput[] = sectionsResult.data.map((section) => ({
     type: section.type,
@@ -102,9 +89,6 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
     input: {
       page: { slug: pageResult.data.slug, title: pageResult.data.title },
       sections,
-      navigation,
-      publishedPageSlugs: allPages.filter((p) => p.status === 'published').map((p) => p.slug),
-      pageSlugsById: Object.fromEntries(allPages.map((p) => [p.id, p.slug])),
       menu: menu.data.map((item) => ({ name: item.name, price: item.price })),
       restaurant: {
         name: restaurant.name,

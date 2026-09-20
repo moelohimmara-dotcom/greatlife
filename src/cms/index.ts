@@ -96,8 +96,9 @@ export {
 export type { RestaurantSettings, ResolvedRestaurant, EmailTemplates } from './repository/settings'
 
 // ---- Publication et versions (Lot 3)
-export { PUBLICATION_CHECKS, buildReport, runPublicationChecks } from './model/publishing'
+export { PUBLICATION_CHECKS, PUBLICATION_CHECKS_NOT_VERIFIED, buildReport, runPublicationChecks } from './model/publishing'
 export type {
+  CheckLevel,
   FindingLevel,
   PublicationCheckId,
   PublicationCheckResult,

@@ -38,6 +38,17 @@ export const PUBLICATION_CHECKS: readonly { id: PublicationCheckId; label: strin
  */
 export type FindingLevel = 'error' | 'warning'
 
+/**
+ * État d'un contrôle dans le rapport.
+ *
+ * `skipped` existe pour une raison précise : un contrôle qui ne PEUT PAS être
+ * exécuté ne doit pas s'afficher « conforme ». Sans cet état, retirer un
+ * contrôle revenait à afficher un voyant vert sur une vérification qui n'avait
+ * pas eu lieu — un mensonge, et exactement le genre de faux feu vert que ce
+ * dépôt cherche à rendre impossible.
+ */
+export type CheckLevel = FindingLevel | 'ok' | 'skipped'
+
 export interface PublicationFinding {
   check: PublicationCheckId
   level: FindingLevel
@@ -51,7 +62,9 @@ export interface PublicationCheckResult {
   id: PublicationCheckId
   label: string
   findings: PublicationFinding[]
-  level: FindingLevel | 'ok'
+  level: CheckLevel
+  /** Pourquoi ce contrôle n'a pas été exécuté. Présent seulement si `skipped`. */
+  note?: string
 }
 
 export interface PublicationReport {
@@ -70,7 +83,17 @@ export interface PublicationSectionInput {
   content: Record<string, unknown> | null
 }
 
-/** Un lien de menu tel que le contrôle le voit. */
+/**
+ * Un lien de menu tel que le contrôle le voyait.
+ *
+ * ⚠️ PLUS ALIMENTÉ DEPUIS LA DÉCISION DU 2026-09-19 (constat M3).
+ * Le site public ne rend PAS `navigation_items` : `PublicNav` et `Footer` portent
+ * des listes écrites en dur, et aucun écran d'administration ne touche la
+ * navigation. Valider ces liens revenait donc à vérifier 13 entrées que personne
+ * ne voit — et à faire échouer une publication sur une donnée sans effet.
+ * Le type est conservé pour le jour où la navigation sera branchée ; il n'est
+ * plus consommé par `PublicationInput`.
+ */
 export interface PublicationNavInput {
   label: Bilingue
   targetType: 'page' | 'anchor' | 'url'
@@ -94,30 +117,51 @@ export interface PublicationRestaurantInput {
 export interface PublicationInput {
   page: { slug: string; title: Bilingue }
   sections: readonly PublicationSectionInput[]
-  navigation: readonly PublicationNavInput[]
-  /** Slugs des pages réellement publiées, pour détecter un lien vers une page absente. */
-  publishedPageSlugs: readonly string[]
-  /**
-   * Correspondance identifiant de page → slug. Si elle n'est pas fournie, le
-   * contrôle ne peut RIEN affirmer sur les liens de type `page` : il ne
-   * signale alors aucune anomalie plutôt que d'inventer un faux positif.
-   */
-  pageSlugsById?: Record<string, string>
   menu: readonly PublicationMenuInput[]
   restaurant: PublicationRestaurantInput
   locale?: Locale
 }
 
+/**
+ * Contrôles que le site ne permet PAS encore de vérifier, avec la raison.
+ *
+ * POURQUOI C'EST ÉCRIT ICI ET PAS DANS UN COMMENTAIRE
+ * Ces deux contrôles portent sur la navigation. Or le site public ne la rend
+ * pas : `PublicNav` et `Footer` ont des listes en dur, et aucun écran
+ * d'administration ne modifie `navigation_items`. Les exécuter reviendrait à
+ * valider une fiction ; les retirer sans rien dire afficherait un vert mensonger.
+ * Ils sont donc déclarés NON VÉRIFIÉS, et le panneau de publication le montre.
+ *
+ * CE QUE CELA COÛTE, ET C'EST ASSUMÉ
+ * Les ancres que le public utilise réellement (celles des listes en dur) ne sont
+ * plus vérifiées au moment de publier. Elles le sont au moment de DÉVELOPPER, par
+ * `npm run verify:footer`, qui compare les ancres écrites aux ancres réelles de
+ * `page_sections`. C'est un filet de développement, pas de publication : la
+ * limite est réelle et documentée.
+ */
+export const PUBLICATION_CHECKS_NOT_VERIFIED: Partial<Record<PublicationCheckId, string>> = {
+  navigation:
+    "La navigation du site n'est pas encore gérée depuis le CMS : elle ne peut pas être vérifiée.",
+  links:
+    "Les liens du menu ne sont pas encore gérés depuis le CMS : ils ne peuvent pas être vérifiés.",
+}
+
 /** Assemble le rapport à partir des constats. Les 7 contrôles apparaissent toujours. */
-export function buildReport(findings: readonly PublicationFinding[]): PublicationReport {
+export function buildReport(
+  findings: readonly PublicationFinding[],
+  notVerified: Partial<Record<PublicationCheckId, string>> = PUBLICATION_CHECKS_NOT_VERIFIED,
+): PublicationReport {
   const checks: PublicationCheckResult[] = PUBLICATION_CHECKS.map(({ id, label }) => {
     const own = findings.filter((f) => f.check === id)
-    const level: FindingLevel | 'ok' = own.some((f) => f.level === 'error')
+    const level: CheckLevel = own.some((f) => f.level === 'error')
       ? 'error'
       : own.length > 0
         ? 'warning'
-        : 'ok'
-    return { id, label, findings: own, level }
+        : notVerified[id]
+          ? 'skipped'
+          : 'ok'
+    const note = level === 'skipped' ? notVerified[id] : undefined
+    return { id, label, findings: own, level, note }
   })
 
   const blockers = findings.filter((f) => f.level === 'error')

@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
-import type { PublicationReport } from '@/cms/model/publishing'
+import type { CheckLevel, PublicationReport } from '@/cms/model/publishing'
 import { getSectionDefinition } from '@/cms/model/sections/schemas'
 import { checkPublication } from '@/cms/repository/publishing'
 import {
@@ -124,10 +124,16 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
                   <span style={{ fontSize: 12, width: 12, flex: '0 0 12px', color: iconColor(check.level) }}>
                     {iconFor(check.level)}
                   </span>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: check.level === 'ok' ? t.muted : t.text }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: check.level === 'ok' || check.level === 'skipped' ? t.muted : t.text }}>
                     {check.label}
                   </span>
                 </div>
+                {/* Pourquoi ce contrôle n'a pas été exécuté — dit franchement. */}
+                {check.note && (
+                  <div style={{ marginLeft: 19, marginTop: 3, fontSize: 11.5, color: t.muted, lineHeight: 1.45 }}>
+                    {check.note}
+                  </div>
+                )}
                 {check.findings.map((finding, index) => (
                   <div key={`${check.id}-${index}`} style={{ marginLeft: 19, marginTop: 3 }}>
                     <div style={{ fontSize: 12, color: finding.level === 'error' ? '#b91c1c' : '#a16207', lineHeight: 1.45 }}>
@@ -227,13 +233,17 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
 
 // ---------------------------------------------------------------- utilitaires
 
-function iconFor(level: 'ok' | 'warning' | 'error'): string {
+function iconFor(level: CheckLevel): string {
   if (level === 'ok') return '✓'
+  if (level === 'skipped') return '–'
   return level === 'warning' ? '!' : '✕'
 }
 
-function iconColor(level: 'ok' | 'warning' | 'error'): string {
+function iconColor(level: CheckLevel): string {
   if (level === 'ok') return '#16a34a'
+  // Un contrôle NON VÉRIFIÉ n'est ni vert ni rouge : il est neutre. Le peindre
+  // en vert laisserait croire qu'il a été exécuté et qu'il est conforme.
+  if (level === 'skipped') return '#9ca3af'
   return level === 'warning' ? '#a16207' : '#b91c1c'
 }
 
