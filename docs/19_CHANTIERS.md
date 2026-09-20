@@ -84,8 +84,8 @@ Chaîne de publication (instantané publié, `033`), filets `verify:lot1`,
 | **N-6** | Le **câblage** de `save()` n'a **aucun test** — seul le noyau pur en a | fiabilité | `test:save-plan` couvre `save-plan.ts`, pas `useEditor.save()` |
 | **N-7** | `npm run lint` **inopérant** (aucune configuration ESLint dans le dépôt) | fiabilité | `git ls-tree` : absente, jamais présente |
 | **N-8** | La **navigation** n'est ni rendue par le site, ni éditable | modèle d'édition | `navigation_items` : 13 lignes, aucun appelant |
-| **N-9** | Les **adresses publiques** `contact@` / `resa@greatlife.gn` n'existent pas | données | un client qui écrit là n'atteint personne |
-| **N-10** | Le **téléphone public** est `+224 000 00 00 00` | données | affiché sous « Appel & WhatsApp » |
+| **N-9** | Les **adresses publiques** `contact@` / `resa@greatlife.gn` n'existent pas | données | 🟥 **MESURÉ le 2026-09-20** : le domaine `greatlife.gn` **ne résout pas** (« le nom DNS n'existe pas »), ni MX ni A. Le courrier ne peut pas arriver. Vérifié par `npm run verify:coordonnees` |
+| **N-10** | Le **téléphone public** est `+224 000 00 00 00` | données | 🟥 **MESURÉ** : chiffres normalisés `224000000000` — une suite de 9 zéros, c'est un gabarit. Vérifié par `npm run verify:coordonnees` |
 | **N-11** | **8 réservations de test** sur 12, sans marqueur réversible | données | statut seul disponible |
 | **N-12** | Le **mode « Avancé »** du TDR §13.1 (valeurs libres + 3 garde-fous) n'est pas implémenté | modèle d'édition | seules les dispositions l'ont été ; libellé dit encore « Variante » |
 | **N-13** | `docs/12` annonce les migrations `001→029` alors que `033` existe | fiabilité | en-tête du document |

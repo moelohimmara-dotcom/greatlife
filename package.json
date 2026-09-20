@@ -14,6 +14,7 @@
     "verify:rbac": "node scripts/verify-rbac.mjs",
     "verify:public": "node scripts/verify-public.mjs",
     "verify:anchors": "node scripts/verify-anchors.mjs",
+    "verify:coordonnees": "node scripts/verify-coordonnees.mjs",
     "verify:couloirs": "node scripts/verify-couloirs.mjs",
     "verify:dispositions": "node scripts/verify-dispositions.mjs",
     "verify:page-layouts": "node scripts/verify-page-layouts.mjs",

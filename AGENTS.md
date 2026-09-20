@@ -172,6 +172,8 @@ Filets existants dans le dépôt :
 | `npm run verify:lot3` | contrôles §24, versions, instantané, pureté du modèle, vérité en base |
 | `npm run verify:public` | le public reçoit **exactement** l'instantané publié ; brouillon fermé au visiteur (§22) |
 | `npm run verify:anchors` | les liens écrits dans le site (menu, pied de page) **et les cibles ÉDITABLES des boutons de la page d'accueil** sont confrontés aux ancres de `pages.published_snapshot` ; les composants du site ne recopient aucune coordonnée du restaurant |
+| `npm run verify:coordonnees` | les coordonnées **publiées** (téléphone, e-mails, adresse) permettent-elles à un client de vous joindre ? Gabarit détecté, et **domaine e-mail qui ne résout pas** → échec. ⚠️ **Rouge par conception** tant que le propriétaire n'a pas saisi ses vraies coordonnées |
+| `npm run verify:couloirs` | les fichiers que TA branche modifie appartiennent-ils à TON couloir ? (§19) ; échoue si tu écris chez l'autre agent |
 | `npm run verify:publication` | un instantané vide ne peut pas être publié |
 | `npm run verify:rbac` | la matrice des rôles est confrontée aux politiques réellement en base |
 | `npm run verify:point3` · `verify:i18n` | sous-champs des listes d'objets ; forme bilingue préservée |
