@@ -1,13 +1,13 @@
 # 18 — Dispositions de bloc et réglages d'affichage
 
-> **Statut : À REVALIDER — voir §11.5.** L'arbitrage du 2026-09-20 a retenu les
-> **valeurs libres** (couleurs, tailles, marges, sans CSS). En recherchant la
-> section à amender, **le TDR §13 a été retrouvé**, et il **interdit
-> explicitement** ce choix (« Ne pas permettre un design totalement libre de type
-> Webflow. Prévoir des variantes maîtrisées. »). La décision doit donc être
-> reprise à la lumière de cette règle : soit le §13 est amendé, soit on revient
-> aux variantes maîtrisées. **Rien n'est implémenté tant que ce point n'est pas
-> tranché** (AGENTS.md §14).
+> **Statut : ARBITRÉ DÉFINITIVEMENT le 2026-09-20 — voir §11.5 et §11.6.**
+> Modèle hybride retenu : **variantes maîtrisées par défaut** (TDR §13, qui n'est
+> pas abrogé) **+ valeurs libres derrière un dépliage « Avancé »** (fondé sur le
+> TDR §3.2 « Puissante à la demande »). CSS arbitraire exclu (TDR §2). Le TDR §13
+> porte désormais l'amendement **§13.1**, daté.
+>
+> **Le pilote est la Bannière d'accueil**, dont les 4 dispositions sont celles du
+> TDR §13 et celles déjà déclarées dans le code (`schemas.ts:32-37`).
 >
 > **Date** : 2026-09-20 · **Demande** : « permettre au restaurateur de changer la
 > configuration de l'interface de son site, section par section, avec un système
@@ -372,8 +372,24 @@ Trois conséquences, toutes mesurables :
    de ce qu'il ne faut pas exposer. Et le **TDR §3.2 « Puissante à la demande »**
    est exactement le principe du mode « Avancé » replié.
 
-**Ce qui reste donc à trancher**, et c'est le seul point ouvert : **modifier le
-TDR §13 pour autoriser les valeurs libres**, ou **revenir aux variantes
-maîtrisées**. Dans les deux cas la décision doit être **écrite dans le TDR**, pour
-que le dépôt cesse de se contredire — sans quoi la prochaine revue signalera une
-violation du §13, à juste titre.
+**Ce qui a été tranché** — **amendement du TDR §13, §13.1, daté du 2026-09-20** :
+
+- Les **variantes maîtrisées** restent la voie par défaut et l'interface exposée
+  en premier. Le §13 n'est pas abrogé.
+- Les **valeurs libres** (couleurs, tailles, espacements) sont ouvertes **derrière
+  un dépliage « Avancé »**, fondé sur le **TDR §3.2 « Puissante à la demande »**.
+- Le **CSS arbitraire reste exclu** (conforme au TDR §2, et seule valeur à portée
+  de sécurité).
+- **Trois garde-fous non bloquants** : avertissement de contraste WCAG, « revenir
+  au thème » en un clic, mode Avancé replié.
+- **Ce que l'amendement ne protège pas**, écrit noir sur blanc dans le TDR : les
+  valeurs saisies échappent à toute vérification automatique.
+
+### 11.6 Modèle retenu, en une phrase
+
+> **Quatre dispositions nommées par section, visibles tout de suite — et, pour
+> qui ouvre « Avancé », des couleurs, tailles et espacements libres, avec un
+> avertissement de contraste et un retour au thème en un clic.**
+
+Le pilote reste **la Bannière**, dont les 4 dispositions sont celles du TDR §13 et
+celles déjà déclarées dans le code.

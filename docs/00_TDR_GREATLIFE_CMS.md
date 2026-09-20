@@ -418,6 +418,50 @@ Cela protège la cohérence du site.
 
 ---
 
+## 13.1 Amendement du 2026-09-20 — dépliage « Avancé »
+
+> **Décidé par le propriétaire le 2026-09-20.** Le §13 reste la règle par défaut :
+> **l'interface exposée en premier au restaurateur est faite de variantes
+> maîtrisées**, et la cohérence du site reste garantie par le produit.
+>
+> Ce qui change : une zone de configuration **libre** est ajoutée, **derrière un
+> dépliage explicite nommé « Avancé »**. Elle n'apparaît pas tant qu'on ne
+> l'ouvre pas.
+>
+> **Fondement** : §3.2 du présent TDR, « *Puissante à la demande* ». C'est
+> exactement le mécanisme que ce paragraphe décrit — simple par défaut, puissant
+> pour qui le demande.
+>
+> **Ce que le mode « Avancé » autorise** : couleurs, tailles et espacements
+> libres, par section.
+>
+> **Ce qu'il n'autorise pas, et pourquoi** : le **CSS arbitraire**. Le §2 du
+> présent TDR cite « CSS » dans la liste de ce qu'il ne faut pas exposer ; et une
+> feuille de style injectée sur le site public peut exfiltrer des données
+> (`url()`) ou recouvrir du contenu depuis le domaine du restaurant. Cette
+> dernière valeur n'a pas été retenue.
+>
+> **Garde-fous, non bloquants** — ils avertissent, ils n'interdisent pas :
+>
+> 1. **Avertissement de contraste** texte/fond (référentiel WCAG) à la saisie.
+>    Un menu illisible fait perdre des clients : c'est le seul garde-fou dont
+>    l'absence a un coût direct pour le restaurateur.
+> 2. **« Revenir au thème » en un clic**, par section. Une valeur libre n'a pas
+>    de retour arrière autrement.
+> 3. **Mode « Avancé » replié par défaut**, pour que les variantes maîtrisées
+>    restent le chemin normal.
+>
+> **Ce que l'amendement ne protège pas** : les valeurs saisies par le
+> restaurateur échappent par nature à toute vérification automatique. Le filet de
+> non-régression (`verify:lot1`) continue de garantir que **la disposition par
+> défaut n'a pas bougé** — c'est tout, et c'est écrit ici pour que personne ne
+> s'attende à davantage.
+>
+> **Le §13 ci-dessus n'est pas abrogé.** Il est complété : les variantes
+> maîtrisées restent la voie recommandée et le rendu par défaut.
+
+---
+
 # 14. MODÈLE DE CONTENU
 
 Séparer strictement :
