@@ -62,7 +62,29 @@ const SELFTEST = process.argv.includes('--selftest')
  * et retrouver la ligne portant cet arbre.
  */
 const PRE_CMS_WIRING_REF = '0528c5443c6107ffcfb03bd6eab697138ca6b9bc'
-const BASE_REF = process.env.BASE_REF ?? PRE_CMS_WIRING_REF
+
+/*
+  LA RÉFÉRENCE DE NON-RÉGRESSION NE DOIT PAS ÊTRE SURCHARGEABLE PAR MÉGARDE
+  (revue du 2026-09-20, M-9).
+  Elle l'était : `process.env.BASE_REF ?? PRE_CMS_WIRING_REF`. Un `BASE_REF`
+  oublié dans un shell faisait donc « réussir » le contrôle en comparant le rendu
+  à une AUTRE révision — et le filet du TDR §41 ne prouvait plus rien, tout en
+  affichant un ✓. C'est exactement le faux vert que ce dépôt cherche à rendre
+  impossible.
+
+  Une surcharge reste possible pour un travail d'investigation, mais elle doit
+  être DEMANDÉE explicitement — et elle s'affiche dans la sortie.
+*/
+const SURCHARGE = process.env.BASE_REF
+if (SURCHARGE && SURCHARGE !== PRE_CMS_WIRING_REF && process.env.GLIFE_ALLOW_REF_OVERRIDE !== '1') {
+  console.error(
+    `\n  REFUS — BASE_REF="${SURCHARGE}" diffère de la référence épinglée.\n` +
+      '  Le contrôle de non-régression (TDR §41) ne doit pas changer de référence par mégarde.\n' +
+      '  Pour le forcer sciemment : GLIFE_ALLOW_REF_OVERRIDE=1\n',
+  )
+  process.exit(2)
+}
+const BASE_REF = SURCHARGE ?? PRE_CMS_WIRING_REF
 
 const require = createRequire(`${ROOT}/package.json`)
 const { build } = require('esbuild')
