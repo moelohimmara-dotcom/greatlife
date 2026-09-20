@@ -41,11 +41,19 @@ export function PageLayoutPicker({ value, onChange, disabled }: PageLayoutPicker
                 fontWeight: actif ? 700 : 600,
               }}
             >
-              {item.label}
+              <div>{item.label}</div>
+              {actif && (
+                <div style={{ fontSize: 11, fontWeight: 500, color: t.muted, marginTop: 4, lineHeight: 1.35 }}>
+                  {item.help}
+                </div>
+              )}
             </button>
           )
         })}
       </div>
+      <p style={{ fontSize: 11, color: t.muted, lineHeight: 1.4, margin: '10px 0 0' }}>
+        L’aperçu change tout de suite. Le site public, seulement après « Mettre à jour le site ».
+      </p>
     </div>
   )
 }

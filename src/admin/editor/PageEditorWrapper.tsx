@@ -87,26 +87,25 @@ export function PageEditorWrapper() {
     }
   }, [pageId, layout])
 
-  const togglePublish = useCallback(async () => {
+  const publishNow = useCallback(async () => {
     if (!pageId) return
     setPublishing(true)
-
-    if (status === 'published') {
-      const res = await setPageStatus(pageId, 'draft')
-      setPublishing(false)
-      if (!res.ok) { setError(res.error); return }
-      setStatus(res.data.status)
-      return
-    }
-
     const res = await publishPage(pageId, user?.email ?? null)
     setPublishing(false)
     if (!res.ok) { setError(res.error); return }
     if (!res.data.published) { setBlockedReport(res.data.report); return }
-
     setBlockedReport(null)
     await load()
-  }, [pageId, status, user?.email, load])
+  }, [pageId, user?.email, load])
+
+  const unpublishNow = useCallback(async () => {
+    if (!pageId) return
+    setPublishing(true)
+    const res = await setPageStatus(pageId, 'draft')
+    setPublishing(false)
+    if (!res.ok) { setError(res.error); return }
+    setStatus(res.data.status)
+  }, [pageId])
 
   if (loading) {
     return (
@@ -135,7 +134,8 @@ export function PageEditorWrapper() {
       layout={layout}
       onLayoutChange={changeLayout}
       publishing={publishing}
-      onTogglePublish={togglePublish}
+      onPublish={publishNow}
+      onUnpublish={unpublishNow}
       blockedReport={blockedReport}
     />
   )

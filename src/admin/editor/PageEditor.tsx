@@ -40,8 +40,10 @@ interface PageEditorProps {
   onLayoutChange: (layout: PageLayout) => void
   /** `true` pendant la bascule de publication. */
   publishing: boolean
-  /** Bascule brouillon ⇄ publié. */
-  onTogglePublish: () => void
+  /** Met l'instantané en ligne (y compris si la page est déjà publiée). */
+  onPublish: () => void
+  /** Retire la page du site public (repassage en brouillon). */
+  onUnpublish: () => void
   /**
    * Rapport d'une publication refusée par les contrôles du TDR §24.
    * Non nul ⇒ le panneau s'ouvre de lui-même sur ce qui a bloqué.
@@ -56,7 +58,8 @@ export function PageEditor({
   layout,
   onLayoutChange,
   publishing,
-  onTogglePublish,
+  onPublish,
+  onUnpublish,
   blockedReport = null,
 }: PageEditorProps) {
   const { theme: t } = useSite()
@@ -106,14 +109,16 @@ export function PageEditor({
    * le restaurateur publierait autre chose que ce qu'il voit.
    * On sauvegarde donc d'abord, et on s'arrête si la sauvegarde a échoué.
    */
+  /**
+   * Publier engage ce qui est EN BASE. On sauvegarde d'abord.
+   * Une fois le site déjà en ligne, ce même geste MET À JOUR l'instantané
+   * (mise en page comprise) — sans ça, le restaurateur n'avait plus que
+   * « Repasser en brouillon » et le public ne bougeait jamais.
+   */
   const handlePublish = async () => {
-    if (isPublished) {
-      onTogglePublish()
-      return
-    }
     const saved = await editor.save()
     if (!saved) return
-    onTogglePublish()
+    onPublish()
   }
 
   return (
@@ -144,7 +149,7 @@ export function PageEditor({
         */}
         <span
           title={isPublished
-            ? "Les visiteurs voient la dernière version publiée. Vos modifications ne seront visibles qu'après « Publier sur le site »."
+            ? "Les visiteurs voient la dernière version mise en ligne. Pour qu'une mise en page ou un texte les atteigne, cliquez « Mettre à jour le site »."
             : 'Les visiteurs voient encore l\'ancien site. Publiez pour appliquer vos modifications.'}
           style={{
             fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 100,
@@ -223,18 +228,31 @@ export function PageEditor({
           */}
           <button onClick={handlePublish} disabled={publishing || editor.saving} title={
             isPublished
-              ? 'Repasser en brouillon : les visiteurs reverront l\'ancien site.'
+              ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
               : 'Publier : les visiteurs verront ce contenu.'
           } style={{
             padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            border: `1px solid ${isPublished ? t.shadow : t.primary}`,
+            border: `1px solid ${t.primary}`,
             cursor: publishing ? 'wait' : 'pointer',
-            background: isPublished ? 'transparent' : `${t.primary}12`,
-            color: isPublished ? t.text : t.primary,
+            background: `${t.primary}12`,
+            color: t.primary,
             transition: 'all 0.15s',
           }}>
-            {publishing ? '…' : isPublished ? 'Repasser en brouillon' : 'Publier sur le site'}
+            {publishing ? '…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
           </button>
+          {isPublished && (
+            <button onClick={onUnpublish} disabled={publishing || editor.saving} title="Retirer cette version : les visiteurs reverront l'ancien site."
+              style={{
+                padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                border: `1px solid ${t.shadow}`,
+                cursor: publishing ? 'wait' : 'pointer',
+                background: 'transparent',
+                color: t.text,
+              }}
+            >
+              Retirer du site
+            </button>
+          )}
         </div>
       </div>
 

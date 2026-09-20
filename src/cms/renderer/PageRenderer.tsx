@@ -4,15 +4,13 @@
  * Assemble une page à partir de sa structure, de ses sections et de sa
  * mise en page (cinq choix nommés, TDR §13).
  *
- * Le renderer est **isomorphe** (décision CM-7 / AR-10) : il reçoit ses
- * données en paramètres et ne les charge pas lui-même.
+ * Le renderer est **isomorphe** (décision CM-7 / AR-10).
  *
- * La navigation (header/footer) est GLOBALE (TDR §19) et rendue par le
- * composant appelant, pas ici.
- *
- * « Colonne unique » est le défilement historique : les sections se suivent
- * de haut en bas, sans enveloppe supplémentaire. Les autres mises en page
- * n'agissent qu'après publication (l'instantané porte `page.layout`).
+ * « Colonne unique » = défilement historique, sans enveloppe.
+ * Les autres mises en page changent l'assemblage. En aperçu (`preview`),
+ * on ne replie PAS la grille / l'écran partagé : l'iframe de l'éditeur
+ * fait souvent moins de 900 px, ce qui faisait croire que le choix
+ * n'agissait pas. Le repli téléphone ne s'applique que sur le site public.
  */
 
 import type { Page } from '../model/page'
@@ -25,31 +23,22 @@ import { SectionRenderer } from './SectionRenderer'
 
 export interface PageRendererProps {
   page: Page
-  /** Sections déjà ordonnées et filtrées (voir `repository/sections.ts`). */
   sections: readonly PageSection[]
   locale: Locale
   restaurant: ResolvedRestaurant
-  /** Données des modules métier (plats, articles), transmises aux sections concernées. */
   data?: SectionDataSource
-  /** `true` en prévisualisation d'administration. */
   preview?: boolean
-  /**
-   * Surcharge d'aperçu : l'éditeur montre le choix en cours avant
-   * sauvegarde. Le public n'utilise jamais cette prop — il lit `page.layout`
-   * issu de l'instantané publié.
-   */
+  /** Surcharge d'aperçu. Le public lit `page.layout` de l'instantané publié. */
   layout?: PageLayout
 }
 
-const LAYOUT_CSS = `
-[data-cms-layout="hero_alternating"] > [data-cms-section]:nth-child(even) {
-  background: var(--c-surface-alt, rgba(0,0,0,0.03));
-}
+const CSS_STRUCTURE = `
 [data-cms-layout="magazine"] .page-layout-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0;
-  align-items: stretch;
+  gap: 20px;
+  padding: 0 24px 40px;
+  align-items: start;
 }
 [data-cms-layout="hero_parallax"] .page-layout-parallax {
   position: sticky;
@@ -61,6 +50,7 @@ const LAYOUT_CSS = `
   position: relative;
   z-index: 1;
   background: var(--c-surface, #fff);
+  box-shadow: 0 -24px 48px rgba(0,0,0,0.12);
 }
 [data-cms-layout="split"] {
   display: grid;
@@ -72,10 +62,18 @@ const LAYOUT_CSS = `
   top: 0;
   height: 100vh;
   overflow: auto;
+  border-right: 1px solid var(--c-shadow, rgba(0,0,0,0.12));
 }
 [data-cms-layout="split"] .page-layout-split-rest {
   min-height: 100vh;
 }
+[data-cms-layout="hero_alternating"] [data-cms-stripe="alt"] {
+  box-shadow: inset 8px 0 0 var(--c-primary, #2f6b4f);
+  background: var(--c-surface-alt, rgba(0,0,0,0.04));
+}
+`
+
+const CSS_TELEPHONE = `
 @media (max-width: 900px) {
   [data-cms-layout="magazine"] .page-layout-grid {
     grid-template-columns: 1fr;
@@ -86,6 +84,7 @@ const LAYOUT_CSS = `
   [data-cms-layout="split"] .page-layout-split-hero {
     position: relative;
     height: auto;
+    border-right: none;
   }
 }
 `
@@ -96,17 +95,33 @@ function rendreSections(
   restaurant: ResolvedRestaurant,
   data: SectionDataSource | undefined,
   preview: boolean,
+  stripe: boolean,
 ) {
-  return sections.map((section) => (
-    <SectionRenderer
-      key={section.id}
-      section={section}
-      locale={locale}
-      restaurant={restaurant}
-      data={data}
-      preview={preview}
-    />
-  ))
+  return sections.map((section, i) => {
+    if (!stripe) {
+      return (
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          locale={locale}
+          restaurant={restaurant}
+          data={data}
+          preview={preview}
+        />
+      )
+    }
+    return (
+      <div key={section.id} data-cms-stripe={i % 2 === 1 ? 'alt' : 'plain'}>
+        <SectionRenderer
+          section={section}
+          locale={locale}
+          restaurant={restaurant}
+          data={data}
+          preview={preview}
+        />
+      </div>
+    )
+  })
 }
 
 export function PageRenderer({
@@ -136,78 +151,53 @@ export function PageRenderer({
     </div>
   )
 
+  const une = premiere ? (
+    <SectionRenderer
+      key={premiere.id}
+      section={premiere}
+      locale={locale}
+      restaurant={restaurant}
+      data={data}
+      preview={preview}
+    />
+  ) : null
+
   const corps = (() => {
     if (layout === 'single_column' || sections.length === 0) {
-      return rendreSections(sections, locale, restaurant, data, preview)
+      return rendreSections(sections, locale, restaurant, data, preview, false)
     }
-
     if (layout === 'hero_alternating') {
-      return rendreSections(sections, locale, restaurant, data, preview)
+      return rendreSections(sections, locale, restaurant, data, preview, true)
     }
-
     if (layout === 'magazine') {
       return (
         <>
-          {premiere && (
-            <SectionRenderer
-              key={premiere.id}
-              section={premiere}
-              locale={locale}
-              restaurant={restaurant}
-              data={data}
-              preview={preview}
-            />
-          )}
+          {une}
           {suivantes.length > 0 && (
             <div className="page-layout-grid">
-              {rendreSections(suivantes, locale, restaurant, data, preview)}
+              {rendreSections(suivantes, locale, restaurant, data, preview, false)}
             </div>
           )}
         </>
       )
     }
-
     if (layout === 'hero_parallax') {
       return (
         <>
-          {premiere && (
-            <div className="page-layout-parallax">
-              <SectionRenderer
-                key={premiere.id}
-                section={premiere}
-                locale={locale}
-                restaurant={restaurant}
-                data={data}
-                preview={preview}
-              />
-            </div>
-          )}
+          {une && <div className="page-layout-parallax">{une}</div>}
           {suivantes.length > 0 && (
             <div className="page-layout-rest">
-              {rendreSections(suivantes, locale, restaurant, data, preview)}
+              {rendreSections(suivantes, locale, restaurant, data, preview, false)}
             </div>
           )}
         </>
       )
     }
-
-    // split
     return (
       <>
-        {premiere && (
-          <div className="page-layout-split-hero">
-            <SectionRenderer
-              key={premiere.id}
-              section={premiere}
-              locale={locale}
-              restaurant={restaurant}
-              data={data}
-              preview={preview}
-            />
-          </div>
-        )}
+        {une && <div className="page-layout-split-hero">{une}</div>}
         <div className="page-layout-split-rest">
-          {rendreSections(suivantes, locale, restaurant, data, preview)}
+          {rendreSections(suivantes, locale, restaurant, data, preview, false)}
         </div>
       </>
     )
@@ -218,9 +208,10 @@ export function PageRenderer({
       data-cms-page={page.slug || 'home'}
       data-cms-locale={locale}
       data-cms-layout={layout}
+      data-cms-preview={preview ? 'true' : undefined}
       lang={locale}
     >
-      <style>{LAYOUT_CSS}</style>
+      <style>{preview ? CSS_STRUCTURE : `${CSS_STRUCTURE}${CSS_TELEPHONE}`}</style>
       {corps}
       {noticeVide}
     </main>
