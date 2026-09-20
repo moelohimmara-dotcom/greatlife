@@ -133,11 +133,22 @@ export interface PublicationInput {
  * Ils sont donc déclarés NON VÉRIFIÉS, et le panneau de publication le montre.
  *
  * CE QUE CELA COÛTE, ET C'EST ASSUMÉ
- * Les ancres que le public utilise réellement (celles des listes en dur) ne sont
- * plus vérifiées au moment de publier. Elles le sont au moment de DÉVELOPPER, par
- * `npm run verify:footer`, qui compare les ancres écrites aux ancres réelles de
- * `page_sections`. C'est un filet de développement, pas de publication : la
+ * Les ancres que le public utilise ne sont plus vérifiées AU MOMENT DE PUBLIER.
+ * Elles le sont au moment de DÉVELOPPER, par `npm run verify:anchors`, qui les
+ * confronte à celles de `pages.published_snapshot` — la source que le public
+ * reçoit réellement. C'est un filet de développement, pas de publication : la
  * limite est réelle et documentée.
+ *
+ * CE QUI GARANTIT QUE CES DEUX CONTRÔLES NE BLOQUENT JAMAIS — ET SA LIMITE
+ * La garantie n'est PAS dans le type : `buildReport` fait primer le niveau le
+ * plus grave, donc un constat sur `navigation` ou `links` l'emporterait sur
+ * `notVerified` et réafficherait le contrôle en `error`. Ce qui la rend vraie
+ * aujourd'hui, c'est qu'AUCUN code ne produit de constat pour ces deux
+ * identifiants — et c'est MESURÉ, pas supposé : `npm run verify:lot3` exige que
+ * les deux valent `skipped`, que leur motif soit non vide, qu'aucun ne vaille
+ * `ok`, et que fournir les anciens liens ne change pas le rapport.
+ * Si un jour un constat réapparaît sur l'un des deux, `verify:lot3` échoue et le
+ * dit — plutôt que de laisser un vert silencieux.
  */
 export const PUBLICATION_CHECKS_NOT_VERIFIED: Partial<Record<PublicationCheckId, string>> = {
   navigation:

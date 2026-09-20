@@ -167,9 +167,11 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
     ---- 6. Aucun lien cassé ------------------------------------------------
     NON EXÉCUTÉ — ce contrôle ne savait vérifier que les ancres de
     `navigation_items`, que le site public ne rend pas. Les ancres réellement
-    servies (celles des listes en dur de `PublicNav` et `Footer`) sont vérifiées
-    au moment de DÉVELOPPER, par `npm run verify:footer` : ce n'est pas un filet
-    de publication, et cette limite est assumée et documentée.
+    servies sont désormais vérifiées au moment de DÉVELOPPER, par
+    `npm run verify:anchors`, qui confronte les liens écrits dans le site
+    (menu, pied de page) ET les cibles ÉDITABLES des boutons de la page
+    d'accueil aux ancres de `pages.published_snapshot`. Ce n'est pas un filet de
+    publication, et cette limite est assumée et documentée.
   */
 
   // ---- 7. Informations essentielles présentes ----------------------------
