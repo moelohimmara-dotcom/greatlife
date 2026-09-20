@@ -45,6 +45,11 @@ supabase/.temp
 # sous-dossier (jeu de données, fixture) n'est pas concerné.
 /*.txt
 
+# Clone de travail d'un SECOND AGENT, à la racine (constaté le 2026-09-20 :
+# 28 Mo, avec son propre `.git`). Non ignoré, il était capturable par un
+# `git add -A` — on aurait versionné un dépôt dans un dépôt. Voir AGENTS.md §19.
+/greatlife/
+
 # Sauvegardes locales de la base (dumps avant migration) — données réelles, ne
 # doivent JAMAIS être versionnées.
 /backups/

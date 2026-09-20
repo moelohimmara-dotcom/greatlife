@@ -229,6 +229,54 @@ Actions cibles (TDR §35 — **non à implémenter aujourd'hui**) :
 
 ---
 
+## 19. Répartition des chantiers entre agents
+
+**Pourquoi cette section.** Le 2026-09-20, deux agents ont travaillé sur ce dépôt
+**le même matin** : l'un a livré le pilote des dispositions de la Bannière
+(`d0473d8`, 08:28) et **déployé en production** pendant que l'autre corrigeait la
+console en production. Aucun dégât — les filets ont tout rattrapé — mais la
+collision était réelle et n'était écrite nulle part. §1 demandait de *signaler*
+les divergences ; §19 dit comment les **éviter**.
+
+### 19.1 Couloirs en cours
+
+| Couloir | Branche | Périmètre d'écriture | Agent |
+|---|---|---|---|
+| **Fiabilité et vérité du dépôt** | `piste/fiabilite-depot` | `scripts/verify-*.mjs`, `scripts/test-*.mjs`, `src/contexts/SiteContext.tsx`, `src/cms/repository/*`, `src/cms/model/save-plan.ts`, `supabase/migrations/*`, `supabase/rollbacks/*`, `AGENTS.md`, `docs/17_BACKLOG.md` | agent de vérification |
+| **Modèle d'édition des sections** | *(à confirmer par son auteur)* | `src/sections/*.tsx`, `src/admin/editor/PropertyPanel.tsx`, `src/cms/model/sections/*`, `docs/18_DISPOSITIONS_DE_BLOC.md` | agent Cursor |
+
+**On ne modifie QUE son couloir. Lire le couloir de l'autre est toujours permis**
+— `verify:anchors` lit `Hero.tsx`, c'est normal et sans risque.
+
+### 19.2 Deux ressources PARTAGÉES, à ne pas se disputer
+
+1. **La production Cloudflare Pages est unique.** Un déploiement écrase le
+   précédent, quel que soit l'auteur : deux agents qui déploient le même jour se
+   remplacent mutuellement. **Règle** : ne pas déployer depuis une branche de
+   travail ; déployer seulement depuis `main`, après fusion, et **en l'annonçant**.
+2. **La base Supabase est unique.** Une migration ou un `UPDATE` s'appliquent à
+   tout le monde. **Règle** : toute écriture en base se fait avec la liste exacte
+   des lignes touchées conservée, et une requête de retour arrière écrite
+   (modèle : `logs/retour-arriere-messages.sql`).
+
+### 19.3 Avant de fusionner dans `main`
+
+- Rebaser sur `main` (l'autre couloir y aura peut-être avancé).
+- Relancer **tous** les filets : `npm run build`, `verify:lot1`, `verify:public`,
+  `verify:anchors`, `verify:publication`, `verify:rbac`, `verify:point3`,
+  `verify:i18n`, `verify:dispositions`, `test:save-plan`.
+- Vérifier qu'aucun fichier de l'autre couloir n'a été modifié par mégarde.
+
+### 19.4 Un cas qui n'est PAS une collision
+
+Un fait **constaté** par un agent et **contredit** par l'autre doit remonter au
+propriétaire (AGENTS.md §1), pas se régler en force. Le 2026-09-20, ce mécanisme
+a servi : le hero public avait changé sans publication, parce que l'instantané
+publié portait `fullscreen` (valeur ignorée avant le branchement des
+dispositions). Signalé, arbitré par le propriétaire.
+
+---
+
 ## Annexes — ancrages projet
 
 - **Dépôt** : `moelohimmara-dotcom/greatlife` — branche de référence `main` — workspace `C:/Users/MARA/Documents/greatlife`
