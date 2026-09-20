@@ -50,6 +50,36 @@ export function isPersistedId(id: string): boolean {
 }
 
 /**
+ * Empreinte des données qu'une sauvegarde ÉCRIT, indépendante des identifiants.
+ *
+ * POURQUOI ELLE EXISTE (revue du 2026-09-20, I-5)
+ * Une sauvegarde dure 2N+2 allers-retours, et rien ne désactive les champs
+ * pendant ce temps : le restaurateur continue de taper. Or `save()` réinjecte
+ * l'instantané du DÉBUT et renvoie `succès` — le texte saisi pendant
+ * l'enregistrement disparaissait donc de l'écran au rechargement suivant, sans
+ * un mot. C'est la seule perte SILENCIEUSE du chemin d'édition.
+ *
+ * En comparant cette empreinte au début et à la fin, on sait si des
+ * modifications sont arrivées entre-temps — et on peut le DIRE.
+ *
+ * Ce qui entre dans l'empreinte : le contenu qui s'écrit. Ce qui en est exclu :
+ *  - les identifiants (ils changent légitimement : `temp-…` → UUID) ;
+ *  - les positions (elles sont recalculées depuis l'ORDRE, et l'ordre est déjà
+ *    capturé par l'ordre du tableau — les inclure produirait de faux positifs).
+ *
+ * ⚠️ LIMITE CONNUE, MESURÉE PAR UN TEST (pas supposée)
+ * Deux sections que RIEN ne distingue — même type, même contenu, même ancre,
+ * même visibilité — sont interchangeables sans changer l'empreinte. Les échanger
+ * n'avertirait donc pas. C'est assumé : un tel échange est aussi sans effet
+ * visible, les deux sections étant identiques.
+ */
+export function empreinteSauvegarde(sections: readonly PageSection[]): string {
+  return JSON.stringify(
+    sections.map((s) => [s.type, s.variant, s.visible, s.anchor, s.content, s.settings]),
+  )
+}
+
+/**
  * Décide ce qu'une sauvegarde doit écrire. Fonction pure : aucun accès réseau.
  *
  * `removedIds` porte les sections que le restaurateur a retirées de la liste

@@ -228,7 +228,16 @@ export async function deleteSection(id: string): Promise<CmsResult<true>> {
     const { data, error } = await client.data.from(TABLE).delete().eq('id', id).select('id')
     if (error) return cmsErr(describeError(error))
     if (!data || data.length === 0) {
-      return cmsErr("Cette section n'a pas pu être supprimée. Rechargez la page pour voir l'état réel.")
+      /*
+        Zéro ligne touchée a DEUX causes possibles, et le client ne peut pas les
+        distinguer : la section n'existe plus (quelqu'un d'autre l'a supprimée),
+        ou la policy RLS a filtré l'écriture. Le message ne tranche donc pas —
+        la version précédente disait « Rechargez la page », ce qui n'aiderait pas
+        dans le second cas (revue du 2026-09-20, M-8).
+      */
+      return cmsErr(
+        "Cette section n'a pas pu être supprimée : elle n'existe peut-être plus, ou vous n'avez plus les droits. Rechargez la page et réessayez.",
+      )
     }
     return cmsOk(true)
   } catch (err) {
@@ -262,7 +271,9 @@ export async function reorderSections(
         .select('id')
       if (error) return cmsErr(describeError(error))
       if (!data || data.length === 0) {
-        return cmsErr("L'ordre des sections n'a pas pu être enregistré. Rechargez la page pour voir l'état réel.")
+        return cmsErr(
+          "L'ordre des sections n'a pas pu être enregistré : une section a peut-être disparu, ou les droits ont changé. Rechargez la page et réessayez.",
+        )
       }
     }
     return cmsOk(true)

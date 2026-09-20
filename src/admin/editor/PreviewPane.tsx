@@ -21,15 +21,29 @@ interface PreviewPaneProps {
   restaurant?: ResolvedRestaurant
 }
 
-/** Réglages restaurant par défaut pour la prévisualisation. */
-const DEFAULT_RESTAURANT: ResolvedRestaurant = {
+/**
+ * Réglages de repli pour la prévisualisation.
+ *
+ * ⚠️ AUCUNE COORDONNÉE INVENTÉE (revue du 2026-09-20, I-4).
+ * Cette constante portait les valeurs de démonstration — « Conakry, Guinée »,
+ * « +224 000 00 00 00 », « contact@greatlife.gn ». Comme `PageEditor` appelait
+ * `PreviewPane` SANS `restaurant`, c'est ce repli qui s'appliquait : le
+ * restaurateur voyait dans son propre aperçu un numéro de téléphone qui n'était
+ * pas le sien, alors que c'est sur cet aperçu qu'il décide de publier (TDR §4).
+ *
+ * `PageEditor` fournit désormais les réglages réels. Tant qu'ils ne sont pas
+ * arrivés, l'aperçu n'affiche AUCUNE coordonnée — pas une fausse.
+ * `name` et `currency` sont conservés : ce ne sont pas des coordonnées, et la
+ * mise en page en a besoin.
+ */
+const RESTAURANT_ABSENT: ResolvedRestaurant = {
   name: 'Greatlife',
-  address: 'Conakry, Guinée',
-  hours: 'Tous les jours · 11h00 — 23h00',
-  phone: '+224 000 00 00 00',
-  emailContact: 'contact@greatlife.gn',
-  emailReservation: 'resa@greatlife.gn',
-  slogan: 'Manger vite. Manger bio. Manger gourmand.',
+  address: '',
+  hours: '',
+  phone: '',
+  emailContact: '',
+  emailReservation: '',
+  slogan: '',
   currency: 'FG',
   social: { facebook: '', whatsapp: '', instagram: '' },
 }
@@ -99,7 +113,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPane
               key={section.id || `section-${i}`}
               section={section}
               locale={locale}
-              restaurant={restaurant ?? DEFAULT_RESTAURANT}
+              restaurant={restaurant ?? RESTAURANT_ABSENT}
               preview
             />
           )),

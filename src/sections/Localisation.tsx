@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
@@ -11,18 +12,33 @@ export function Localisation({ content: cms, restaurant }: Partial<SectionCompon
   const { theme: t, isDark, content: legacy } = useSite()
 
   const title = pick(cmsText(cms, 'title'), 'Nous trouver')
-  const subtitle = pick(cmsText(cms, 'subtitle'), legacy.address || 'Kaloum, Conakry — au cœur de la ville.')
+  const subtitle = pick(cmsText(cms, 'subtitle'), legacy.address || '')
 
   // TDR §16 : les coordonnées du restaurant sont une source unique, saisie une
-  // fois dans les réglages. Repli explicite sur les valeurs historiques tant que
-  // la bascule n'a pas eu lieu.
-  // Note : la ligne `restaurant` (migration 024) EST déjà peuplée et porte les
-  // mêmes textes que l'historique — le repli ne sert donc qu'en secours, pas
-  // parce que les réglages seraient vides.
-  const address = restaurant?.address || legacy.address || 'Kaloum, Conakry — Guinée'
-  const hours = restaurant?.hours || legacy.hours || 'Lun–Dim · 7h00 – 23h00'
-  const phone = restaurant?.phone || legacy.phone || '+224 620 00 00 00'
-  const email = restaurant?.emailContact || legacy.emailContact || 'contact@greatlife.gn'
+  // fois dans les réglages.
+  //
+  // ⚠️ IL N'Y A PLUS DE TROISIÈME REPLI (revue du 2026-09-20, I-4).
+  // La version précédente finissait par des valeurs CODÉES EN DUR :
+  //     'Kaloum, Conakry — Guinée' · 'Lun–Dim · 7h00 – 23h00'
+  //     '+224 620 00 00 00'        · 'contact@greatlife.gn'
+  // Ce sont exactement les valeurs que le contrôle désigne comme PÉRIMÉES. Si
+  // les réglages avaient été vides, le site public aurait affiché un numéro de
+  // téléphone qui n'existe pas, sous l'étiquette « Appel & WhatsApp ».
+  //
+  // Une coordonnée absente n'est donc plus REMPLACÉE : la ligne disparaît
+  // (voir le filtre plus bas). Un trou visible vaut mieux qu'une invention
+  // crédible — c'est déjà le choix fait pour le pied de page.
+  const address = restaurant?.address || legacy.address || ''
+  const hours = restaurant?.hours || legacy.hours || ''
+  const phone = restaurant?.phone || legacy.phone || ''
+  const email = restaurant?.emailContact || legacy.emailContact || ''
+
+  const coordonnees: [ReactNode, string, string][] = [
+    [Icon.pin(20, t.primary), address, 'Adresse du restaurant'],
+    [Icon.clock(20, t.accent), hours, 'Service continu toute la journée'],
+    [Icon.phone(20, t.gold), phone, 'Appel & WhatsApp'],
+    [Icon.mail(20, t.primary), email, 'Réservations & commandes'],
+  ]
 
   return (
     <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -31,12 +47,9 @@ export function Localisation({ content: cms, restaurant }: Partial<SectionCompon
         <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           <OrganicCard style={{ padding: '32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {[
-                [Icon.pin(20, t.primary), address, 'Adresse du restaurant'],
-                [Icon.clock(20, t.accent), hours, 'Service continu toute la journée'],
-                [Icon.phone(20, t.gold), phone, 'Appel & WhatsApp'],
-                [Icon.mail(20, t.primary), email, 'Réservations & commandes'],
-              ].map(([ic, rowTitle, sub], i) => (
+              {coordonnees
+                .filter(([, valeur]) => String(valeur).trim() !== '')
+                .map(([ic, rowTitle, sub], i) => (
                 <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${t.primary}0a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic}</div>
                   <div>

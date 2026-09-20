@@ -37,13 +37,13 @@ const { build } = require('esbuild')
 
 const entry = `${WORK}/save-plan.ts`
 const outfile = `${WORK}/save-plan.cjs`
-writeFileSync(entry, `export { isPersistedId, planifierSauvegarde } from '@/cms/model/save-plan'`, 'utf8')
+writeFileSync(entry, `export { isPersistedId, planifierSauvegarde, empreinteSauvegarde } from '@/cms/model/save-plan'`, 'utf8')
 await build({
   entryPoints: [entry], outfile, bundle: true, format: 'cjs', platform: 'node',
   alias: { '@': `${ROOT}/src` }, loader: { '.ts': 'ts' }, logLevel: 'warning',
 })
 delete require.cache[require.resolve(outfile)]
-const { isPersistedId, planifierSauvegarde } = require(outfile)
+const { isPersistedId, planifierSauvegarde, empreinteSauvegarde } = require(outfile)
 
 /** Un identifiant réellement attribué par la base. */
 const UUID = '3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b'
@@ -127,4 +127,50 @@ test('le module testé est bien celui du dépôt', () => {
   const source = readFileSync(`${ROOT}/src/cms/model/save-plan.ts`, 'utf8')
   assert.match(source, /export function planifierSauvegarde/)
   assert.equal(typeof planifierSauvegarde, 'function')
+})
+
+// ---------------------------------------------------------------------------
+// EMPREINTE DE SAUVEGARDE — elle sert à DÉTECTER une saisie faite pendant
+// l'enregistrement (revue du 2026-09-20, I-5). Elle doit donc voir les vraies
+// modifications, et RIEN d'autre : une empreinte trop sensible alarmerait sans
+// raison, une empreinte aveugle laisserait la perte silencieuse.
+
+test('l’empreinte IGNORE les identifiants (ils changent légitimement temp- → UUID)', () => {
+  const avant = [section('temp-1')]
+  const apres = [{ ...section('temp-1'), id: UUID }]
+  assert.equal(empreinteSauvegarde(avant), empreinteSauvegarde(apres))
+})
+
+test('l’empreinte IGNORE les positions (elles sont recalculées depuis l’ordre)', () => {
+  const a = [{ ...section(UUID), position: 3 }]
+  const b = [{ ...section(UUID), position: 0 }]
+  assert.equal(empreinteSauvegarde(a), empreinteSauvegarde(b))
+})
+
+test('SENSIBILITÉ — l’empreinte DÉTECTE une saisie arrivée pendant l’enregistrement', () => {
+  const avant = [section(UUID)]
+  const apres = [{ ...section(UUID), content: { title: { fr: 'tapé pendant la sauvegarde' } } }]
+  assert.notEqual(empreinteSauvegarde(avant), empreinteSauvegarde(apres))
+})
+
+test('SENSIBILITÉ — l’empreinte détecte un masquage et un réordonnancement', () => {
+  const a = { ...section(UUID), type: 'hero', content: { title: { fr: 'A' } } }
+  const b = { ...section(UUID2), type: 'blog', content: { title: { fr: 'B' } } }
+  assert.notEqual(empreinteSauvegarde([a, b]), empreinteSauvegarde([{ ...a, visible: false }, b]))
+  assert.notEqual(empreinteSauvegarde([a, b]), empreinteSauvegarde([b, a]))
+})
+
+/*
+  LIMITE CONNUE, MESURÉE ICI POUR QU'ELLE NE SOIT PAS SUPPOSÉE.
+  Deux sections que RIEN ne distingue (même type, même contenu, même ancre, même
+  visibilité) sont interchangeables sans changer l'empreinte : les échanger
+  n'avertirait donc pas. C'est assumé — un tel échange est aussi sans effet
+  visible, puisque les deux sections sont identiques. Si un jour un champ
+  distinctif est ajouté (icône, identifiant affiché), cette limite disparaîtra
+  d'elle-même. Le test fige la limite pour qu'un changement de comportement se
+  voie.
+*/
+test('LIMITE CONNUE — deux sections rigoureusement identiques restent interchangeables', () => {
+  const jumelles = [section(UUID), section(UUID2)]
+  assert.equal(empreinteSauvegarde(jumelles), empreinteSauvegarde([jumelles[1], jumelles[0]]))
 })

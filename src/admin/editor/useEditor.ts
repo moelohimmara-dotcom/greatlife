@@ -17,7 +17,7 @@ import type { Locale } from '@/cms/model/i18n'
 import type { SectionType } from '@/cms/model/section'
 import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
 import { resolveContentObject } from '@/cms/model/i18n'
-import { isPersistedId, planifierSauvegarde } from '@/cms/model/save-plan'
+import { empreinteSauvegarde, isPersistedId, planifierSauvegarde } from '@/cms/model/save-plan'
 import {
   createSection,
   deleteSection,
@@ -42,6 +42,12 @@ export interface EditorState {
   saving: boolean
   /** Dernière erreur de sauvegarde, ou null. */
   error: string | null
+  /**
+   * Ce qui n'est PAS une erreur mais doit être dit : typiquement, des
+   * modifications arrivées PENDANT l'enregistrement, qui ne sont donc pas
+   * enregistrées. Sans ce champ, cette perte était silencieuse (revue I-5).
+   */
+  avertissement: string | null
 }
 
 export function useEditor(pageId: string, initialSections: PageSection[]) {
@@ -52,6 +58,7 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
     locale: 'fr',
     saving: false,
     error: null,
+    avertissement: null,
   })
 
   /** Sélectionne une section par son index. */
@@ -179,9 +186,10 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
    * c'est ce qui rend la décision vérifiable sans base de données.
    */
   const save = useCallback(async (): Promise<boolean> => {
-    setState((s) => ({ ...s, saving: true, error: null }))
+    setState((s) => ({ ...s, saving: true, error: null, avertissement: null }))
 
     const plan = planifierSauvegarde(state.sections, state.removedIds)
+    const empreinteDepart = empreinteSauvegarde(state.sections)
 
     /**
      * Identifiants provisoires → identifiants attribués par la base.
@@ -208,27 +216,48 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
      *    est au moment où la réponse arrive.
      */
     const sortir = (removedIdsRestants: string[], error: string | null): boolean => {
-      setState((s) => ({
-        ...s,
-        sections: s.sections.map((section) => {
+      setState((s) => {
+        const sections = s.sections.map((section) => {
           const id = attribues.get(section.id)
           return id === undefined ? section : { ...section, id }
-        }),
-        removedIds: removedIdsRestants,
-        saving: false,
-        error,
-      }))
+        })
+        /*
+          DES MODIFICATIONS SONT-ELLES ARRIVÉES PENDANT L'ENREGISTREMENT ?
+          Si oui, on le DIT. Les champs ne sont pas désactivés pendant la
+          sauvegarde : sans ce message, le restaurateur croyait tout enregistré
+          et découvrait la perte au rechargement suivant.
+        */
+        const modifieEntreTemps = error === null && empreinteSauvegarde(sections) !== empreinteDepart
+        return {
+          ...s,
+          sections,
+          removedIds: removedIdsRestants,
+          saving: false,
+          error,
+          avertissement: modifieEntreTemps
+            ? "Vous avez modifié le contenu pendant l'enregistrement : ces dernières modifications ne sont PAS enregistrées. Enregistrez à nouveau."
+            : null,
+        }
+      })
       return error === null
     }
 
+    /*
+      `resteASupprimer` est SUIVI, et non recopié depuis le plan à chaque sortie.
+      La version précédente remettait `plan.aSupprimer` EN ENTIER dans le
+      `catch` : les identifiants déjà supprimés y retournaient, et tout
+      enregistrement ultérieur les aurait tentés de nouveau — donc échoué —
+      jusqu'au rechargement (revue du 2026-09-20, M-6).
+    */
+    let resteASupprimer = [...plan.aSupprimer]
+
     try {
       // 1. Supprimer en base les sections retirées de la liste.
-      //    Les identifiants non encore supprimés sont conservés en cas d'échec :
-      //    ils repartiront au prochain enregistrement.
-      const aSupprimer = [...plan.aSupprimer]
-      for (let i = 0; i < aSupprimer.length; i++) {
-        const result = await deleteSection(aSupprimer[i])
-        if (!result.ok) return sortir(aSupprimer.slice(i), result.error)
+      //    Un échec laisse en attente les identifiants NON encore traités.
+      while (resteASupprimer.length > 0) {
+        const result = await deleteSection(resteASupprimer[0])
+        if (!result.ok) return sortir(resteASupprimer, result.error)
+        resteASupprimer = resteASupprimer.slice(1)
       }
 
       // 2. Créer les sections nouvelles, et RETENIR l'identifiant attribué.
@@ -277,7 +306,7 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
       return sortir([], null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur de sauvegarde'
-      return sortir(plan.aSupprimer, message)
+      return sortir(resteASupprimer, message)
     }
   }, [state.sections, state.removedIds, pageId])
 

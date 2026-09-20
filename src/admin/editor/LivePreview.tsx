@@ -20,15 +20,27 @@ interface LivePreviewProps {
   locale: Locale
 }
 
-/** Réglages restaurant par défaut pour la prévisualisation. */
-const DEFAULT_RESTAURANT: ResolvedRestaurant = {
+/**
+ * Réglages de repli pour la prévisualisation.
+ *
+ * ⚠️ AUCUNE COORDONNÉE INVENTÉE (revue du 2026-09-20, I-4). Cette constante
+ * portait les valeurs de démonstration (« Conakry, Guinée »,
+ * « +224 000 00 00 00 ») : un aperçu qui affiche un faux numéro de téléphone
+ * ment à celui qui décide de publier (TDR §4).
+ *
+ * ⚠️ CE COMPOSANT N'EST APPELÉ NULLE PART (mesuré : aucun `import` de
+ * `LivePreview` dans `src/`). Il est conservé parce que cet environnement ne
+ * permet pas de supprimer un fichier, mais il ne doit pas être rebranché tel
+ * quel : `PreviewPane` est l'aperçu réellement utilisé par `PageEditor`.
+ */
+const RESTAURANT_ABSENT: ResolvedRestaurant = {
   name: 'Greatlife',
-  address: 'Conakry, Guinée',
-  hours: 'Tous les jours · 11h00 — 23h00',
-  phone: '+224 000 00 00 00',
-  emailContact: 'contact@greatlife.gn',
-  emailReservation: 'resa@greatlife.gn',
-  slogan: 'Manger vite. Manger bio. Manger gourmand.',
+  address: '',
+  hours: '',
+  phone: '',
+  emailContact: '',
+  emailReservation: '',
+  slogan: '',
   currency: 'FG',
   social: { facebook: '', whatsapp: '', instagram: '' },
 }
@@ -56,7 +68,7 @@ export function LivePreview({ sections, locale }: LivePreviewProps) {
             key={section.id || `section-${i}`}
             section={section}
             locale={locale}
-            restaurant={DEFAULT_RESTAURANT}
+            restaurant={RESTAURANT_ABSENT}
             preview
           />
         ))

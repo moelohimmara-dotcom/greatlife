@@ -13,6 +13,13 @@ import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
 import type { PublicationReport } from '@/cms/model/publishing'
+import {
+  SETTING_KEYS,
+  fetchSetting,
+  resolveRestaurant,
+  toRestaurantSettings,
+  type ResolvedRestaurant,
+} from '@/cms/repository/settings'
 import { useEditor } from './useEditor'
 import { SectionList } from './SectionList'
 import { PreviewPane } from './PreviewPane'
@@ -48,6 +55,31 @@ export function PageEditor({
 }: PageEditorProps) {
   const { theme: t } = useSite()
   const editor = useEditor(pageId, initialSections)
+
+  /*
+    L'APERÇU DOIT MONTRER LES VRAIES COORDONNÉES (revue du 2026-09-20, I-4).
+
+    `PreviewPane` n'était appelé SANS `restaurant` : il retombait donc sur des
+    valeurs codées en dur (« Conakry, Guinée », « +224 000 00 00 00 »), et le
+    restaurateur voyait dans son propre aperçu un numéro de téléphone qui n'était
+    pas le sien. Un aperçu qui ment est pire que pas d'aperçu : c'est sur lui
+    qu'on décide de publier (TDR §4).
+
+    On charge donc les réglages réels, une fois, comme le fait le site public
+    (`PublicSite` → `fetchSetting`). Tant qu'ils ne sont pas arrivés, l'aperçu
+    n'affiche AUCUNE coordonnée inventée — il n'en affiche aucune.
+  */
+  const [restaurant, setRestaurant] = useState<ResolvedRestaurant | undefined>(undefined)
+  useEffect(() => {
+    let actif = true
+    fetchSetting(SETTING_KEYS.restaurant).then((result) => {
+      if (!actif || !result.ok) return
+      setRestaurant(resolveRestaurant(toRestaurantSettings(result.data), editor.locale))
+    })
+    return () => {
+      actif = false
+    }
+  }, [editor.locale])
   const [showPicker, setShowPicker] = useState(false)
   const [showPublication, setShowPublication] = useState(false)
 
@@ -159,6 +191,15 @@ export function PageEditor({
           {editor.error && (
             <span style={{ fontSize: 12, color: '#dc2626', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{editor.error}</span>
           )}
+          {/* Avertissement — ni une erreur ni un succès : quelque chose reste à faire */}
+          {editor.avertissement && !editor.error && (
+            <span
+              title={editor.avertissement}
+              style={{ fontSize: 12, fontWeight: 600, color: '#a16207', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {editor.avertissement}
+            </span>
+          )}
           {/* Bouton sauvegarder */}
           <button onClick={editor.save} disabled={editor.saving} style={{
             padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
@@ -214,7 +255,7 @@ export function PageEditor({
 
         {/* Colonne 2 : Aperçu */}
         <div style={{ overflow: 'auto', background: '#f5f5f5' }}>
-          <PreviewPane sections={editor.resolvedSections} />
+          <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} />
         </div>
 
         {/* Colonne 3 : Modifier — ou Contrôle avant publication */}
