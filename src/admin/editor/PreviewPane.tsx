@@ -27,9 +27,16 @@ interface PreviewPaneProps {
  * ⚠️ AUCUNE COORDONNÉE INVENTÉE (revue du 2026-09-20, I-4).
  * Cette constante portait les valeurs de démonstration — « Conakry, Guinée »,
  * « +224 000 00 00 00 », « contact@greatlife.gn ». Comme `PageEditor` appelait
- * `PreviewPane` SANS `restaurant`, c'est ce repli qui s'appliquait : le
- * restaurateur voyait dans son propre aperçu un numéro de téléphone qui n'était
- * pas le sien, alors que c'est sur cet aperçu qu'il décide de publier (TDR §4).
+ * `PreviewPane` SANS `restaurant`, c'est ce repli qui s'appliquait.
+ *
+ * CE QUI ÉTAIT FAUX DANS MA PREMIÈRE DESCRIPTION (revue du 2026-09-20, I-1)
+ * J'ai écrit que l'aperçu montrait « un numéro de téléphone qui n'était pas le
+ * sien ». C'est inexact : ces quatre valeurs étaient IDENTIQUES aux valeurs
+ * réelles de `site_content.restaurant` — l'aperçu tombait juste, par coïncidence.
+ * Le défaut réel, et il est plus grave qu'un affichage faux, était que l'aperçu
+ * était DÉCONNECTÉ des réglages : dès que le restaurateur aurait mis son vrai
+ * numéro, l'aperçu aurait continué d'afficher l'ancien — c'est-à-dire qu'il
+ * aurait cessé de dire la vérité au moment précis où cela compte.
  *
  * `PageEditor` fournit désormais les réglages réels. Tant qu'ils ne sont pas
  * arrivés, l'aperçu n'affiche AUCUNE coordonnée — pas une fausse.

@@ -54,13 +54,24 @@ export function isPersistedId(id: string): boolean {
  *
  * POURQUOI ELLE EXISTE (revue du 2026-09-20, I-5)
  * Une sauvegarde dure 2N+2 allers-retours, et rien ne désactive les champs
- * pendant ce temps : le restaurateur continue de taper. Or `save()` réinjecte
- * l'instantané du DÉBUT et renvoie `succès` — le texte saisi pendant
- * l'enregistrement disparaissait donc de l'écran au rechargement suivant, sans
- * un mot. C'est la seule perte SILENCIEUSE du chemin d'édition.
+ * pendant ce temps : le restaurateur continue de taper. Or `save()` ne
+ * consigne nulle part ce qui est arrivé entre-temps — le texte saisi pendant
+ * l'enregistrement n'était donc PAS enregistré, et rien ne le disait. C'est la
+ * seule perte SILENCIEUSE du chemin d'édition.
  *
  * En comparant cette empreinte au début et à la fin, on sait si des
  * modifications sont arrivées entre-temps — et on peut le DIRE.
+ *
+ * ⚠️ CE QU'ELLE NE CORRIGE PAS, PARCE QUE C'ÉTAIT DÉJÀ CORRIGÉ (revue du
+ * 2026-09-20, B1 — affirmation fausse initialement écrite ici)
+ * La version `41ff35b` de `save()` terminait par
+ *     setState({ ...s, sections: persistees, ... })
+ * — une RÉINJECTION de l'instantané du début, qui écrasait la saisie en cours.
+ * Ce défaut a été fermé au commit `668488d`, AVANT ce module : `useEditor.ts`
+ * fait depuis `s.sections.map(...)`, c'est-à-dire une FUSION qui ne réécrit que
+ * l'identifiant. Décrire ici la réinjection au présent était donc faux.
+ * Ce qui restait ouvert, et que cette empreinte traite, est plus étroit : la
+ * saisie en vol est CONSERVÉE mais pas ENREGISTRÉE, et personne ne le disait.
  *
  * Ce qui entre dans l'empreinte : le contenu qui s'écrit. Ce qui en est exclu :
  *  - les identifiants (ils changent légitimement : `temp-…` → UUID) ;
