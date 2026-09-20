@@ -206,14 +206,30 @@ export async function updateSection(
   }
 }
 
-/** Supprime une section. */
+/**
+ * Supprime une section.
+ *
+ * LE NOMBRE DE LIGNES EST CONTRÔLÉ (revue du 2026-09-19, constat I-2).
+ * Sans `.select('id')`, PostgREST renvoie `ok` même quand AUCUNE ligne n'a été
+ * touchée — une écriture filtrée par la RLS était donc indiscernable d'une
+ * réussite. `save()` annonçait alors « tout a été écrit », et la publication,
+ * qui relit la BASE, publiait un contenu différent de ce que l'écran montrait.
+ *
+ * Zéro ligne supprimée est une ERREUR, pas un cas normal : `save()` n'appelle
+ * cette fonction que pour des sections qu'il vient de lire et que le
+ * restaurateur a retirées. Si la base ne les supprime pas, quelque chose ne
+ * s'est pas passé comme prévu — et le taire coûterait plus cher que le dire.
+ */
 export async function deleteSection(id: string): Promise<CmsResult<true>> {
   const client = requireClient()
   if (!client.ok) return client
 
   try {
-    const { error } = await client.data.from(TABLE).delete().eq('id', id)
+    const { data, error } = await client.data.from(TABLE).delete().eq('id', id).select('id')
     if (error) return cmsErr(describeError(error))
+    if (!data || data.length === 0) {
+      return cmsErr("Cette section n'a pas pu être supprimée. Rechargez la page pour voir l'état réel.")
+    }
     return cmsOk(true)
   } catch (err) {
     return cmsErr(describeError(err))
@@ -225,6 +241,11 @@ export async function deleteSection(id: string): Promise<CmsResult<true>> {
  * Le glisser-déposer appartient au Lot 2 ; cette fonction en est le socle.
  * Elle écrit les positions une par une : à cette échelle (une dizaine de
  * sections), une transaction n'est pas nécessaire.
+ *
+ * LE NOMBRE DE LIGNES EST CONTRÔLÉ (revue du 2026-09-19, constat I-2) : pour la
+ * même raison que dans `deleteSection`. Un réordonnancement partiellement écrit
+ * laisserait deux sections à la même position — l'index d'unicité ne porte que
+ * sur `anchor`, pas sur `position` (vérifié dans la migration `021`).
  */
 export async function reorderSections(
   orderedIds: readonly string[],
@@ -234,8 +255,15 @@ export async function reorderSections(
 
   try {
     for (let i = 0; i < orderedIds.length; i += 1) {
-      const { error } = await client.data.from(TABLE).update({ position: i }).eq('id', orderedIds[i])
+      const { data, error } = await client.data
+        .from(TABLE)
+        .update({ position: i })
+        .eq('id', orderedIds[i])
+        .select('id')
       if (error) return cmsErr(describeError(error))
+      if (!data || data.length === 0) {
+        return cmsErr("L'ordre des sections n'a pas pu être enregistré. Rechargez la page pour voir l'état réel.")
+      }
     }
     return cmsOk(true)
   } catch (err) {

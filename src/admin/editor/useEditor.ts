@@ -17,25 +17,13 @@ import type { Locale } from '@/cms/model/i18n'
 import type { SectionType } from '@/cms/model/section'
 import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
 import { resolveContentObject } from '@/cms/model/i18n'
+import { isPersistedId, planifierSauvegarde } from '@/cms/model/save-plan'
 import {
   createSection,
   deleteSection,
   updateSection,
   reorderSections,
 } from '@/cms/repository/sections'
-
-/**
- * Une section porte un identifiant attribué par la BASE (un UUID) dès qu'elle y
- * existe. `addSection` en fabrique un provisoire (`temp-…`) pour la section que
- * le restaurateur vient d'ajouter : celle-là n'a pas encore de ligne.
- *
- * La distinction est ce qui permet à `save()` de savoir s'il doit CRÉER ou
- * METTRE À JOUR — et donc de ne jamais envoyer un `temp-…` à la base, qui le
- * refuse (`invalid input syntax for type uuid`).
- */
-function isPersistedId(id: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-}
 
 export interface EditorState {
   /** Sections en cours d'édition (copie locale, pas encore sauvegardée). */
@@ -185,47 +173,91 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
    * définitif avant qu'on la réordonne. Auparavant, les deux gestes étaient
    * purement absents : la liste changeait à l'écran, la base ne bougeait pas, et
    * tout revenait au rechargement.
+   *
+   * QUE DÉCIDER est extrait dans `planifierSauvegarde` (module pur, vérifié par
+   * `npm run test:save-plan`). Cette fonction-ci n'exécute plus que le plan :
+   * c'est ce qui rend la décision vérifiable sans base de données.
    */
   const save = useCallback(async (): Promise<boolean> => {
     setState((s) => ({ ...s, saving: true, error: null }))
-    const echec = (error: string): false => {
-      setState((s) => ({ ...s, saving: false, error }))
-      return false
+
+    const plan = planifierSauvegarde(state.sections, state.removedIds)
+
+    /**
+     * Identifiants provisoires → identifiants attribués par la base.
+     * Rempli au fil des créations réussies.
+     */
+    const attribues = new Map<string, string>()
+
+    /**
+     * Sortie de sauvegarde — appliquée à CHAQUE issue, succès comme échec.
+     *
+     * DEUX RAISONS, toutes deux mesurées par la revue du 2026-09-19 :
+     *
+     * 1. REPRISE DES IDENTIFIANTS MÊME EN CAS D'ÉCHEC.
+     *    Une création réussie suivie d'un échec plus loin laissait la section
+     *    avec son identifiant provisoire (`temp-…`) : le clic suivant sur
+     *    Enregistrer la RECRÉAIT en base. Le doublon revenait donc par le chemin
+     *    d'échec, alors qu'il était fermé sur le chemin nominal.
+     *
+     * 2. FUSION DANS L'ÉTAT COURANT, JAMAIS RÉINJECTION.
+     *    Une sauvegarde dure 2N+2 allers-retours. Le restaurateur continue de
+     *    taper pendant ce temps — les champs ne sont pas désactivés. Réinjecter
+     *    `persistees` (l'instantané du DÉBUT) effaçait sa saisie sans un mot.
+     *    On ne réécrit donc que l'identifiant, et on laisse le contenu tel qu'il
+     *    est au moment où la réponse arrive.
+     */
+    const sortir = (removedIdsRestants: string[], error: string | null): boolean => {
+      setState((s) => ({
+        ...s,
+        sections: s.sections.map((section) => {
+          const id = attribues.get(section.id)
+          return id === undefined ? section : { ...section, id }
+        }),
+        removedIds: removedIdsRestants,
+        saving: false,
+        error,
+      }))
+      return error === null
     }
 
     try {
-      // 1. Supprimer en base les sections retirées de la liste
-      for (const id of state.removedIds) {
-        const result = await deleteSection(id)
-        if (!result.ok) return echec(result.error)
+      // 1. Supprimer en base les sections retirées de la liste.
+      //    Les identifiants non encore supprimés sont conservés en cas d'échec :
+      //    ils repartiront au prochain enregistrement.
+      const aSupprimer = [...plan.aSupprimer]
+      for (let i = 0; i < aSupprimer.length; i++) {
+        const result = await deleteSection(aSupprimer[i])
+        if (!result.ok) return sortir(aSupprimer.slice(i), result.error)
       }
 
       // 2. Créer les sections nouvelles, et RETENIR l'identifiant attribué.
       //    Sans cette reprise, la sauvegarde suivante recréerait les sections
       //    ajoutées : c'est exactement le doublon corrigé au Point 2, transposé.
       const persistees: PageSection[] = []
-      for (const section of state.sections) {
-        if (isPersistedId(section.id)) {
-          persistees.push(section)
+      for (const etape of plan.etapes) {
+        if (etape.action === 'conserver') {
+          persistees.push(etape.section)
           continue
         }
         const result = await createSection({
           pageId,
-          type: section.type,
-          variant: section.variant,
-          position: section.position,
-          visible: section.visible,
-          anchor: section.anchor,
-          content: section.content,
-          settings: section.settings,
+          type: etape.section.type,
+          variant: etape.section.variant,
+          position: etape.section.position,
+          visible: etape.section.visible,
+          anchor: etape.section.anchor,
+          content: etape.section.content,
+          settings: etape.section.settings,
         })
-        if (!result.ok) return echec(result.error)
+        if (!result.ok) return sortir([], result.error)
+        attribues.set(etape.section.id, result.data.id)
         persistees.push(result.data)
       }
 
       // 3. Sauvegarder l'ordre des sections
       const orderResult = await reorderSections(persistees.map((s) => s.id))
-      if (!orderResult.ok) return echec(orderResult.error)
+      if (!orderResult.ok) return sortir([], orderResult.error)
 
       // 4. Sauvegarder chaque section
       for (let i = 0; i < persistees.length; i++) {
@@ -238,15 +270,14 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
           anchor: section.anchor,
           settings: section.settings,
         })
-        if (!result.ok) return echec(result.error)
+        if (!result.ok) return sortir([], result.error)
       }
 
-      // 5. Refléter en local les identifiants attribués par la base
-      setState((s) => ({ ...s, sections: persistees, removedIds: [], saving: false }))
-      return true
+      // 5. Reprendre en local les identifiants attribués par la base
+      return sortir([], null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur de sauvegarde'
-      return echec(message)
+      return sortir(plan.aSupprimer, message)
     }
   }, [state.sections, state.removedIds, pageId])
 
