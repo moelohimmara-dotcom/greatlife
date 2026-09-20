@@ -156,22 +156,42 @@ mesure** — `sum(text)` échoue en SQL, cela ne disait rien du code de l'écran
 | réservation | *(vide)* | `resa@greatlife.gn` |
 
 **Le piège** : l'écran lit une copie **vide**, donc **les champs apparaîtront
-vides** — ce n'est pas une perte de données. Mais à l'enregistrement, chaque champ
-vide **écrase** la valeur correspondante côté site. **Il faut donc remplir les
-cinq d'un seul coup**, sinon on efface ce qu'on ne remplit pas (par exemple les
-horaires, et le site cesse de les afficher).
+vides** — ce n'est pas une perte de données. Mais `saveContent` écrit les **cinq**
+coordonnées dans la ligne que le site lit, **quelle que soit la page d'où l'on
+enregistre**. Un champ laissé vide **écrase donc la valeur publiée** — y compris
+depuis l'autre écran. **Il faut remplir les cinq avant d'enregistrer**, sinon on
+efface ce qu'on ne remplit pas (les horaires, par exemple, et le site cesse de
+les afficher).
+
+**⚠️ LES CINQ CHAMPS SONT SUR DEUX ÉCRANS DIFFÉRENTS** — précision ajoutée le
+2026-09-20 après une première rédaction fausse :
+
+| Écran | Chemin | Champs |
+|---|---|---|
+| **Réglages globaux** | menu de gauche, groupe **SYSTÈME** | Section « Identité » : *Nom du restaurant*, *Devise*, **Téléphone**. Section « Localisation & horaires » : **Adresse**, **Horaires d'ouverture** |
+| **Formulaires & emails** | menu de gauche, groupe **SYSTÈME**, juste au-dessus | Section « Destinataires » : **Destinataire — messages généraux**, **Destinataire — réservations** |
+
+**L'ordre compte** : faire les deux **sans recharger la page** entre les deux
+(l'état est partagé en mémoire), puis enregistrer sur **chacun** des deux écrans.
 
 **Ce qu'il faut saisir** :
 
-1. **Téléphone** — le vrai numéro, celui qui a WhatsApp (le site l'étiquette
-   « Appel & WhatsApp »). Le filet refuse une suite de 6 chiffres identiques.
-2. **Adresse** — **avec le quartier**. « Conakry, Guinée » ne permet pas à un
-   client de situer le restaurant.
-3. **Horaires** — à confirmer ou corriger (`Tous les jours · 11h00 — 23h00`).
-4. **E-mail de contact** — `moelohimmara@gmail.com`, ou de préférence
+1. **Téléphone** *(Réglages globaux)* — le vrai numéro, celui qui a WhatsApp (le
+   site l'étiquette « Appel & WhatsApp »). Le filet refuse une suite de 6 chiffres
+   identiques.
+2. **Adresse** *(Réglages globaux)* — **avec le quartier**. « Conakry, Guinée » ne
+   permet pas à un client de situer le restaurant.
+3. **Horaires d'ouverture** *(Réglages globaux)* — à confirmer ou corriger
+   (`Tous les jours · 11h00 — 23h00`).
+4. **Destinataire — messages généraux** *(Formulaires & emails)* —
+   `moelohimmara@gmail.com`, ou de préférence
    `moelohimmara+greatlife@gmail.com` : Gmail **ignore** ce qu'il y a après le
    `+` et livre au même endroit, mais l'adresse publiée se filtre et se repère.
-5. **E-mail de réservation** — le même, ou une variante dédiée.
+5. **Destinataire — réservations** *(Formulaires & emails)* — le même, ou une
+   variante dédiée.
+
+**À vérifier au passage** : le champ **WhatsApp** *(Réglages globaux, section
+« Réseaux sociaux »)* est vide lui aussi.
 
 Puis : `npm run verify:coordonnees` doit passer **au vert**. Tant qu'il est rouge,
 un client ne peut pas vous joindre.
