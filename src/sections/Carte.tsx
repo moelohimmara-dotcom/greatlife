@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSite, useMedia } from '@/contexts/SiteContext'
+import { useSite, useFirstMedia } from '@/contexts/SiteContext'
+import { productPhotoCandidates } from '@/lib/productPhotoSlot'
 import { useCart } from '@/contexts/CartContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { BadgePill } from '@/components/ui/BadgePill'
@@ -18,8 +19,7 @@ function MenuCard({ item }: { item: MenuItem }) {
   const { add } = useCart()
   const [open, setOpen] = useState(false)
   const [added, setAdded] = useState(false)
-  const slotId = `produit-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
-  const prodImg = useMedia(slotId)
+  const prodImg = useFirstMedia(productPhotoCandidates(item))
   const handleAdd = () => {
     add(item.name, item.price)
     setAdded(true)

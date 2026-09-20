@@ -14,6 +14,7 @@ import type { MenuItem } from '@/data/menu'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, updateAdminUserStatus, setUserInvitedAt, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
 import { invokeReplyEmail, invokeReservationStatusEmail, invokeOrderStatusEmail, getSupabase, sendMagicLink } from '@/lib/supabase'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
+import { productPhotoSlotId } from '@/lib/productPhotoSlot'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -600,30 +601,33 @@ function ThemeEditor() {
   )
 }
 
-const MEDIA_SLOTS: string[] = ['hero', 'logo', 'histoire', 'greatlife', 'equipe-1', 'equipe-2', 'equipe-3', 'equipe-4', 'produit', 'general']
-const SLOT_LABELS: Record<string, string> = {
-  hero: 'Hero principal',
-  logo: 'Logo / favicon',
-  histoire: 'Fond section histoire',
-  greatlife: 'Photo — Le Greatlife',
-  'equipe-1': 'Équipe — Membre 1',
-  'equipe-2': 'Équipe — Membre 2',
-  'equipe-3': 'Équipe — Membre 3',
-  'equipe-4': 'Équipe — Membre 4',
-  produit: 'Photo produit (générique)',
-  general: 'Général / divers',
+const SITE_MEDIA_SLOTS: ReadonlyArray<{ id: string; label: string; dims: string }> = [
+  { id: 'hero', label: 'Hero principal', dims: '1920×1080' },
+  { id: 'logo', label: 'Logo / favicon', dims: '512×512' },
+  { id: 'histoire', label: 'Fond section histoire', dims: '1600×900' },
+  { id: 'equipe-1', label: 'Équipe — Membre 1', dims: '600×600' },
+  { id: 'equipe-2', label: 'Équipe — Membre 2', dims: '600×600' },
+  { id: 'equipe-3', label: 'Équipe — Membre 3', dims: '600×600' },
+  { id: 'equipe-4', label: 'Équipe — Membre 4', dims: '600×600' },
+  { id: 'general', label: 'Général / divers', dims: 'libre' },
+]
+
+function mediaSlotChoices(menu: MenuItem[], existingSlots: string[]): ReadonlyArray<{ id: string; label: string; dims: string }> {
+  const plats = menu
+    .filter((item): item is MenuItem & { id: string } => Boolean(item.id))
+    .map((item) => ({
+      id: productPhotoSlotId(item.id),
+      label: `Plat — ${item.name}`,
+      dims: '800×600',
+    }))
+  const known = new Set([...SITE_MEDIA_SLOTS.map((s) => s.id), ...plats.map((s) => s.id)])
+  const leftovers = [...new Set(existingSlots.filter((slot) => slot && !known.has(slot)))]
+    .map((slot) => ({ id: slot, label: slot, dims: '' }))
+  return [...SITE_MEDIA_SLOTS, ...plats, ...leftovers]
 }
-const SLOT_DIMS: Record<string, string> = {
-  hero: '1920×1080',
-  logo: '512×512',
-  histoire: '1600×900',
-  greatlife: '800×600',
-  'equipe-1': '600×600',
-  'equipe-2': '600×600',
-  'equipe-3': '600×600',
-  'equipe-4': '600×600',
-  produit: '800×600',
-  general: 'libre',
+
+function labelForMediaSlot(slot: string, choices: ReadonlyArray<{ id: string; label: string }>): string {
+  return choices.find((s) => s.id === slot)?.label || slot
 }
 
 function formatSize(n: number | null | undefined): string {
@@ -634,7 +638,8 @@ function formatSize(n: number | null | undefined): string {
 }
 
 function MediaManager() {
-  const { media, theme: t, dataSource, refreshMedia } = useSite()
+  const { media, theme: t, dataSource, refreshMedia, menu } = useSite()
+  const slotChoices = mediaSlotChoices(menu, media.map((m) => m.slot).filter((s): s is string => Boolean(s)))
   const [slot, setSlot] = useState('hero')
   const [resizePreset, setResizePreset] = useState('original')
   const [uploading, setUploading] = useState(false)
@@ -672,7 +677,7 @@ function MediaManager() {
     const res = await uploadMedia(finalFile, slot)
     setUploading(false)
     if (res.data) {
-      setStatus({ kind: 'ok', msg: `${res.data.filename} téléversé dans « ${SLOT_LABELS[res.data.slot] || res.data.slot} »${dims}.` })
+      setStatus({ kind: 'ok', msg: `${res.data.filename} téléversé dans « ${labelForMediaSlot(res.data.slot, slotChoices)} »${dims}.` })
       await refreshMedia()
     } else {
       setStatus({ kind: 'err', msg: res.error || 'Échec du téléversement.' })
@@ -726,8 +731,8 @@ function MediaManager() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MEDIA_SLOTS.map(s => (
-                  <SelectItem key={s} value={s}>{SLOT_LABELS[s] || s} {SLOT_DIMS[s] ? `· ${SLOT_DIMS[s]}` : ''}</SelectItem>
+                {slotChoices.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.label} {s.dims ? `· ${s.dims}` : ''}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -815,7 +820,7 @@ function MediaManager() {
                       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={t.primary} strokeWidth="1.3"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 17 5-5 4 4 3-3 6 6" /></svg>
                     )}
                     <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(4px)' }}>
-                      {SLOT_LABELS[m.slot] || m.slot}
+                      {labelForMediaSlot(m.slot, slotChoices)}
                     </span>
                   </div>
                   <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
@@ -828,8 +833,8 @@ function MediaManager() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {MEDIA_SLOTS.map(s => (
-                              <SelectItem key={s} value={s}>{SLOT_LABELS[s] || s}</SelectItem>
+                            {slotChoices.map(s => (
+                              <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

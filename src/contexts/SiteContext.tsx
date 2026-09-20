@@ -133,9 +133,17 @@ interface SiteContextValue {
 const SiteContext = createContext<SiteContextValue | null>(null)
 export const useSite = () => useContext(SiteContext)!
 
-export function useMedia(slot: string): string | undefined {
+export function useFirstMedia(slots: readonly string[]): string | undefined {
   const { media } = useContext(SiteContext)!
-  return media.find(m => m.slot === slot && m.url)?.url
+  for (const slot of slots) {
+    const url = media.find(m => m.slot === slot && m.url)?.url
+    if (url) return url
+  }
+  return undefined
+}
+
+export function useMedia(slot: string): string | undefined {
+  return useFirstMedia([slot])
 }
 
 const DEFAULT_CONTENT: SiteContent = {

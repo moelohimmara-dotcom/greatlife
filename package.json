@@ -16,6 +16,7 @@
     "verify:anchors": "node scripts/verify-anchors.mjs",
     "verify:dispositions": "node scripts/verify-dispositions.mjs",
     "test:save-plan": "node --test scripts/test-save-plan.mjs",
+    "test:product-photo": "node --test scripts/test-product-photo-slot.mjs",
     "verify:lot3": "node scripts/verify-lot3.mjs",
     "lint": "eslint . --ext ts,tsx"
   },
