@@ -24,7 +24,7 @@ import type { ThemePalette } from '@/config/themes'
 import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
 import type { FieldDef } from '@/cms/model/sections/fields'
 import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
-import { anneauFocus, boutonOutil, CIBLE, titreColonne } from './chrome'
+import { Bouton, CIBLE, RAYON, titreColonne, anneauFocus } from './chrome'
 
 interface PropertyPanelProps {
   section: PageSection
@@ -72,22 +72,16 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange, page
               const interdit = Boolean(banniereImposee) && v.id !== 'fullscreen' && v.id !== 'video'
               const actif = dispositionAffichee === v.id
               return (
-                <button
+                <Bouton
                   key={v.id}
-                  type="button"
                   disabled={interdit}
+                  genre={actif ? 'actif' : 'secondaire'}
                   aria-pressed={actif}
-                  onClick={() => { if (!interdit) onVariantChange(v.id) }}
                   title={interdit ? 'Cette mise en page affiche la bannière en plein écran. Pour Image + texte, choisissez Colonne unique.' : undefined}
-                  style={{
-                    ...boutonOutil(t, { actif, disabled: interdit }),
-                    opacity: interdit ? 0.45 : 1,
-                    cursor: interdit ? 'not-allowed' : 'pointer',
-                  }}
-                  {...anneauFocus(t)}
+                  onClick={() => { if (!interdit) onVariantChange(v.id) }}
                 >
                   {v.label}
-                </button>
+                </Bouton>
               )
             })}
           </div>
@@ -353,11 +347,9 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
               <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>
                 {field.itemType ? `Élément ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`}
               </span>
-              <button type="button" onClick={() => removeItem(i)} aria-label="Retirer cet élément"
-                style={{ minWidth: CIBLE, minHeight: CIBLE, background: 'none', border: 'none', cursor: 'pointer', color: t.accent }}
-                {...anneauFocus(t)}>
+              <Bouton carre genre="danger" aria-label="Retirer cet élément" onClick={() => removeItem(i)}>
                 {Icon.trash(16, t.accent)}
-              </button>
+              </Bouton>
             </div>
 
             {field.itemType ? (
@@ -394,12 +386,9 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
       </div>
 
       {(!field.maxItems || items.length < field.maxItems) && (
-        <button type="button" onClick={addItem} style={{
-          marginTop: 6, ...boutonOutil(t, {}),
-          display: 'flex', alignItems: 'center', gap: 4,
-        }} {...anneauFocus(t)}>
-          {Icon.plus(12, t.primary)} Ajouter
-        </button>
+        <Bouton onClick={addItem} style={{ marginTop: 8 }}>
+          {Icon.plus(16, t.primary)} Ajouter
+        </Bouton>
       )}
       {/* L'aide n'est répétée dans aucun élément : elle ne s'affiche ici que si
           la liste est vide, sinon elle apparaîtrait une fois par élément. */}
@@ -502,7 +491,7 @@ function labelStyle(t: ThemePalette): React.CSSProperties {
 
 function inputStyle(t: ThemePalette): React.CSSProperties {
   return {
-    width: '100%', padding: '10px 12px', borderRadius: 8, minHeight: CIBLE,
+    width: '100%', padding: '10px 16px', borderRadius: RAYON, minHeight: CIBLE,
     border: `1px solid ${t.shadow}`, background: t.bg,
     fontSize: 13, color: t.text, outline: 'none',
   }

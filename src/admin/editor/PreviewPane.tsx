@@ -22,7 +22,7 @@ import { PageRenderer } from '@/cms/renderer/PageRenderer'
 import { pageLayoutLabel, type PageLayout } from '@/cms/model/page-layout'
 import { CartProvider } from '@/contexts/CartContext'
 import { useSite } from '@/contexts/SiteContext'
-import { anneauFocus, CIBLE } from './chrome'
+import { Bouton } from './chrome'
 
 type CadreApercu = 'bureau' | 'telephone'
 
@@ -144,22 +144,14 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
           ]).map((item) => {
             const actif = cadre === item.id
             return (
-              <button
+              <Bouton
                 key={item.id}
-                type="button"
-                onClick={() => setCadre(item.id)}
+                genre={actif ? 'actif' : 'secondaire'}
                 aria-pressed={actif}
-                style={{
-                  minHeight: CIBLE, minWidth: CIBLE, padding: '10px 16px', borderRadius: 10,
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  border: `1px solid ${actif ? t.primary : t.shadow}`,
-                  background: actif ? t.primary : t.surface,
-                  color: actif ? '#fff' : t.text,
-                }}
-                {...anneauFocus(t)}
+                onClick={() => setCadre(item.id)}
               >
                 {item.label}
-              </button>
+              </Bouton>
             )
           })}
         </div>

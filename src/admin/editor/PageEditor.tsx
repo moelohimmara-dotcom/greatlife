@@ -28,7 +28,7 @@ import { PreviewPane } from './PreviewPane'
 import { PropertyPanel } from './PropertyPanel'
 import { PublicationPanel } from './PublicationPanel'
 import { SectionTypePicker } from './SectionTypePicker'
-import { anneauFocus, boutonOutil, titreColonne } from './chrome'
+import { Bouton, titreColonne } from './chrome'
 
 interface PageEditorProps {
   /** ID de la page à éditer. */
@@ -162,32 +162,28 @@ export function PageEditor({
             (TDR §23). Le restaurateur doit pouvoir savoir CE QUI BLOQUE et
             retrouver un état antérieur, sans quitter l'éditeur.
           */}
-          <button
-            type="button"
-            onClick={() => setShowPublication((open) => !open)}
+          <Bouton
+            genre={showPublication ? 'actif' : 'secondaire'}
             aria-pressed={showPublication}
             aria-expanded={showPublication}
             title="Vérifier la page avant publication et consulter les versions enregistrées."
-            style={boutonOutil(t, { actif: showPublication, disabled: false })}
-            {...anneauFocus(t)}
+            onClick={() => setShowPublication((open) => !open)}
           >
             Contrôle et versions
-          </button>
+          </Bouton>
           <div role="group" aria-label="Langue de l’aperçu" style={{ display: 'flex', gap: 8 }}>
             {([
               { id: 'fr' as const, label: 'Français' },
               { id: 'en' as const, label: 'English' },
             ]).map((lang) => (
-              <button
+              <Bouton
                 key={lang.id}
-                type="button"
-                onClick={() => editor.setLocale(lang.id)}
+                genre={editor.locale === lang.id ? 'actif' : 'secondaire'}
                 aria-pressed={editor.locale === lang.id}
-                style={boutonOutil(t, { actif: editor.locale === lang.id, primaire: editor.locale === lang.id })}
-                {...anneauFocus(t)}
+                onClick={() => editor.setLocale(lang.id)}
               >
                 {lang.label}
-              </button>
+              </Bouton>
             ))}
           </div>
           {editor.error && (
@@ -198,38 +194,32 @@ export function PageEditor({
               {editor.avertissement}
             </span>
           )}
-          <button
-            type="button"
-            onClick={editor.save}
+          <Bouton
+            genre="secondaire"
             disabled={editor.saving}
-            style={boutonOutil(t, { disabled: editor.saving })}
-            {...anneauFocus(t)}
+            onClick={editor.save}
           >
             {editor.saving ? 'Sauvegarde…' : 'Sauvegarder'}
-          </button>
-          <button
-            type="button"
-            onClick={handlePublish}
+          </Bouton>
+          <Bouton
+            genre="primaire"
             disabled={publishing || editor.saving}
             title={isPublished
               ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
               : 'Publier : les visiteurs verront ce contenu.'}
-            style={boutonOutil(t, { primaire: true, disabled: publishing || editor.saving })}
-            {...anneauFocus(t)}
+            onClick={handlePublish}
           >
             {publishing ? 'Publication…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
-          </button>
+          </Bouton>
           {isPublished && (
-            <button
-              type="button"
-              onClick={onUnpublish}
+            <Bouton
+              genre="danger"
               disabled={publishing || editor.saving}
               title="Retirer cette version : les visiteurs reverront l’ancien site."
-              style={boutonOutil(t, { danger: true, disabled: publishing || editor.saving })}
-              {...anneauFocus(t)}
+              onClick={onUnpublish}
             >
               Retirer du site
-            </button>
+            </Bouton>
           )}
         </div>
       </div>

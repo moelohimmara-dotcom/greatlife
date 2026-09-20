@@ -2,9 +2,9 @@
  * Sélecteur de mise en page — langage restaurateur uniquement.
  */
 
-import { useSite } from '@/contexts/SiteContext'
 import { PAGE_LAYOUTS, type PageLayout } from '@/cms/model/page-layout'
-import { anneauFocus, boutonOutil, titreColonne } from './chrome'
+import { Bouton, titreColonne } from './chrome'
+import { useSite } from '@/contexts/SiteContext'
 
 interface PageLayoutPickerProps {
   value: PageLayout
@@ -22,23 +22,23 @@ export function PageLayoutPicker({ value, onChange, disabled }: PageLayoutPicker
         {PAGE_LAYOUTS.map((item) => {
           const actif = item.id === value
           return (
-            <button
+            <Bouton
               key={item.id}
-              type="button"
+              etendu
               disabled={disabled}
+              genre={actif ? 'actif' : 'secondaire'}
               aria-pressed={actif}
-              onClick={() => onChange(item.id)}
               title={item.help}
-              style={{ ...boutonOutil(t, { actif, disabled }), textAlign: 'left', width: '100%' }}
-              {...anneauFocus(t)}
+              onClick={() => onChange(item.id)}
+              style={{ flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '10px 16px', gap: 4 }}
             >
-              <div>{item.label}</div>
+              <span>{item.label}</span>
               {actif && (
-                <div style={{ fontSize: 12, fontWeight: 500, color: t.muted, marginTop: 4, lineHeight: 1.35 }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: t.muted, lineHeight: 1.35 }}>
                   {item.help}
-                </div>
+                </span>
               )}
-            </button>
+            </Bouton>
           )
         })}
       </div>

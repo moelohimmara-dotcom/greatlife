@@ -32,7 +32,7 @@ import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
 import { getSectionDefinition } from '@/cms/model/sections/schemas'
 import type { PageSection } from '@/cms/model/section'
-import { anneauFocus, boutonOutil, CIBLE } from './chrome'
+import { Bouton, RAYON } from './chrome'
 
 interface SectionListProps {
   sections: PageSection[]
@@ -90,15 +90,9 @@ export function SectionList({
       </DndContext>
 
       {/* Bouton Ajouter */}
-      <button type="button" onClick={onAdd} style={{
-        width: '100%', marginTop: 8, ...boutonOutil(t, {}),
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        borderStyle: 'dashed',
-      }}
-        {...anneauFocus(t)}
-      >
-        {Icon.plus(14, t.primary)} Ajouter une section
-      </button>
+      <Bouton etendu onClick={onAdd} style={{ marginTop: 8, justifyContent: 'center' }}>
+        {Icon.plus(16, t.primary)} Ajouter une section
+      </Bouton>
     </div>
   )
 }
@@ -143,96 +137,65 @@ function SortableItem({ id, section, isSelected, onSelect, onToggleVisibility, o
     <div ref={setNodeRef} style={style}>
       <div
         style={{
-          width: '100%', marginTop: 4, borderRadius: 10,
+          width: '100%', marginTop: 4, borderRadius: RAYON,
           border: `1px solid ${isSelected ? t.primary : t.shadow}`,
           background: isSelected ? `${t.primary}0d` : t.surface,
           display: 'flex', alignItems: 'center', gap: 4, padding: 4,
         }}
       >
-        <button
-          type="button"
+        <Bouton
+          carre
+          genre="silencieux"
           aria-label="Déplacer ce bloc"
+          style={{ cursor: 'grab' }}
           {...attributes}
           {...listeners}
-          style={{
-            minWidth: CIBLE, minHeight: CIBLE, border: 'none', background: 'transparent',
-            cursor: 'grab', color: t.muted, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-          {...anneauFocus(t)}
         >
           {Icon.grid(16, t.muted)}
-        </button>
+        </Bouton>
 
-        <button
-          type="button"
-          onClick={onSelect}
+        <Bouton
+          genre="silencieux"
           aria-pressed={isSelected}
-          style={{
-            flex: 1, minHeight: CIBLE, border: 'none', background: 'transparent',
-            cursor: 'pointer', textAlign: 'left',
-            display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px',
-          }}
-          {...anneauFocus(t)}
+          onClick={onSelect}
+          style={{ flex: 1, width: 'auto', minWidth: 0, justifyContent: 'flex-start', padding: '0 8px' }}
         >
           <span style={{ display: 'flex', flexShrink: 0 }}>
-            {Icon[iconKey] ? Icon[iconKey](15, isSelected ? t.primary : t.muted) : Icon.write(15, isSelected ? t.primary : t.muted)}
+            {Icon[iconKey] ? Icon[iconKey](16, isSelected ? t.primary : t.muted) : Icon.write(16, isSelected ? t.primary : t.muted)}
           </span>
           <span style={{
-            flex: 1, fontSize: 13, fontWeight: isSelected ? 600 : 500,
+            flex: 1, fontSize: 13, fontWeight: 600,
             color: isSelected ? t.heading : t.text,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left',
           }}>
             {label}
           </span>
-        </button>
+        </Bouton>
 
-        <button
-          type="button"
-          onClick={onToggleVisibility}
+        <Bouton
+          carre
+          genre="silencieux"
           aria-pressed={!section.visible}
           aria-label={section.visible ? 'Masquer ce bloc' : 'Afficher ce bloc'}
-          style={{
-            minWidth: CIBLE, minHeight: CIBLE, border: 'none', background: 'transparent',
-            cursor: 'pointer', color: section.visible ? t.muted : t.accent,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-          {...anneauFocus(t)}
+          onClick={onToggleVisibility}
         >
           {section.visible ? Icon.eye(16, t.muted) : Icon.eye(16, t.accent)}
-        </button>
+        </Bouton>
 
         {confirming ? (
           <>
-            <button
-              type="button"
-              onClick={onRemove}
-              style={{ ...boutonOutil(t, { danger: true }), minHeight: CIBLE, padding: '8px 10px' }}
-              {...anneauFocus(t)}
-            >
-              Supprimer
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirming(false)}
-              style={{ ...boutonOutil(t, {}), minHeight: CIBLE, padding: '8px 10px' }}
-              {...anneauFocus(t)}
-            >
-              Annuler
-            </button>
+            <Bouton genre="danger" onClick={onRemove}>Supprimer</Bouton>
+            <Bouton genre="secondaire" onClick={() => setConfirming(false)}>Annuler</Bouton>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
+          <Bouton
+            carre
+            genre="silencieux"
             aria-label="Supprimer ce bloc"
-            style={{
-              minWidth: CIBLE, minHeight: CIBLE, border: 'none', background: 'transparent',
-              cursor: 'pointer', color: t.muted, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            {...anneauFocus(t)}
+            onClick={() => setConfirming(true)}
           >
             {Icon.trash(16, t.muted)}
-          </button>
+          </Bouton>
         )}
       </div>
     </div>

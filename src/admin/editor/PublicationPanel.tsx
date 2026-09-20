@@ -22,7 +22,7 @@ import {
   type PageVersionDetail,
   type PageVersionSummary,
 } from '@/cms/repository/versions'
-import { anneauFocus, boutonOutil, titreColonne } from './chrome'
+import { Bouton, titreColonne } from './chrome'
 
 interface PublicationPanelProps {
   pageId: string
@@ -76,23 +76,10 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
         <span style={{ fontFamily: 'var(--f-heading)', fontSize: 16, fontWeight: 700, color: t.heading, marginRight: 'auto' }}>
           Avant de publier
         </span>
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          style={boutonOutil(t, { disabled: loading })}
-          {...anneauFocus(t)}
-        >
+        <Bouton disabled={loading} onClick={load}>
           {loading ? 'Vérification…' : 'Revérifier'}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          style={boutonOutil(t, {})}
-          {...anneauFocus(t)}
-        >
-          Fermer
-        </button>
+        </Bouton>
+        <Bouton onClick={onClose}>Fermer</Bouton>
       </div>
 
       {error && (
@@ -169,14 +156,9 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
                   {formatDate(version.createdAt)}
                   {version.createdBy ? ` · ${version.createdBy}` : ''}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => openVersion(version.id)}
-                  style={{ ...boutonOutil(t, { actif: true }), marginLeft: 'auto' }}
-                  {...anneauFocus(t)}
-                >
+                <Bouton genre="actif" onClick={() => openVersion(version.id)} style={{ marginLeft: 'auto' }}>
                   Voir
-                </button>
+                </Bouton>
               </div>
               {version.note && (
                 <div style={{ fontSize: 11, color: t.muted, marginTop: 2 }}>{version.note}</div>
@@ -195,14 +177,9 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
             <span style={{ fontSize: 12.5, fontWeight: 700, color: t.text }}>
               Version {detail.summary.version}
             </span>
-            <button
-              type="button"
-              onClick={() => setDetail(null)}
-              style={{ ...boutonOutil(t, {}), marginLeft: 'auto' }}
-              {...anneauFocus(t)}
-            >
+            <Bouton onClick={() => setDetail(null)} style={{ marginLeft: 'auto' }}>
               Fermer
-            </button>
+            </Bouton>
           </div>
           <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.55 }}>
             <div>

@@ -11,7 +11,7 @@ import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
 import { SECTION_TYPES } from '@/cms/model/sections/schemas'
 import type { SectionType } from '@/cms/model/section'
-import { anneauFocus, boutonOutil, CIBLE } from './chrome'
+import { Bouton } from './chrome'
 
 interface SectionTypePickerProps {
   onSelect: (type: SectionType) => void
@@ -75,9 +75,7 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
           <h3 id="ajouter-section-titre" style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0 }}>
             Ajouter une section
           </h3>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{ ...boutonOutil(t, {}), minWidth: CIBLE }} {...anneauFocus(t)}>
-            Fermer
-          </button>
+          <Bouton onClick={onClose} aria-label="Fermer">Fermer</Bouton>
         </div>
 
         {/* Grille */}
@@ -85,25 +83,23 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
           {SECTION_TYPES.filter((def) => def.implemented).map((def) => {
             const iconName = TYPE_ICONS[def.type] ?? 'write'
             return (
-              <button key={def.type} type="button" onClick={() => onSelect(def.type)} style={{
-                padding: '14px 14px', borderRadius: 12, minHeight: CIBLE,
-                border: `1px solid ${t.shadow}`, background: t.bg,
-                borderLeft: `3px solid ${t.primary}`,
-                cursor: 'pointer', textAlign: 'left',
-                transition: 'background 0.15s, box-shadow 0.15s',
-              }}
-                {...anneauFocus(t)}
+              <Bouton
+                key={def.type}
+                etendu
+                genre="secondaire"
+                onClick={() => onSelect(def.type)}
+                style={{ flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '12px 16px', gap: 6 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'flex', color: t.primary }}>
                     {Icon[iconName] ? Icon[iconName](16, t.primary) : Icon.write(16, t.primary)}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>{def.label}</span>
-                </div>
-                <div style={{ fontSize: 11, color: t.muted, lineHeight: 1.4 }}>
+                  <span>{def.label}</span>
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: t.muted, lineHeight: 1.4 }}>
                   {def.description}
-                </div>
-              </button>
+                </span>
+              </Bouton>
             )
           })}
         </div>

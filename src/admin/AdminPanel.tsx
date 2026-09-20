@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { PageEditorWrapper } from '@/admin/editor/PageEditorWrapper'
+import { Bouton } from '@/admin/editor/chrome'
 
 const ADMIN_URL = 'https://greatlife-conakry.netlify.app/admin'
 
@@ -73,22 +74,24 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
               {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => {
                 const isActive = active === k
                 return (
-                  <button key={k} onClick={() => go(k)} style={{
-                    textAlign: 'left', padding: '9px 12px', borderRadius: 10,
-                    fontSize: '13.5px', fontWeight: isActive ? 600 : 500, cursor: 'pointer', border: 'none',
-                    background: isActive ? t.primary : 'transparent',
-                    color: isActive ? '#fff' : t.text,
-                    display: 'inline-flex', alignItems: 'center', gap: 10,
-                    transition: 'background 0.18s', position: 'relative',
-                  }} onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = `${t.primary}0a` }}
-                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                    {!isActive && <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 0, borderRadius: 3, background: t.primary, transition: 'height 0.18s' }} />}
-                    <span style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.7 }}>{Icon[icon](15, isActive ? '#fff' : t.text)}</span>
-                    <span>{l}</span>
+                  <Bouton
+                    key={k}
+                    etendu
+                    genre={isActive ? 'primaire' : 'nav'}
+                    onClick={() => go(k)}
+                    style={{ position: 'relative' }}
+                  >
+                    <span style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.75 }}>
+                      {Icon[icon](16, isActive ? '#fff' : t.text)}
+                    </span>
+                    <span style={{ flex: 1, textAlign: 'left' }}>{l}</span>
                     {NOTIF[k] > 0 && (
-                      <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: 100, background: isActive ? 'rgba(255,255,255,0.25)' : t.accent, color: isActive ? '#fff' : '#fff', minWidth: 18, textAlign: 'center' }}>{NOTIF[k]}</span>
+                      <span style={{
+                        fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                        background: isActive ? 'rgba(255,255,255,0.25)' : t.accent, color: '#fff', minWidth: 18, textAlign: 'center',
+                      }}>{NOTIF[k]}</span>
                     )}
-                  </button>
+                  </Bouton>
                 )
               })}
             </div>
@@ -99,11 +102,9 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
         <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
         <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
-        <button onClick={handleLogout} style={{
-          width: '100%', fontSize: '13px', fontWeight: 600, padding: '9px', borderRadius: 10, cursor: 'pointer',
-          border: `1px solid ${t.accent}44`, background: 'transparent', color: t.accent,
-          display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center',
-        }}>{Icon.logout(14)} Déconnexion</button>
+        <Bouton etendu genre="danger" onClick={handleLogout}>
+          {Icon.logout(16, t.accent)} Déconnexion
+        </Bouton>
         <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
       </div>
     </aside>
@@ -120,20 +121,21 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           minHeight: '100vh',
           height: active === 'content' ? '100vh' : undefined,
         }}>
-          <button
-            type="button"
-            onClick={() => setMobileNav(true)}
+          <Bouton
+            carre
+            genre="secondaire"
             aria-label="Ouvrir le menu"
             className="admin-mobile-menu"
-            style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20, border: `1px solid ${t.shadow}`, background: t.surface, borderRadius: 10, padding: '12px 14px', minHeight: 44, minWidth: 44, cursor: 'pointer', color: t.heading }}
+            onClick={() => setMobileNav(true)}
+            style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20 }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </button>
+          </Bouton>
           {roleNotice && (
             <div key={roleNotice.id} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60, maxWidth: 'min(92vw, 560px)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid ${t.accent}55`, background: t.surface, boxShadow: `0 8px 28px ${t.shadow}`, fontSize: '13px', fontWeight: 500, color: t.heading }}>
               <span style={{ display: 'inline-flex', color: t.accent }}>{Icon.check(18, t.accent)}</span>
               <span style={{ flex: 1 }}>{roleNotice.msg}</span>
-              <button onClick={dismissRoleNotice} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: t.muted, fontSize: 16, padding: '0 4px', lineHeight: 1 }}>×</button>
+              <Bouton carre genre="silencieux" aria-label="Fermer" onClick={dismissRoleNotice}>×</Bouton>
             </div>
           )}
           {children}
