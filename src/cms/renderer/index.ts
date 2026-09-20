@@ -42,6 +42,7 @@ export {
   normaliserPageLayout,
   pageLayoutLabel,
   dispositionBannierePourMiseEnPage,
+  miseEnPageSurBanniere,
 } from '../model/page-layout'
 
 export type {

@@ -52,6 +52,11 @@ export function pageLayoutLabel(id: PageLayout): string {
   return PAGE_LAYOUTS.find((item) => item.id === id)?.label ?? PAGE_LAYOUTS[0].label
 }
 
+/** Bannière sous un menu transparent — pas l’écran partagé (moitié crème). */
+export function miseEnPageSurBanniere(layout: PageLayout): boolean {
+  return layout === 'hero_parallax' || layout === 'magazine'
+}
+
 /**
  * Disposition de bannière imposée par la mise en page de la page.
  *

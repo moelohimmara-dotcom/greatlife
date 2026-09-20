@@ -113,6 +113,35 @@ const colonneUnique = html.single_column.includes(BANNIERE_HISTO) && !html.singl
 console.log(`  colonne unique garde Image + texte : ${colonneUnique ? 'OUI' : 'NON  <-- ECHEC'}`)
 if (!colonneUnique) fautif = true
 
+const gabarits = [
+  ['magazine', 'class="page-layout-grid"'],
+  ['hero_parallax', 'class="page-layout-parallax"'],
+  ['split', 'class="page-layout-split-hero"'],
+  ['hero_alternating', 'data-cms-stripe'],
+]
+for (const [id, marqueur] of gabarits) {
+  const ok = html[id].includes(marqueur)
+  console.log(`  ${id} porte le gabarit ${marqueur} : ${ok ? 'OUI' : 'NON  <-- ECHEC'}`)
+  if (!ok) fautif = true
+}
+const colonneSansGabarit =
+  !html.single_column.includes('class="page-layout-grid"') &&
+  !html.single_column.includes('class="page-layout-parallax"') &&
+  !html.single_column.includes('class="page-layout-split-hero"')
+console.log(`  colonne unique sans enveloppe : ${colonneSansGabarit ? 'OUI' : 'NON  <-- ECHEC'}`)
+if (!colonneSansGabarit) fautif = true
+
+const shell = readFileSync(`${ROOT}/src/cms/renderer/page-layout-shell.ts`, 'utf8')
+const publicSite = readFileSync(`${ROOT}/src/sections/PublicSite.tsx`, 'utf8')
+console.log('  gabarits extraits du renderer : ' + (shell.includes('CSS_GABARITS_PAGE') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  pied de page dans le renderer : ' + (publicSite.includes('pied={<Footer') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  menu sur bannière : ' + (publicSite.includes('miseEnPageSurBanniere') ? 'OUI' : 'NON  <-- ECHEC'))
+const selecteursGrille =
+  shell.includes('[style*="grid-template-columns"]') &&
+  shell.includes('[style*="grid-template-columns: 1fr 1fr"]')
+console.log('  gabarits replient les grilles internes : ' + (selecteursGrille ? 'OUI' : 'NON  <-- ECHEC'))
+if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille) fautif = true
+
 console.log('='.repeat(72))
 if (fautif) {
   console.log('ECHEC')

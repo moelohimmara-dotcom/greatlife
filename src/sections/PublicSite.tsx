@@ -31,6 +31,7 @@ import { OrderCart } from './OrderCart'
 import { useCmsSections } from '@/cms/hooks/useCmsSections'
 import { PageRenderer } from '@/cms/renderer/PageRenderer'
 import { fetchSetting, resolveRestaurant, SETTING_KEYS, DEFAULT_RESTAURANT } from '@/cms/repository/settings'
+import { miseEnPageSurBanniere, normaliserPageLayout } from '@/cms/model/page-layout'
 import type { RestaurantSettings, ResolvedRestaurant } from '@/cms/repository/settings'
 
 /**
@@ -93,17 +94,18 @@ export function PublicSite() {
 
   // --- Chemin CMS : la page est publiée, on rend ses sections ---
   if (enabled && page && resolvedSections.length > 0) {
+    const layout = normaliserPageLayout(page.layout)
     return (
       <CartProvider>
-        <div style={rootStyle}>
-          <PublicNav />
+        <div style={rootStyle} data-cms-shell={layout}>
+          <PublicNav overlay={miseEnPageSurBanniere(layout)} />
           <PageRenderer
             page={page}
             sections={resolvedSections}
             locale="fr"
             restaurant={restaurant}
+            pied={<Footer restaurant={restaurant} />}
           />
-          <Footer restaurant={restaurant} />
           <OrderCart />
         </div>
       </CartProvider>

@@ -6,7 +6,7 @@ import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { softShadowSm } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 
-export function PublicNav() {
+export function PublicNav({ overlay = false }: { overlay?: boolean }) {
   const { theme: t } = useSite()
   const isMobile = useIsMobile()
   const [scrolled, setScrolled] = useState(false)
@@ -27,16 +27,20 @@ export function PublicNav() {
     return () => { document.body.style.overflow = '' }
   }, [drawerOpen])
 
+  const surBanniere = overlay && !scrolled
+  const couleurLogo = surBanniere ? t.headingInvert : t.heading
+  const couleurLien = surBanniere ? t.headingInvert : t.text
+
   return (
     <header style={{
-      position: 'sticky', top: 0, zIndex: 50,
+      position: overlay ? 'fixed' : 'sticky', top: 0, zIndex: 50, width: '100%',
       background: scrolled ? t.surface : 'transparent',
       backdropFilter: scrolled ? 'blur(12px)' : 'none',
       borderBottom: scrolled ? `1px solid ${t.shadow}` : '1px solid transparent',
       transition: 'all 0.3s ease',
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <a href="#home" aria-label="Greatlife — accueil" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '24px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em' }}>
+        <a href="#home" aria-label="Greatlife — accueil" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '24px', color: couleurLogo, textDecoration: 'none', letterSpacing: '-0.02em' }}>
           Great<span style={{ color: t.accent }}>life</span>
         </a>
         <nav className="desktop-nav" aria-label="Navigation principale" style={{ display: 'flex', gap: '28px', alignItems: 'center' }}>
@@ -44,13 +48,13 @@ export function PublicNav() {
             <a key={l} href={`#${id}`} aria-current={active === id ? 'true' : undefined}
               style={{
                 fontSize: '14px', fontWeight: 500,
-                color: active === id ? t.accent : t.text,
+                color: active === id ? t.accent : couleurLien,
                 textDecoration: active === id ? 'underline' : 'none',
                 textUnderlineOffset: '4px',
                 transition: 'color 0.2s',
               }}
               onMouseEnter={e => e.currentTarget.style.color = t.accent}
-              onMouseLeave={e => e.currentTarget.style.color = active === id ? t.accent : t.text}>{l}</a>
+              onMouseLeave={e => e.currentTarget.style.color = active === id ? t.accent : couleurLien}>{l}</a>
           ))}
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -70,13 +74,14 @@ export function PublicNav() {
               display: isMobile ? 'flex' : 'none',
               flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
               width: '40px', height: '40px', borderRadius: '12px',
-              background: t.surface, border: `1px solid ${t.shadow}`,
+              background: surBanniere ? 'transparent' : t.surface,
+              border: surBanniere ? '1px solid rgba(255,255,255,0.35)' : `1px solid ${t.shadow}`,
               cursor: 'pointer', gap: drawerOpen ? 0 : 5,
               transition: 'gap 0.2s',
             }}>
-            <span style={{ width: '18px', height: '2px', background: t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(45deg) translate(2px,2px)' : 'none', transition: 'transform 0.2s' }} />
-            <span style={{ width: '18px', height: '2px', background: t.heading, borderRadius: '2px', opacity: drawerOpen ? 0 : 1, transition: 'opacity 0.2s' }} />
-            <span style={{ width: '18px', height: '2px', background: t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(-45deg) translate(1px,-1px)' : 'none', transition: 'transform 0.2s' }} />
+            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(45deg) translate(2px,2px)' : 'none', transition: 'transform 0.2s' }} />
+            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : t.heading, borderRadius: '2px', opacity: drawerOpen ? 0 : 1, transition: 'opacity 0.2s' }} />
+            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(-45deg) translate(1px,-1px)' : 'none', transition: 'transform 0.2s' }} />
           </button>
         </div>
       </div>
