@@ -37,13 +37,16 @@ const { build } = require('esbuild')
 
 const entry = `${WORK}/save-plan.ts`
 const outfile = `${WORK}/save-plan.cjs`
-writeFileSync(entry, `export { isPersistedId, planifierSauvegarde, empreinteSauvegarde } from '@/cms/model/save-plan'`, 'utf8')
+writeFileSync(entry, [
+  "export { isPersistedId, planifierSauvegarde, empreinteSauvegarde } from '@/cms/model/save-plan'",
+  "export { fusionnePatch, clefsCoordonnees, fusionBilingue, CLEFS_COORDONNEES } from '@/cms/model/contenu-patch'",
+].join('\n'), 'utf8')
 await build({
   entryPoints: [entry], outfile, bundle: true, format: 'cjs', platform: 'node',
   alias: { '@': `${ROOT}/src` }, loader: { '.ts': 'ts' }, logLevel: 'warning',
 })
 delete require.cache[require.resolve(outfile)]
-const { isPersistedId, planifierSauvegarde, empreinteSauvegarde } = require(outfile)
+const { isPersistedId, planifierSauvegarde, empreinteSauvegarde, fusionnePatch, clefsCoordonnees, fusionBilingue } = require(outfile)
 
 /** Un identifiant réellement attribué par la base. */
 const UUID = '3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b'
@@ -119,6 +122,54 @@ test('SENSIBILITÉ — le plan n’exige jamais de la base ce qu’elle refuse',
   for (const etape of plan.etapes) {
     if (etape.action === 'conserver') assert.equal(isPersistedId(etape.section.id), true)
   }
+})
+
+// ---------------------------------------------------------------------------
+// FUSION PAR DOMAINE (`@/cms/model/contenu-patch`) — plan P0 du 2026-09-20.
+// Quatre écrans partageaient l'écriture TOTALE de `site_config` : un champ
+// vide dans l'écran A écrasait la valeur publiée depuis l'écran B. La propriété
+// testée ici est celle qui ferme le piège : UNE CLÉ ABSENTE DU PATCH SURVIVIT
+// INTACTE, quelle que soit sa valeur.
+
+test('FUSION — une clé absente du patch survit intacts, même si le patch porte une valeur vide', () => {
+  const actuel = { phone: '225012020202', team: [{ name: 'A' }], emailContact: '' }
+  const fusion = fusionnePatch(actuel, { emailContact: '' })
+  assert.equal(fusion.phone, '225012020202', 'le téléphone survit : absent du patch')
+  assert.deepEqual(fusion.team, [{ name: 'A' }], 'l’équipe survit : absent du patch')
+})
+
+test('FUSION — une clé PRESENTE dans le patch est appliquée, y compris pour vider', () => {
+  const fusion = fusionnePatch({ phone: '22501201202'.slice(0, 12) }, { autoReply: 'Bonjour' })
+  assert.equal(fusion.emailContact, undefined)
+  const vide = fusionnePatch({ phone: '' }, {})
+  assert.equal(vide.phone, '')
+})
+
+test('FUSION — l’écrasement annoncé par le patch gagne sur toute valeur périmée', () => {
+  const fusion = fusionnePatch(
+    { phone: '+224 000 00 00 00', slogan: 'ancien' },
+    { phone: '+224 661 16 44 58' },
+  )
+  assert.equal(fusion.phone, '+224 661 16 44 58')
+  assert.equal(fusion.slogan, 'ancien')
+})
+
+test('MIROIR — seul un champ de COORDONNÉE présent dans le patch atteint `restaurant`', () => {
+  assert.deepEqual(clefsCoordonnees({ autoReply: 'x', phone: '+224…' }), ['phone'])
+  assert.deepEqual(clefsCoordonnees({ team: [] }), [], 'l’équipe n’est pas une coordonnée')
+  assert.deepEqual(clefsCoordonnees({}), [])
+  const lesCinq = clefsCoordonnees({
+    phone: 1, emailContact: 1, emailReservation: 1, address: 1, hours: 1,
+  })
+  assert.equal(lesCinq.length, 5)
+})
+
+test('BILINGUE — fusionner ne détruit plus l’anglais (migration 032, revue I6)', () => {
+  assert.deepEqual(fusionBilingue({ fr: 'Conakry', en: 'Conakry, Guinea' }, 'Conakry, Ratoma'), {
+    fr: 'Conakry, Ratoma',
+    en: 'Conakry, Guinea',
+  })
+  assert.deepEqual(fusionBilingue('chaîne plate', 'Guinée'), { fr: 'Guinée' })
 })
 
 // Empêche un test « vide » de passer pour un succès : on vérifie que le module
