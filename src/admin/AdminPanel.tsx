@@ -131,6 +131,8 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           position: 'relative',
           minHeight: '100vh',
           height: active === 'content' ? '100vh' : undefined,
+          display: active === 'content' ? 'flex' : undefined,
+          flexDirection: 'column',
         }}>
           <Bouton
             carre
@@ -2885,12 +2887,34 @@ export function Admin() {
   const role = user?.role ?? 'guest'
   const effective = canAccessModule(active, role) ? active : 'dashboard'
   const readOnly = !canWriteModule(effective, role)
+  const editeurPleinEcran = effective === 'content'
+  const remplissageEditeur = editeurPleinEcran
+    ? {
+        flex: 1,
+        minHeight: 0,
+        height: '100%' as const,
+        display: 'flex' as const,
+        flexDirection: 'column' as const,
+        overflow: 'hidden' as const,
+      }
+    : undefined
   return (
     <AdminShell active={effective} setActive={setActive}>
       <AnimatePresence mode="wait">
-        <motion.div key={effective} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}>
+        <motion.div
+          key={effective}
+          initial={{ opacity: 0, y: editeurPleinEcran ? 0 : 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          style={remplissageEditeur}
+        >
           {readOnly && effective !== 'dashboard' && <AccessBanner />}
-          <div style={{ position: 'relative', pointerEvents: readOnly && effective !== 'dashboard' ? 'none' : 'auto' }}>
+          <div style={{
+            position: 'relative',
+            pointerEvents: readOnly && effective !== 'dashboard' ? 'none' : 'auto',
+            ...remplissageEditeur,
+          }}>
             {effective === 'dashboard' && <Dashboard />}
           {effective === 'messages' && <MessagesManager />}
           {effective === 'orders' && <OrdersManager />}

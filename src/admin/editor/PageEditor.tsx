@@ -232,6 +232,7 @@ export function PageEditor({
         <div style={{
           borderRight: `1px solid ${t.shadow}`, background: t.surface,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          minHeight: 0,
         }}>
           <div style={{ padding: '14px 14px 8px', ...titreColonne(t) }}>
             Structure

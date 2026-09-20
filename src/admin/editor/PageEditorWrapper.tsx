@@ -127,7 +127,7 @@ export function PageEditorWrapper() {
   }
 
   return (
-    <div style={{ height: '100%', minHeight: 0 }}>
+    <div style={{ height: '100%', minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
     <PageEditor
       pageId={pageId}
       initialSections={sections}

@@ -160,7 +160,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
       <div
         ref={sceneRef}
         style={{
-          flex: 1, borderRadius: 12, overflow: 'hidden',
+          flex: 1, minHeight: 0, borderRadius: 12, overflow: 'hidden',
           border: `1px solid ${t.shadow}`, background: t.surfaceAlt,
           position: 'relative',
         }}
