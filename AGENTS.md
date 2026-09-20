@@ -248,12 +248,20 @@ les divergences ; §19 dit comment les **éviter**.
 **On ne modifie QUE son couloir. Lire le couloir de l'autre est toujours permis**
 — `verify:anchors` lit `Hero.tsx`, c'est normal et sans risque.
 
+**Le découpage est exécutable, pas déclaratif** : `scripts/couloirs.json` porte la
+carte, et `npm run verify:couloirs` confronte les fichiers que TA branche modifie
+aux couloirs. Il échoue si tu écris chez l'autre, avertit sur les fichiers
+partagés, et **nomme** à qui appartient ce que tu as touché. **À lancer avant de
+pousser.** Le registre lisible, avec ce que personne ne couvre, est dans
+**`docs/19_CHANTIERS.md`** — c'est là qu'on voit ce qui reste à faire.
+
 ### 19.2 Deux ressources PARTAGÉES, à ne pas se disputer
 
 1. **La production Cloudflare Pages est unique.** Un déploiement écrase le
    précédent, quel que soit l'auteur : deux agents qui déploient le même jour se
-   remplacent mutuellement. **Règle** : ne pas déployer depuis une branche de
-   travail ; déployer seulement depuis `main`, après fusion, et **en l'annonçant**.
+   remplacent mutuellement. **Décision du propriétaire (2026-09-20) : les deux
+   agents peuvent déployer**, mais on **ne déploie pas depuis une branche de
+   travail** — on fusionne dans `main`, puis on déploie, **et on l'annonce**.
 2. **La base Supabase est unique.** Une migration ou un `UPDATE` s'appliquent à
    tout le monde. **Règle** : toute écriture en base se fait avec la liste exacte
    des lignes touchées conservée, et une requête de retour arrière écrite
@@ -262,6 +270,7 @@ les divergences ; §19 dit comment les **éviter**.
 ### 19.3 Avant de fusionner dans `main`
 
 - Rebaser sur `main` (l'autre couloir y aura peut-être avancé).
+- `npm run verify:couloirs` — aucun fichier de l'autre couloir touché.
 - Relancer **tous** les filets : `npm run build`, `verify:lot1`, `verify:public`,
   `verify:anchors`, `verify:publication`, `verify:rbac`, `verify:point3`,
   `verify:i18n`, `verify:dispositions`, `test:save-plan`.

@@ -1,0 +1,57 @@
+{
+  "_lisezMoi": [
+    "CARTE DES COULOIRS — source unique, lisible par machine.",
+    "Qui a le droit d'ECRIRE quoi, pour que deux agents ne se marchent pas dessus.",
+    "Verifiee par `npm run verify:couloirs` (lance-le AVANT de pousser).",
+    "Lire le couloir de l'autre est TOUJOURS permis : seul l'ecrit est reserve.",
+    "Voir la version commentee dans AGENTS.md section 19 et docs/19_CHANTIERS.md."
+  ],
+  "base": "origin/main",
+  "couloirs": {
+    "fiabilite-depot": {
+      "responsable": "agent de verification (Mavis)",
+      "branche": "vibe/fiabilite-depot",
+      "role": "Filets, verite du depot, base de donnees, donnees.",
+      "fichiers": [
+        "scripts/verify-*.mjs",
+        "scripts/test-*.mjs",
+        "src/contexts/SiteContext.tsx",
+        "src/cms/repository/**",
+        "src/cms/model/save-plan.ts",
+        "src/cms/model/publishing/**",
+        "supabase/migrations/**",
+        "supabase/rollbacks/**",
+        "AGENTS.md",
+        "docs/17_BACKLOG.md",
+        "docs/19_CHANTIERS.md",
+        "docs/20_COUVERTURE.md",
+        ".gitignore"
+      ]
+    },
+    "edition-sections": {
+      "responsable": "agent Cursor",
+      "branche": "vibe/* (une branche par fonctionnalite)",
+      "role": "Rendu des sections, panneau de proprietes, schemas de sections.",
+      "fichiers": [
+        "src/sections/**",
+        "src/admin/editor/PropertyPanel.tsx",
+        "src/admin/editor/SectionList.tsx",
+        "src/admin/editor/SectionTypePicker.tsx",
+        "src/cms/model/sections/**",
+        "src/cms/renderer/**",
+        "scripts/verify-dispositions.mjs",
+        "docs/18_DISPOSITIONS_DE_BLOC.md"
+      ]
+    }
+  },
+  "partages": {
+    "_note": "Touches par les DEUX. Ce n'est pas interdit, mais ca doit s'ANNONCER avant, et se rebaser juste apres.",
+    "fichiers": [
+      "package.json",
+      "src/admin/AdminPanel.tsx",
+      "src/admin/editor/PageEditor.tsx",
+      "src/admin/editor/useEditor.ts",
+      "docs/00_TDR_GREATLIFE_CMS.md"
+    ]
+  }
+}
