@@ -40,6 +40,7 @@ const SECTIONS = [
   { id: 's1', pageId: 'p', type: 'hero', variant: 'image_text', position: 0, visible: true, anchor: 'home', content: {}, settings: {}, createdAt: '', updatedAt: '' },
   { id: 's2', pageId: 'p', type: 'story', variant: null, position: 1, visible: true, anchor: 'histoire', content: {}, settings: {}, createdAt: '', updatedAt: '' },
   { id: 's3', pageId: 'p', type: 'menu', variant: null, position: 2, visible: true, anchor: 'carte', content: {}, settings: {}, createdAt: '', updatedAt: '' },
+  { id: 's4', pageId: 'p', type: 'blog', variant: null, position: 3, visible: true, anchor: 'blog', content: {}, settings: {}, createdAt: '', updatedAt: '' },
 ]
 const RESTAURANT = { name: 'Greatlife', address: '', hours: '', phone: '', emailContact: '', emailReservation: '', slogan: '', currency: 'FG', social: { facebook: '', whatsapp: '', instagram: '' } }
 
@@ -134,12 +135,16 @@ if (!colonneSansGabarit) fautif = true
 
 const mag = html.magazine
 const idxBand = mag.indexOf('class="page-layout-band"')
-const idxMenu = mag.indexOf('data-cms-section="menu"')
-const histoireOuverture = mag.includes('page-layout-cell--spread') && mag.includes('data-cms-section="story"')
+const idxMenu = mag.indexOf(' data-cms-section="menu"')
+const histoireOuverture = mag.includes('page-layout-cell--spread') && mag.includes(' data-cms-section="story"')
 const menuEnBande = idxBand >= 0 && idxMenu > idxBand
 console.log(`  magazine : histoire en ouverture : ${histoireOuverture ? 'OUI' : 'NON  <-- ECHEC'}`)
 console.log(`  magazine : carte en bande : ${menuEnBande ? 'OUI' : 'NON  <-- ECHEC'}`)
 if (!histoireOuverture || !menuEnBande) fautif = true
+const idxBlog = mag.indexOf(' data-cms-section="blog"')
+const blogEnBande = idxBlog > idxBand && idxBand >= 0
+console.log(`  magazine : journal en bande : ${blogEnBande ? 'OUI' : 'NON  <-- ECHEC'}`)
+if (!blogEnBande) fautif = true
 
 const shell = readFileSync(`${ROOT}/src/cms/renderer/page-layout-shell.ts`, 'utf8')
 const publicSite = readFileSync(`${ROOT}/src/sections/PublicSite.tsx`, 'utf8')
@@ -151,8 +156,14 @@ const selecteursGrille =
   shell.includes('[style*="grid-template-columns"]') &&
   shell.includes('[style*="grid-template-columns: 1fr 1fr"]')
 console.log('  gabarits replient les grilles internes : ' + (selecteursGrille ? 'OUI' : 'NON  <-- ECHEC'))
+const shellCarte =
+  shell.includes('[data-cms-section="menu"] .menu-grid') &&
+  shell.includes('[data-cms-section="blog"] .blog-grid') &&
+  shell.includes('hero_alternating') &&
+  shell.includes('minmax(300px, 1fr)')
+console.log('  gabarits adaptent carte et articles : ' + (shellCarte ? 'OUI' : 'NON  <-- ECHEC'))
 console.log('  CSS gabarits non échappé : ' + (readFileSync(`${ROOT}/src/cms/renderer/PageRenderer.tsx`, 'utf8').includes('dangerouslySetInnerHTML') ? 'OUI' : 'NON  <-- ECHEC'))
-if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !pane.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille) fautif = true
+if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !pane.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille || !shellCarte) fautif = true
 if (!readFileSync(`${ROOT}/src/cms/renderer/PageRenderer.tsx`, 'utf8').includes('dangerouslySetInnerHTML')) fautif = true
 
 console.log('='.repeat(72))

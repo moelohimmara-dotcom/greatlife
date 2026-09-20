@@ -33,7 +33,6 @@ const BLOCS_MAGAZINE_CELLULE = new Set([
   'engagements',
   'team',
   'testimonials',
-  'blog',
   'text',
   'image',
   'image_text',

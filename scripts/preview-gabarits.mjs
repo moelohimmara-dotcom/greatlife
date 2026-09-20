@@ -41,6 +41,7 @@ const SECTIONS = [
   sec('s3', 'engagements', 'engagements', 2),
   sec('s4', 'team', 'equipe', 3),
   sec('s5', 'menu', 'carte', 4),
+  sec('s6', 'blog', 'blog', 5),
 ]
 const RESTAURANT = {
   name: 'Greatlife', address: 'Conakry, Guinée', hours: '7h–23h',
@@ -110,13 +111,19 @@ const wrap = (title, body) => `<!DOCTYPE html>
 <body>${body}</body>
 </html>`
 
+writeFileSync(`${WORK}/preview-column.html`, wrap('Colonne unique', page('single_column')))
+writeFileSync(`${WORK}/preview-alternating.html`, wrap('Blocs alternés', page('hero_alternating')))
 writeFileSync(`${WORK}/preview-magazine.html`, wrap('Grille magazine', page('magazine')))
 writeFileSync(`${WORK}/preview-parallax.html`, wrap('Bannière plein écran', page('hero_parallax')))
+writeFileSync(`${WORK}/preview-split.html`, wrap('Écran partagé', page('split')))
 
 const PORT = 4178
 const files = {
+  '/column': `${WORK}/preview-column.html`,
+  '/alternating': `${WORK}/preview-alternating.html`,
   '/magazine': `${WORK}/preview-magazine.html`,
   '/parallax': `${WORK}/preview-parallax.html`,
+  '/split': `${WORK}/preview-split.html`,
 }
 const server = createServer((req, res) => {
   const fs = require('node:fs')
@@ -126,6 +133,9 @@ const server = createServer((req, res) => {
   res.end(fs.readFileSync(path))
 })
 server.listen(PORT, () => {
+  console.log(`http://127.0.0.1:${PORT}/column`)
+  console.log(`http://127.0.0.1:${PORT}/alternating`)
   console.log(`http://127.0.0.1:${PORT}/magazine`)
   console.log(`http://127.0.0.1:${PORT}/parallax`)
+  console.log(`http://127.0.0.1:${PORT}/split`)
 })
