@@ -53,7 +53,10 @@ const RESTAURANT_ABSENT: ResolvedRestaurant = {
 
 function PreviewShell({ children }: { children: React.ReactNode }) {
   const { rootStyle } = useSite()
-  return <div style={{ ...rootStyle, minHeight: '100%' }}>{children}</div>
+  const vars = { ...rootStyle }
+  delete vars.background
+  /* Pas de fond crème pleine hauteur : c’est lui qui faisait le « trou » sous les blocs. */
+  return <div style={vars}>{children}</div>
 }
 
 function remplirIframe(iframe: HTMLIFrameElement, locale: string): HTMLDivElement | null {
@@ -75,7 +78,7 @@ function remplirIframe(iframe: HTMLIFrameElement, locale: string): HTMLDivElemen
   ${polices ? `<link rel="stylesheet" href="${polices}">` : ''}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #preview-root { min-height: 100%; }
+    html, body { background: transparent; min-height: 0; }
     html { overflow-y: scroll; }
   </style>
 </head>
@@ -161,7 +164,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
         ref={sceneRef}
         style={{
           flex: 1, minHeight: 0, borderRadius: 12, overflow: 'hidden',
-          border: `1px solid ${t.shadow}`, background: t.surfaceAlt,
+          border: `1px solid ${t.shadow}`, background: t.surface,
           position: 'relative',
         }}
       >
@@ -173,7 +176,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
           style={{
             position: 'absolute',
             left: '50%',
-            top: 8,
+            top: 0,
             width: largeur,
             height: hauteurIframe,
             marginLeft: -largeur / 2,

@@ -2,8 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  height: 100%;
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+/* Modifier le site : coller à la fenêtre, sans le padding mobile ni le fond crème en dessous. */
+.admin-main-editor {
+  padding: 0 !important;
+  height: 100% !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
 }
 
 section[id] {

@@ -122,15 +122,15 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   )
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minHeight: '100vh', background: t.bg }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', minHeight: '100vh' }} className="admin-layout">
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', height: '100%', minHeight: '100%', background: t.bg }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', height: '100%' }} className="admin-layout">
 <div className="admin-sidebar-desktop">{Sidebar}</div>
-        <main className="admin-main-pad" style={{
+        <main className={active === 'content' ? 'admin-main-pad admin-main-editor' : 'admin-main-pad'} style={{
           padding: active === 'content' ? 0 : '32px 36px',
           overflow: active === 'content' ? 'hidden' : 'auto',
           position: 'relative',
-          minHeight: '100vh',
-          height: active === 'content' ? '100vh' : undefined,
+          minHeight: active === 'content' ? 0 : '100vh',
+          height: active === 'content' ? '100%' : undefined,
           display: active === 'content' ? 'flex' : undefined,
           flexDirection: 'column',
         }}>
@@ -2890,9 +2890,8 @@ export function Admin() {
   const editeurPleinEcran = effective === 'content'
   const remplissageEditeur = editeurPleinEcran
     ? {
-        flex: 1,
-        minHeight: 0,
-        height: '100%' as const,
+        position: 'absolute' as const,
+        inset: 0,
         display: 'flex' as const,
         flexDirection: 'column' as const,
         overflow: 'hidden' as const,
