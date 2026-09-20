@@ -1,8 +1,11 @@
 # 18 — Dispositions de bloc et réglages d'affichage
 
-> **Statut : PROPOSITION — À ARBITRER.** Ce document n'engage rien tant que le
-> propriétaire ne l'a pas validé (AGENTS.md §14 : aucune décision d'architecture
-> sans validation). Il précède toute ligne de code.
+> **Statut : ARBITRÉ le 2026-09-20 — voir §11.** Le propriétaire a retenu le
+> **degré de liberté maximal** (« valeurs libres : couleurs, tailles, marges »),
+> et non le modèle borné que ce document recommandait. Le §11 consigne la
+> décision, ses conséquences et la réserve du rédacteur. Les sections §3.2, §5 et
+> §8 ont été révisées en conséquence ; §2 reste l'état de l'art comparé, qui n'a
+> pas changé.
 >
 > **Date** : 2026-09-20 · **Demande** : « permettre au restaurateur de changer la
 > configuration de l'interface de son site, section par section, avec un système
@@ -140,16 +143,21 @@ accessoires (pastilles, badges, puces) existent déjà comme **contenu**. Ce qui
 manque : un choix depuis la médiathèque en ligne, et le pouvoir de **masquer un
 accessoire** par disposition plutôt que de devoir vider son contenu.
 
-### 3.2 La frontière, qui est la seule vraie décision
+### 3.2 La frontière — **RÉVISÉE le 2026-09-20**
 
-| Question | Réponse | Pourquoi |
+⚠️ Le tableau ci-dessous était la proposition du rédacteur. L'arbitrage du §11
+l'a **écartée** : les valeurs fines sont désormais **libres**. Il est conservé
+parce qu'il documente ce qui a été pesé, et parce que les deux lignes « Jamais »
+restent **partiellement** d'actualité — voir la réserve sur le CSS au §11.4.
+
+| Question | Proposition initiale | Décision retenue |
 |---|---|---|
-| La couleur du site ? | **Globale** (thème) | Une charte, une identité (TDR §16) |
-| La disposition d'une section ? | **Par section** | C'est du rythme de page, pas de l'identité |
-| Le fond d'une section ? | **Par section, dans la palette** | Permet d'alterner, sans casser la charte |
-| L'espacement ? | **Par section, sur une échelle** | Idem |
-| Une couleur libre ? | **Jamais** | Le restaurateur n'est pas designer (TDR §44) |
-| Du CSS ? | **Jamais** | Idem, et le §17 l'interdit |
+| La couleur du site | Globale (thème) | **Globale + libre par section** |
+| La disposition d'une section | Par section | Par section ✅ |
+| Le fond d'une section | Par section, **dans la palette** | **Libre** (avec avertissement de contraste) |
+| L'espacement | **Sur une échelle** | **Libre** (valeurs chiffrées) |
+| Une couleur libre | ~~Jamais~~ | **Autorisée** |
+| Du CSS | ~~Jamais~~ | **À trancher** — voir §11.4 (réserve de sécurité) |
 
 ---
 
@@ -245,9 +253,13 @@ qu'un préréglage ne puisse pas casser les autres en silence.
 1. Choisir une disposition, enregistrer, publier — le site change **réellement**.
 2. Revenir à la disposition par défaut, vider les réglages — le rendu redevient
    **strictement identique** à avant ce lot (`verify:lot1`).
-3. Aucun réglage ne permet de saisir une valeur libre (ni couleur, ni pixel, ni
-   CSS) — vérifiable par lecture du schéma.
-4. Aucun terme technique n'apparaît à l'écran.
+3. ~~Aucun réglage ne permet de saisir une valeur libre~~ → **RÉVISÉ (§11)** : les
+   valeurs libres sont autorisées, mais **jamais sans garde-fou**. Un contraste
+   texte/fond insuffisant est **signalé** à la saisie, et toute section peut
+   **revenir au thème en un clic**. Le contrôle porte donc sur la présence des
+   garde-fous, pas sur l'absence de liberté.
+4. Aucun terme technique n'apparaît à l'écran — **sauf** dans le mode « Avancé »,
+   où l'utilisateur a explicitement demandé le détail (voir §11.3).
 5. Une disposition ne casse jamais une ancre (`verify:anchors`).
 6. La palette ne propose que des blocs qui se rendent.
 
@@ -265,11 +277,76 @@ qu'un préréglage ne puisse pas casser les autres en silence.
 
 ## 10. Points restant à arbitrer
 
-1. **Le pilote est-il bien la Bannière ?** (recommandé : oui)
-2. **Les 4 dispositions de la Bannière** telles que définies au §4 — les valider
-   avant de coder, notamment « Vidéo », qui suppose qu'une vidéo de fond existe.
-3. **Les 6 réglages du §5** : lesquels garder ? Lesquels sont du bruit ?
-4. **Le fond « Foncé »** : trois fonds suffisent-ils, ou faut-il s'aligner
-   strictement sur les palettes du thème ?
+1. ~~Le pilote est-il bien la Bannière ?~~ **Arbitré : oui** (2026-09-20).
+2. **Les 4 dispositions de la Bannière** telles que définies au §4 — à valider,
+   notamment « Vidéo », qui suppose qu'une vidéo de fond existe.
+3. ~~Les 6 réglages du §5 : lesquels garder ?~~ **Remplacé par §11.2** : ils
+   deviennent des champs libres. Reste à trancher **lequel** est libre en premier.
+4. **CSS libre** : voir §11.4 — réserve de sécurité, non tranchée.
 5. **L'étape 3 d'un coup ou section par section ?** (recommandé : par paquets de
    deux, avec revue indépendante — AGENTS.md §11)
+
+---
+
+## 11. Arbitrage du 2026-09-20
+
+### 11.1 La décision
+
+Le propriétaire a retenu **le degré de liberté maximal** : « aller jusqu'aux
+valeurs libres (couleurs, tailles, marges) ». Le modèle borné recommandé au §3.2
+est **écarté**. Le pilote reste **la Bannière d'accueil**.
+
+### 11.2 Ce que cela change
+
+Les 6 réglages du §5 passent d'**options fermées** à **champs libres** :
+
+| Réglage | Avant | Après |
+|---|---|---|
+| Espacement | 3 échelles | valeur chiffrée par côté (ou un pas réglable) |
+| Fond | 3 choix dans la palette | **sélecteur de couleur libre** |
+| Couleur du texte | héritée | **sélecteur libre** |
+| Largeur | 3 crans | valeur chiffrée |
+| Alignement | 2 choix | inchangé (choix fermé, cela n'a pas de sens autrement) |
+| Colonnes | 2 · 3 · 4 | 1 à 6, ou valeur libre |
+
+### 11.3 Les garde-fous, qui ne sont pas des restrictions
+
+Trois mécanismes, **tous non bloquants** :
+
+1. **Avertissement de contraste** — le rapport de contraste texte/fond est calculé
+   à la saisie (référentiel WCAG). En dessous du seuil lisible, l'éditeur
+   **prévient** ; il n'empêche pas d'enregistrer. C'est le seul garde-fou dont
+   l'absence aurait un coût direct pour le restaurateur : un menu illisible fait
+   perdre des clients.
+2. **« Revenir au thème » en un clic**, par section — parce qu'une valeur libre
+   n'a pas de retour arrière autrement. Sans cela, un utilisateur perdu doit
+   ressaisir chaque champ à la main.
+3. **Mode « Avancé » replié par défaut** — le restaurateur pressé voit d'abord
+   les dispositions (§4) ; les valeurs libres sont derrière un dépliage
+   explicite. Ce n'est pas une restriction : c'est le même écran, un clic plus
+   loin.
+
+### 11.4 Réserve du rédacteur, consignée
+
+Trois points, énoncés une fois : ce sont des constats, pas des objections de
+principe. La décision du propriétaire reste la décision.
+
+1. **Conflit avec le TDR.** Le §17 (« le CMS absorbe la complexité au lieu de la
+   transférer à l'utilisateur ») et le §44 (« simple en surface, puissant sous le
+   capot ») sont écrits comme des **critères d'acceptation**. Une interface à
+   valeurs libres les contredit. **Conséquence pratique** : si le TDR n'est pas
+   amendé, chaque revue future signalera l'implémentation comme une violation, et
+   `AGENTS.md` §1 fait du TDR une source de vérité non négociable sans l'accord du
+   propriétaire — accord qui existe, mais qui doit être **écrit dans le TDR**.
+   → **Action proposée** : un paragraphe d'amendement au §17, daté et signé.
+2. **Le filet de non-régression ne peut plus couvrir que le défaut.**
+   `verify:lot1` continue de garantir que la disposition par défaut n'a pas bougé.
+   Aucune valeur saisie par l'utilisateur n'est vérifiable — ni par nous, ni par
+   un contrôle. C'est une conséquence acceptée, pas un défaut caché.
+3. **Le CSS libre soulève une question de sécurité, et c'est la seule.** C'est la
+   seule valeur qui peut : (a) affecter **tout** le site de façon invisible, (b)
+   exfiltrer des données via `url()` dans une feuille de style injectée, (c) servir
+   à recouvrir du contenu pour du hameçonnage depuis **ton domaine**. Aucune des
+   autres valeurs libres n'a cette portée. Je recommande donc de **ne pas exposer
+   de CSS arbitraire sur le site public** tant que ce n'est pas un choix explicite
+   et assumé. Les couleurs, tailles et marges libres ne posent pas ce problème.
