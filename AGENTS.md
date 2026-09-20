@@ -168,7 +168,7 @@ Filets existants dans le dépôt :
 | Commande | Portée |
 |---|---|
 | `npm run build` | typecheck strict + build de production |
-| `npm run verify:lot1` | conformité registre/base, isomorphie du renderer, **non-régression** du rendu vs révision fixe `0528c544` (ex-`9e5efb7`, SHA recalculé par la réécriture d'historique), consommation du contenu CMS |
+| `npm run verify:lot1` | **12 contrôles** : conformité registre/base, isomorphie du renderer, **non-régression** du rendu vs révision fixe `0528c544` (ex-`9e5efb7`, SHA recalculé par la réécriture d'historique), consommation du contenu CMS. ⚠️ La référence n'est plus surchargeable par mégarde : `BASE_REF` divergent fait **refuser** le script (`GLIFE_ALLOW_REF_OVERRIDE=1` pour forcer sciemment). |
 | `npm run verify:lot3` | contrôles §24, versions, instantané, pureté du modèle, vérité en base |
 | `npm run verify:public` | le public reçoit **exactement** l'instantané publié ; brouillon fermé au visiteur (§22) |
 | `npm run verify:anchors` | les liens écrits dans le site (menu, pied de page) **et les cibles ÉDITABLES des boutons de la page d'accueil** sont confrontés aux ancres de `pages.published_snapshot` ; les composants du site ne recopient aucune coordonnée du restaurant |

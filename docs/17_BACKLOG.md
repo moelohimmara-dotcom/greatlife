@@ -49,3 +49,77 @@ produit doit éviter.
 **Ce qui n'est PAS demandé** : ni authentification à deux facteurs, ni gestion
 fine des rôles depuis cet écran. Le périmètre est : changer son mot de passe,
 et le réinitialiser quand on ne peut plus se connecter.
+
+---
+
+## B-2. Les coordonnées du restaurant existent en double, dans deux lignes
+
+**Constaté le** : 2026-09-20, en corrigeant un défaut bloquant.
+
+**Le fait** : les mêmes coordonnées (téléphone, adresse, horaires, e-mails)
+vivent à **deux endroits** de `site_content` :
+
+| Ligne | Qui l'écrit | Qui la lit |
+|---|---|---|
+| `restaurant` (migration `024`) | l'administration, **depuis le 2026-09-20** | `Localisation.tsx`, `Footer.tsx`, **et les contrôles avant publication** (`publishing.ts`) |
+| `site_config` → `value.content` | l'écran « Réglages globaux » | l'écran d'administration lui-même (`SiteContext.content`) |
+
+**Pourquoi c'était bloquant** : avant le 2026-09-20, **seule** la seconde ligne
+était écrite — et la première, non vide (`+224 000 00 00 00`), l'emportait à la
+lecture. Le restaurateur ne pouvait donc pas changer son numéro de téléphone :
+il saisissait la bonne valeur, l'écran disait « Enregistré », et le site public
+continuait d'afficher le numéro de remplacement. `saveSetting`, seul écrivain
+possible de `restaurant`, était exporté sans être appelé nulle part.
+
+**Ce qui a été fait, et qui est un pont** : les deux lignes sont désormais
+écrites à chaque enregistrement, pour qu'elles ne puissent plus diverger
+silencieusement. C'est mieux que l'état précédent, mais **ce n'est pas encore le
+TDR §16** : la donnée reste dupliquée.
+
+**Ce qui reste à faire** : choisir **une** ligne, et faire lire l'administration
+depuis celle-là. `restaurant` est la candidate naturelle — c'est elle que le site
+lit déjà en premier et que les contrôles de publication consultent.
+
+**Ce qu'il faudra vérifier avant de trancher** :
+
+1. **Ne pas aplatir le bilingue** : dans `restaurant`, `address` et `hours` sont
+   des objets `{fr, en}` ; dans `site_config.content` ce sont des chaînes. Une
+   consolidation naïve détruirait une éventuelle traduction anglaise — c'est
+   exactement le défaut corrigé par la migration `032` (revue I6).
+2. **L'écran « Réglages globaux »** devra charger ses champs depuis la ligne
+   retenue, sinon il repartira sur des valeurs par défaut.
+3. **Les autres lecteurs de `site_config.content`** (`content.slogan`,
+   `heroTitle`, `team`, `engagements`, `testimonials`…) **ne sont pas concernés** :
+   seules les cinq coordonnées sont dupliquées. La consolidation doit rester
+   chirurgicale.
+
+---
+
+## B-3. Constats de la 3<sup>e</sup> revue non encore traités
+
+**Constatés le** : 2026-09-20. Consignés ici pour ne pas être perdus.
+
+- **I-3** — le balayage de coordonnées de `verify:anchors` ne couvre que
+  `src/sections` et `src/components`. `src/contexts/SiteContext.tsx` porte les
+  quatre valeurs canoniques en dur (`DEFAULT_CONTENT`) **et se trouve sur le
+  chemin public** (`Localisation` s'y replie). Le filet nomme une classe de
+  défaut plus large que ce qu'il balaie.
+- **I-2** — `Localisation.tsx` conserve un second repli (`legacy.*`) qui n'est
+  jamais vide en pratique : la disparition de ligne annoncée n'est donc pas
+  atteignable, et la duplication subsiste via `SiteContext`.
+- **M-1** — le plancher anti-vide du balayage est de 10 fichiers pour un
+  périmètre réel de 26 : perdre un dossier entier passerait encore.
+- **M-2** — la section A prend la **première** page publiée trouvée ; avec
+  plusieurs pages publiées, le contrôle conclut sans le dire.
+- **M-3** — `ANCHORS` dans `PublicSite.tsx` (rendu historique) n'est vérifié par
+  rien.
+- **M-5** — `LivePreview.tsx` est du **code mort** (aucun `import` dans `src/`) ;
+  `PageRenderer` aussi. À supprimer proprement.
+- **M-7** — `npm run test:save-plan` couvre le **noyau pur**, mais pas le
+  **câblage** (`useEditor.save()`) : l'ordre des écritures et la reprise des
+  identifiants ne sont pas exercés. Les tester suppose d'injecter les opérations
+  de dépôt — c'est un petit refactor, et c'est la vraie façon de fermer le
+  sujet.
+- **M-4** — un message de commit annonce « 14 contrôles » pour `verify:lot1`,
+  qui en exécute 12. L'historique n'est pas réécrit pour autant ; le compte
+  exact vit dans `AGENTS.md` §15.
