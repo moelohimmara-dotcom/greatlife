@@ -13,6 +13,7 @@
       "branche": "vibe/fiabilite-depot",
       "role": "Filets, verite du depot, base de donnees, donnees.",
       "fichiers": [
+        "scripts/couloirs.json",
         "scripts/verify-*.mjs",
         "scripts/test-*.mjs",
         "src/contexts/SiteContext.tsx",
