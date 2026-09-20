@@ -16,9 +16,20 @@
  *   page `draft`     → le site public garde son rendu historique
  *   page `published` → le site public rend les sections du CMS
  *
- * Ce choix ne rajoute aucune mécanique : la RLS en base filtre déjà les
- * sections non publiées pour les visiteurs anonymes (`sections_public_read`).
- * La sécurité reste en base, jamais dans le navigateur (TDR §31).
+ * Ce choix ne rajoute aucune mécanique : c'est la BASE qui décide de ce que voit
+ * un visiteur, et non le navigateur (TDR §31).
+ *
+ * ⚠️ MISE À JOUR DU 2026-09-19 — LA GARDE N'EST PLUS CELLE CITÉE ICI
+ * Ce commentaire désignait la policy `sections_public_read` comme la garde RLS.
+ * Cette policy **n'existe plus** : la migration `031` l'a supprimée, parce
+ * qu'elle exposait la TABLE DE TRAVAIL au public — un brouillon modifié mais non
+ * publié devenait visible, ce que le TDR §22 interdit.
+ *
+ * La lecture publique passe par `pages.published_snapshot` (migration `030`) :
+ * un instantané figé, écrit dans le MÊME `UPDATE` que le statut. Un visiteur
+ * anonyme ne lit donc plus `page_sections` du tout — mesuré : 0 section.
+ * Vérifié par `npm run verify:public`.
+ * Références : `docs/10_PUBLISHING_VERSIONING.md` §7, `docs/12_DATABASE_SCHEMA.md` §3.2.
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react'

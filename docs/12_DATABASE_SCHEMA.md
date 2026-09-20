@@ -90,6 +90,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS page_sections_anchor_key
 
 ### 2.3 `navigation` et `navigation_items`
 
+> ⚠️ **CES DEUX TABLES NE SONT PAS CONSOMMÉES — état mesuré au 2026-09-19.**
+> Le schéma ci-dessous est celui qui est appliqué. Mais la navigation n'est
+> branchée à **aucun** des deux bouts :
+>   - le site public ne la rend pas : `PublicNav.tsx` et `Footer.tsx` portent des
+>     listes **écrites en dur** ;
+>   - aucun écran d'administration ne la modifie — mesuré : `fetchSiteNavigation`
+>     n'est appelé que par `publishing.ts` (le contrôle avant publication), et
+>     `createNavigationItem` / `updateNavigationItem` ne sont appelés nulle part.
+> Conséquence traitée le 2026-09-19 : les contrôles n°2 et n°6 du TDR §24 sont
+> déclarés **non vérifiés** au lieu d'afficher un vert sur des liens que personne
+> ne voit. Voir `docs/10_PUBLISHING_VERSIONING.md` §7.2 point 3.
+> Les ancres réellement servies restent vérifiées par `npm run verify:footer`.
+
 ```sql
 CREATE TABLE IF NOT EXISTS public.navigation (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -198,14 +211,20 @@ ALTER TABLE public.page_sections ENABLE ROW LEVEL SECURITY;
 -- mais non publiée devenait immédiatement visible. Le public lit désormais
 -- `pages.published_snapshot` (030). La recréer rouvrirait la fuite du TDR §22.
 -- Vérifié en base : `sections_public_read` n'apparaît plus dans `pg_policies`.
-DROP POLICY IF EXISTS "sections_public_read" ON public.page_sections;
-CREATE POLICY "sections_public_read" ON public.page_sections
-  FOR SELECT TO anon, authenticated
-  USING (
-    visible = true
-    AND EXISTS (SELECT 1 FROM public.pages p
-                WHERE p.id = page_id AND p.status = 'published')
-  );
+--
+-- Le SQL est laissé EN COMMENTAIRE, volontairement : tel quel, un copier-coller
+-- de ce bloc recréait la policy que l'avertissement interdit. Un avertissement
+-- qui cohabite avec une instruction exécutable n'est pas un avertissement
+-- (constat M-4 de la revue du 2026-09-19).
+--
+-- DROP POLICY IF EXISTS "sections_public_read" ON public.page_sections;
+-- CREATE POLICY "sections_public_read" ON public.page_sections
+--   FOR SELECT TO anon, authenticated
+--   USING (
+--     visible = true
+--     AND EXISTS (SELECT 1 FROM public.pages p
+--                 WHERE p.id = page_id AND p.status = 'published')
+--   );
 
 DROP POLICY IF EXISTS "sections_admin_write" ON public.page_sections;
 CREATE POLICY "sections_admin_write" ON public.page_sections

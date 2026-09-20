@@ -143,16 +143,40 @@ Le problème est posé au §3. Quatre options :
 
 ## 7.1 Préconditions d'application de l'option B (issues de la revue des migrations)
 
-**Un maillon du code n'existe pas encore, et il est décisif** : `publishPage` n'écrit **pas** `pages.published_snapshot`. Tant que ce code n'est pas écrit, la colonne reste `NULL` après une publication — et la garde de `031` refusera donc de s'appliquer, à juste titre. C'est le maillon à produire avec les volets 4-5, avant toute application de `031`.
+> ✅ **CES PRÉCONDITIONS SONT REMPLIES — état mesuré au 2026-09-19.**
+> Le tableau des cinq étapes ci-dessous décrit le **PLAN** tel qu'il a été validé,
+> et il est conservé parce qu'il explique POURQUOI l'ordre était contraignant :
+> cette raison reste vraie pour toute migration du même genre. Mais il n'était
+> plus à jour, et un lecteur pouvait en conclure que 030 et 031 n'étaient pas
+> appliquées (constat I-5 de la revue du 2026-09-19).
+>
+> | # | Étape | État RÉEL aujourd'hui |
+> |---|---|---|
+> | 1 | Migration `030` (colonne additive, sans effet) | **appliquée** |
+> | 2 | Code **lisant** `published_snapshot` (public + signal de rafraîchissement) | **écrit** — `fetchPublicPageWithSections`, et `SiteContext` écoute `pages` |
+> | 3 | Code **écrivant** `published_snapshot` | **écrit** — `publishPageWithSnapshot`, statut ET instantané dans un **seul** `UPDATE` |
+> | 4 | Une publication réelle, qui remplit la colonne | **faite** — instantané en ligne, `published_at` concordant |
+> | 5 | Migration `031` (coupe la lecture anon du brouillon) | **appliquée** — mesuré : **0** section lisible par un visiteur anonyme |
+> | 6 | Migration `033` (garantit la précondition **en base**) | **appliquée** — `pages_published_requires_snapshot` |
+>
+> Le « maillon décisif » annoncé ci-dessous — « `publishPage` n'écrit **pas**
+> `published_snapshot` » — **a été écrit** : c'est précisément ce que le Lot 3 a
+> produit. La garde de `031` a donc pu s'appliquer sans provoquer la panne
+> silencieuse que ce document décrivait.
+>
+> **Ce qui suit est le texte du plan, conservé tel quel** — les temps sont ceux
+> de sa rédaction.
+
+**Un maillon du code n'existait pas encore, et il était décisif** : `publishPage` n'écrit **pas** `pages.published_snapshot`. Tant que ce code n'est pas écrit, la colonne reste `NULL` après une publication — et la garde de `031` refusera donc de s'appliquer, à juste titre. C'est le maillon à produire avec les volets 4-5, avant toute application de `031`.
 
 **Verdict Fable sur les migrations : `proceed-with-changes`.** 030 est applicable telle quelle ; **031 est refusée en l'état**, et porte désormais une garde en base qui le dit explicitement.
 
 L'ordre est **contraignant** — et deux des cinq étapes sont des **développements non encore écrits**, pas des opérations :
 
-| # | Étape | État |
+| # | Étape | État au moment du plan |
 |---|---|---|
 | 1 | Migration `030` (colonne additive, sans effet) | écrite, **non appliquée** |
-| 2 | Code **lisant** `published_snapshot` (public + signal de rafraîchissement) | **non écrit** — 0 occurrence de `published_snapshot` dans `src/` |
+| 2 | Code **lisant** `published_snapshot` (public + signal de rafraîchissement) | **non écrit** |
 | 3 | Code **écrivant** `published_snapshot` (`publishPage`) | **non écrit** |
 | 4 | Une publication réelle, qui remplit la colonne | à faire par le propriétaire |
 | 5 | Migration `031` (coupe la lecture anon du brouillon) | écrite (avec garde), **non appliquée** |
@@ -167,9 +191,9 @@ Le §22 n'est **pas** intégralement satisfait par l'option B. Listé ici pour n
 
 1. **`pages.status` porte deux sens à la fois** — état de travail *et* interrupteur de publication. Conséquence : repasser une page en `draft` rend `published_snapshot` invisible à l'anon, donc **coupe le CMS côté public** (repli silencieux sur l'ancien rendu). C'est le comportement actuel, que l'option B ne change pas. **Arbitrage requis** : soit « repasser en brouillon coupe le site » est voulu et doit être dit dans l'interface, soit un brouillon ne doit pas couper le site — auquel cas `status` doit être découplé. **Ne pas corriger par une policy `OR published_snapshot IS NOT NULL`** : les policies RLS se cumulent en `OR`, ce qui exposerait `title_i18n` des pages non publiées.
 2. **`pages` reste lisible en anon, toutes colonnes** pour une page publiée, or `title_i18n` / `seo` / `sort_order` sont devenus de l'état de travail. Exposition REST sans effet visuel aujourd'hui ; sujet réel dès qu'un SEO public sera câblé.
-3. **`navigation_items` n'est pas isolée** (`nav_items_public_read`, 022/026) : un libellé de menu modifié est public immédiatement, alors que le contrôle n°2 du §24 valide la navigation *avant* publication.
+3. ~~**`navigation_items` n'est pas isolée** (`nav_items_public_read`, 022/026) : un libellé de menu modifié est public immédiatement, alors que le contrôle n°2 du §24 valide la navigation *avant* publication.~~ **PÉRIMÉ — voir la correction ci-dessous.** Le 2026-09-19, la navigation a été réexaminée : le site public **ne rend pas** `navigation_items` du tout. `PublicNav.tsx` et `Footer.tsx` portent des listes **écrites en dur**, et **aucun écran d'administration ne touche la navigation** (mesuré : `fetchSiteNavigation` n'est appelé que par `publishing.ts`). Le point décrivait donc un risque qui n'existe pas — mais il en révélait un autre : les contrôles n°2 et n°6 du §24 validaient 13 liens que **personne ne voyait**. Décision : ces deux contrôles sont déclarés **non vérifiés** dans le rapport au lieu d'afficher un vert mensonger (`PUBLICATION_CHECKS_NOT_VERIFIED`). Les ancres réellement servies restent vérifiées, au moment du développement, par `npm run verify:footer`.
 4. **`site_content`** reste lisible et modifiable en direct (`content_public_read USING (true)`, 002 ; écran « Modifier le site »). Hors périmètre du Lot 3, mais à ne pas confondre avec un oubli.
-5. **Signal de rafraîchissement** : `SiteContext.refreshCmsSections` lit les **tables vivantes**, pas le snapshot. Après 031, cette lecture renverra `[]` pour un visiteur et ne survivra que par effet de bord. Le rendu **et** le signal doivent lire la même source.
+5. ~~**Signal de rafraîchissement** : `SiteContext.refreshCmsSections` lit les **tables vivantes**, pas le snapshot. Après 031, cette lecture renverra `[]` pour un visiteur et ne survivra que par effet de bord.~~ **CORRIGÉ le 2026-09-19.** `SiteContext` n'écoute plus `page_sections` : il écoute `pages`, qui porte le statut **et** l'instantané. Le rendu et le signal lisent donc bien la même source, comme ce point l'exigeait. Vérifié : `SiteContext.tsx` n'écoute que `pages`, `menu_items`, `site_content`, `blog_posts`, `media_assets`, `orders`, `reservations`.
 6. **`docs/12_DATABASE_SCHEMA.md`** documentait encore `sections_public_read`, que 031 supprime. ✅ **Fait le 2026-09-19** : le document porte désormais un tableau « le plan a été dépassé » (030/031/033) et la policy supprimée y est annotée « NE PAS RECRÉER ».
 7. **Correction du 2026-09-19** — ce point affirmait que `reservations` et `messages` sont **lisibles par l'anon** (`USING (true)`, 007). **C'est faux.** Mesuré dans `pg_policies` : l'anon n'a que `INSERT` sur ces deux tables (`reservations_public_insert`, `messages_public_insert`) et **aucune** policy `SELECT` ; un `GET` anonyme renvoie 0 ligne. La cible `anon` existe bien, mais pour **déposer** une demande, pas pour **lire**. Le document décrivait un état antérieur à un durcissement. Il n'y a donc pas d'exposition ouverte ici — le §31 reste à surveiller sur ce point, sans défaut actif.
 
