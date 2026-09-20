@@ -169,11 +169,25 @@ Filets existants dans le dépôt :
 |---|---|
 | `npm run build` | typecheck strict + build de production |
 | `npm run verify:lot1` | conformité registre/base, isomorphie du renderer, **non-régression** du rendu vs révision fixe `0528c544` (ex-`9e5efb7`, SHA recalculé par la réécriture d'historique), consommation du contenu CMS |
-| `npm run lint` | ESLint |
+| `npm run verify:lot3` | contrôles §24, versions, instantané, pureté du modèle, vérité en base |
+| `npm run verify:public` | le public reçoit **exactement** l'instantané publié ; brouillon fermé au visiteur (§22) |
+| `npm run verify:footer` | ancres du pied de page et de la barre de navigation confrontées aux ancres réellement servies ; coordonnées non recopiées |
+| `npm run verify:publication` | un instantané vide ne peut pas être publié |
+| `npm run verify:rbac` | la matrice des rôles est confrontée aux politiques réellement en base |
+| `npm run verify:point3` · `verify:i18n` | sous-champs des listes d'objets ; forme bilingue préservée |
+| `npm run test:save-plan` | **test exécuté** (`node:test`) du noyau pur de décision de sauvegarde |
+| `npm run lint` | ⚠️ **INOPÉRANT** : aucune configuration ESLint n'existe dans ce dépôt (`git ls-tree` : absente, et jamais présente). La commande échoue, elle ne vérifie rien. Soit lui donner une configuration, soit retirer cette ligne — mais ne pas la compter comme un filet. |
 
-**Aucun framework de test n'est installé** (0 fichier de test, aucune dépendance de test). Tant que ce n'est pas traité (TDR §39 doc 14, §40 Lot 10), ne jamais présenter un lot comme « testé » sur la seule base du build.
+**Aucun framework de test tiers n'est installé** (aucune dépendance de test). En
+revanche `node:test` est **intégré à Node** : il permet de tester le noyau pur
+sans rien installer (`npm run test:save-plan` en est le premier usage). La règle
+reste : **ne jamais présenter un lot comme « testé » sur la seule base du build**.
+« Testé » veut dire qu'une assertion a réellement été exécutée, et doit dire
+lesquelles. Le framework complet (TDR §39 doc 14, §40 Lot 10) reste à faire.
 
-Hygiène : ne pas ajouter de nouveaux journaux `build-*.txt` / `deploy-*.txt` à la racine ; ces artefacts sont hors dépôt logique.
+Hygiène : ne pas ajouter de nouveaux journaux `build-*.txt` / `deploy-*.txt` à la
+racine ; ces artefacts sont hors dépôt logique. Le `.gitignore` porte désormais
+`/*.txt` (racine uniquement) et les sorties de déploiement vont dans `logs/`.
 
 ---
 
