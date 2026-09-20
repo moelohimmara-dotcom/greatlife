@@ -90,18 +90,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS page_sections_anchor_key
 
 ### 2.3 `navigation` et `navigation_items`
 
-> ⚠️ **CES DEUX TABLES NE SONT PAS CONSOMMÉES — état mesuré au 2026-09-19.**
+> ⚠️ **CES DEUX TABLES NE SONT CONSOMMÉES PAR PERSONNE — état mesuré au 2026-09-20.**
 > Le schéma ci-dessous est celui qui est appliqué. Mais la navigation n'est
 > branchée à **aucun** des deux bouts :
 >   - le site public ne la rend pas : `PublicNav.tsx` et `Footer.tsx` portent des
 >     listes **écrites en dur** ;
->   - aucun écran d'administration ne la modifie — mesuré : `fetchSiteNavigation`
->     n'est appelé que par `publishing.ts` (le contrôle avant publication), et
->     `createNavigationItem` / `updateNavigationItem` ne sont appelés nulle part.
+>   - **aucun code ne la lit ni ne l'écrit** — mesuré : `fetchSiteNavigation`,
+>     `createNavigationItem` et `updateNavigationItem` n'ont aucun appelant dans
+>     `src/` ; leur seule mention est leur définition et un ré-export. *(La
+>     rédaction précédente affirmait que `fetchSiteNavigation` était appelé par
+>     `publishing.ts` : c'était faux, et la décision ci-dessous venait justement
+>     de retirer ce dernier appel. Corrigé le 2026-09-20, revue I-1.)*
 > Conséquence traitée le 2026-09-19 : les contrôles n°2 et n°6 du TDR §24 sont
 > déclarés **non vérifiés** au lieu d'afficher un vert sur des liens que personne
 > ne voit. Voir `docs/10_PUBLISHING_VERSIONING.md` §7.2 point 3.
-> Les ancres réellement servies restent vérifiées par `npm run verify:footer`.
+> Les ancres réellement servies restent vérifiées par `npm run verify:anchors`.
 
 ```sql
 CREATE TABLE IF NOT EXISTS public.navigation (
