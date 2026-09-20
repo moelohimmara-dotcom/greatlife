@@ -13,6 +13,8 @@
 
 import type { Bilingue } from '../i18n'
 import type { Page, PageSeo, PageStatus } from '../page'
+import type { PageLayout } from '../page-layout'
+import { normaliserPageLayout } from '../page-layout'
 import type { PageSection } from '../section'
 
 /** Version du format de snapshot. Un format inconnu est REFUSÉ (docs/10 §5). */
@@ -25,6 +27,8 @@ export interface SnapshotPage {
   seo: PageSeo
   status: PageStatus
   publishedAt: string | null
+  /** Absent des anciennes archives → relu comme colonne unique. */
+  layout: PageLayout
 }
 
 export interface SnapshotSection {
@@ -70,6 +74,7 @@ export function buildSnapshot(
       seo: page.seo,
       status: asPublished?.status ?? page.status,
       publishedAt: asPublished?.publishedAt ?? page.publishedAt,
+      layout: normaliserPageLayout(page.layout),
     },
     sections: sections.map((section) => ({
       id: section.id,
@@ -140,6 +145,7 @@ export function parseSnapshot(raw: unknown): SnapshotRead {
         seo: (page.seo ?? {}) as PageSeo,
         status: (page.status ?? 'draft') as PageStatus,
         publishedAt: typeof page.publishedAt === 'string' ? page.publishedAt : null,
+        layout: normaliserPageLayout(typeof page.layout === 'string' ? page.layout : undefined),
       },
       sections,
     },

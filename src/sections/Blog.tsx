@@ -7,6 +7,7 @@ import { Icon } from '@/lib/icons'
 import type { BlogPost } from '@/lib/repository'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
+import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 const FALLBACK_POSTS: BlogPost[] = [
   { title: 'Pourquoi le corossol mérite sa place dans votre assiette', excerpt: 'Découverte d\'un superfruit guinéen aux vertus digestives reconnues.', body: '', category: 'Découverte', published: true },
@@ -14,7 +15,9 @@ const FALLBACK_POSTS: BlogPost[] = [
   { title: 'Circuit court en Guinée : rencontre avec nos producteurs', excerpt: 'Derrière chaque burger, des femmes et des hommes de la Fouta-Djallon.', body: '', category: 'Producteurs', published: true },
 ]
 
-export function Blog({ content: cms, data }: Partial<SectionComponentProps> = {}) {
+const DISPOSITIONS = ['grid', 'list'] as const
+
+export function Blog({ content: cms, data, variant }: Partial<SectionComponentProps> = {}) {
   const { theme: t, blogPosts, media } = useSite()
   const [expanded, setExpanded] = useState<string | null>(null)
 
@@ -46,6 +49,41 @@ export function Blog({ content: cms, data }: Partial<SectionComponentProps> = {}
       if (key.includes(k)) return v
     }
     return 'sain'
+  }
+  const disposition = normaliserDisposition(variant, DISPOSITIONS, 'grid')
+  if (disposition === 'list') {
+    return (
+      <section className="section-pad" data-disposition="list" style={{ padding: '100px 24px', maxWidth: '900px', margin: '0 auto' }}>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {posts.map((post, i) => {
+            const postImg = postCover(post)
+            return (
+              <Reveal key={i} delay={(i % 3) * 0.06}>
+                <OrganicCard hover style={{ padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'stretch' }}>
+                  <div style={{
+                    width: 160, minHeight: 120, flexShrink: 0,
+                    background: postImg ? `url(${postImg}) center/cover` : `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`,
+                  }} />
+                  <div style={{ padding: '18px 22px' }}>
+                    <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
+                    <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
+                    {post.body && (
+                      <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        {expanded === post.title ? 'Réduire' : 'Lire la suite'}
+                      </button>
+                    )}
+                    {expanded === post.title && post.body && (
+                      <div style={{ marginTop: '12px', fontSize: '13.5px', color: t.text, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{post.body}</div>
+                    )}
+                  </div>
+                </OrganicCard>
+              </Reveal>
+            )
+          })}
+        </div>
+      </section>
+    )
   }
   return (
     <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>

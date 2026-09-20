@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, useFirstMedia } from '@/contexts/SiteContext'
 import { productPhotoCandidates } from '@/lib/productPhotoSlot'
@@ -103,7 +104,9 @@ function MenuCard({ item }: { item: MenuItem }) {
   )
 }
 
-export function Carte({ content: cms, data }: Partial<SectionComponentProps> = {}) {
+const DISPOSITIONS = ['full', 'by_category', 'tabs'] as const
+
+export function Carte({ content: cms, data, variant }: Partial<SectionComponentProps> = {}) {
   const { menu: legacyMenu, visibility, theme: t } = useSite()
 
   // TDR §16 : les plats viennent du module Menu, jamais recopiés dans le bloc.
@@ -120,7 +123,9 @@ export function Carte({ content: cms, data }: Partial<SectionComponentProps> = {
   // aucune valeur n'est stockée aujourd'hui, l'effet est donc nul.
   const limit = cmsNumber(cms, 'maxItems')
 
+  const disposition = normaliserDisposition(variant, DISPOSITIONS, 'full')
   const cats = CATEGORY_ORDER.filter(c => c !== 'Suggestions' || visibility.suggestions)
+  const [catActive, setCatActive] = useState(cats[0] ?? '')
 
   // Quota par catégorie, calculé SANS mutation : le corps d'un composant doit
   // rester pur. React StrictMode l'exécute deux fois en développement, et un
@@ -136,35 +141,103 @@ export function Carte({ content: cms, data }: Partial<SectionComponentProps> = {
     }
   }
 
-  return (
-    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
-      {cats.map((cat, ci) => {
-        const all = menu.filter(m => m.cat === cat)
-        const items = limit !== undefined ? all.slice(0, quotaByCat.get(cat) ?? 0) : all
-        if (!items.length) return null
-        return (
-          <div key={cat} style={{ marginBottom: '56px' }}>
-            <Reveal delay={ci * 0.05}>
-              <h3 style={{
-                fontFamily: 'var(--f-heading)', color: t.heading,
-                fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em',
-                marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px',
-              }}>
-                {cat}
-                <span style={{ flex: 1, height: '1px', background: t.shadow }} />
-              </h3>
+  const blocCategorie = (cat: string, ci: number) => {
+    const all = menu.filter(m => m.cat === cat)
+    const items = limit !== undefined ? all.slice(0, quotaByCat.get(cat) ?? 0) : all
+    if (!items.length) return null
+    return (
+      <div key={cat} style={{ marginBottom: '56px' }}>
+        <Reveal delay={ci * 0.05}>
+          <h3 style={{
+            fontFamily: 'var(--f-heading)', color: t.heading,
+            fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em',
+            marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px',
+          }}>
+            {cat}
+            <span style={{ flex: 1, height: '1px', background: t.shadow }} />
+          </h3>
+        </Reveal>
+        <div className="menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+          {items.map((it, i) => (
+            <Reveal key={it.name} delay={(i % 4) * 0.06}>
+              <MenuCard item={it} />
             </Reveal>
-            <div className="menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-              {items.map((it, i) => (
-                <Reveal key={it.name} delay={(i % 4) * 0.06}>
-                  <MenuCard item={it} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        )
-      })}
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (disposition === 'full') {
+    return (
+      <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+        {cats.map((cat, ci) => blocCategorie(cat, ci))}
+      </section>
+    )
+  }
+
+  const visible = cats.filter((c) => {
+    const all = menu.filter(m => m.cat === c)
+    const items = limit !== undefined ? all.slice(0, quotaByCat.get(c) ?? 0) : all
+    return items.length > 0
+  })
+  const choisie = visible.includes(catActive) ? catActive : (visible[0] ?? '')
+
+  return (
+    <section
+      className="section-pad"
+      data-disposition={disposition}
+      style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}
+    >
+      <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+      {disposition === 'tabs' ? (
+        <div role="tablist" aria-label="Catégories de la carte" style={{
+          display: 'flex', gap: 4, marginBottom: 28, overflowX: 'auto',
+          borderBottom: `1px solid ${t.shadow}`,
+        }}>
+          {visible.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              role="tab"
+              aria-selected={cat === choisie}
+              onClick={() => setCatActive(cat)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '10px 16px', fontSize: 14, fontWeight: 700,
+                color: cat === choisie ? t.heading : t.muted,
+                borderBottom: cat === choisie ? `2px solid ${t.primary}` : '2px solid transparent',
+                marginBottom: -1, whiteSpace: 'nowrap',
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div role="group" aria-label="Catégories de la carte" style={{
+          display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28, justifyContent: 'center',
+        }}>
+          {visible.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCatActive(cat)}
+              style={{
+                cursor: 'pointer', padding: '8px 16px', borderRadius: 100,
+                fontSize: 13, fontWeight: 600,
+                border: `1px solid ${cat === choisie ? t.primary : t.shadow}`,
+                background: cat === choisie ? t.primary : 'transparent',
+                color: cat === choisie ? '#fff' : t.text,
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+      {choisie ? blocCategorie(choisie, 0) : null}
     </section>
   )
 }

@@ -41,11 +41,45 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { SiteProvider } from '@/contexts/SiteContext'
 import { CartProvider } from '@/contexts/CartContext'
 import { Hero } from '@/sections/Hero'
+import { Carte } from '@/sections/Carte'
+import { Story } from '@/sections/Story'
+import { Engagements } from '@/sections/Engagements'
+import { Team } from '@/sections/Team'
+import { Localisation } from '@/sections/Localisation'
+import { Contact } from '@/sections/Contact'
+import { Reservation } from '@/sections/Reservation'
+import { Blog } from '@/sections/Blog'
+import { Testimonials } from '@/sections/Testimonials'
+
+const BLOCS = {
+  hero: Hero,
+  menu: Carte,
+  story: Story,
+  engagements: Engagements,
+  team: Team,
+  location: Localisation,
+  contact: Contact,
+  reservation: Reservation,
+  blog: Blog,
+  testimonials: Testimonials,
+}
+
+function wrap(C, props) {
+  return renderToStaticMarkup(
+    <SiteProvider><CartProvider><C {...props} /></CartProvider></SiteProvider>,
+  )
+}
 
 export function rendre(variant, content, preview) {
-  return renderToStaticMarkup(
-    <SiteProvider><CartProvider><Hero variant={variant} content={content} preview={preview} /></CartProvider></SiteProvider>,
-  )
+  return wrap(Hero, { variant, content, preview })
+}
+
+export function rendreBloc(type, variant) {
+  const C = BLOCS[type]
+  const content = type === 'testimonials'
+    ? { items: [{ name: 'Aïcha', text: 'On revient.' }, { name: 'Ibrahim', text: 'La carte est claire.' }] }
+    : undefined
+  try { return wrap(C, { variant, content }) } catch (e) { return 'ERROR: ' + e.message }
 }
 `,
   'utf8',
@@ -67,7 +101,7 @@ await build({
 })
 
 delete require.cache[require.resolve(outfile)]
-const { rendre } = require(outfile)
+const { rendre, rendreBloc } = require(outfile)
 
 const DISPOSITIONS = ['image_text', 'fullscreen', 'centered']
 
@@ -163,11 +197,52 @@ console.log(`  « disposition-qui-nexiste-pas » retombe sur le rendu historique
 if (inconnue !== defaut) fautif = true
 
 console.log('\n' + '='.repeat(72))
+console.log('D. LES AUTRES BLOCS IMPLÉMENTÉS BRANCHENT-ILS LEUR DISPOSITION ?')
+console.log('='.repeat(72))
+
+const BLOCS = {
+  menu: { ids: ['full', 'by_category', 'tabs'], defaut: 'full' },
+  story: { ids: ['image_left', 'image_right'], defaut: 'image_left' },
+  engagements: { ids: ['grid', 'list'], defaut: 'grid' },
+  team: { ids: ['grid', 'list'], defaut: 'grid' },
+  location: { ids: ['card', 'wide'], defaut: 'card' },
+  contact: { ids: ['card', 'wide'], defaut: 'card' },
+  reservation: { ids: ['card', 'wide'], defaut: 'card' },
+  blog: { ids: ['grid', 'list'], defaut: 'grid' },
+  testimonials: { ids: ['cards', 'quotes'], defaut: 'cards' },
+}
+
+for (const [type, spec] of Object.entries(BLOCS)) {
+  const html = {}
+  for (const id of spec.ids) html[id] = rendreBloc(type, id)
+  html.absent = rendreBloc(type, undefined)
+  html.inconnue = rendreBloc(type, 'disposition-qui-nexiste-pas')
+
+  const defautOk = html[spec.defaut] === html.absent && html[spec.defaut] === html.inconnue
+  console.log(`  ${type.padEnd(14)} défaut « ${spec.defaut} » == absent/inconnu : ${defautOk ? 'OUI' : 'NON  <-- ECHEC'}`)
+  if (!defautOk) fautif = true
+  if (html[spec.defaut].includes('ERROR')) {
+    console.log(`    ECHEC : le défaut a planté : ${html[spec.defaut].slice(0, 120)}`)
+    fautif = true
+  }
+
+  for (let i = 0; i < spec.ids.length; i++) {
+    for (let j = i + 1; j < spec.ids.length; j++) {
+      const a = spec.ids[i]
+      const b = spec.ids[j]
+      const identiques = html[a] === html[b]
+      console.log(`    ${a} vs ${b} : ${identiques ? 'IDENTIQUES  <-- ECHEC' : 'différents'}`)
+      if (identiques) fautif = true
+    }
+  }
+}
+
+console.log('\n' + '='.repeat(72))
 if (fautif) {
   console.log('ECHEC — voir les lignes ci-dessus.')
   process.exitCode = 1
 } else {
-  console.log('DISPOSITIONS VÉRIFIÉES — les 4 agissent, le défaut est inchangé.')
+  console.log('DISPOSITIONS VÉRIFIÉES — chaque choix agit, le défaut est inchangé.')
 }
 console.log('AUCUNE ÉCRITURE, AUCUN ACCÈS BASE — ce contrôle ne fait que rendre.')
 console.log('='.repeat(72))

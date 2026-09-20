@@ -15,8 +15,10 @@ import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
+import type { PageLayout } from '@/cms/model/page-layout'
+import { DEFAULT_PAGE_LAYOUT } from '@/cms/model/page-layout'
 import type { PublicationReport } from '@/cms/model/publishing'
-import { fetchAllPages, setPageStatus } from '@/cms/repository/pages'
+import { fetchAllPages, setPageStatus, updatePage } from '@/cms/repository/pages'
 import { fetchSectionsForPage } from '@/cms/repository/sections'
 // Publier passe par le contrôle §24 et l'archivage d'une version (Lot 3).
 import { publishPage } from '@/cms/repository/publishing'
@@ -27,6 +29,7 @@ export function PageEditorWrapper() {
   const { user } = useAuth()
   const [pageId, setPageId] = useState<string | null>(null)
   const [status, setStatus] = useState<PageStatus>('draft')
+  const [layout, setLayout] = useState<PageLayout>(DEFAULT_PAGE_LAYOUT)
   const [sections, setSections] = useState<PageSection[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,6 +53,7 @@ export function PageEditorWrapper() {
       setError(null)
       setPageId(page.id)
       setStatus(page.status)
+      setLayout(page.layout)
       setSections(sectionsResult.data)
     } catch (err) {
       if (!cancelled?.()) setError(err instanceof Error ? err.message : 'Erreur de chargement')
@@ -72,6 +76,17 @@ export function PageEditorWrapper() {
    * basculement (TDR §23). Si un contrôle bloque, rien n'est publié et le
    * panneau explique précisément ce qui manque.
    */
+  const changeLayout = useCallback(async (next: PageLayout) => {
+    if (!pageId) return
+    const previous = layout
+    setLayout(next)
+    const res = await updatePage(pageId, { layout: next })
+    if (!res.ok) {
+      setLayout(previous)
+      setError(res.error)
+    }
+  }, [pageId, layout])
+
   const togglePublish = useCallback(async () => {
     if (!pageId) return
     setPublishing(true)
@@ -117,6 +132,8 @@ export function PageEditorWrapper() {
       pageId={pageId}
       initialSections={sections}
       status={status}
+      layout={layout}
+      onLayoutChange={changeLayout}
       publishing={publishing}
       onTogglePublish={togglePublish}
       blockedReport={blockedReport}

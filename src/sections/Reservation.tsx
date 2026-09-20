@@ -14,8 +14,11 @@ import { insertReservation } from '@/lib/repository'
 import { invokeContactEmail } from '@/lib/supabase'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, pick } from '@/cms/renderer/compat'
+import { normaliserDisposition } from '@/cms/renderer/disposition'
 
-export function Reservation({ content: cms }: Partial<SectionComponentProps> = {}) {
+const DISPOSITIONS = ['card', 'wide'] as const
+
+export function Reservation({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
   const { theme: t } = useSite()
 
   const title = pick(cmsText(cms, 'title'), 'Réservez votre table')
@@ -69,12 +72,14 @@ export function Reservation({ content: cms }: Partial<SectionComponentProps> = {
   const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
   const today = new Date().toISOString().split('T')[0]
+  const disposition = normaliserDisposition(variant, DISPOSITIONS, 'card')
+  const large = disposition === 'wide'
   return (
-    <section className="section-pad" style={{ padding: '100px 24px', background: t.surface }}>
-      <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+    <section className="section-pad" {...(large ? { 'data-disposition': 'wide' } : {})} style={{ padding: '100px 24px', background: t.surface }}>
+      <div style={{ maxWidth: large ? '1100px' : '680px', margin: '0 auto' }}>
         <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
         <Reveal delay={0.1}>
-          <OrganicCard style={{ padding: '32px' }}>
+          <OrganicCard style={{ padding: large ? '48px' : '32px' }}>
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
               <div className="reservation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>

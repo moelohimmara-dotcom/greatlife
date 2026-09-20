@@ -72,7 +72,7 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
 
         {/* Grille */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
-          {SECTION_TYPES.map((def) => {
+          {SECTION_TYPES.filter((def) => def.implemented).map((def) => {
             const iconName = TYPE_ICONS[def.type] ?? 'write'
             return (
               <button key={def.type} onClick={() => onSelect(def.type)} style={{

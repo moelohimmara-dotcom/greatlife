@@ -35,6 +35,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
+import type { Page } from '@/cms/model/page'
 import { fetchPublicPageWithSections } from '@/cms/repository/sections'
 import { resolveContentObject } from '@/cms/model/i18n'
 import type { Locale } from '@/cms/model/i18n'
@@ -50,11 +51,14 @@ interface UseCmsSectionsResult {
   error: string | null
   /** `true` si une page publiée existe : le CMS pilote alors le rendu. */
   enabled: boolean
+  /** Page publiée (mise en page lue dans l'instantané, pas le brouillon). */
+  page: Page | null
 }
 
 export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
   const { cmsSections } = useSite()
   const [sections, setSections] = useState<PageSection[]>([])
+  const [page, setPage] = useState<Page | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [enabled, setEnabled] = useState(false)
@@ -79,18 +83,21 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
           setError(res.error)
           setEnabled(false)
           setSections([])
+          setPage(null)
           return
         }
         if (!res.data) {
           setError(null)
           setEnabled(false)
           setSections([])
+          setPage(null)
           return
         }
 
         setError(null)
         setEnabled(true)
         setSections(res.data.sections)
+        setPage(res.data.page)
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Erreur de chargement')
@@ -125,5 +132,5 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
     }))
   }, [sections, locale])
 
-  return { sections, resolvedSections, loading, error, enabled }
+  return { sections, resolvedSections, loading, error, enabled, page }
 }

@@ -4,13 +4,16 @@ import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
+import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 interface TestimonialCms {
   name?: string
   text?: string
 }
 
-export function Testimonials({ content: cms }: Partial<SectionComponentProps> = {}) {
+const DISPOSITIONS = ['cards', 'quotes'] as const
+
+export function Testimonials({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
 
   // Le contenu du CMS nomme le client `name` ; le modèle historique l'appelle
@@ -28,6 +31,27 @@ export function Testimonials({ content: cms }: Partial<SectionComponentProps> = 
 
   const title = pick(cmsText(cms, 'title'), 'Ils ont goûté Greatlife')
   const sub = pick(cmsText(cms, 'subtitle'), 'Ce que disent nos clients.')
+  const disposition = normaliserDisposition(variant, DISPOSITIONS, 'cards')
+
+  if (disposition === 'quotes') {
+    return (
+      <section className="section-pad" data-disposition="quotes" style={{ padding: '100px 24px', maxWidth: '720px', margin: '0 auto' }}>
+        <Reveal>
+          <SectionHead title={title} sub={sub} align="center" />
+        </Reveal>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '36px', marginTop: '8px' }}>
+          {source.map((tm, i) => (
+            <Reveal key={i} delay={(i % 3) * 0.06}>
+              <blockquote style={{ margin: 0, textAlign: 'center' }}>
+                <p style={{ fontSize: '18px', color: t.text, lineHeight: 1.7, margin: 0, fontFamily: 'var(--f-heading)', fontStyle: 'italic' }}>« {tm.text} »</p>
+                <footer style={{ marginTop: 14, fontSize: 14, fontWeight: 600, color: t.heading }}>— {tm.author}</footer>
+              </blockquote>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1100px', margin: '0 auto' }}>

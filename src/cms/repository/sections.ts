@@ -115,7 +115,13 @@ export async function fetchPublicPageWithSections(
     // ce sont des données que le restaurateur peut modifier dans l'éditeur, et
     // le public ne doit voir que la version publiée (TDR §22). L'identifiant et
     // les dates, eux, n'existent que sur la ligne.
-    page: { ...result.data.page, slug: page.slug, title: page.title, seo: page.seo },
+    page: {
+      ...result.data.page,
+      slug: page.slug,
+      title: page.title,
+      seo: page.seo,
+      layout: page.layout,
+    },
     sections: sections
       // Le public ne voit que les sections visibles (TDR §22).
       .filter((s) => s.visible)

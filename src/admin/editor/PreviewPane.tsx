@@ -13,7 +13,8 @@ import { createPortal } from 'react-dom'
 import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
-import { SectionRenderer } from '@/cms/renderer/SectionRenderer'
+import { PageRenderer } from '@/cms/renderer/PageRenderer'
+import type { PageLayout } from '@/cms/model/page-layout'
 import { CartProvider } from '@/contexts/CartContext'
 import { useSite } from '@/contexts/SiteContext'
 
@@ -21,6 +22,7 @@ interface PreviewPaneProps {
   sections: PageSection[]
   locale?: Locale
   restaurant?: ResolvedRestaurant
+  layout?: PageLayout
 }
 
 /**
@@ -66,7 +68,7 @@ function PreviewShell({ children }: { children: React.ReactNode }) {
  * L'aperçu est rendu dans un iframe pour éviter les conflits de styles
  * entre le CMS et le site public. Le contenu est injecté via un portail React.
  */
-export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPaneProps) {
+export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [ready, setReady] = useState(0)
@@ -129,15 +131,26 @@ export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPane
         {ready > 0 && containerRef.current && createPortal(
           <PreviewShell>
             <CartProvider>
-              {visibleSections.map((section, i) => (
-                <SectionRenderer
-                  key={section.id || `section-${i}`}
-                  section={section}
-                  locale={locale}
-                  restaurant={restaurant ?? RESTAURANT_ABSENT}
-                  preview
-                />
-              ))}
+              <PageRenderer
+                page={{
+                  id: 'preview',
+                  slug: '',
+                  title: {},
+                  status: 'draft',
+                  sortOrder: 0,
+                  seo: {},
+                  layout: layout ?? 'single_column',
+                  publishedAt: null,
+                  createdAt: '',
+                  updatedAt: '',
+                  updatedBy: null,
+                }}
+                sections={visibleSections}
+                locale={locale}
+                restaurant={restaurant ?? RESTAURANT_ABSENT}
+                preview
+                layout={layout}
+              />
             </CartProvider>
           </PreviewShell>,
           containerRef.current,

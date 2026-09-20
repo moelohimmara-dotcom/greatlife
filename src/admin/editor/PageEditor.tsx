@@ -12,6 +12,8 @@ import { useEffect, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
+import type { PageLayout } from '@/cms/model/page-layout'
+import { PageLayoutPicker } from './PageLayoutPicker'
 import type { PublicationReport } from '@/cms/model/publishing'
 import {
   SETTING_KEYS,
@@ -34,6 +36,8 @@ interface PageEditorProps {
   initialSections: PageSection[]
   /** Statut de publication : c'est lui qui décide si le public voit le CMS. */
   status: PageStatus
+  layout: PageLayout
+  onLayoutChange: (layout: PageLayout) => void
   /** `true` pendant la bascule de publication. */
   publishing: boolean
   /** Bascule brouillon ⇄ publié. */
@@ -49,6 +53,8 @@ export function PageEditor({
   pageId,
   initialSections,
   status,
+  layout,
+  onLayoutChange,
   publishing,
   onTogglePublish,
   blockedReport = null,
@@ -242,6 +248,7 @@ export function PageEditor({
           <div style={{ padding: '14px 14px 8px', fontSize: 11, fontWeight: 700, color: t.muted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             Structure
           </div>
+          <PageLayoutPicker value={layout} onChange={onLayoutChange} disabled={editor.saving} />
           <SectionList
             sections={editor.sections}
             selected={editor.selected}
@@ -255,7 +262,7 @@ export function PageEditor({
 
         {/* Colonne 2 : Aperçu */}
         <div style={{ overflow: 'auto', background: '#f5f5f5' }}>
-          <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} />
+          <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} layout={layout} />
         </div>
 
         {/* Colonne 3 : Modifier — ou Contrôle avant publication */}

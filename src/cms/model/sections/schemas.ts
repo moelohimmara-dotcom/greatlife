@@ -231,7 +231,10 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     type: 'story',
     label: 'Notre histoire',
     description: 'Le récit de la maison, avec une signature.',
-    variants: [],
+    variants: [
+      { id: 'image_left', label: 'Image à gauche' },
+      { id: 'image_right', label: 'Image à droite' },
+    ],
     fields: [
       TITLE,
       { name: 'body', label: 'Récit', type: 'multiline', required: true },
@@ -326,7 +329,10 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     type: 'contact',
     label: 'Contact',
     description: 'Le formulaire de contact.',
-    variants: [],
+    variants: [
+      { id: 'card', label: 'Encart' },
+      { id: 'wide', label: 'Pleine largeur' },
+    ],
     fields: [
       TITLE,
       SUBTITLE,

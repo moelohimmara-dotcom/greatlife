@@ -27,7 +27,7 @@
  *
  * Usage :  node scripts/verify-lot3.mjs        (ou `npm run verify:lot3`)
  */
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -52,8 +52,9 @@ const observe = (label) => {
 // ---------------------------------------------------------------------------
 // Environnement Supabase (LECTURE SEULE)
 // ---------------------------------------------------------------------------
+const envFile = existsSync(`${ROOT}/.env`) ? `${ROOT}/.env` : `${dirname(ROOT)}/.env`
 const env = Object.fromEntries(
-  readFileSync(`${ROOT}/.env`, 'utf8')
+  readFileSync(envFile, 'utf8')
     .split(/\r?\n/)
     .filter((l) => /^[A-Za-z_0-9]+=/.test(l))
     .map((l) => {

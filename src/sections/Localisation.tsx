@@ -7,8 +7,11 @@ import { softShadow } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, pick } from '@/cms/renderer/compat'
+import { normaliserDisposition } from '@/cms/renderer/disposition'
 
-export function Localisation({ content: cms, restaurant }: Partial<SectionComponentProps> = {}) {
+const DISPOSITIONS = ['card', 'wide'] as const
+
+export function Localisation({ content: cms, restaurant, variant }: Partial<SectionComponentProps> = {}) {
   const { theme: t, isDark, content: legacy } = useSite()
 
   const title = pick(cmsText(cms, 'title'), 'Nous trouver')
@@ -40,11 +43,18 @@ export function Localisation({ content: cms, restaurant }: Partial<SectionCompon
     [Icon.mail(20, t.primary), email, 'Réservations & commandes'],
   ]
 
+  const disposition = normaliserDisposition(variant, DISPOSITIONS, 'card')
+  const large = disposition === 'wide'
+
   return (
-    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1000px', margin: '0 auto' }}>
+    <section
+      className="section-pad"
+      {...(large ? { 'data-disposition': 'wide' } : {})}
+      style={{ padding: '100px 24px', maxWidth: large ? '1200px' : '1000px', margin: '0 auto' }}
+    >
       <Reveal>
         <SectionHead title={title} sub={subtitle} />
-        <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: large ? '1fr' : '1fr 1fr', gap: '24px' }}>
           <OrganicCard style={{ padding: '32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {coordonnees
@@ -62,7 +72,7 @@ export function Localisation({ content: cms, restaurant }: Partial<SectionCompon
           </OrganicCard>
           <div style={{
             borderRadius: '20px', overflow: 'hidden', boxShadow: softShadow(t),
-            background: t.surfaceAlt, position: 'relative', minHeight: '300px', border: `1px solid ${t.shadow}`,
+            background: t.surfaceAlt, position: 'relative', minHeight: large ? '420px' : '300px', border: `1px solid ${t.shadow}`,
           }}>
             <svg viewBox="0 0 400 300" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
               <rect x="0" y="0" width="400" height="300" fill={isDark ? '#1a2a3a' : '#E8F0F5'} />

@@ -35,6 +35,13 @@ export {
 
 export type { Page, PageSeo, PageStatus } from '../model/page'
 export { PAGE_STATUSES, PAGE_STATUS_LABELS, pageStatusLabel } from '../model/page'
+export type { PageLayout } from '../model/page-layout'
+export {
+  PAGE_LAYOUTS,
+  DEFAULT_PAGE_LAYOUT,
+  normaliserPageLayout,
+  pageLayoutLabel,
+} from '../model/page-layout'
 
 export type {
   SectionType,
@@ -66,6 +73,7 @@ export {
   pendingSectionTypes,
 } from './registry'
 export type { SectionComponentProps, SectionComponent, SectionDataSource } from './registry'
+export { normaliserDisposition } from './disposition'
 
 /**
  * Type des réglages du restaurant attendu par le rendu.

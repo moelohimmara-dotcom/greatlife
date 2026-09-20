@@ -6,6 +6,7 @@
  */
 
 import type { Page, PageSeo, PageStatus } from '../model/page'
+import { normaliserPageLayout } from '../model/page-layout'
 import { cmsErr, cmsOk, describeError, requireClient, asObject, type CmsResult } from './client'
 
 const TABLE = 'pages'
@@ -18,6 +19,7 @@ interface PageRow {
   status: string
   sort_order: number
   seo: unknown
+  layout: string
   published_at: string | null
   created_at: string
   updated_at: string
@@ -32,6 +34,7 @@ function mapPage(row: PageRow): Page {
     status: (row.status as PageStatus) ?? 'draft',
     sortOrder: row.sort_order ?? 0,
     seo: asObject(row.seo) as PageSeo,
+    layout: normaliserPageLayout(row.layout),
     publishedAt: row.published_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -40,7 +43,7 @@ function mapPage(row: PageRow): Page {
 }
 
 const COLUMNS =
-  'id, slug, title_i18n, status, sort_order, seo, published_at, created_at, updated_at, updated_by'
+  'id, slug, title_i18n, status, sort_order, seo, layout, published_at, created_at, updated_at, updated_by'
 
 /**
  * Publie une page EN UNE SEULE écriture : statut, date, et instantané publié.
@@ -182,6 +185,7 @@ export interface PageInput {
   status?: PageStatus
   sortOrder?: number
   seo?: PageSeo
+  layout?: Page['layout']
 }
 
 /** Crée une page. */
@@ -198,6 +202,7 @@ export async function createPage(input: PageInput): Promise<CmsResult<Page>> {
         status: input.status ?? 'draft',
         sort_order: input.sortOrder ?? 0,
         seo: input.seo ?? {},
+        layout: normaliserPageLayout(input.layout),
         // Une page créée directement en « publié » doit porter sa date de publication.
         published_at: (input.status ?? 'draft') === 'published' ? new Date().toISOString() : null,
       })
@@ -222,6 +227,7 @@ export async function updatePage(id: string, patch: Partial<PageInput>): Promise
     if (patch.title !== undefined) payload.title_i18n = patch.title
     if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder
     if (patch.seo !== undefined) payload.seo = patch.seo
+    if (patch.layout !== undefined) payload.layout = normaliserPageLayout(patch.layout)
     if (patch.status !== undefined) {
       payload.status = patch.status
       // `published_at` garde la date de la DERNIÈRE publication : la remettre à

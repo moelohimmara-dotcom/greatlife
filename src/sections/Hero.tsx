@@ -5,6 +5,7 @@ import { Icon } from '@/lib/icons'
 import { BurgerIllustration } from '@/lib/icons/FoodIcon'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { anchorHref, cmsGroup, cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
+import { normaliserDisposition as choisirDisposition } from '@/cms/renderer/disposition'
 
 /** Pastilles historiques — servent de repli tant que le CMS n'est pas activé. */
 const LEGACY_CHIPS = ['100% bio', 'Emballages éco', 'Prix accessibles']
@@ -37,9 +38,7 @@ const DISPOSITIONS = ['image_text', 'fullscreen', 'centered', 'video'] as const
 type Disposition = (typeof DISPOSITIONS)[number]
 
 export function normaliserDisposition(valeur: string | null | undefined): Disposition {
-  return typeof valeur === 'string' && (DISPOSITIONS as readonly string[]).includes(valeur)
-    ? (valeur as Disposition)
-    : 'image_text'
+  return choisirDisposition(valeur, DISPOSITIONS, 'image_text')
 }
 
 /** Valeurs résolues, partagées par les quatre dispositions. */

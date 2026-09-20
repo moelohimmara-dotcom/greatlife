@@ -6,6 +6,7 @@
  */
 
 import type { Bilingue } from './i18n'
+import type { PageLayout } from './page-layout'
 
 /** TDR §21 : trois statuts. Le public ne voit QUE `published` (TDR §22). */
 export type PageStatus = 'draft' | 'published' | 'archived'
@@ -37,6 +38,8 @@ export interface Page {
   status: PageStatus
   sortOrder: number
   seo: PageSeo
+  /** Mise en page de la page (TDR §13). Défaut : colonne unique. */
+  layout: PageLayout
   publishedAt: string | null
   createdAt: string
   updatedAt: string

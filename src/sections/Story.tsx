@@ -5,11 +5,14 @@ import { SectionHead } from '@/components/ui/SectionHead'
 import { Icon } from '@/lib/icons'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
+import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 /** Pastilles historiques, conservées par position (repli avant bascule CMS). */
 const LEGACY_CHIPS = ['Bio accessible', 'Circuit court', 'Transparence totale']
 
-export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
+const DISPOSITIONS = ['image_left', 'image_right'] as const
+
+export function Story({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
   const storyImg = useMedia('histoire')
 
@@ -20,10 +23,10 @@ export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
   const chipLabels = pick(cmsTextList(cms, 'chips'), LEGACY_CHIPS)
 
   const chipIcons = [Icon.coin(16, t.accent), Icon.leaf(16, t.primary), Icon.search(16, t.gold)]
+  const disposition = normaliserDisposition(variant, DISPOSITIONS, 'image_left')
+  const imageADroite = disposition === 'image_right'
 
-  return (
-    <section className="section-pad" style={{ padding: '100px 24px', background: t.surfaceAlt }}>
-      <div className="story-grid" style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '60px', alignItems: 'center' }}>
+  const portrait = (
         <Reveal>
           <div style={{
             aspectRatio: '3/4', borderRadius: '24px',
@@ -45,6 +48,8 @@ export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
             </div>
           </div>
         </Reveal>
+  )
+  const recit = (
         <Reveal delay={0.1}>
           <SectionHead title={title} />
           <p style={{ fontSize: '17px', lineHeight: 1.75, color: t.text, margin: 0 }}>{body}</p>
@@ -56,6 +61,13 @@ export function Story({ content: cms }: Partial<SectionComponentProps> = {}) {
             ))}
           </div>
         </Reveal>
+  )
+
+  return (
+    <section className="section-pad" {...(imageADroite ? { 'data-disposition': 'image_right' } : {})} style={{ padding: '100px 24px', background: t.surfaceAlt }}>
+      <div className="story-grid" style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: imageADroite ? '1.2fr 0.8fr' : '0.8fr 1.2fr', gap: '60px', alignItems: 'center' }}>
+        {imageADroite ? recit : portrait}
+        {imageADroite ? portrait : recit}
       </div>
     </section>
   )

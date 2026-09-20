@@ -29,7 +29,7 @@ import { Testimonials } from './Testimonials'
 import { Footer } from './Footer'
 import { OrderCart } from './OrderCart'
 import { useCmsSections } from '@/cms/hooks/useCmsSections'
-import { SectionRenderer } from '@/cms/renderer/SectionRenderer'
+import { PageRenderer } from '@/cms/renderer/PageRenderer'
 import { fetchSetting, resolveRestaurant, SETTING_KEYS, DEFAULT_RESTAURANT } from '@/cms/repository/settings'
 import type { RestaurantSettings, ResolvedRestaurant } from '@/cms/repository/settings'
 
@@ -56,7 +56,7 @@ const ANCHORS = {
 
 export function PublicSite() {
   const { visibility, rootStyle } = useSite()
-  const { resolvedSections, loading, enabled } = useCmsSections()
+  const { resolvedSections, loading, enabled, page } = useCmsSections()
   const [restaurant, setRestaurant] = useState<ResolvedRestaurant>(
     () => resolveRestaurant(DEFAULT_RESTAURANT, 'fr'),
   )
@@ -92,19 +92,17 @@ export function PublicSite() {
   }
 
   // --- Chemin CMS : la page est publiée, on rend ses sections ---
-  if (enabled && resolvedSections.length > 0) {
+  if (enabled && page && resolvedSections.length > 0) {
     return (
       <CartProvider>
         <div style={rootStyle}>
           <PublicNav />
-          {resolvedSections.map((section) => (
-            <SectionRenderer
-              key={section.id}
-              section={section}
-              locale="fr"
-              restaurant={restaurant}
-            />
-          ))}
+          <PageRenderer
+            page={page}
+            sections={resolvedSections}
+            locale="fr"
+            restaurant={restaurant}
+          />
           <Footer restaurant={restaurant} />
           <OrderCart />
         </div>
