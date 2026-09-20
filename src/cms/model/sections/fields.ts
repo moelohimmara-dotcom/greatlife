@@ -21,6 +21,7 @@ export type FieldType =
   | 'text' // une seule ligne
   | 'multiline' // plusieurs lignes
   | 'image' // référence à un média de la médiathèque
+  | 'video' // adresse d'une vidéo (médiathèque ou URL)
   | 'number'
   | 'boolean'
   | 'select'
@@ -46,6 +47,11 @@ export interface FieldDef {
   translatable?: boolean
   /** Aide affichée sous le champ, en langage simple. */
   help?: string
+  /**
+   * Si renseigné, le champ n'apparaît que pour ces dispositions.
+   * Absent = visible quelle que soit la disposition.
+   */
+  forVariants?: readonly string[]
   options?: readonly FieldOption[]
   /**
    * Pour `type: 'list'` d'OBJETS et pour `type: 'group'` : les champs de

@@ -8,13 +8,14 @@
  * Le rendu est en iframe pour isoler les styles du CMS de ceux du site public.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import { SectionRenderer } from '@/cms/renderer/SectionRenderer'
 import { CartProvider } from '@/contexts/CartContext'
+import { useSite } from '@/contexts/SiteContext'
 
 interface PreviewPaneProps {
   sections: PageSection[]
@@ -56,6 +57,11 @@ const RESTAURANT_ABSENT: ResolvedRestaurant = {
   social: { facebook: '', whatsapp: '', instagram: '' },
 }
 
+function PreviewShell({ children }: { children: React.ReactNode }) {
+  const { rootStyle } = useSite()
+  return <div style={{ ...rootStyle, minHeight: '100%' }}>{children}</div>
+}
+
 /**
  * L'aperçu est rendu dans un iframe pour éviter les conflits de styles
  * entre le CMS et le site public. Le contenu est injecté via un portail React.
@@ -63,24 +69,29 @@ const RESTAURANT_ABSENT: ResolvedRestaurant = {
 export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const [ready, setReady] = useState(0)
 
-  // Injecter le style du site public dans l'iframe
   useEffect(() => {
     if (!iframeRef.current) return
     const doc = iframeRef.current.contentDocument
     if (!doc) return
 
-    // Nettoyer et injecter le HTML de base
+    const feuilles = [...document.querySelectorAll('link[rel="stylesheet"]')]
+      .map((n) => (n as HTMLLinkElement).href)
+      .filter(Boolean)
+    const polices = (document.getElementById('greatlife-fonts') as HTMLLinkElement | null)?.href
+
     doc.open()
     doc.write(`<!DOCTYPE html>
 <html lang="${locale}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/index.css">
+  ${feuilles.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n  ')}
+  ${polices ? `<link rel="stylesheet" href="${polices}">` : ''}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; }
+    html, body, #preview-root { min-height: 100%; }
   </style>
 </head>
 <body>
@@ -89,14 +100,13 @@ export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPane
 </html>`)
     doc.close()
 
-    // Trouver le conteneur pour le portail React
     const root = doc.getElementById('preview-root')
     if (root) {
       containerRef.current = root as HTMLDivElement
+      setReady((n) => n + 1)
     }
   }, [locale])
 
-  // Ne rendre que les sections visibles
   const visibleSections = sections.filter((s) => s.visible)
 
   return (
@@ -112,23 +122,24 @@ export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPane
         <iframe
           ref={iframeRef}
           title="Aperçu du site"
+          allow="autoplay; fullscreen"
           style={{ width: '100%', height: '100%', border: 'none' }}
-          sandbox="allow-same-origin"
+          sandbox="allow-same-origin allow-scripts"
         />
-        {containerRef.current && createPortal(
-          // L'aperçu réutilise Carte, qui exige le panier ; sans CartProvider,
-          // useCart jette et SectionErrorBoundary avale l'erreur.
-          <CartProvider>
-            {visibleSections.map((section, i) => (
-              <SectionRenderer
-                key={section.id || `section-${i}`}
-                section={section}
-                locale={locale}
-                restaurant={restaurant ?? RESTAURANT_ABSENT}
-                preview
-              />
-            ))}
-          </CartProvider>,
+        {ready > 0 && containerRef.current && createPortal(
+          <PreviewShell>
+            <CartProvider>
+              {visibleSections.map((section, i) => (
+                <SectionRenderer
+                  key={section.id || `section-${i}`}
+                  section={section}
+                  locale={locale}
+                  restaurant={restaurant ?? RESTAURANT_ABSENT}
+                  preview
+                />
+              ))}
+            </CartProvider>
+          </PreviewShell>,
           containerRef.current,
         )}
       </div>

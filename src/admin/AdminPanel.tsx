@@ -603,6 +603,7 @@ function ThemeEditor() {
 
 const SITE_MEDIA_SLOTS: ReadonlyArray<{ id: string; label: string; dims: string }> = [
   { id: 'hero', label: 'Hero principal', dims: '1920×1080' },
+  { id: 'hero-video', label: 'Vidéo de la bannière', dims: 'vidéo' },
   { id: 'logo', label: 'Logo / favicon', dims: '512×512' },
   { id: 'histoire', label: 'Fond section histoire', dims: '1600×900' },
   { id: 'equipe-1', label: 'Équipe — Membre 1', dims: '600×600' },

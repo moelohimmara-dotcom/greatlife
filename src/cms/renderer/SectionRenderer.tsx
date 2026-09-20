@@ -56,6 +56,7 @@ export function SectionRenderer({
     restaurant,
     anchor: section.anchor,
     data,
+    preview,
   }
 
   /*
@@ -78,7 +79,7 @@ export function SectionRenderer({
       data-cms-anchor={section.anchor ?? undefined}
       style={SECTION_SCROLL_STYLE}
     >
-      <SectionErrorBoundary sectionType={section.type} sectionLabel={label}>
+      <SectionErrorBoundary key={`${section.id}:${section.variant ?? ''}`} sectionType={section.type} sectionLabel={label}>
         {Component ? (
           <Component {...props} />
         ) : (

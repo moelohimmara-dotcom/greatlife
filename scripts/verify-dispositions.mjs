@@ -42,9 +42,9 @@ import { SiteProvider } from '@/contexts/SiteContext'
 import { CartProvider } from '@/contexts/CartContext'
 import { Hero } from '@/sections/Hero'
 
-export function rendre(variant, content) {
+export function rendre(variant, content, preview) {
   return renderToStaticMarkup(
-    <SiteProvider><CartProvider><Hero variant={variant} content={content} /></CartProvider></SiteProvider>,
+    <SiteProvider><CartProvider><Hero variant={variant} content={content} preview={preview} /></CartProvider></SiteProvider>,
   )
 }
 `,
@@ -132,6 +132,11 @@ const repliOk = videoSansUrl === rendus.fullscreen
 console.log(`  « Vidéo » sans adresse == « Plein écran » : ${repliOk ? 'OUI (repli documenté)' : 'NON  <-- ECHEC'}`)
 console.log(`  « Vidéo » AVEC adresse contient une balise <video> : ${rendus.video.includes('<video') ? 'OUI' : 'NON  <-- ECHEC'}`)
 if (!repliOk || !rendus.video.includes('<video')) fautif = true
+
+const videoApercuVide = rendre('video', CONTENU_SANS_VIDEO, true)
+const apercuDitManque = videoApercuVide.includes('colonne Modifier')
+console.log(`  aperçu « Vidéo » sans fichier explique quoi faire : ${apercuDitManque ? 'OUI' : 'NON  <-- ECHEC'}`)
+if (!apercuDitManque) fautif = true
 
 console.log('\n' + '='.repeat(72))
 console.log('B. LE DÉFAUT EST-IL LE RENDU HISTORIQUE ?')

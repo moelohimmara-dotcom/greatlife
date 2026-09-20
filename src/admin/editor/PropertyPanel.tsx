@@ -21,7 +21,7 @@ import { Icon } from '@/lib/icons'
 import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
 import type { ThemePalette } from '@/config/themes'
-import { getSectionDefinition } from '@/cms/model/sections/schemas'
+import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
 import type { FieldDef } from '@/cms/model/sections/fields'
 
 interface PropertyPanelProps {
@@ -58,7 +58,7 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange }: Pr
       {/* Sélecteur de variante */}
       {def.variants.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <label style={labelStyle(t)}>Variante</label>
+          <label style={labelStyle(t)}>Disposition</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {def.variants.map((v) => (
               <button key={v.id} onClick={() => onVariantChange(v.id)} style={{
@@ -83,7 +83,7 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange }: Pr
         Contenu
       </div>
 
-      {def.fields.map((field) => (
+      {def.fields.filter((field) => champVisible(field, section.variant, section.type)).map((field) => (
         <FieldEditor
           key={field.name}
           field={field}
@@ -125,6 +125,8 @@ function FieldEditor({ field, value, locale, onChange }: FieldEditorProps) {
       return <GroupField field={field} value={value} locale={locale} onChange={onChange} />
     case 'image':
       return <ImageField field={field} value={value} onChange={onChange} />
+    case 'video':
+      return <VideoField field={field} value={value} onChange={onChange} />
     default:
       return null
   }
@@ -159,6 +161,7 @@ function TextField({ field, value, locale, onChange }: { field: FieldDef; value:
     <div style={{ marginBottom: 14 }}>
       <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
       <input value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)} style={inputStyle(t)} />
+      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
@@ -378,6 +381,37 @@ function GroupField({ field, value, locale, onChange }: { field: FieldDef; value
   )
 }
 
+function VideoField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+  const { theme: t, media } = useSite()
+  const actuel = typeof value === 'string' ? value : ''
+  const videos = media.filter((m) => m.url && (m.content_type?.startsWith('video/') || /\.(mp4|webm|ogg)(\?|$)/i.test(m.url)))
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={labelStyle(t)}>{field.label}</label>
+      {videos.length > 0 && (
+        <select
+          value={videos.some((m) => m.url === actuel) ? actuel : ''}
+          onChange={(e) => { if (e.target.value) onChange(e.target.value) }}
+          style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 8 }}
+        >
+          <option value="">— Choisir une vidéo téléversée —</option>
+          {videos.map((m) => (
+            <option key={m.id || m.url} value={m.url}>{m.filename || m.slot}</option>
+          ))}
+        </select>
+      )}
+      <input
+        value={actuel}
+        onChange={(e) => onChange(e.target.value)}
+        style={inputStyle(t)}
+        placeholder="https://… ou fichier déjà téléversé"
+      />
+      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+    </div>
+  )
+}
+
 function ImageField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
   const { theme: t } = useSite()
   return (
@@ -393,6 +427,12 @@ function ImageField({ field, value, onChange }: { field: FieldDef; value: unknow
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
+
+function champVisible(field: FieldDef, variant: string | null, type: PageSection['type']): boolean {
+  if (!field.forVariants || field.forVariants.length === 0) return true
+  const actuelle = variant || defaultVariant(type) || ''
+  return field.forVariants.includes(actuelle)
+}
 
 function resolveValue(value: unknown, locale: Locale): unknown {
   if (value === null || value === undefined) return ''

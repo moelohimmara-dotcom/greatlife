@@ -63,6 +63,8 @@ export interface SectionComponentProps {
   restaurant: ResolvedRestaurant
   /** Ancre de la section, sans `#`. */
   anchor: string | null
+  /** `true` dans l'aperçu d'administration. */
+  preview?: boolean
   /** Données des modules métier, pour les sections qui en affichent. */
   data?: SectionDataSource
 }

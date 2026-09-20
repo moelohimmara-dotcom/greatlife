@@ -67,16 +67,17 @@ interface HeroContent {
 function HeroPleinEcran({
   c,
   video,
+  manqueVideo,
 }: {
   c: HeroContent
   video: string | null
+  manqueVideo?: boolean
 }) {
   const { theme: t } = useSite()
   const fond = c.heroImg ? `url(${c.heroImg}) center/cover` : `linear-gradient(135deg, ${t.primary}, ${t.primaryDark})`
 
   return (
     <section
-      className="section-pad-top"
       style={{ position: 'relative', overflow: 'hidden', minHeight: 'min(78vh, 680px)', display: 'flex', alignItems: 'center' }}
     >
       {video ? (
@@ -110,6 +111,22 @@ function HeroPleinEcran({
           {c.title}
         </h1>
         <p style={{ fontSize: '18px', lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '620px', opacity: 0.92 }}>{c.subtitle}</p>
+        {manqueVideo && (
+          <p style={{
+            display: 'inline-block',
+            margin: '0 auto 24px',
+            padding: '10px 16px',
+            borderRadius: 12,
+            background: 'rgba(255,255,255,0.16)',
+            border: '1px solid rgba(255,255,255,0.35)',
+            fontSize: 13,
+            fontWeight: 600,
+            lineHeight: 1.45,
+            maxWidth: 420,
+          }}>
+            Disposition « Vidéo » : ajoutez une vidéo dans la colonne Modifier pour qu’elle se lance ici.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           <a href={c.primaryHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
             {c.primaryLabel} {Icon.arrow(16)}
@@ -138,7 +155,7 @@ function HeroCentre({ c }: { c: HeroContent }) {
   const { theme: t } = useSite()
 
   return (
-    <section className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '88px 24px 96px' }}>
+    <section style={{ position: 'relative', overflow: 'hidden', padding: '88px 24px 96px', background: t.surfaceAlt }}>
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -173,9 +190,10 @@ function HeroCentre({ c }: { c: HeroContent }) {
   )
 }
 
-export function Hero({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
+export function Hero({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
   const legacyHeroImg = useMedia('hero')
+  const legacyHeroVideo = useMedia('hero-video')
   const { scrollY } = useScroll()
   const yImg = useTransform(scrollY, [0, 400], [0, 60])
   const opacity = useTransform(scrollY, [0, 300], [1, 0.7])
@@ -201,7 +219,7 @@ export function Hero({ content: cms, variant }: Partial<SectionComponentProps> =
   const secondaryLabel = pick(cmsText(secondaryCta, 'label'), 'Réserver une table')
   const secondaryHref = anchorHref(pick(cmsText(secondaryCta, 'target'), LEGACY_SECONDARY_TARGET))
 
-  const videoUrl = cmsText(cms, 'video') ?? ''
+  const videoUrl = cmsText(cms, 'video') ?? legacyHeroVideo ?? ''
 
   // Les icônes restent associées à la POSITION, comme dans le rendu historique :
   // seule la couleur change, jamais l'ordre.
@@ -221,8 +239,17 @@ export function Hero({ content: cms, variant }: Partial<SectionComponentProps> =
     vidéo. Sans ce repli, la bannière n'aurait plus ni image ni fond — un écran
     vide, sans que rien ne l'explique. Le champ le dit dans l'éditeur.
   */
-  if (disposition === 'fullscreen' || disposition === 'video') {
-    return <HeroPleinEcran c={contenu} video={disposition === 'video' && videoUrl ? videoUrl : null} />
+  if (disposition === 'fullscreen') {
+    return <HeroPleinEcran c={contenu} video={null} />
+  }
+  if (disposition === 'video') {
+    return (
+      <HeroPleinEcran
+        c={contenu}
+        video={videoUrl || null}
+        manqueVideo={Boolean(preview) && !videoUrl}
+      />
+    )
   }
   if (disposition === 'centered') {
     return <HeroCentre c={contenu} />

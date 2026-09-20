@@ -59,6 +59,7 @@ function checkSimpleShape(field: FieldDef, value: unknown): boolean {
     case 'boolean':
       return typeof value === 'boolean'
     case 'image':
+    case 'video':
       return typeof value === 'string'
     case 'select':
       return typeof value === 'string' && (field.options ?? []).some((o) => o.value === value)
