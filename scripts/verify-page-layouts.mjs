@@ -39,6 +39,7 @@ const PAGE = {
 const SECTIONS = [
   { id: 's1', pageId: 'p', type: 'hero', variant: 'image_text', position: 0, visible: true, anchor: 'home', content: {}, settings: {}, createdAt: '', updatedAt: '' },
   { id: 's2', pageId: 'p', type: 'story', variant: null, position: 1, visible: true, anchor: 'histoire', content: {}, settings: {}, createdAt: '', updatedAt: '' },
+  { id: 's3', pageId: 'p', type: 'menu', variant: null, position: 2, visible: true, anchor: 'carte', content: {}, settings: {}, createdAt: '', updatedAt: '' },
 ]
 const RESTAURANT = { name: 'Greatlife', address: '', hours: '', phone: '', emailContact: '', emailReservation: '', slogan: '', currency: 'FG', social: { facebook: '', whatsapp: '', instagram: '' } }
 
@@ -131,16 +132,28 @@ const colonneSansGabarit =
 console.log(`  colonne unique sans enveloppe : ${colonneSansGabarit ? 'OUI' : 'NON  <-- ECHEC'}`)
 if (!colonneSansGabarit) fautif = true
 
+const mag = html.magazine
+const idxCell = mag.indexOf('class="page-layout-cell"')
+const idxBand = mag.indexOf('class="page-layout-band"')
+const idxMenu = mag.indexOf('data-cms-section="menu"')
+const idxStory = mag.indexOf('data-cms-section="story"')
+const storyEnCellule = idxCell >= 0 && idxStory > idxCell && (idxBand < 0 || idxStory < idxBand)
+const menuEnBande = idxBand >= 0 && idxMenu > idxBand
+console.log(`  magazine : histoire en carte : ${storyEnCellule ? 'OUI' : 'NON  <-- ECHEC'}`)
+console.log(`  magazine : carte en bande : ${menuEnBande ? 'OUI' : 'NON  <-- ECHEC'}`)
+if (!storyEnCellule || !menuEnBande) fautif = true
+
 const shell = readFileSync(`${ROOT}/src/cms/renderer/page-layout-shell.ts`, 'utf8')
 const publicSite = readFileSync(`${ROOT}/src/sections/PublicSite.tsx`, 'utf8')
 console.log('  gabarits extraits du renderer : ' + (shell.includes('CSS_GABARITS_PAGE') ? 'OUI' : 'NON  <-- ECHEC'))
 console.log('  pied de page dans le renderer : ' + (publicSite.includes('pied={<Footer') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  aperçu avec pied : ' + (pane.includes('pied={<Footer') ? 'OUI' : 'NON  <-- ECHEC'))
 console.log('  menu sur bannière : ' + (publicSite.includes('miseEnPageSurBanniere') ? 'OUI' : 'NON  <-- ECHEC'))
 const selecteursGrille =
   shell.includes('[style*="grid-template-columns"]') &&
   shell.includes('[style*="grid-template-columns: 1fr 1fr"]')
 console.log('  gabarits replient les grilles internes : ' + (selecteursGrille ? 'OUI' : 'NON  <-- ECHEC'))
-if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille) fautif = true
+if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !pane.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille) fautif = true
 
 console.log('='.repeat(72))
 if (fautif) {

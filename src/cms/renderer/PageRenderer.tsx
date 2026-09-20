@@ -27,6 +27,26 @@ import {
 import { CSS_GABARITS_PAGE } from './page-layout-shell'
 import { SectionRenderer } from './SectionRenderer'
 
+/** Blocs assez courts pour une carte magazine. Le menu, le contact, etc. restent en bande. */
+const BLOCS_MAGAZINE_CELLULE = new Set([
+  'story',
+  'engagements',
+  'team',
+  'testimonials',
+  'blog',
+  'text',
+  'image',
+  'image_text',
+  'gallery',
+  'quote',
+  'cta',
+  'menu_featured',
+  'hours',
+  'social',
+  'map',
+  'video',
+])
+
 export interface PageRendererProps {
   page: Page
   sections: readonly PageSection[]
@@ -91,6 +111,41 @@ function rendreSections(
   })
 }
 
+function rendreMagazine(
+  sections: readonly PageSection[],
+  locale: Locale,
+  restaurant: ResolvedRestaurant,
+  data: SectionDataSource | undefined,
+  preview: boolean,
+) {
+  const out: ReactNode[] = []
+  let lot: PageSection[] = []
+  const viderLot = () => {
+    if (lot.length === 0) return
+    const copie = lot
+    lot = []
+    out.push(
+      <div key={`mag-${copie[0].id}`} className="page-layout-grid">
+        {rendreSections(copie, locale, restaurant, data, preview, false, undefined, undefined, true)}
+      </div>,
+    )
+  }
+  for (const section of sections) {
+    if (BLOCS_MAGAZINE_CELLULE.has(section.type)) {
+      lot.push(section)
+    } else {
+      viderLot()
+      out.push(
+        <div key={`band-${section.id}`} className="page-layout-band">
+          {rendreUne(section, locale, restaurant, data, preview)}
+        </div>,
+      )
+    }
+  }
+  viderLot()
+  return out
+}
+
 export function PageRenderer({
   page,
   sections,
@@ -149,11 +204,7 @@ export function PageRenderer({
       return (
         <>
           {une && <div className="page-layout-hero">{une}</div>}
-          {suivantes.length > 0 && (
-            <div className="page-layout-grid">
-              {rendreSections(suivantes, locale, restaurant, data, preview, false, undefined, undefined, true)}
-            </div>
-          )}
+          {rendreMagazine(suivantes, locale, restaurant, data, preview)}
           {pied}
         </>
       )

@@ -21,6 +21,7 @@ import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import { PageRenderer } from '@/cms/renderer/PageRenderer'
 import { pageLayoutLabel, type PageLayout } from '@/cms/model/page-layout'
 import { CartProvider } from '@/contexts/CartContext'
+import { Footer } from '@/sections/Footer'
 import { useSite } from '@/contexts/SiteContext'
 import { Bouton } from './chrome'
 
@@ -206,6 +207,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
                 restaurant={restaurant ?? RESTAURANT_ABSENT}
                 preview
                 layout={miseEnPage}
+                pied={<Footer restaurant={restaurant ?? RESTAURANT_ABSENT} />}
               />
             </CartProvider>
           </PreviewShell>,

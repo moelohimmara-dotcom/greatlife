@@ -77,6 +77,7 @@ function HeroPleinEcran({
 
   return (
     <section
+      className="hero-plein"
       style={{ position: 'relative', overflow: 'hidden', minHeight: 'min(78vh, 680px)', display: 'flex', alignItems: 'center' }}
     >
       {video ? (
@@ -101,6 +102,7 @@ function HeroPleinEcran({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         style={{ position: 'relative', maxWidth: '820px', margin: '0 auto', padding: '96px 24px', textAlign: 'center', color: '#fff' }}
+        className="hero-plein-inner"
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.14)', borderRadius: '100px', padding: '8px 16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.28)' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.gold }} />
