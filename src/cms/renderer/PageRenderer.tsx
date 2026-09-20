@@ -96,8 +96,12 @@ function rendreSections(
     const override = section.id === idBanniere ? surchargeBanniere : undefined
     const bloc = rendreUne(section, locale, restaurant, data, preview, override)
     if (cellules) {
+      const uneHistoire = i === 0 && section.type === 'story'
       return (
-        <div key={section.id} className="page-layout-cell">
+        <div
+          key={section.id}
+          className={uneHistoire ? 'page-layout-cell page-layout-cell--spread' : 'page-layout-cell page-layout-cell--aside'}
+        >
           {bloc}
         </div>
       )
@@ -239,7 +243,7 @@ export function PageRenderer({
       data-cms-preview={preview ? 'true' : undefined}
       lang={locale}
     >
-      <style>{CSS_GABARITS_PAGE}</style>
+      <style dangerouslySetInnerHTML={{ __html: CSS_GABARITS_PAGE }} />
       {corps}
       {noticeVide}
     </main>

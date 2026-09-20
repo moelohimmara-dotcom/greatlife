@@ -133,15 +133,13 @@ console.log(`  colonne unique sans enveloppe : ${colonneSansGabarit ? 'OUI' : 'N
 if (!colonneSansGabarit) fautif = true
 
 const mag = html.magazine
-const idxCell = mag.indexOf('class="page-layout-cell"')
 const idxBand = mag.indexOf('class="page-layout-band"')
 const idxMenu = mag.indexOf('data-cms-section="menu"')
-const idxStory = mag.indexOf('data-cms-section="story"')
-const storyEnCellule = idxCell >= 0 && idxStory > idxCell && (idxBand < 0 || idxStory < idxBand)
+const histoireOuverture = mag.includes('page-layout-cell--spread') && mag.includes('data-cms-section="story"')
 const menuEnBande = idxBand >= 0 && idxMenu > idxBand
-console.log(`  magazine : histoire en carte : ${storyEnCellule ? 'OUI' : 'NON  <-- ECHEC'}`)
+console.log(`  magazine : histoire en ouverture : ${histoireOuverture ? 'OUI' : 'NON  <-- ECHEC'}`)
 console.log(`  magazine : carte en bande : ${menuEnBande ? 'OUI' : 'NON  <-- ECHEC'}`)
-if (!storyEnCellule || !menuEnBande) fautif = true
+if (!histoireOuverture || !menuEnBande) fautif = true
 
 const shell = readFileSync(`${ROOT}/src/cms/renderer/page-layout-shell.ts`, 'utf8')
 const publicSite = readFileSync(`${ROOT}/src/sections/PublicSite.tsx`, 'utf8')
@@ -153,7 +151,9 @@ const selecteursGrille =
   shell.includes('[style*="grid-template-columns"]') &&
   shell.includes('[style*="grid-template-columns: 1fr 1fr"]')
 console.log('  gabarits replient les grilles internes : ' + (selecteursGrille ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  CSS gabarits non échappé : ' + (readFileSync(`${ROOT}/src/cms/renderer/PageRenderer.tsx`, 'utf8').includes('dangerouslySetInnerHTML') ? 'OUI' : 'NON  <-- ECHEC'))
 if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !pane.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille) fautif = true
+if (!readFileSync(`${ROOT}/src/cms/renderer/PageRenderer.tsx`, 'utf8').includes('dangerouslySetInnerHTML')) fautif = true
 
 console.log('='.repeat(72))
 if (fautif) {

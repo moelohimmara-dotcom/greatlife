@@ -20,46 +20,68 @@ export const CSS_GABARITS_PAGE = `
 [data-cms-layout="magazine"] .page-layout-hero .hero-plein {
   min-height: 100vh !important;
 }
+[data-cms-layout="magazine"] .page-layout-hero .hero-plein-inner {
+  padding-top: 108px !important;
+}
 [data-cms-layout="magazine"] .page-layout-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
-  max-width: 1200px;
+  column-gap: 48px;
+  row-gap: 48px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 40px 24px 24px;
-  align-items: stretch;
+  padding: 48px 32px 16px;
+  align-items: start;
   box-sizing: border-box;
 }
 [data-cms-layout="magazine"] .page-layout-cell {
   min-width: 0;
-  overflow: hidden;
-  background: var(--c-surface, #fff);
-  border: 1px solid var(--c-shadow, rgba(45,90,39,0.08));
-  border-radius: 16px;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
-[data-cms-layout="magazine"] .page-layout-cell .section-pad {
-  padding: 28px 22px !important;
+[data-cms-layout="magazine"] .page-layout-cell--spread {
+  grid-column: 1 / -1;
+}
+[data-cms-layout="magazine"] .page-layout-cell--spread .section-pad {
+  padding: 0 !important;
+  max-width: none !important;
+  background: transparent !important;
+}
+[data-cms-layout="magazine"] .page-layout-cell--spread .story-grid {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) !important;
+  gap: 40px !important;
   max-width: none !important;
 }
-[data-cms-layout="magazine"] .page-layout-cell .story-grid,
-[data-cms-layout="magazine"] .page-layout-cell .loca-grid,
-[data-cms-layout="magazine"] .page-layout-cell .hero-grid {
+[data-cms-layout="magazine"] .page-layout-cell--aside {
+  padding-top: 18px;
+  border-top: 3px solid var(--c-primary, #2D5A27);
+}
+[data-cms-layout="magazine"] .page-layout-cell--aside .section-pad {
+  padding: 20px 0 0 !important;
+  max-width: none !important;
+  background: transparent !important;
+}
+[data-cms-layout="magazine"] .page-layout-cell--aside .story-grid,
+[data-cms-layout="magazine"] .page-layout-cell--aside .loca-grid,
+[data-cms-layout="magazine"] .page-layout-cell--aside .hero-grid {
   grid-template-columns: minmax(0, 1fr) !important;
   gap: 16px !important;
   max-width: none !important;
 }
-[data-cms-layout="magazine"] .page-layout-cell .engagements-grid,
-[data-cms-layout="magazine"] .page-layout-cell .menu-grid {
+[data-cms-layout="magazine"] .page-layout-cell--aside .engagements-grid,
+[data-cms-layout="magazine"] .page-layout-cell--aside .menu-grid {
   grid-template-columns: minmax(0, 1fr) !important;
 }
-[data-cms-layout="magazine"] .page-layout-cell [style*="grid-template-columns"] {
+[data-cms-layout="magazine"] .page-layout-cell--aside [style*="grid-template-columns"] {
   grid-template-columns: minmax(0, 1fr) !important;
   gap: 16px !important;
 }
 [data-cms-layout="magazine"] .page-layout-band {
-  max-width: 1200px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 8px 24px 40px;
+  padding: 8px 32px 48px;
   box-sizing: border-box;
 }
 
@@ -71,17 +93,21 @@ export const CSS_GABARITS_PAGE = `
 [data-cms-layout="hero_parallax"] .page-layout-parallax .hero-plein {
   min-height: 100vh !important;
 }
+[data-cms-layout="hero_parallax"] .page-layout-parallax .hero-plein-inner {
+  padding-top: 108px !important;
+}
 [data-cms-layout="hero_parallax"] .page-layout-rest {
   position: relative;
   z-index: 1;
   background: var(--c-cream, #F5EFE6);
-  border-radius: 28px 28px 0 0;
-  box-shadow: 0 -24px 48px var(--c-shadow-deep, rgba(45,90,39,0.16));
-  overflow: hidden;
+  border-radius: 0;
+  border-top: 3px solid var(--c-gold, #C4A35A);
+  box-shadow: 0 -16px 40px var(--c-shadow-deep, rgba(45,90,39,0.18));
+  overflow: visible;
 }
 [data-cms-layout="hero_parallax"] .page-layout-rest .section-pad {
-  padding-top: 56px !important;
-  padding-bottom: 56px !important;
+  padding-top: 48px !important;
+  padding-bottom: 48px !important;
 }
 
 [data-cms-layout="split"] {
@@ -139,11 +165,16 @@ export const CSS_GABARITS_PAGE = `
 @media (max-width: 900px) {
   [data-cms-layout="magazine"] .page-layout-grid {
     grid-template-columns: minmax(0, 1fr);
-    padding: 24px 16px 16px;
-    gap: 16px;
+    padding: 32px 20px 8px;
+    column-gap: 0;
+    row-gap: 36px;
+  }
+  [data-cms-layout="magazine"] .page-layout-cell--spread .story-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 24px !important;
   }
   [data-cms-layout="magazine"] .page-layout-band {
-    padding: 8px 16px 32px;
+    padding: 8px 20px 32px;
   }
   [data-cms-layout="split"] {
     display: block;
