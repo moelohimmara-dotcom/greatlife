@@ -77,8 +77,22 @@ export function PublicSite() {
     return () => { cancelled = true }
   }, [])
 
+  /*
+    Tant qu'on ne sait pas si la page est publiée, peindre le rendu historique
+    mentirait au visiteur (TDR §22 / flash observé).
+  */
+  if (loading) {
+    return (
+      <CartProvider>
+        <div style={{ ...rootStyle, minHeight: '100vh' }} aria-busy="true">
+          <PublicNav />
+        </div>
+      </CartProvider>
+    )
+  }
+
   // --- Chemin CMS : la page est publiée, on rend ses sections ---
-  if (enabled && !loading && resolvedSections.length > 0) {
+  if (enabled && resolvedSections.length > 0) {
     return (
       <CartProvider>
         <div style={rootStyle}>

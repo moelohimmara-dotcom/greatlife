@@ -14,6 +14,7 @@ import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import { SectionRenderer } from '@/cms/renderer/SectionRenderer'
+import { CartProvider } from '@/contexts/CartContext'
 
 interface PreviewPaneProps {
   sections: PageSection[]
@@ -115,15 +116,19 @@ export function PreviewPane({ sections, locale = 'fr', restaurant }: PreviewPane
           sandbox="allow-same-origin"
         />
         {containerRef.current && createPortal(
-          visibleSections.map((section, i) => (
-            <SectionRenderer
-              key={section.id || `section-${i}`}
-              section={section}
-              locale={locale}
-              restaurant={restaurant ?? RESTAURANT_ABSENT}
-              preview
-            />
-          )),
+          // L'aperçu réutilise Carte, qui exige le panier ; sans CartProvider,
+          // useCart jette et SectionErrorBoundary avale l'erreur.
+          <CartProvider>
+            {visibleSections.map((section, i) => (
+              <SectionRenderer
+                key={section.id || `section-${i}`}
+                section={section}
+                locale={locale}
+                restaurant={restaurant ?? RESTAURANT_ABSENT}
+                preview
+              />
+            ))}
+          </CartProvider>,
           containerRef.current,
         )}
       </div>
