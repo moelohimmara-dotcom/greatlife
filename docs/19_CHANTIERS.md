@@ -76,7 +76,7 @@ Chaîne de publication (instantané publié, `033`), filets `verify:lot1`,
 
 | # | Sujet | Couloir | Preuve du manque |
 |---|---|---|---|
-| **N-1** | Les **montants sont stockés comme texte d'affichage** (`"46 000"`) : aucune somme, aucun tri, aucune comparaison possibles **en base** — `select sum(total)` → `function sum(text) does not exist`. Le parseur est **dupliqué 3 fois** (`AdminPanel.tsx:170`, `AdminPanel.tsx:2095`, `CartContext.tsx:25`). | fiabilité | ⚠️ **Descriptif corrigé le 2026-09-20 — voir §4.4.** Ma première rédaction disait « chiffre d'affaires incalculable, affiché 0 FG » : **c'était faux**. |
+| **N-1** | Les **montants sont stockés comme texte d'affichage** (`"46 000"`) : aucune somme, aucun tri, aucune comparaison possibles **en base** — `select sum(total)` → `function sum(text) does not exist`. Le parseur est **dupliqué 3 fois** (`AdminPanel.tsx:170`, `AdminPanel.tsx:2095`, `CartContext.tsx:25`). | fiabilité | ⚠️ **Descriptif corrigé le 2026-09-20 — voir §6.** Ma première rédaction disait « chiffre d'affaires incalculable, affiché 0 FG » : **c'était faux**. |
 | **N-2** | `SiteContext.tsx` recopie les **4 coordonnées** du restaurant en dur, **sur le chemin public** | fiabilité | `verify:anchors` ne balaie que `src/sections` et `src/components` (26 fichiers) |
 | **N-3** | `LivePreview.tsx` et `PageRenderer` sont du **code mort** | fiabilité | aucun `import` dans `src/` |
 | **N-4** | `verify:anchors` ne vérifie qu'**une** page publiée (la première trouvée) | fiabilité | `find()` silencieux, revue 3 M-2 |
@@ -112,7 +112,7 @@ le reste.
 
 ---
 
-## 4.4 Correction du 2026-09-20 : `N-1` était mal décrit
+## 6. Correction du 2026-09-20 : `N-1` était mal décrit
 
 **Ce que j'avais écrit** : « `orders.total` est en TEXTE → chiffre d'affaires
 incalculable, affiché **0 FG** », preuve citée : `sum(total)` échoue en base.
@@ -140,7 +140,45 @@ mesure** — `sum(text)` échoue en SQL, cela ne disait rien du code de l'écran
 
 ---
 
-## 6. Avant de fusionner dans `main`
+## 7. N-9 / N-10 — procédure de saisie, et le piège à connaître
+
+**Décisions du propriétaire (2026-09-20)** : il saisit lui-même, et publie
+`moelohimmara@gmail.com` comme adresse de contact.
+
+**Résultat de la mesure, à connaître avant de commencer** :
+
+| | `site_config` — **ce que l'écran pré-remplit** | `restaurant` — **ce que le site publie** |
+|---|---|---|
+| téléphone | *(vide)* | `+224 000 00 00 00` |
+| adresse | *(vide)* | `Conakry, Guinée` |
+| horaires | *(vide)* | `Tous les jours · 11h00 — 23h00` |
+| contact | *(vide)* | `contact@greatlife.gn` |
+| réservation | *(vide)* | `resa@greatlife.gn` |
+
+**Le piège** : l'écran lit une copie **vide**, donc **les champs apparaîtront
+vides** — ce n'est pas une perte de données. Mais à l'enregistrement, chaque champ
+vide **écrase** la valeur correspondante côté site. **Il faut donc remplir les
+cinq d'un seul coup**, sinon on efface ce qu'on ne remplit pas (par exemple les
+horaires, et le site cesse de les afficher).
+
+**Ce qu'il faut saisir** :
+
+1. **Téléphone** — le vrai numéro, celui qui a WhatsApp (le site l'étiquette
+   « Appel & WhatsApp »). Le filet refuse une suite de 6 chiffres identiques.
+2. **Adresse** — **avec le quartier**. « Conakry, Guinée » ne permet pas à un
+   client de situer le restaurant.
+3. **Horaires** — à confirmer ou corriger (`Tous les jours · 11h00 — 23h00`).
+4. **E-mail de contact** — `moelohimmara@gmail.com`, ou de préférence
+   `moelohimmara+greatlife@gmail.com` : Gmail **ignore** ce qu'il y a après le
+   `+` et livre au même endroit, mais l'adresse publiée se filtre et se repère.
+5. **E-mail de réservation** — le même, ou une variante dédiée.
+
+Puis : `npm run verify:coordonnees` doit passer **au vert**. Tant qu'il est rouge,
+un client ne peut pas vous joindre.
+
+---
+
+## 8. Avant de fusionner dans `main`
 
 1. Rebaser sur `main`.
 2. `npm run verify:couloirs` — **aucun fichier de l'autre couloir**.
