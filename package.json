@@ -25,7 +25,8 @@
     "test:product-photo": "node --test scripts/test-product-photo-slot.mjs",
     "verify:lot3": "node scripts/verify-lot3.mjs",
     "lint": "eslint . --ext ts,tsx",
-    "verify:coquille": "node scripts/verify-coquille.mjs"
+    "verify:coquille": "node scripts/verify-coquille.mjs",
+    "verify:charte": "node scripts/verify-charte.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

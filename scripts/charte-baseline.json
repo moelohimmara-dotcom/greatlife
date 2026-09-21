@@ -1,0 +1,16 @@
+{
+  "SITE": {
+    "fichiers": 81,
+    "couleursHorsRole": 91,
+    "rayonsHorsEchelle": 3,
+    "policesHorsEchelle": 40,
+    "espacementsHorsEchelle": 107
+  },
+  "CONSOLE": {
+    "fichiers": 15,
+    "couleursHorsRole": 82,
+    "rayonsHorsEchelle": 7,
+    "policesHorsEchelle": 50,
+    "espacementsHorsEchelle": 191
+  }
+}

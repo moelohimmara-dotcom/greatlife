@@ -8,6 +8,7 @@ import type { MenuItem } from '@/data/menu'
 import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteContentFields, updateSiteConfigFields, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
+import { variablesCss } from '@/config/charte'
 import { fetchAllPages as fetchAllPagesCms } from '@/cms/repository/pages'
 import { compteursPilotage, compterEnAttente } from '@/cms/model/compteurs'
 
@@ -248,22 +249,24 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const font = FONTS[fontId]
   const isDark = themeId === 'premium'
 
+  /*
+    LES VARIABLES DE COULEUR SONT PRODUITES PAR LA CHARTE, PAS ICI.
+
+    Les quinze rôles étaient recopiés à la main dans cet objet. Ils viennent
+    désormais de `variablesCss(theme)` (`@/config/charte`), qui est le SEUL
+    endroit où un rôle est associé à un nom de variable. Deux conséquences :
+
+      - trois variables nouvelles apparaissent — `--c-danger`, `--c-succes`,
+        `--c-avertissement` — et `--c-bg`, qui manquait alors que `theme.bg`
+        existait depuis toujours ;
+      - corriger ou renommer un rôle se fait en un point, pour les DEUX surfaces
+        (site public et console), au lieu de deux listes qui divergent.
+
+    Les polices et `--dark` restent ici : ce ne sont pas des couleurs.
+  */
   const rootStyle: React.CSSProperties = {
     background: theme.bg, color: theme.text, fontFamily: font.body,
-    ['--c-primary' as any]: theme.primary,
-    ['--c-primary-dark' as any]: theme.primaryDark,
-    ['--c-accent' as any]: theme.accent,
-    ['--c-accent-soft' as any]: theme.accentSoft,
-    ['--c-gold' as any]: theme.gold,
-    ['--c-cream' as any]: theme.cream,
-    ['--c-surface' as any]: theme.surface,
-    ['--c-surface-alt' as any]: theme.surfaceAlt,
-    ['--c-heading' as any]: theme.heading,
-    ['--c-muted' as any]: theme.muted,
-    ['--c-text' as any]: theme.text,
-    ['--c-shadow' as any]: theme.shadow,
-    ['--c-shadow-deep' as any]: theme.shadowDeep,
-    ['--c-heading-invert' as any]: theme.headingInvert,
+    ...(variablesCss(theme) as React.CSSProperties),
     ['--f-heading' as any]: font.heading,
     ['--f-body' as any]: font.body,
     ['--dark' as any]: isDark ? '1' : '0',

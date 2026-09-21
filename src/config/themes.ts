@@ -1,4 +1,17 @@
-export interface ThemePalette {
+import { SEMANTIQUES } from './charte'
+import type { RoleCouleur } from './charte'
+
+/*
+  LES PALETTES SONT LES THÈMES DE LA CHARTE.
+
+  Les quinze rôles d'origine restent inchangés — aucune valeur n'est touchée, donc
+  aucun changement visuel. Trois rôles sont AJOUTÉS (`danger`, `succes`,
+  `avertissement`) : leur absence était la cause directe des 47 `#dc2626`
+  (le `red-600` de Tailwind, étranger au projet) relevés dans la console.
+  Leurs valeurs vivent dans `SEMANTIQUES` (`./charte`) et sont vérifiées ≥ 4,5:1
+  sur les trois fonds de chaque palette par `npm run verify:charte`.
+*/
+export interface ThemePalette extends Record<RoleCouleur, string> {
   id: string
   label: string
   bg: string
@@ -16,10 +29,20 @@ export interface ThemePalette {
   headingInvert: string
   shadow: string
   shadowDeep: string
+  /** Ajoutés le 2026-09-21 — voir `src/config/charte.ts`. */
+  danger: string
+  succes: string
+  avertissement: string
 }
 
+/** Les 15 rôles d'origine, plus les 3 rôles sémantiques de la charte. */
+const avecSemantiques = (p: Omit<ThemePalette, 'danger' | 'succes' | 'avertissement'>): ThemePalette => ({
+  ...p,
+  ...SEMANTIQUES[p.id],
+})
+
 export const THEMES: Record<string, ThemePalette> = {
-  gourmand: {
+  gourmand: avecSemantiques({
     id: 'gourmand', label: 'Gourmand chaleureux',
     bg: '#F5EFE6', surface: '#FFFFFF', surfaceAlt: '#FAF6F0',
     primary: '#2D5A27', primaryDark: '#1E3D1A',
@@ -28,8 +51,8 @@ export const THEMES: Record<string, ThemePalette> = {
     text: '#2A2620', muted: '#7A716A',
     heading: '#2D5A27', headingInvert: '#FFFFFF',
     shadow: 'rgba(45,90,39,0.08)', shadowDeep: 'rgba(45,90,39,0.16)',
-  },
-  premium: {
+  }),
+  premium: avecSemantiques({
     id: 'premium', label: 'Premium nocturne',
     bg: '#1A1F1A', surface: '#252B25', surfaceAlt: '#1E241E',
     primary: '#5A9E4A', primaryDark: '#3D7A30',
@@ -38,8 +61,8 @@ export const THEMES: Record<string, ThemePalette> = {
     text: '#E8E5E0', muted: '#9AA89A',
     heading: '#8FCB7F', headingInvert: '#1A1F1A',
     shadow: 'rgba(0,0,0,0.3)', shadowDeep: 'rgba(0,0,0,0.5)',
-  },
-  nature: {
+  }),
+  nature: avecSemantiques({
     id: 'nature', label: 'Nature brute',
     bg: '#EEEAE0', surface: '#FFFFFF', surfaceAlt: '#F8F5EE',
     primary: '#4A7C3A', primaryDark: '#356028',
@@ -48,8 +71,8 @@ export const THEMES: Record<string, ThemePalette> = {
     text: '#28241E', muted: '#75706A',
     heading: '#4A7C3A', headingInvert: '#FFFFFF',
     shadow: 'rgba(74,124,58,0.08)', shadowDeep: 'rgba(74,124,58,0.15)',
-  },
-  tropical: {
+  }),
+  tropical: avecSemantiques({
     id: 'tropical', label: 'Tropical vif',
     bg: '#FFF9F0', surface: '#FFFFFF', surfaceAlt: '#FFF4E5',
     primary: '#1E7A3D', primaryDark: '#125527',
@@ -58,5 +81,5 @@ export const THEMES: Record<string, ThemePalette> = {
     text: '#1C1A16', muted: '#7A756E',
     heading: '#1E7A3D', headingInvert: '#FFFFFF',
     shadow: 'rgba(30,122,61,0.08)', shadowDeep: 'rgba(30,122,61,0.16)',
-  },
+  }),
 }
