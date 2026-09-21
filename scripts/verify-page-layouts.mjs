@@ -148,9 +148,11 @@ if (!blogEnBande) fautif = true
 
 const shell = readFileSync(`${ROOT}/src/cms/renderer/page-layout-shell.ts`, 'utf8')
 const publicSite = readFileSync(`${ROOT}/src/sections/PublicSite.tsx`, 'utf8')
+const piedPublic = /pied=\{\s*\(?\s*\n?\s*<Footer/.test(publicSite)
+const piedApercu = /pied=\{\s*\(?\s*\n?\s*<Footer/.test(pane)
 console.log('  gabarits extraits du renderer : ' + (shell.includes('CSS_GABARITS_PAGE') ? 'OUI' : 'NON  <-- ECHEC'))
-console.log('  pied de page dans le renderer : ' + (publicSite.includes('pied={<Footer') ? 'OUI' : 'NON  <-- ECHEC'))
-console.log('  aperçu avec pied : ' + (pane.includes('pied={<Footer') ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  pied de page dans le renderer : ' + (piedPublic ? 'OUI' : 'NON  <-- ECHEC'))
+console.log('  aperçu avec pied : ' + (piedApercu ? 'OUI' : 'NON  <-- ECHEC'))
 console.log('  menu sur bannière : ' + (publicSite.includes('miseEnPageSurBanniere') ? 'OUI' : 'NON  <-- ECHEC'))
 const selecteursGrille =
   shell.includes('[style*="grid-template-columns"]') &&
@@ -163,7 +165,7 @@ const shellCarte =
   shell.includes('minmax(300px, 1fr)')
 console.log('  gabarits adaptent carte et articles : ' + (shellCarte ? 'OUI' : 'NON  <-- ECHEC'))
 console.log('  CSS gabarits non échappé : ' + (readFileSync(`${ROOT}/src/cms/renderer/PageRenderer.tsx`, 'utf8').includes('dangerouslySetInnerHTML') ? 'OUI' : 'NON  <-- ECHEC'))
-if (!shell.includes('CSS_GABARITS_PAGE') || !publicSite.includes('pied={<Footer') || !pane.includes('pied={<Footer') || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille || !shellCarte) fautif = true
+if (!shell.includes('CSS_GABARITS_PAGE') || !piedPublic || !piedApercu || !publicSite.includes('miseEnPageSurBanniere') || !selecteursGrille || !shellCarte) fautif = true
 if (!readFileSync(`${ROOT}/src/cms/renderer/PageRenderer.tsx`, 'utf8').includes('dangerouslySetInnerHTML')) fautif = true
 
 console.log('='.repeat(72))

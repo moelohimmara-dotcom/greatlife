@@ -60,8 +60,14 @@ const ANCHORS = {
   blog: 'blog',
 } as const
 
+/**
+ * Archive sans chrome (avant gel 2026-09-21) → gabarit, jamais le JSON live.
+ * `DEFAULT_RESTAURANT` vide ferait un en-tête sans nom : on garde la marque.
+ */
 function restaurantDepuisChrome(chrome: SnapshotChrome | null): ResolvedRestaurant {
-  if (!chrome) return resolveRestaurant(DEFAULT_RESTAURANT, 'fr')
+  if (!chrome) {
+    return resolveRestaurant({ ...DEFAULT_RESTAURANT, name: 'Greatlife' }, 'fr')
+  }
   return resolveRestaurant(chrome.restaurant, 'fr')
 }
 
@@ -70,8 +76,15 @@ function typoDepuisChrome(chrome: SnapshotChrome | null): TypoReglages | null {
   return typoDepuisReglages({ typography: chrome.typography })
 }
 
-function liensDepuisChrome(liens: SnapshotChrome['headerLinks'] | undefined): LienChrome[] {
-  return (liens ?? []).map((l) => ({
+/**
+ * `undefined` = gabarit (`PublicNav` / `Footer` : LIENS_*_DEFAUT).
+ * Un tableau vide (même figé) veut dire « aucun lien » — ce n’est pas un oubli.
+ */
+function liensDepuisChrome(
+  liens: SnapshotChrome['headerLinks'] | undefined,
+): LienChrome[] | undefined {
+  if (!liens) return undefined
+  return liens.map((l) => ({
     id: l.id,
     label: l.label,
     target: l.target,
@@ -121,7 +134,7 @@ export function PublicSite() {
             overlay={miseEnPageSurBanniere(layout)}
             restaurant={restaurantPublie}
             presentation={presentationPubliee}
-            liens={liensDepuisChrome(chrome?.headerLinks)}
+            liens={chrome ? liensDepuisChrome(chrome.headerLinks) : undefined}
           />
           <PageRenderer
             page={page}
@@ -133,7 +146,7 @@ export function PublicSite() {
                 restaurant={restaurantPublie}
                 locale="fr"
                 presentation={presentationPubliee}
-                liens={liensDepuisChrome(chrome?.footerLinks)}
+                liens={chrome ? liensDepuisChrome(chrome.footerLinks) : undefined}
               />
             )}
           />
