@@ -202,22 +202,25 @@ function Dashboard() {
     {
       cle: 'messages', titre: 'Messages', couleur: t.accent,
       nombre: unhandledMessagesCount,
+      total: messages.length,
       zero: 'Tout est traité',
-      un: '1 message attend une réponse',
+      un: 'message attend une réponse',
       pluriel: 'messages attendant une réponse',
     },
     {
       cle: 'reservations', titre: 'Réservations', couleur: t.gold,
       nombre: pendingReservationsCount,
+      total: reservationsCount,
       zero: 'Aucune table à confirmer',
-      un: '1 table à confirmer',
+      un: 'table à confirmer',
       pluriel: 'tables à confirmer',
     },
     {
       cle: 'orders', titre: 'Commandes', couleur: t.gold,
       nombre: pendingOrdersCount,
+      total: ordersCount,
       zero: 'Aucune commande à traiter',
-      un: '1 commande à confirmer',
+      un: 'commande à confirmer',
       pluriel: 'commandes à confirmer',
     },
   ]
@@ -236,7 +239,8 @@ function Dashboard() {
 
       {/* 1. À TRAITER — la rangée la plus importante de la console. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '20px' }}>
-        {aTraiter.map(({ cle, titre, couleur, nombre, zero, un, pluriel }) => (          <OrganicCard
+        {aTraiter.map(({ cle, titre, couleur, nombre, total, zero, un, pluriel }) => (
+          <OrganicCard
             key={cle}
             hover
             onClick={() => ouvrir(cle)}
@@ -245,9 +249,9 @@ function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
-                <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10 }}>{nombre === 0 ? zero : `${nombre} ${un}`}</div>
+                <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10 }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
                 <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
-                  {titre}{nombre === 0 ? ` — ${zero.charAt(0).toLowerCase()}${zero.slice(1)}` : ` — ${nombre} ${pluriel}`}
+                  {titre} · {total} au total
                 </div>
               </div>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: `${couleur}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
