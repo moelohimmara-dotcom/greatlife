@@ -245,25 +245,30 @@ function Dashboard() {
 
   return (
     /*
-      LA COLONNE DE CONTENU EST PLAFONNÉE.
+      LA COLONNE DE CONTENU EST PLAFONNÉE À 760 px.
 
       Sans plafond, la rangée « À traiter » s'étire avec l'écran : mesuré à
-      1280 px de fenêtre, les grands chiffres étaient déjà à ~300 px l'un de
-      l'autre ; à 1920 px la carte fait ~520 px et l'écart passe ~540 px, avec
-      une zone vide au milieu de chaque carte.
+      1280 px de fenêtre, les grands chiffres étaient à ~300 px l'un de l'autre ;
+      à 1920 px la carte fait ~520 px et l'écart passe ~540 px, avec une zone
+      vide au milieu de chaque carte. Le propriétaire a confirmé que c'est CET
+      ÉCART qu'il fallait resserrer (2026-09-21).
 
-      Ce n'est pas une préférence : c'est la recommandation convergente des
-      guides de tableaux de bord — Wix documente une largeur maximale de
-      **1248 px**, centrée, marges latérales qui s'étirent (UX Guidelines for
-      Dashboard Pages in Blocks) ; ui-syntax recommande ~1200 px (« Cap the
-      main content column at ~1200px for large screens ») ; le noirbook conclut
-      la même chose pour les écrans 1280→2560 (« a centered fixed-width layout
-      with a max-width of 1440px », ou des contraintes par widget).
+      D'où vient 760 : c'est arithmétique, pas esthétique.
+        - la fourchette documentée d'une carte KPI est **200-280 px** de large
+          (noirbook.org/topics/dashboard-design, KPI card ; artofstyleframe :
+          « Card size: 200–280px wide ») ;
+        - la rangée porte 3 cartes et 2 gouttières de 16 px ;
+        - 3 × 243 + 2 × 16 = 761 → 760 px retenu.
 
-      1248 est retenu : c'est la valeur la plus basse des trois, donc la plus
-      dense. Les modules larges (éditeur, tableau) ne passent pas par ici.
+      C'est la borne BASSE qu'on vise ici parce que c'est elle qui réduit
+      l'écart entre les chiffres, et elle reste dans la fourchette. Descendre
+      plus bas sortirait de la fourchette et casserait le libellé sur deux
+      lignes partout (`minmax(300px, 1fr)` sur la grille protège ce plancher).
+
+      Wix documente une largeur maximale de 1248 px et ui-syntax ~1200 px : ce
+      sont des PLAFONDS, pas des cibles. 760 les respecte.
     */
-    <div style={{ maxWidth: 1248, margin: '0 auto' }}>
+    <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <PageHeader
         title={`Bonjour ${user?.name || 'vous'}`}
         subtitle="Voici ce qui attend une réponse sur votre site."
