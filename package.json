@@ -20,13 +20,10 @@
     "verify:dispositions": "node scripts/verify-dispositions.mjs",
     "verify:page-layouts": "node scripts/verify-page-layouts.mjs",
     "test:save-plan": "node --test scripts/test-save-plan.mjs",
-<<<<<<< HEAD
     "test:compteurs": "node --test scripts/test-compteurs.mjs",
-=======
     "test:snapshot": "node --test scripts/test-snapshot.mjs",
     "test:identite": "node --test scripts/test-identite-restaurant.mjs",
     "test:subblock-rules": "node --test scripts/test-subblock-rules.mjs",
->>>>>>> ca1c0c7 (Structure : En-tÃªte et Pied dans Mise en page, libellÃ©s distincts pour les doublons.)
     "test:preview-geometry": "node --test scripts/test-preview-geometry.mjs",
     "test:product-photo": "node --test scripts/test-product-photo-slot.mjs",
     "verify:lot3": "node scripts/verify-lot3.mjs",
