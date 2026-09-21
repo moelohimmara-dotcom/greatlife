@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
-import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination } from '@/admin/ui'
+import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination, formePastille, ESPACE, HAUTEUR_ETAT } from '@/admin/ui'
+import { lireNavPref, ecrireNavPref, type AdminNavPref } from '@/admin/admin-nav'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
@@ -64,47 +65,188 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
   ]],
 ]
 
+function menuEstMobile() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+}
+
+function IconeMenu() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
   const { theme: t, rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
   const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const [mobileNav, setMobileNav] = useState(false)
+  const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
+  const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
+  const editorFocus = active === 'content'
+  const editorHidesNav = editorFocus && !editorRail
+  const rail = editorFocus || navPref === 'rail'
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
   const go = (k: string) => { setActive(k); setMobileNav(false) }
   const NOTIF: Record<string, number> = { messages: unhandledMessagesCount, orders: pendingOrdersCount, reservations: pendingReservationsCount }
 
-  const Sidebar = (
-    /* `minHeight: 0` sur l'`aside` ET sur son `nav` : sans eux, `overflow: auto`
-       du `nav` reste inerte et la barre s'allonge jusqu'à 1179 px au lieu de
-       défiler dans sa propre colonne (défaut mesuré, voir la coquille plus bas). */
-    <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '22px 14px', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em', display: 'inline-flex', alignItems: 'baseline' }}>
-        Great<span style={{ color: t.accent }}>life</span> <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
-      </Link>
-      <nav style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, minHeight: 0, overflow: 'auto' }}>
+  useEffect(() => {
+    const html = document.documentElement
+    if (!editorFocus) {
+      html.classList.remove('admin-editor-lock')
+      return
+    }
+    html.classList.add('admin-editor-lock')
+    return () => { html.classList.remove('admin-editor-lock') }
+  }, [editorFocus])
+
+  useEffect(() => {
+    if (editorFocus) setEditorRail(navPref === 'rail')
+  }, [editorFocus, navPref])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const onChange = () => { if (!mq.matches) setMobileNav(false) }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    if (!mobileNav) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileNav(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileNav])
+
+  const toggleNav = useCallback(() => {
+    if (menuEstMobile()) {
+      setMobileNav((open) => !open)
+      return
+    }
+    if (editorFocus) {
+      setEditorRail((open) => {
+        const next = !open
+        if (next) {
+          setNavPref('rail')
+          ecrireNavPref('rail')
+        }
+        return next
+      })
+      return
+    }
+    setNavPref((prev) => {
+      const next: AdminNavPref = prev === 'open' ? 'rail' : 'open'
+      ecrireNavPref(next)
+      return next
+    })
+  }, [editorFocus])
+
+  const toggleLabel = (() => {
+    if (menuEstMobile()) return mobileNav ? 'Fermer le menu' : 'Ouvrir le menu'
+    if (editorHidesNav) return 'Ouvrir le menu'
+    if (rail) return 'Déplier le menu'
+    return 'Replier le menu'
+  })()
+  const toggleExpanded = menuEstMobile() ? mobileNav : !editorHidesNav && !rail
+  const toggleIcon = (() => {
+    if (menuEstMobile()) return mobileNav ? Icon.x(20, t.heading) : <IconeMenu />
+    if (editorHidesNav) return <IconeMenu />
+    return rail ? Icon.chevronRight(20, t.heading) : Icon.chevronLeft(20, t.heading)
+  })()
+
+  const boutonMenu = (place: 'sidebar' | 'main') => (
+    <Bouton
+      carre
+      genre="secondaire"
+      aria-label={toggleLabel}
+      title={toggleLabel}
+      aria-expanded={toggleExpanded}
+      aria-controls={menuEstMobile() ? 'admin-console-nav-tiroir' : 'admin-console-nav'}
+      className={place === 'main' ? 'admin-nav-toggle-main admin-mobile-menu' : 'admin-nav-toggle-side'}
+      onClick={toggleNav}
+      style={place === 'main' ? { display: 'none', position: 'absolute', top: 12, left: 12, zIndex: 20 } : undefined}
+    >
+      {toggleIcon}
+    </Bouton>
+  )
+
+  /* `minHeight: 0` : sans lui le nav ne défile pas et allonge la coquille. */
+  const renderNav = (compact: boolean, navId: string) => (
+    <aside
+      id={navId}
+      className={compact ? 'admin-nav-rail' : undefined}
+      style={{
+        background: t.surface,
+        borderRight: `1px solid ${t.shadow}`,
+        padding: compact ? '16px 8px' : '22px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'center' : 'space-between', gap: ESPACE, minHeight: 40 }}>
+        <Link
+          to="/"
+          title="Voir le site"
+          aria-label="Greatlife, voir le site"
+          style={{
+            fontFamily: 'var(--f-heading)',
+            fontWeight: 700,
+            fontSize: compact ? '18px' : '22px',
+            color: t.heading,
+            textDecoration: 'none',
+            letterSpacing: '-0.02em',
+            display: compact ? 'none' : 'inline-flex',
+            alignItems: 'baseline',
+            minWidth: 0,
+          }}
+        >
+          Great<span style={{ color: t.accent }}>life</span>{' '}
+          <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
+        </Link>
+        {boutonMenu('sidebar')}
+      </div>
+      <nav aria-label="Navigation de la console" style={{ marginTop: compact ? 16 : 24, display: 'flex', flexDirection: 'column', gap: compact ? 12 : 18, flex: 1, overflow: 'auto', minHeight: 0 }}>
         {NAV_GROUPS.map(([groupLabel, items]) => (
           <div key={groupLabel}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: t.heading, marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div
+              className="admin-nav-group"
+              style={{ fontSize: '12px', fontWeight: 700, color: t.heading, marginBottom: 8, paddingLeft: 4 }}
+            >{groupLabel}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: ESPACE, alignItems: compact ? 'center' : undefined }}>
               {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => {
                 const isActive = active === k
                 return (
                   <Bouton
                     key={k}
-                    etendu
+                    etendu={!compact}
+                    carre={compact}
                     genre={isActive ? 'primaire' : 'nav'}
                     onClick={() => go(k)}
-                    style={{ position: 'relative' }}
+                    title={l}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={NOTIF[k] > 0 ? `${l}, ${NOTIF[k]} en attente` : l}
+                    style={{ position: 'relative', justifyContent: compact ? 'center' : undefined }}
                   >
-                    <span style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.75 }}>
+                    <span aria-hidden="true" style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.75 }}>
                       {Icon[icon](16, isActive ? '#fff' : t.text)}
                     </span>
-                    <span style={{ flex: 1, textAlign: 'left' }}>{l}</span>
+                    {!compact && <span style={{ flex: 1, textAlign: 'left' }}>{l}</span>}
                     {NOTIF[k] > 0 && (
-                      <span style={{
-                        fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                        background: isActive ? 'rgba(255,255,255,0.25)' : t.accent, color: '#fff', minWidth: 18, textAlign: 'center',
-                      }}>{NOTIF[k]}</span>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          ...formePastille(),
+                          ...(compact
+                            ? { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, padding: '0 4px', fontSize: 10 }
+                            : { minWidth: HAUTEUR_ETAT, padding: '0 6px' }),
+                          background: isActive ? 'rgba(255,255,255,0.25)' : t.accent,
+                          color: '#fff',
+                        }}
+                      >{compact && NOTIF[k] > 9 ? '9+' : NOTIF[k]}</span>
                     )}
                   </Bouton>
                 )
@@ -113,63 +255,55 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           </div>
         ))}
       </nav>
-      <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '14px' }}>
-        <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
-        <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
-        <Bouton etendu genre="danger" onClick={handleLogout}>
-          {Icon.logout(16, t.accent)} Déconnexion
+      <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined }}>
+        {!compact && (
+          <>
+            <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
+          </>
+        )}
+        <Bouton
+          etendu={!compact}
+          carre={compact}
+          genre="danger"
+          onClick={handleLogout}
+          title="Déconnexion"
+          aria-label="Déconnexion"
+          style={{ justifyContent: compact ? 'center' : undefined }}
+        >
+          <span aria-hidden="true">{Icon.logout(16, t.accent)}</span>
+          {!compact && ' Déconnexion'}
         </Bouton>
-        <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
+        {!compact && (
+          <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
+        )}
       </div>
     </aside>
   )
 
+  const layoutNav = editorHidesNav ? 'hidden' : rail ? 'rail' : 'open'
+
   return (
     /*
-      LA CONSOLE PORTAIT LA POLICE DU NAVIGATEUR.
-
-      `--f-heading` et `--f-body` sont posés par `rootStyle`, qui n'était appliqué
-      qu'au site public (`PublicSite.tsx:100`), à l'écran de connexion
-      (`LoginScreen.tsx:34`) et à l'aperçu (`PreviewPane.tsx:57`) — **jamais à la
-      console**. Tous les `fontFamily: 'var(--f-heading)'` de ce fichier étaient
-      donc des déclarations INVALIDES : le navigateur les ignorait et la console
-      s'affichait dans sa police par défaut (Segoe UI sur Windows), pas dans
-      Fraunces + DM Sans.
-
-      Mesuré le 2026-09-21 sur le tableau de bord en production :
-      `getComputedStyle(nombre).fontFamily` = « ui-sans-serif, system-ui, … »
-      (la police par défaut de Chrome), et `--f-heading` résolu à vide.
-
-      `...rootStyle` en PREMIER : les déclarations de mise en page de la console
-      qui suivent continuent de gagner sur celles du thème.
+      `...rootStyle` en premier : polices Fraunces/DM Sans sur la console.
+      Coquille bornée à 100dvh — seul `main` défile ; la nav défile dans son aside.
+      Modes : ouvert (248px) · rail d’icônes (64px) · masqué en édition (hamburger).
     */
-    /*
-      LA COQUILLE EST BORNÉE PAR LA FENÊTRE, ET UN SEUL BLOC DÉFILE.
-
-      Défaut MESURÉ le 2026-09-21 en production, fenêtre de 674 px de haut :
-      la barre latérale faisait **1179 px**, parfois **1451 px** ; le bloc
-      « Connecté en tant que / Déconnexion / Voir le site » était **hors écran** ;
-      et `window.scrollTo(0, 400)` faisait passer le haut de la barre de
-      **0 à −400 px** — elle défilait avec la page au lieu de rester en place.
-
-      CAUSE. `main` portait `minHeight: '100vh'` alors que son contenu dépasse
-      la fenêtre. Le contenu gagnait, donc la ligne de grille grandissait, donc
-      `aside` (étiré à la hauteur de la ligne) grandissait, donc le DOCUMENT
-      grandissait — et c'est le document qui défilait, emportant la barre.
-      Un enfant de grille ou de flex a par défaut pour taille minimale celle de
-      son CONTENU (`min-height: auto`) : **sans `minHeight: 0`, `overflow: auto`
-      ne peut jamais s'activer**, le parent grandit à la place.
-
-      Deux principes, donc :
-        - la coquille est bornée à la fenêtre (`100dvh`) et ne défile pas ;
-        - le SEUL bloc défilant est `main`, et la barre défile dans son `nav`.
-      `100dvh` et non `100vh` : sur mobile, `100vh` ignore la barre d'outils
-      rétractable et déborde de sa hauteur.
-    */
-    <div style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', height: '100dvh', overflow: 'hidden', background: t.bg }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', gridTemplateRows: 'minmax(0, 1fr)', height: '100%', minHeight: 0, overflow: 'hidden' }} className="admin-layout">
-        <div className="admin-sidebar-desktop" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>{Sidebar}</div>
+    <div
+      data-admin-drawer={mobileNav ? 'open' : 'closed'}
+      style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', height: '100dvh', overflow: 'hidden', background: t.bg }}
+    >
+      <div
+        data-admin-nav={layoutNav}
+        className={editorFocus ? 'admin-layout admin-layout-editor' : 'admin-layout'}
+        style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}
+      >
+        {!editorHidesNav && (
+          <div className="admin-sidebar-desktop" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+            {renderNav(rail, 'admin-console-nav')}
+          </div>
+        )}
         <main className={active === 'content' ? 'admin-main-pad admin-main-editor' : 'admin-main-pad'} style={{
           padding: active === 'content' ? 0 : '32px 36px',
           overflow: active === 'content' ? 'hidden' : 'auto',
@@ -179,16 +313,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           display: active === 'content' ? 'flex' : undefined,
           flexDirection: 'column',
         }}>
-          <Bouton
-            carre
-            genre="secondaire"
-            aria-label="Ouvrir le menu"
-            className="admin-mobile-menu"
-            onClick={() => setMobileNav(true)}
-            style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20 }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </Bouton>
+          {boutonMenu('main')}
           {roleNotice && (
             <div key={roleNotice.id} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60, maxWidth: 'min(92vw, 560px)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid ${t.accent}55`, background: t.surface, boxShadow: `0 8px 28px ${t.shadow}`, fontSize: '13px', fontWeight: 500, color: t.heading }}>
               <span style={{ display: 'inline-flex', color: t.accent }}>{Icon.check(18, t.accent)}</span>
@@ -200,9 +325,9 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         </main>
       </div>
       {mobileNav && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
+        <div role="dialog" aria-modal="true" aria-label="Menu de la console" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
           <div onClick={() => setMobileNav(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.4)' }} />
-          <div style={{ width: '260px', maxWidth: '82vw' }}>{Sidebar}</div>
+          <div style={{ width: '260px', maxWidth: '82vw' }}>{renderNav(false, 'admin-console-nav-tiroir')}</div>
         </div>
       )}
     </div>
