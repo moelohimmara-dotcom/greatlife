@@ -5,6 +5,8 @@ import { SectionHead } from '@/components/ui/SectionHead'
 import { Icon } from '@/lib/icons'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
+import { InlineHtml } from '@/cms/renderer/InlineHtml'
+import { cmsSlotAttrs } from '@/cms/model/subblocks'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 /** Pastilles historiques, conservées par position (repli avant bascule CMS). */
@@ -12,9 +14,11 @@ const LEGACY_CHIPS = ['Bio accessible', 'Circuit court', 'Transparence totale']
 
 const DISPOSITIONS = ['image_left', 'image_right'] as const
 
-export function Story({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
+export function Story({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
-  const storyImg = useMedia('histoire')
+  const mediaHistoire = useMedia('histoire')
+  const storyImg = pick(cmsText(cms, 'image'), mediaHistoire)
+  const imageAlt = cmsText(cms, 'imageAlt')
 
   const title = pick(cmsText(cms, 'title'), legacy.storyTitle)
   const body = pick(cmsText(cms, 'body'), legacy.story)
@@ -35,7 +39,8 @@ export function Story({ content: cms, variant }: Partial<SectionComponentProps> 
               : `linear-gradient(160deg, ${t.primary}, ${t.primaryDark})`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative', overflow: 'hidden', boxShadow: softShadow(t),
-          }}>
+          }} >
+            {storyImg && imageAlt ? <span className="cms-sr-only">{imageAlt}</span> : null}
             {!storyImg && (
               <svg width="120" height="120" viewBox="0 0 120 120" style={{ opacity: 0.15 }} aria-hidden="true">
                 <path d="M60 20c-15 10-25 25-25 40 0 12 8 20 20 20 15 0 25-12 25-28 0-15-10-28-20-32Z" fill="#fff" stroke="#fff" strokeWidth="1" />
@@ -44,15 +49,17 @@ export function Story({ content: cms, variant }: Partial<SectionComponentProps> 
             )}
             <div style={{ position: 'absolute', bottom: '24px', left: '24px', right: '24px', color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
               <div style={{ fontSize: '12px', fontWeight: 600, opacity: 0.8, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{signerole}</div>
-              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '22px', fontWeight: 700, marginTop: '4px' }}>{signature}</div>
+              <div style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '22px', fontWeight: 700, marginTop: '4px' }}>{signature}</div>
             </div>
           </div>
         </Reveal>
   )
   const recit = (
         <Reveal delay={0.1}>
-          <SectionHead title={title} />
-          <p style={{ fontSize: '17px', lineHeight: 1.75, color: t.text, margin: 0 }}>{body}</p>
+          <SectionHead title={title} preview={preview} />
+          <p style={{ fontSize: '17px', lineHeight: 1.75, color: t.text, margin: 0 }}>
+            <InlineHtml as="span" html={body} {...cmsSlotAttrs(preview, 'body')} />
+          </p>
           <div style={{ marginTop: '28px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {chipLabels.map((label, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.surface, padding: '8px 14px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, color: t.text, border: `1px solid ${t.shadow}` }}>

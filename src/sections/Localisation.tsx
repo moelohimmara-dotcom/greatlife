@@ -11,7 +11,7 @@ import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 const DISPOSITIONS = ['card', 'wide'] as const
 
-export function Localisation({ content: cms, restaurant, variant }: Partial<SectionComponentProps> = {}) {
+export function Localisation({ content: cms, restaurant, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, isDark, content: legacy } = useSite()
 
   const title = pick(cmsText(cms, 'title'), 'Nous trouver')
@@ -53,7 +53,7 @@ export function Localisation({ content: cms, restaurant, variant }: Partial<Sect
       style={{ padding: '100px 24px', maxWidth: large ? '1200px' : '1000px', margin: '0 auto' }}
     >
       <Reveal>
-        <SectionHead title={title} sub={subtitle} />
+        <SectionHead title={title} sub={subtitle} preview={preview} />
         <div className="loca-grid" style={{ display: 'grid', gridTemplateColumns: large ? '1fr' : '1fr 1fr', gap: '24px' }}>
           <OrganicCard style={{ padding: '32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

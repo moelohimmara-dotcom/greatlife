@@ -17,7 +17,8 @@
 
 import { isTranslation, resolveI18n } from '../i18n'
 import { getSectionDefinition, fieldsFor } from './schemas'
-import type { FieldDef } from './fields'
+import { parseFieldNumber, type FieldDef } from './fields'
+import { sanitiserHex } from './couleur'
 
 export type IssueLevel = 'error' | 'warning'
 
@@ -63,6 +64,9 @@ function checkSimpleShape(field: FieldDef, value: unknown): boolean {
       return typeof value === 'string'
     case 'select':
       return typeof value === 'string' && (field.options ?? []).some((o) => o.value === value)
+    case 'color':
+      if (typeof value !== 'string') return false
+      return value.trim() === '' || sanitiserHex(value) !== null
     case 'list':
       return Array.isArray(value)
     case 'group':
@@ -70,6 +74,39 @@ function checkSimpleShape(field: FieldDef, value: unknown): boolean {
     default:
       return true
   }
+}
+
+/** Nombre hors de l'intervalle déclaré : message restaurateur, sans jargon. */
+function checkNumberBounds(
+  field: FieldDef,
+  value: unknown,
+  path: string,
+  prefix = '',
+): ValidationIssue[] {
+  if (field.type !== 'number') return []
+  const n = parseFieldNumber(value)
+  if (n === null) return []
+  const min = field.min
+  const max = field.max
+  if (min !== undefined && n < min) {
+    return [{
+      path,
+      message: `${prefix}« ${field.label} » est trop petit : choisissez au moins ${libelleBorne(field, min)}.`,
+      level: 'error',
+    }]
+  }
+  if (max !== undefined && n > max) {
+    return [{
+      path,
+      message: `${prefix}« ${field.label} » est trop grand : ${libelleBorne(field, max)} au plus.`,
+      level: 'error',
+    }]
+  }
+  return []
+}
+
+function libelleBorne(field: FieldDef, n: number): string {
+  return field.unit ? `${n} ${field.unit}` : String(n)
 }
 
 /**
@@ -108,7 +145,10 @@ function validateObjectFields(
         message: `${prefix}« ${sub.label} » n'a pas le format attendu.`,
         level: 'error',
       })
+      continue
     }
+
+    issues.push(...checkNumberBounds(sub, subValue, path, prefix))
   }
 
   // Clé stockée mais absente du registre : signalée, jamais bloquante.
@@ -177,6 +217,8 @@ export function validateSectionContent(
       continue
     }
 
+    issues.push(...checkNumberBounds(field, value, field.name))
+
     if (field.type === 'group') {
       issues.push(
         ...validateObjectFields(
@@ -226,8 +268,10 @@ export function validateSectionContent(
   }
 
   // 2. Champs non déclarés : signalés, jamais bloquants
+  // `_editor` porte les groupes d’emplacements (éditeur seulement, R8).
   const declared = new Set(definition.fields.map((f) => f.name))
   for (const key of Object.keys(data)) {
+    if (key === '_editor') continue
     if (!declared.has(key)) {
       issues.push({
         path: key,

@@ -51,10 +51,18 @@ export const CLEFS_COORDONNEES = [
   'hours',
 ] as const
 
+/** Identité : le nom plat `restaurantName` rejoint `restaurant.name`. */
+export const CLEFS_MIROIR_RESTAURANT = [...CLEFS_COORDONNEES, 'restaurantName'] as const
+
 export type ClefCoordonnee = (typeof CLEFS_COORDONNEES)[number]
+export type ClefMiroirRestaurant = (typeof CLEFS_MIROIR_RESTAURANT)[number]
 
 export function clefsCoordonnees(patch: Donnees): ClefCoordonnee[] {
   return CLEFS_COORDONNEES.filter((c) => c in patch)
+}
+
+export function clefsMiroirRestaurant(patch: Donnees): ClefMiroirRestaurant[] {
+  return CLEFS_MIROIR_RESTAURANT.filter((c) => c in patch)
 }
 
 /**

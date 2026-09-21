@@ -22,6 +22,8 @@ import type { Locale } from '../model/i18n'
 import { resolveContentObject } from '../model/i18n'
 import type { ResolvedRestaurant } from '../repository/settings'
 import { getSectionDefinition } from '../model/sections/schemas'
+import { normaliserEspacement, normaliserVisibleOn } from '../model/sections/fields'
+import { sanitiserHex } from '../model/sections/couleur'
 import { getSectionComponent, type SectionComponentProps, type SectionDataSource } from './registry'
 import { SectionFallback } from './SectionFallback'
 import { SectionErrorBoundary } from './ErrorBoundary'
@@ -78,14 +80,56 @@ export function SectionRenderer({
     le site public.
   */
   const label = getSectionDefinition(section.type)?.label
+  const fond = sanitiserHex(section.content?.blockTint)
+  const titre = sanitiserHex(section.content?.headingColor)
+  const espacement = normaliserEspacement(section.content?.spacing)
+  const visibleOn = normaliserVisibleOn(section.content?.visibleOn)
+  const enveloppe: CSSProperties = {
+    ...SECTION_SCROLL_STYLE,
+    ...(fond ? { background: fond, ['--section-bg' as string]: fond } : {}),
+    ...(titre ? { ['--section-heading' as string]: titre } : {}),
+  }
 
   return (
     <div
       id={section.anchor ?? undefined}
       data-cms-section={section.type}
       data-cms-anchor={section.anchor ?? undefined}
-      style={SECTION_SCROLL_STYLE}
+      data-cms-id={section.id}
+      data-cms-hidden={preview && !section.visible ? '1' : undefined}
+      data-cms-tint={fond ? '1' : undefined}
+      data-cms-heading={titre ? '1' : undefined}
+      data-cms-spacing={espacement === 'normal' ? undefined : espacement}
+      data-cms-visible={visibleOn === 'all' ? undefined : visibleOn}
+      className={visibleOn === 'all' ? undefined : `cms-visible-${visibleOn}`}
+      style={{
+        ...enveloppe,
+        position: 'relative',
+        ...(preview && !section.visible
+          ? { opacity: 0.92 }
+          : {}),
+      }}
     >
+      {preview && !section.visible && (
+        <div
+          className="cms-masque-bandeau"
+          role="note"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 40,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: '0.01em',
+            padding: '10px 14px',
+            background: '#14120e',
+            color: '#fff',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+          }}
+        >
+          Masqué — invisible sur le site public. Cliquez un texte pour le modifier.
+        </div>
+      )}
       <SectionErrorBoundary key={`${section.id}:${section.variant ?? ''}`} sectionType={section.type} sectionLabel={label}>
         {Component ? (
           <Component {...props} />

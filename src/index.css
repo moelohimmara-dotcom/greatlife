@@ -10,7 +10,68 @@ html {
   scroll-behavior: smooth;
 }
 
+.cms-inline-html a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cms-inline-html p { margin: 0.35em 0; }
+.cms-inline-html ul,
+.cms-inline-html ol { margin: 0.35em 0 0.35em 1.25em; padding: 0; }
+.cms-inline-html li { margin: 0.15em 0; }
+.cms-inline-html blockquote {
+  margin: 0.5em 0;
+  padding: 0 0 0 12px;
+  border-left: 3px solid color-mix(in srgb, var(--c-primary, #2D5A27) 45%, transparent);
+}
+.cms-align-center { text-align: center; }
+.cms-align-left { text-align: left; }
+.cms-size-large { font-size: 1.15em; }
+.cms-inline-html mark,
+.cms-inline-html [data-cms-hl] {
+  color: inherit;
+  padding: 0 0.12em;
+  border-radius: 2px;
+}
+/* Titre de bloc : --section-heading posé par l’enveloppe si headingColor est saisi. */
+[data-cms-heading="1"] h2 {
+  color: var(--section-heading) !important;
+}
+
+/* Visible sur bureau / téléphone — même seuil que les gabarits de page (900 px). */
+@media (min-width: 901px) {
+  .cms-visible-mobile { display: none !important; }
+}
+@media (max-width: 900px) {
+  .cms-visible-desktop { display: none !important; }
+}
+
+.cms-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+[data-cms-slot][contenteditable="true"] {
+  cursor: text;
+  outline: 2px solid color-mix(in srgb, var(--c-primary, #2D5A27) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Modifier le site : coller à la fenêtre, sans le padding mobile ni le fond crème en dessous. */
+html.admin-editor-lock,
+html.admin-editor-lock body {
+  height: 100%;
+  overflow: hidden;
+}
+
 .admin-main-editor {
   padding: 0 !important;
   height: 100% !important;
@@ -18,14 +79,382 @@ html {
   overflow: hidden !important;
 }
 
+.admin-layout-editor {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  transition: grid-template-columns 0.15s ease;
+}
+
+.admin-layout[data-admin-nav="rail"] {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.admin-layout[data-admin-nav="hidden"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-sidebar-desktop {
+  min-width: 0;
+  overflow: hidden;
+  width: 248px;
+  transition: width 0.15s ease;
+}
+
+.admin-layout[data-admin-nav="rail"] .admin-sidebar-desktop {
+  width: 64px;
+}
+
+.admin-layout[data-admin-nav="hidden"] .admin-sidebar-desktop {
+  width: 0;
+}
+
+.admin-nav-rail .admin-nav-group {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.admin-nav-toggle-main {
+  display: none;
+}
+
+.admin-layout[data-admin-nav="hidden"] .admin-nav-toggle-main {
+  display: inline-flex !important;
+}
+
+[data-admin-drawer="open"] .admin-nav-toggle-main {
+  display: none !important;
+}
+
+.admin-layout[data-admin-nav="hidden"] .admin-editor-toolbar {
+  padding-left: 56px !important;
+}
+
+.admin-editor-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+  position: relative;
+}
+
+.admin-editor-toolbar-start,
+.admin-editor-toolbar-center,
+.admin-editor-toolbar-end {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* L’identité absorbe l’espace ; FR/EN+undo et publication restent collés (pas de trou). */
+.admin-editor-toolbar-start {
+  flex: 1 1 0;
+  justify-content: flex-start;
+}
+
+.admin-editor-toolbar-center {
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.admin-editor-toolbar-end {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.admin-editor-toolbar-title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--f-heading);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.admin-editor-toolbar-msg {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-editor-toolbar-plus {
+  position: relative;
+  display: none;
+  flex: 0 0 auto;
+}
+
+.admin-editor-toolbar-plus-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--c-heading, #1a1a1a) 12%, transparent);
+}
+
+@media (max-width: 1099px) {
+  .admin-editor-toolbar-wide {
+    display: none !important;
+  }
+  .admin-editor-toolbar-plus {
+    display: inline-flex;
+  }
+}
+
+.admin-editor-grid {
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+}
+
+.admin-editor-grid.is-preview-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-editor-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-editor-main.is-preview-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-publication-panel {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-editor-structure {
+  position: relative;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+.admin-editor-structure.is-locked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgba(20, 18, 14, 0.28);
+  pointer-events: auto;
+}
+
+@media (max-width: 1100px) {
+  .admin-editor-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(50vh, 1fr);
+    overflow: auto !important;
+  }
+
+  .admin-editor-grid.is-preview-wide {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .admin-editor-main {
+    grid-template-columns: 1fr;
+    min-height: 70vh;
+  }
+
+  .admin-editor-main.is-preview-wide {
+    min-height: 0;
+  }
+
+  .admin-editor-main > div:first-child {
+    min-height: 52vh;
+  }
+}
+
 section[id] {
   scroll-margin-top: 80px;
 }
 
-*:focus-visible {
-  outline: 2px solid var(--c-primary, #2D5A27);
-  outline-offset: 2px;
-  border-radius: 4px;
+/* Clic souris : pas de cadre. Clavier : underline interne (WCAG 2.4.7 / 2.4.13).
+   Hover / press : couche d’état Material (~8 % / ~16 %), pas un ring. */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+.admin-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 currentColor;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.admin-focus:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--c-primary, #2D5A27);
+}
+
+.admin-range {
+  height: 44px;
+  margin: 0;
+  accent-color: var(--c-primary, #2D5A27);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.admin-range:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Dessin 40px (Material 3) ; zone cliquable 44×44 (Apple HIG / WCAG 2.2 2.5.5). */
+.admin-btn {
+  position: relative;
+  isolation: isolate;
+  outline: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+.admin-btn:focus {
+  outline: none;
+}
+.admin-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.15s ease;
+}
+.admin-btn:focus-visible::before {
+  opacity: 0.1;
+}
+.admin-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.admin-btn:active:not(:disabled)::before {
+  opacity: 0.16;
+}
+.admin-btn:disabled {
+  cursor: default;
+}
+/* Pastilles couleur : hit = taille réelle, pas 44 qui chevauche la voisine. */
+.admin-btn--pastille {
+  --admin-cible: 100%;
+}
+.admin-btn:focus:not(:focus-visible)::before {
+  opacity: 0;
+}
+/* Zone 44 px sans voler les clics des enfants (input couleur, menu …). */
+.admin-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--admin-cible, 44px));
+  height: var(--admin-cible, 44px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: transparent;
+  z-index: 0;
+}
+.admin-btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+@media (hover: hover) {
+  .admin-btn:hover:not(:disabled):not(:active)::before {
+    opacity: 0.08;
+  }
+}
+
+.admin-carte {
+  background-color: var(--c-surface, #fff);
+  transition: background-color 0.15s ease;
+  outline: none;
+}
+.admin-carte:focus,
+.admin-carte:focus-visible {
+  outline: none;
+}
+.admin-carte.is-selected {
+  background-color: color-mix(in srgb, var(--c-primary, #2D5A27) 5%, var(--c-surface, #fff));
+  box-shadow: inset 3px 0 0 var(--c-primary, #2D5A27);
+}
+/* Bouton + carte : le focus clavier ne remplace pas le trait de sélection. */
+.admin-btn.admin-carte.is-selected:focus-visible {
+  box-shadow: inset 3px 0 0 var(--c-primary, #2D5A27), inset 0 -2px 0 currentColor;
+}
+@media (hover: hover) {
+  .admin-carte:hover {
+    background-color: var(--c-surface-alt, #FAF6F0);
+  }
+  .admin-carte.is-selected:hover {
+    background-color: color-mix(in srgb, var(--c-primary, #2D5A27) 8%, var(--c-surface-alt, #FAF6F0));
+  }
+}
+
+.admin-apercu-scene {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.admin-apercu-cadre {
+  flex-shrink: 0;
+  transition: width 0.15s ease, border-width 0.15s ease, border-radius 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-apercu-segment {
+  display: inline-flex;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-btn,
+  .admin-btn::before,
+  .admin-carte,
+  .admin-apercu-cadre,
+  .admin-layout,
+  .admin-sidebar-desktop {
+    transition: none;
+  }
+  .admin-btn:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 ::selection {
@@ -67,8 +496,26 @@ section[id] {
   .engagements-grid { grid-template-columns: 1fr !important; }
   .admin-layout { grid-template-columns: 1fr !important; }
   .admin-sidebar-desktop { display: none !important; }
-  .admin-mobile-menu { display: inline-flex !important; }
+  .admin-mobile-menu,
+  .admin-nav-toggle-main { display: inline-flex !important; }
   .admin-main-pad { padding: 56px 18px 32px !important; }
+  .admin-main-editor.admin-main-pad,
+  .admin-main-editor {
+    padding: 0 !important;
+  }
+  .admin-main-editor .admin-mobile-menu {
+    top: 12px;
+    left: 12px;
+    right: auto;
+  }
+  .admin-main-editor .admin-editor-toolbar {
+    padding-left: 56px !important;
+  }
+}
+
+[data-admin-drawer="open"] .admin-nav-toggle-main,
+[data-admin-drawer="open"] .admin-mobile-menu {
+  display: none !important;
 }
 
 @media (max-width: 480px) {
@@ -82,4 +529,42 @@ section[id] {
   .contact-grid { grid-template-columns: 1fr !important; }
   .reservation-grid { grid-template-columns: 1fr !important; }
   .footer-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+}
+
+[data-cms-tint="1"] section,
+[data-cms-tint="1"] .section-pad {
+  background-color: var(--section-bg) !important;
+}
+
+[data-cms-heading="1"] h2 {
+  color: var(--section-heading) !important;
+}
+
+[data-cms-typo] {
+  font-family: var(--font-body, var(--f-body), sans-serif);
+}
+[data-cms-typo] h1,
+[data-cms-typo] h2,
+[data-cms-typo] h3,
+[data-cms-typo] h4 {
+  font-family: var(--font-heading, var(--f-heading), inherit);
+  font-weight: var(--font-heading-weight, 700);
+}
+
+/* Espacement de bloc (Serré / Aéré) — Normal = HTML inchangé. */
+[data-cms-section][data-cms-spacing="compact"] .section-pad {
+  padding-top: 48px !important;
+  padding-bottom: 48px !important;
+}
+[data-cms-section][data-cms-spacing="roomy"] .section-pad {
+  padding-top: 128px !important;
+  padding-bottom: 128px !important;
+}
+[data-cms-section][data-cms-spacing="compact"] .section-pad-top {
+  padding-top: 24px !important;
+  padding-bottom: 64px !important;
+}
+[data-cms-section][data-cms-spacing="roomy"] .section-pad-top {
+  padding-top: 64px !important;
+  padding-bottom: 132px !important;
 }

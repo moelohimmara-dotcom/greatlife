@@ -1,90 +1,286 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite } from '@/contexts/SiteContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { softShadowSm } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
+import { resolveI18n } from '@/cms/model/i18n'
+import {
+  CHROME_HEADER_ID,
+  LIENS_ENTETE_DEFAUT,
+  collantEffectif,
+  couleursAnnonce,
+  couleursEntete,
+  enteteStructurel,
+  hauteurLogoPx,
+  hrefAnnonce,
+  hrefLien,
+  libelleLien,
+  morceauxMarque,
+  overlayEffectif,
+  schemeEntete,
+  tailleNomLogoPx,
+  type ChromePresentation,
+  type LienChrome,
+} from '@/cms/model/sections/site-chrome'
+import type { ResolvedRestaurant } from '@/cms/repository/settings'
+import type { Locale } from '@/cms/model/i18n'
 
-export function PublicNav({ overlay = false }: { overlay?: boolean }) {
+export interface PublicNavProps {
+  overlay?: boolean
+  locale?: Locale
+  restaurant?: ResolvedRestaurant
+  liens?: LienChrome[]
+  presentation?: ChromePresentation
+  /** Identifiant pour l’aperçu : clic = ouvrir l’inspecteur En-tête. */
+  selectable?: boolean
+}
+
+function liensParDefaut(): LienChrome[] {
+  return LIENS_ENTETE_DEFAUT.map((l) => ({ ...l, source: 'settings' as const }))
+}
+
+export function PublicNav({
+  overlay = false,
+  locale = 'fr',
+  restaurant: restaurantProp,
+  liens: liensProp,
+  presentation: presentationProp,
+  selectable = false,
+}: PublicNavProps) {
   const { theme: t } = useSite()
-  const isMobile = useIsMobile()
+  const [vueApercu, setVueApercu] = useState<Window | null>(null)
+  const attacherVue = useCallback((el: HTMLElement | null) => {
+    setVueApercu(el?.ownerDocument.defaultView ?? null)
+  }, [])
+  const isMobile = useIsMobile(vueApercu)
   const [scrolled, setScrolled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [logoCasse, setLogoCasse] = useState(false)
+
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-  const linkIds = ['carte', 'histoire', 'engagements', 'equipe', 'loca', 'contact', 'blog']
+    const win = vueApercu ?? window
+    const onScroll = () => setScrolled(win.scrollY > 20)
+    onScroll()
+    win.addEventListener('scroll', onScroll, { passive: true })
+    return () => win.removeEventListener('scroll', onScroll)
+  }, [vueApercu])
+
+  const restaurant = restaurantProp
+  const presentation = presentationProp ?? {}
+  const logoUrl = presentation.header?.logoUrl?.trim() ?? ''
+  useEffect(() => { setLogoCasse(false) }, [logoUrl])
+  const tousLiens = (liensProp ?? liensParDefaut()).filter((l) => l.visible)
+  const liensMenu = tousLiens.filter((l) => !l.isCta)
+  const cta = tousLiens.find((l) => l.isCta)
+  const linkIds = liensMenu.map((l) => l.target.replace(/^#/, '')).filter((id) => id && id !== 'phone' && !id.startsWith('tel') && !id.startsWith('http'))
   const active = useScrollSpy(linkIds)
-  const links: [string, string][] = [
-    ['La carte', 'carte'], ['Histoire', 'histoire'], ['Engagements', 'engagements'],
-    ['Équipe', 'equipe'], ['Nous trouver', 'loca'], ['Contact', 'contact'], ['Blog', 'blog'],
-  ]
+
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [drawerOpen])
 
-  const surBanniere = overlay && !scrolled
-  const couleurLogo = surBanniere ? t.headingInvert : t.heading
-  const couleurLien = surBanniere ? t.headingInvert : t.text
+  const overHero = overlayEffectif(presentation, overlay)
+  const collant = collantEffectif(presentation)
+  const modele = presentation.header?.layout ?? 'logoLeft'
+  const effet = presentation.header?.effect
+  const scheme = schemeEntete(t, presentation)
+  const couleurs = couleursEntete(t, presentation)
+  const headerChoisi = enteteStructurel(presentation)
+  const surBanniere = overHero && !scrolled
+  const couleurLogo = surBanniere ? t.headingInvert : (presentation.header?.text ? couleurs.text : (headerChoisi ? scheme.text : t.heading))
+  const couleurLien = surBanniere ? t.headingInvert : (presentation.header?.text ? couleurs.text : (headerChoisi ? scheme.text : t.text))
+  const couleurAccent = surBanniere ? t.headingInvert : (presentation.header?.accent ? couleurs.accent : (headerChoisi ? scheme.accent : t.accent))
+  const marque = morceauxMarque(restaurant?.name ?? 'Greatlife')
+  const libelleCta = cta ? libelleLien(cta, locale) : 'Réserver'
+  const hrefCta = cta ? hrefLien(cta.target, restaurant?.phone) : '#contact'
+
+  const position: 'fixed' | 'sticky' | 'absolute' | 'relative' = overHero
+    ? (collant ? 'fixed' : 'absolute')
+    : (collant ? 'sticky' : 'relative')
+
+  let fond = 'transparent'
+  let flou = 'none'
+  let bord = '1px solid transparent'
+  let ombre = 'none'
+  if (headerChoisi || presentation.header?.bg) {
+    const flouActif = effet === 'blur' || effet === undefined
+    const ombreActif = effet === 'shadow'
+    if (surBanniere) {
+      fond = flouActif ? 'rgba(0,0,0,0.2)' : 'transparent'
+      flou = flouActif ? 'blur(12px)' : 'none'
+      ombre = ombreActif ? softShadowSm(t) : 'none'
+    } else {
+      fond = presentation.header?.bg ? couleurs.bg : (headerChoisi ? scheme.bg : t.surface)
+      flou = flouActif ? 'blur(12px)' : 'none'
+      bord = `1px solid ${t.shadow}`
+      ombre = ombreActif ? softShadowSm(t) : 'none'
+    }
+  } else {
+    fond = scrolled ? t.surface : 'transparent'
+    flou = scrolled ? 'blur(12px)' : 'none'
+    bord = scrolled ? `1px solid ${t.shadow}` : '1px solid transparent'
+  }
+
+  const compact = modele === 'compact'
+  const centre = modele === 'logoCenter'
+  const pad = compact ? '8px 20px' : '16px 24px'
+  const tailleLogo = tailleNomLogoPx(presentation.header?.logoSize, compact)
+  const nomRestaurant = restaurant?.name?.trim() || `${marque.avant}${marque.accent ?? ''}`
+  const hauteurImg = hauteurLogoPx(presentation.header?.logoSize, compact)
+
+  const logoTexte = (
+    <a href="#home" aria-label={`${nomRestaurant} — accueil`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, fontSize: `calc(${tailleLogo}px * var(--font-scale, 1))`, color: couleurLogo, textDecoration: 'none', letterSpacing: '-0.02em' }}>
+      {marque.avant}{marque.accent ? <span style={{ color: surBanniere ? t.accentSoft : couleurAccent }}>{marque.accent}</span> : null}
+    </a>
+  )
+
+  const logo = logoUrl && !logoCasse ? (
+    <a href="#home" aria-label={`${nomRestaurant} — accueil`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+      <img
+        src={logoUrl}
+        alt={nomRestaurant}
+        onError={() => setLogoCasse(true)}
+        style={{ height: hauteurImg, width: 'auto', maxWidth: compact ? 140 : 220, objectFit: 'contain', display: 'block' }}
+      />
+    </a>
+  ) : logoTexte
+
+  const menuDesktop = (
+    <nav className="desktop-nav" aria-label="Navigation principale" {...(selectable ? { 'data-cms-slot': 'nav' } : {})} style={{ display: centre && !isMobile ? 'flex' : 'flex', gap: compact ? 18 : 28, alignItems: 'center', justifyContent: centre ? 'center' : undefined, flexWrap: 'wrap' }}>
+      {liensMenu.map((lien) => {
+        const id = lien.target.replace(/^#/, '')
+        const libelle = libelleLien(lien, locale)
+        return (
+        <a key={lien.id} href={hrefLien(lien.target, restaurant?.phone)} aria-current={active === id ? 'true' : undefined}
+          style={{
+            fontSize: compact ? 13 : 14, fontWeight: 500,
+            fontFamily: 'var(--font-body, var(--f-body))',
+            color: active === id ? couleurAccent : couleurLien,
+            textDecoration: active === id ? 'underline' : 'none',
+            textUnderlineOffset: '4px',
+            transition: 'color 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = couleurAccent}
+          onMouseLeave={e => e.currentTarget.style.color = active === id ? couleurAccent : couleurLien}>{libelle}</a>
+        )
+      })}
+    </nav>
+  )
 
   return (
-    <header style={{
-      position: overlay ? 'fixed' : 'sticky', top: 0, zIndex: 50, width: '100%',
-      background: scrolled ? t.surface : 'transparent',
-      backdropFilter: scrolled ? 'blur(12px)' : 'none',
-      borderBottom: scrolled ? `1px solid ${t.shadow}` : '1px solid transparent',
-      transition: 'all 0.3s ease',
-    }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <a href="#home" aria-label="Greatlife — accueil" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '24px', color: couleurLogo, textDecoration: 'none', letterSpacing: '-0.02em' }}>
-          Great<span style={{ color: t.accent }}>life</span>
-        </a>
-        <nav className="desktop-nav" aria-label="Navigation principale" style={{ display: 'flex', gap: '28px', alignItems: 'center' }}>
-          {links.map(([l, id]) => (
-            <a key={l} href={`#${id}`} aria-current={active === id ? 'true' : undefined}
-              style={{
-                fontSize: '14px', fontWeight: 500,
-                color: active === id ? t.accent : couleurLien,
-                textDecoration: active === id ? 'underline' : 'none',
-                textUnderlineOffset: '4px',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = t.accent}
-              onMouseLeave={e => e.currentTarget.style.color = active === id ? t.accent : couleurLien}>{l}</a>
-          ))}
-        </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <a href="#contact" className="desktop-nav" aria-label="Réserver une table" style={{
-            fontSize: '14px', fontWeight: 600, color: '#fff', background: t.primary,
-            padding: '8px 18px', borderRadius: '100px', textDecoration: 'none',
+    <header
+      ref={attacherVue}
+      data-cms-id={selectable ? CHROME_HEADER_ID : undefined}
+      style={{
+        position, top: 0, zIndex: 50, width: '100%',
+        background: fond,
+        backdropFilter: flou,
+        borderBottom: bord,
+        boxShadow: ombre,
+        transition: 'background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
+      }}
+    >
+      {barreAnnonce()}
+      <div style={{
+        maxWidth: '1200px', margin: '0 auto', padding: pad,
+        display: 'flex', flexDirection: centre ? 'column' : 'row',
+        alignItems: 'center', justifyContent: 'space-between', gap: centre ? 8 : 0,
+      }}>
+        {centre ? (
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ width: 48, flexShrink: 0 }} aria-hidden="true" />
+            {logo}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {boutonCta()}
+              {boutonMenu()}
+            </div>
+          </div>
+        ) : (
+          <>
+            {logo}
+            {menuDesktop}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {boutonCta()}
+              {boutonMenu()}
+            </div>
+          </>
+        )}
+        {centre && !isMobile ? menuDesktop : null}
+      </div>
+      {tiroir()}
+    </header>
+  )
+
+  function barreAnnonce() {
+    const a = presentation.header?.announcement
+    if (!a?.visible) return null
+    const texte = resolveI18n(a.message, locale).trim()
+    if (!texte) return null
+    const teintes = couleursAnnonce(t, presentation)
+    const href = hrefAnnonce(a.link, restaurant?.phone ?? '')
+    const styleBarre = {
+      display: 'block' as const,
+      width: '100%',
+      background: teintes.bg,
+      color: teintes.fg,
+      fontFamily: 'var(--font-body, var(--f-body))',
+      fontSize: 13,
+      fontWeight: 600,
+      textAlign: 'center' as const,
+      padding: '8px 16px',
+      lineHeight: 1.45,
+      textDecoration: href ? 'underline' : 'none',
+      textUnderlineOffset: '3px',
+    }
+    const slot = selectable ? { 'data-cms-slot': 'announce' as const } : {}
+    if (href) {
+      return <a href={href} {...slot} style={styleBarre}>{texte}</a>
+    }
+    return <div role="status" {...slot} style={styleBarre}>{texte}</div>
+  }
+
+  function boutonCta() {
+    return (
+          <a href={hrefCta} className="desktop-nav" aria-label={libelleCta} style={{
+            fontSize: compact ? 13 : 14, fontWeight: 600, color: couleurs.ctaText, background: couleurs.ctaBg,
+            padding: compact ? '6px 14px' : '8px 18px', borderRadius: '100px', textDecoration: 'none',
+            fontFamily: 'var(--font-body, var(--f-body))',
             display: 'inline-flex', alignItems: 'center', gap: 6,
             boxShadow: softShadowSm(t),
             transition: 'transform 0.2s',
           }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-            Réserver {Icon.arrow(14)}
+            {libelleCta} {Icon.arrow(14)}
           </a>
+    )
+  }
+
+  function boutonMenu() {
+    return (
           <button className="mobile-nav-toggle" aria-label={drawerOpen ? 'Fermer le menu' : 'Ouvrir le menu'} aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen(!drawerOpen)}
             style={{
               display: isMobile ? 'flex' : 'none',
               flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-              width: '40px', height: '40px', borderRadius: '12px',
-              background: surBanniere ? 'transparent' : t.surface,
+              width: '44px', height: '44px', borderRadius: '12px',
+              background: surBanniere ? 'transparent' : (headerChoisi || presentation.header?.bg ? couleurs.bg : t.surface),
               border: surBanniere ? '1px solid rgba(255,255,255,0.35)' : `1px solid ${t.shadow}`,
               cursor: 'pointer', gap: drawerOpen ? 0 : 5,
               transition: 'gap 0.2s',
             }}>
-            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(45deg) translate(2px,2px)' : 'none', transition: 'transform 0.2s' }} />
-            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : t.heading, borderRadius: '2px', opacity: drawerOpen ? 0 : 1, transition: 'opacity 0.2s' }} />
-            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : t.heading, borderRadius: '2px', transform: drawerOpen ? 'rotate(-45deg) translate(1px,-1px)' : 'none', transition: 'transform 0.2s' }} />
+            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : couleurLogo, borderRadius: '2px', transform: drawerOpen ? 'rotate(45deg) translate(2px,2px)' : 'none', transition: 'transform 0.2s' }} />
+            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : couleurLogo, borderRadius: '2px', opacity: drawerOpen ? 0 : 1, transition: 'opacity 0.2s' }} />
+            <span style={{ width: '18px', height: '2px', background: surBanniere ? t.headingInvert : couleurLogo, borderRadius: '2px', transform: drawerOpen ? 'rotate(-45deg) translate(1px,-1px)' : 'none', transition: 'transform 0.2s' }} />
           </button>
-        </div>
-      </div>
+    )
+  }
+
+  function tiroir() {
+    return (
+      <>
       <AnimatePresence>
         {drawerOpen && isMobile && (
           <motion.nav initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '100%', opacity: 0 }}
@@ -92,38 +288,42 @@ export function PublicNav({ overlay = false }: { overlay?: boolean }) {
             aria-label="Menu mobile"
             style={{
               position: 'fixed', top: 0, right: 0, bottom: 0, width: '280px',
-              background: t.surface, boxShadow: `-8px 0 40px ${t.shadowDeep}`,
+              background: headerChoisi || presentation.header?.bg ? couleurs.bg : t.surface, boxShadow: `-8px 0 40px ${t.shadowDeep}`,
               zIndex: 100, padding: '80px 24px 32px', display: 'flex', flexDirection: 'column', gap: '4px',
               borderLeft: `1px solid ${t.shadow}`,
             }}>
             <button aria-label="Fermer" onClick={() => setDrawerOpen(false)}
-              style={{ position: 'absolute', top: '20px', right: '20px', width: '36px', height: '36px',
+              style={{ position: 'absolute', top: '20px', right: '20px', width: '44px', height: '44px',
                 borderRadius: '10px', background: t.surfaceAlt, border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.heading, fontSize: '20px' }}>
               ✕
             </button>
-            {links.map(([l, id], i) => (
-              <motion.a key={l} href={`#${id}`} onClick={() => setDrawerOpen(false)}
+            {liensMenu.map((lien, i) => {
+              const id = lien.target.replace(/^#/, '')
+              const libelle = libelleLien(lien, locale)
+              return (
+              <motion.a key={lien.id} href={hrefLien(lien.target, restaurant?.phone)} onClick={() => setDrawerOpen(false)}
                 aria-current={active === id ? 'true' : undefined}
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 style={{
-                  fontFamily: 'var(--f-heading)', fontSize: '18px', fontWeight: 600,
-                  color: active === id ? t.accent : t.text,
+                  fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 600,
+                  color: active === id ? couleurAccent : (headerChoisi || presentation.header?.text ? couleurs.text : t.text),
                   textDecoration: 'none', padding: '14px 16px', borderRadius: '12px',
                   background: active === id ? `${t.primary}0a` : 'transparent',
                   transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
-                {l}
-                {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.accent }} />}
+                {libelle}
+                {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: couleurAccent }} />}
               </motion.a>
-            ))}
-            <a href="#contact" onClick={() => setDrawerOpen(false)}
+              )
+            })}
+            <a href={hrefCta} onClick={() => setDrawerOpen(false)}
               style={{ marginTop: '16px', textAlign: 'center', fontSize: '15px', fontWeight: 600,
-                color: '#fff', background: t.primary, padding: '14px', borderRadius: '100px',
+                color: couleurs.ctaText, background: couleurs.ctaBg, padding: '14px', borderRadius: '100px',
                 textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 boxShadow: softShadowSm(t) }}>
-              Réserver une table {Icon.arrow(16)}
+              {libelleCta} {Icon.arrow(16)}
             </a>
           </motion.nav>
         )}
@@ -135,6 +335,7 @@ export function PublicNav({ overlay = false }: { overlay?: boolean }) {
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 90 }} />
         )}
       </AnimatePresence>
-    </header>
-  )
+      </>
+    )
+  }
 }

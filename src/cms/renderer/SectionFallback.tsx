@@ -18,6 +18,8 @@
 import type { CSSProperties } from 'react'
 import type { ResolvedRestaurant } from '../repository/settings'
 import { getSectionDefinition } from '../model/sections/schemas'
+import { InlineHtml } from './InlineHtml'
+import { cmsSlotAttrs } from '../model/subblocks'
 
 export interface SectionFallbackProps {
   type: string
@@ -84,23 +86,24 @@ export function SectionFallback({
       }}
     >
       {title && (
-        <h2
+        <InlineHtml
+          as="h2"
+          html={title}
+          {...cmsSlotAttrs(preview, 'title')}
           style={{
-            fontFamily: 'var(--f-heading, inherit)',
+            fontFamily: 'var(--font-heading, var(--f-heading), inherit)',
             fontSize: 34,
             fontWeight: 700,
             letterSpacing: '-0.02em',
             margin: '0 0 12px',
             color: 'var(--c-heading, inherit)',
           }}
-        >
-          {title}
-        </h2>
+        />
       )}
       {subtitle && (
-        <p style={{ fontSize: 17, lineHeight: 1.7, margin: '0 0 16px', opacity: 0.85 }}>{subtitle}</p>
+        <InlineHtml as="p" html={subtitle} {...cmsSlotAttrs(preview, 'subtitle')} style={{ fontSize: 17, lineHeight: 1.7, margin: '0 0 16px', opacity: 0.85 }} />
       )}
-      {body && <p style={{ fontSize: 16, lineHeight: 1.8, margin: 0 }}>{body}</p>}
+      {body && <InlineHtml as="p" html={body} {...cmsSlotAttrs(preview, 'body')} style={{ fontSize: 16, lineHeight: 1.8, margin: 0 }} />}
       {(address || hours) && (
         <p style={{ fontSize: 15, lineHeight: 1.8, margin: '16px 0 0', opacity: 0.8 }}>
           {address}

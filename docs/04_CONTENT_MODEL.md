@@ -146,7 +146,24 @@ Header et footer sont **globaux** (TDR §19) : une modification se répercute su
 
 ### 5.4 Réglages du restaurant
 
-Les informations transverses — `address`, `hours`, `phone`, `emailContact`, `emailReservation`, `currency`, `social*`, `restaurantName`, `slogan` — **ne sont pas du contenu de page** : elles s'affichent dans plusieurs endroits (header, footer, contact, localisation). Elles constituent **une source de vérité unique** consommée par plusieurs sections, exactement comme un plat l'est par plusieurs pages (TDR §16).
+Les informations transverses vivent dans **`site_content.restaurant`**. Champs canoniques partagés par le Pied et l’écran Coordonnées :
+
+| Clé JSON | Sens | Forme |
+|---|---|---|
+| `name` | Nom du restaurant | bilingue (`fr` / `en`) |
+| `phone` | Téléphone | chaîne |
+| `address` | Adresse | bilingue |
+| `emailContact` | E-mail public | chaîne |
+
+Autres clés du même JSON (Pied, publication) : `slogan`, `hours`, `emailReservation`, `currency`, `social`.
+
+**Lecture éditeur** : A = `restaurant` ; si une clé d’identité est vide, repli **une fois** sur le plat historique `site_config` (`restaurantName` → `name`, `phone`, `address`, `emailContact`). **Pas de migration.**
+
+**Public** : nav et pied lisent l’instantané chrome figé à la publication, jamais `fetchSetting` en direct.
+
+**Écriture** : Chrome Pied et Coordonnées patchent les **mêmes** clés `restaurant`. L’écran Coordonnées continue d’écrire aussi le plat (`restaurantName`, …) pour ne pas casser le merge `saveSetting` / le miroir existant.
+
+Les informations transverses — `address`, `hours`, `phone`, `emailContact`, `emailReservation`, `currency`, `social*`, `restaurantName`, `slogan` — **ne sont pas du contenu de page**.
 
 ### 5.5 Ce qui n'est **pas** du contenu de page
 

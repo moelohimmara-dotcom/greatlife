@@ -7,22 +7,11 @@
  * peut pas voir seule : les images, la carte, les prix et les informations du
  * restaurant.
  *
- * ⚠️ DEUX DES SEPT CONTRÔLES NE SONT PLUS EXÉCUTÉS (décision du 2026-09-19, M3)
  * Les contrôles n°2 (« Navigation valide ») et n°6 (« Aucun lien cassé »)
- * portaient sur `navigation_items`. Or le site public ne rend PAS cette table :
- * `PublicNav` et `Footer` portent des listes écrites en dur, et aucun écran
- * d'administration ne touche la navigation. Les exécuter revenait à valider
- * 13 entrées que personne ne voit — au prix d'un refus de publication sur une
- * donnée sans effet visible.
- *
- * Ils ne sont ni supprimés (le TDR §24 en demande 7) ni affichés « conformes »
- * (ce serait un vert mensonger) : ils sont déclarés NON VÉRIFIÉS, et le motif
- * est visible dans le panneau de publication. Voir
- * `PUBLICATION_CHECKS_NOT_VERIFIED` dans `./types`.
- *
- * Le jour où la navigation sera branchée (instantané publié + écran
- * d'administration), les deux contrôles se réactivent en repassant l'entrée
- * `navigation` à `PublicationInput`.
+ * s’exécutent dès que `PublicationInput.navigation` est fourni — c’est le cas
+ * à la publication, depuis que le chrome public lit l’instantané (arbitrage
+ * propriétaire 2026-09-21). Un jeu d’essai sans cette entrée les laisse
+ * non vérifiés, pour ne pas inventer un vert.
  */
 
 import { DEFAULT_LOCALE, resolveI18n, type Bilingue, type Locale } from '../i18n'
@@ -105,13 +94,21 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
     }
   }
 
-  /*
-    ---- 2. Navigation valide ------------------------------------------------
-    NON EXÉCUTÉ — voir l'en-tête de ce module et `PUBLICATION_CHECKS_NOT_VERIFIED`
-    (`./types`). Le contrôle portait sur `navigation_items`, que le site public
-    ne rend pas : il validait une fiction, et pouvait refuser une publication à
-    cause d'un lien que personne ne voyait.
-  */
+  // ---- 2. Navigation valide ------------------------------------------------
+  const navItems = input.navigation
+  if (navItems) {
+    const visibles = navItems.filter((item) => item.visible)
+    for (const item of visibles) {
+      if (!safeResolve(item.label, locale).trim()) {
+        findings.push({
+          check: 'navigation',
+          level: 'error',
+          message: "Un lien du menu n'a pas de libellé.",
+          where: 'En-tête et pied de page',
+        })
+      }
+    }
+  }
 
   // ---- 3. Images valides --------------------------------------------------
   for (const section of visibleSections) {
@@ -163,16 +160,60 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
     }
   }
 
-  /*
-    ---- 6. Aucun lien cassé ------------------------------------------------
-    NON EXÉCUTÉ — ce contrôle ne savait vérifier que les ancres de
-    `navigation_items`, que le site public ne rend pas. Les ancres réellement
-    servies sont désormais vérifiées au moment de DÉVELOPPER, par
-    `npm run verify:anchors`, qui confronte les liens écrits dans le site
-    (menu, pied de page) ET les cibles ÉDITABLES des boutons de la page
-    d'accueil aux ancres de `pages.published_snapshot`. Ce n'est pas un filet de
-    publication, et cette limite est assumée et documentée.
-  */
+  // ---- 6. Aucun lien cassé ------------------------------------------------
+  if (navItems) {
+    const anchors = new Set(
+      visibleSections
+        .map((s) => (s.anchor ?? '').trim().replace(/^#/, ''))
+        .filter(Boolean),
+    )
+    const specials = new Set(['home', 'phone', 'tel'])
+    const publishedIds = new Set(input.publishedPageIds ?? [])
+    for (const item of navItems.filter((n) => n.visible)) {
+      const where = `Lien « ${safeResolve(item.label, locale) || 'sans nom'} »`
+      if (item.targetType === 'url') {
+        if (!(item.targetValue ?? '').trim()) {
+          findings.push({
+            check: 'links',
+            level: 'error',
+            message: "Un lien du menu n'a pas d'adresse.",
+            where,
+          })
+        }
+        continue
+      }
+      if (item.targetType === 'page') {
+        if (!item.targetPageId || !publishedIds.has(item.targetPageId)) {
+          findings.push({
+            check: 'links',
+            level: 'error',
+            message: "Un lien du menu pointe vers une page qui n'est pas en ligne.",
+            where,
+          })
+        }
+        continue
+      }
+      const ancre = (item.targetValue ?? '').trim().replace(/^#/, '')
+      if (!ancre) {
+        findings.push({
+          check: 'links',
+          level: 'error',
+          message: "Un lien du menu n'a pas de destination.",
+          where,
+        })
+        continue
+      }
+      if (specials.has(ancre) || ancre.startsWith('http') || ancre.startsWith('tel:')) continue
+      if (!anchors.has(ancre)) {
+        findings.push({
+          check: 'links',
+          level: 'error',
+          message: "Un lien du menu pointe vers une section qui n'est pas sur la page.",
+          where,
+        })
+      }
+    }
+  }
 
   // ---- 7. Informations essentielles présentes ----------------------------
   const essentials: [boolean, string][] = [
@@ -187,7 +228,7 @@ export function runPublicationChecks(input: PublicationInput): PublicationReport
     }
   }
 
-  return buildReport(findings)
+  return buildReport(findings, navItems === undefined ? undefined : {})
 }
 
 // ---------------------------------------------------------------- utilitaires

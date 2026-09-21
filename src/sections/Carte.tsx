@@ -48,13 +48,13 @@ function MenuCard({ item }: { item: MenuItem }) {
         )}
       </div>
       <div style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-        <h4 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '19px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>{item.name}</h4>
-        <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.5, margin: 0, flex: 1 }}>{item.desc}</p>
+        <h4 style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: 'calc(19px * var(--font-scale, 1))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, margin: 0, letterSpacing: '-0.02em' }}>{item.name}</h4>
+        <p style={{ fontSize: '13.5px', fontFamily: 'var(--font-body, var(--f-body))', color: t.muted, lineHeight: 1.5, margin: 0, flex: 1 }}>{item.desc}</p>
         {visibility.badges && item.badges.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{item.badges.map(b => <BadgePill key={b} b={b} />)}</div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, color: t.accent, fontSize: '18px', letterSpacing: '-0.01em' }}>
+          <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 700, color: t.accent, fontSize: '18px', letterSpacing: '-0.01em' }}>
             {item.price}<span style={{ fontSize: '11px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span>
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -106,7 +106,7 @@ function MenuCard({ item }: { item: MenuItem }) {
 
 const DISPOSITIONS = ['full', 'by_category', 'tabs'] as const
 
-export function Carte({ content: cms, data, variant }: Partial<SectionComponentProps> = {}) {
+export function Carte({ content: cms, data, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { menu: legacyMenu, visibility, theme: t } = useSite()
 
   // TDR §16 : les plats viennent du module Menu, jamais recopiés dans le bloc.
@@ -149,7 +149,7 @@ export function Carte({ content: cms, data, variant }: Partial<SectionComponentP
       <div key={cat} style={{ marginBottom: '56px' }}>
         <Reveal delay={ci * 0.05}>
           <h3 style={{
-            fontFamily: 'var(--f-heading)', color: t.heading,
+            fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading,
             fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em',
             marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px',
           }}>
@@ -171,7 +171,7 @@ export function Carte({ content: cms, data, variant }: Partial<SectionComponentP
   if (disposition === 'full') {
     return (
       <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
-        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
         {cats.map((cat, ci) => blocCategorie(cat, ci))}
       </section>
     )
@@ -190,7 +190,7 @@ export function Carte({ content: cms, data, variant }: Partial<SectionComponentP
       data-disposition={disposition}
       style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}
     >
-      <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+      <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
       {disposition === 'tabs' ? (
         <div role="tablist" aria-label="Catégories de la carte" style={{
           display: 'flex', gap: 4, marginBottom: 28, overflowX: 'auto',

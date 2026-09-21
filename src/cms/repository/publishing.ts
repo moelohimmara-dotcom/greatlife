@@ -11,6 +11,9 @@
  * basculement du statut. On ne publie donc jamais sans archive. Si le
  * basculement échoue, il reste une version non publiée : c'est une entrée
  * d'archive inoffensive, et l'erreur est remontée telle quelle.
+ *
+ * Chrome du site : figé dans le même instantané que la page (arbitrage
+ * propriétaire 2026-09-21). Exception AGENTS.md §19 : ce lot peut écrire ici.
  */
 
 import { fetchMenu } from '@/lib/repository'
@@ -19,14 +22,25 @@ import type { Page } from '../model/page'
 import type { PageSection } from '../model/section'
 import {
   buildReport,
+  freezeChrome,
   runPublicationChecks,
   snapshotEmptinessFinding,
   type PublicationInput,
+  type PublicationNavInput,
   type PublicationReport,
   type PublicationSectionInput,
+  type SnapshotChrome,
+  type SnapshotChromeLink,
 } from '../model/publishing'
+import { liensDepuisReglages } from '../model/sections/site-chrome'
 import { cmsErr, cmsOk, type CmsResult } from './client'
-import { fetchPageById, publishPageWithSnapshot } from './pages'
+import {
+  fetchNavigation,
+  resolveNavHref,
+  type NavigationItem,
+  type NavigationTree,
+} from './navigation'
+import { fetchAllPages, fetchPageById, publishPageWithSnapshot } from './pages'
 import { fetchSectionsForPage } from './sections'
 import { SETTING_KEYS, fetchSetting, resolveRestaurant, toRestaurantSettings } from './settings'
 import { buildSnapshot, createVersion, type PageVersionSummary } from './versions'
@@ -42,6 +56,7 @@ interface PublishContext {
   page: Page
   sections: PageSection[]
   input: PublicationInput
+  chrome: SnapshotChrome
 }
 
 /**
@@ -49,11 +64,8 @@ interface PublishContext {
  * Les sections sont chargées **avec** les sections masquées : le snapshot doit
  * être fidèle pour qu'une restauration le soit aussi.
  *
- * NE CHARGE PLUS la navigation ni le catalogue des pages (décision du
- * 2026-09-19, M3) : ces deux lectures n'alimentaient que les contrôles n°2 et
- * n°6, qui ne sont plus exécutés parce que le site public ne rend pas
- * `navigation_items`. Les garder aurait maintenu deux appels réseau et deux
- * chemins d'échec pour une donnée sans effet sur la publication.
+ * Le chrome (identité, typo, en-tête, pied) est lu ici pour être FIGÉ dans
+ * l’instantané (TDR §22).
  */
 async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsResult<PublishContext>> {
   const pageResult = await fetchPageById(pageId)
@@ -66,6 +78,15 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
   const restaurantResult = await fetchSetting(SETTING_KEYS.restaurant)
   if (!restaurantResult.ok) return restaurantResult
 
+  const [headerNav, footerNav, pagesResult] = await Promise.all([
+    fetchNavigation('header', { includeHidden: false }),
+    fetchNavigation('footer', { includeHidden: false }),
+    fetchAllPages(),
+  ])
+  if (!headerNav.ok) return headerNav
+  if (!footerNav.ok) return footerNav
+  if (!pagesResult.ok) return pagesResult
+
   // `fetchMenu` ne renvoie pas d'erreur : il retombe sur des données de
   // démonstration. Valider un prix sur des données de démonstration serait un
   // faux feu vert — on refuse donc de conclure (TDR §6 : une seule source).
@@ -74,7 +95,17 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
     return cmsErr("La carte n'a pas pu être vérifiée. Réessayez dans un instant.")
   }
 
-  const restaurant = resolveRestaurant(toRestaurantSettings(restaurantResult.data), locale)
+  const restaurantRaw = restaurantResult.data
+  const restaurant = resolveRestaurant(toRestaurantSettings(restaurantRaw), locale)
+  const slugs: Record<string, string> = {}
+  for (const p of pagesResult.data) slugs[p.id] = p.slug
+  const headerLinks = liensChromePublies(headerNav.data, restaurantRaw?.menuLinks, locale, slugs)
+  const footerLinks = liensChromePublies(footerNav.data, restaurantRaw?.footerLinks, locale, slugs)
+  const chrome = freezeChrome({
+    restaurantRaw,
+    headerLinks,
+    footerLinks,
+  })
 
   const sections: PublicationSectionInput[] = sectionsResult.data.map((section) => ({
     type: section.type,
@@ -83,9 +114,14 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
     content: (section.content ?? {}) as Record<string, unknown>,
   }))
 
+  const navigation: PublicationNavInput[] = [...headerLinks, ...footerLinks]
+    .filter((l) => l.visible)
+    .map(lienVersControle)
+
   return cmsOk({
     page: pageResult.data,
     sections: sectionsResult.data,
+    chrome,
     input: {
       page: { slug: pageResult.data.slug, title: pageResult.data.title },
       sections,
@@ -97,8 +133,62 @@ async function loadPublishContext(pageId: string, locale: Locale): Promise<CmsRe
         hours: restaurant.hours,
       },
       locale,
+      navigation,
+      publishedPageIds: pagesResult.data
+        .filter((p) => p.status === 'published' || p.id === pageId)
+        .map((p) => p.id),
     },
   })
+}
+
+function liensChromePublies(
+  tree: NavigationTree | null,
+  json: unknown,
+  locale: Locale,
+  slugs: Record<string, string>,
+): SnapshotChromeLink[] {
+  if (tree && tree.items.length > 0) {
+    const plats: NavigationItem[] = [
+      ...tree.items,
+      ...Object.values(tree.childrenOf).flat(),
+    ]
+    return plats.filter((item) => item.visible).map((item) => ({
+      id: item.id,
+      label: item.label,
+      target: item.targetType === 'anchor' || item.targetType === 'url'
+        ? (item.targetValue ?? '')
+        : resolveNavHref(item, locale, slugs),
+      visible: item.visible,
+      isCta: item.isCta,
+    }))
+  }
+  return liensDepuisReglages(json).filter((l) => l.visible).map((l) => ({
+    id: l.id,
+    label: l.label,
+    target: l.target,
+    visible: l.visible,
+    isCta: l.isCta,
+  }))
+}
+
+function lienVersControle(lien: SnapshotChromeLink): PublicationNavInput {
+  const cible = (lien.target ?? '').trim()
+  if (cible.startsWith('http://') || cible.startsWith('https://')) {
+    return {
+      label: lien.label,
+      targetType: 'url',
+      targetPageId: null,
+      targetValue: cible,
+      visible: lien.visible,
+    }
+  }
+  return {
+    label: lien.label,
+    targetType: 'anchor',
+    targetPageId: null,
+    targetValue: cible.replace(/^#/, ''),
+    visible: lien.visible,
+  }
 }
 
 /** Le rapport seul — ce qu'affiche la liste de contrôle avant toute publication. */
@@ -148,7 +238,7 @@ export async function publishPage(
   const snapshot = buildSnapshot(context.data.page, context.data.sections, {
     status: 'published',
     publishedAt,
-  })
+  }, context.data.chrome)
 
   const versionResult = await createVersion(pageId, snapshot, 'Publication', createdBy)
   if (!versionResult.ok) return versionResult

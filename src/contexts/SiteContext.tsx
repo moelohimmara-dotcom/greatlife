@@ -524,9 +524,10 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         SIGNAL de rafraîchissement, pas source de rendu.
 
         `page_sections` est désormais la table de TRAVAIL : on ne la lit plus
-        ici. Le rendu public repasse par `useCmsSections`, qui lit l'instantané
-        figé à la publication. Ce canal ne fait que signaler « quelque chose a
-        changé » pour déclencher cette relecture.
+        ici. Le rendu public (sections ET chrome : en-tête, pied, typo, logo)
+        passe par `useCmsSections`, qui lit l'instantané figé à la publication
+        (arbitrage propriétaire 2026-09-21, TDR §22). Ce canal ne fait que
+        signaler « quelque chose a changé » pour déclencher cette relecture.
 
         On se contente donc de l'identité de la page publiée : si elle existe,
         `useCmsSections` ira chercher son instantané ; sinon, rendu historique.

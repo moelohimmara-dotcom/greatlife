@@ -16,13 +16,35 @@
  */
 
 import type { SectionType, SectionTypeDefinition } from '../section'
-import { CHIPS, IMAGE_FIELD, SUBTITLE, TITLE, ctaField, type FieldDef } from './fields'
+import {
+  CHIPS,
+  IMAGE_FIELD,
+  SUBTITLE,
+  TITLE,
+  BLOCK_TINT,
+  HEADING_COLOR,
+  BLOCK_SPACING,
+  VISIBLE_ON,
+  champAltPourImage,
+  injecterChampsAltImage,
+  ctaField,
+  type FieldDef,
+} from './fields'
 
 /** Bouton principal — un objet `{ label, target }`, pas une liste. */
 const CTA = ctaField('primaryCta', 'Bouton principal')
 
 /** Bouton secondaire — facultatif : beaucoup de blocs n'en proposent qu'un. */
 const CTA_SECONDARY = ctaField('secondaryCta', 'Bouton secondaire', false)
+
+function avecCouleursBloc(fields: readonly FieldDef[], opts?: { fond?: boolean; titre?: boolean }): FieldDef[] {
+  const extra: FieldDef[] = []
+  if (opts?.fond !== false) extra.push(BLOCK_TINT)
+  if (opts?.titre !== false) extra.push(HEADING_COLOR)
+  extra.push(BLOCK_SPACING)
+  extra.push(VISIBLE_ON)
+  return [...injecterChampsAltImage(fields), ...extra]
+}
 
 export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
@@ -51,7 +73,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     fields: [
       TITLE,
       SUBTITLE,
-      { name: 'tagline', label: 'Accroche', type: 'text', help: 'La phrase courte affichée en haut du bloc.' },
+      { name: 'tagline', label: 'Accroche', type: 'text', inlineMarkup: true, help: 'La phrase courte affichée en haut du bloc.' },
       CHIPS,
       {
         name: 'badge',
@@ -69,6 +91,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       CTA,
       CTA_SECONDARY,
       { ...IMAGE_FIELD, forVariants: ['image_text', 'fullscreen', 'video'] },
+      { ...champAltPourImage(IMAGE_FIELD), forVariants: ['image_text', 'fullscreen', 'video'] },
       {
         name: 'video',
         label: 'Vidéo de la bannière',
@@ -77,6 +100,46 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         forVariants: ['video'],
         help: 'Choisissez une vidéo déjà téléversée, ou collez son adresse. Sans vidéo, l’aperçu vous le dit clairement — le site publié reprend alors l’image en plein écran.',
       },
+      {
+        name: 'overlayTint',
+        label: 'Voile sur la photo',
+        type: 'color',
+        translatable: false,
+        forVariants: ['fullscreen', 'video'],
+        against: '#FFFFFF',
+        help: 'Teinte du voile posé sur l’image. « Thème » garde le voile sombre actuel.',
+      },
+      {
+        name: 'titleColor',
+        label: 'Titre',
+        type: 'color',
+        translatable: false,
+        against: 'surface',
+        help: 'Couleur du grand titre. « Thème » reprend l’apparence.',
+      },
+      {
+        name: 'taglineColor',
+        label: 'Accroche',
+        type: 'color',
+        translatable: false,
+        against: 'surface',
+      },
+      {
+        name: 'primaryColor',
+        label: 'Bouton principal',
+        type: 'color',
+        translatable: false,
+        against: '#FFFFFF',
+      },
+      {
+        name: 'secondaryColor',
+        label: 'Bouton secondaire',
+        type: 'color',
+        translatable: false,
+      },
+      { ...BLOCK_TINT, forVariants: ['image_text', 'centered'] },
+      BLOCK_SPACING,
+      VISIBLE_ON,
     ],
     implemented: true,
   },
@@ -88,7 +151,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'one_column', label: 'Une colonne' },
       { id: 'two_columns', label: 'Deux colonnes' },
     ],
-    fields: [TITLE, { name: 'body', label: 'Texte', type: 'multiline' }],
+    fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Texte', type: 'multiline', inlineMarkup: true }]),
     implemented: false,
   },
   {
@@ -99,7 +162,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'image_left', label: 'Image à gauche' },
       { id: 'image_right', label: 'Image à droite' },
     ],
-    fields: [TITLE, { name: 'body', label: 'Texte', type: 'multiline' }, IMAGE_FIELD],
+    fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Texte', type: 'multiline', inlineMarkup: true }, IMAGE_FIELD]),
     implemented: false,
   },
   {
@@ -112,7 +175,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'by_category', label: 'Par catégorie' },
       { id: 'tabs', label: 'Onglets' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -120,9 +183,13 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         label: 'Nombre de plats affichés',
         type: 'number',
         translatable: false,
-        help: 'Limite globale. Si la valeur est inférieure au nombre total, les dernières catégories de la liste pourront être masquées. Laisser vide pour tout afficher.',
+        min: 1,
+        max: 48,
+        step: 1,
+        unit: 'plats',
+        help: 'Limite globale. Au-delà, les dernières catégories peuvent disparaître. Laisser vide pour tout afficher.',
       },
-    ],
+    ]),
     providesFrom: 'menu',
     implemented: true,
   },
@@ -134,7 +201,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grille' },
       { id: 'carousel', label: 'Carrousel' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -145,7 +212,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         help: 'Choisis dans la carte — seule la sélection est enregistrée ici.',
         itemFields: [{ name: 'ref', label: 'Plat', type: 'text', translatable: false }],
       },
-    ],
+    ]),
     providesFrom: 'menu',
     implemented: false,
   },
@@ -158,7 +225,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'mosaic', label: 'Mosaïque' },
       { id: 'carousel', label: 'Carrousel' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -170,7 +237,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
           { name: 'caption', label: 'Légende', type: 'text' },
         ],
       },
-    ],
+    ]),
     implemented: false,
   },
   {
@@ -181,7 +248,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'cards', label: 'Cartes' },
       { id: 'quotes', label: 'Citations' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -191,13 +258,13 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         help: 'Tant qu’aucun avis n’est saisi, le bloc reste masqué sur le site.',
         itemFields: [
           { name: 'name', label: 'Nom du client', type: 'text', required: true },
-          { name: 'text', label: 'Son avis', type: 'multiline', required: true },
+          { name: 'text', label: 'Son avis', type: 'multiline', required: true, inlineMarkup: true },
           // Note et photo volontairement ABSENTES du registre : aucun composant
           // ne les rend. Les déclarerait offrir au restaurateur un champ sans
           // effet visible. À réajouter quand `Testimonials` les affichera.
         ],
       },
-    ],
+    ]),
     implemented: true,
   },
   {
@@ -208,7 +275,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -218,13 +285,13 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         itemFields: [
           { name: 'name', label: 'Nom', type: 'text', required: true },
           { name: 'role', label: 'Rôle', type: 'text' },
-          { name: 'desc', label: 'Présentation', type: 'multiline' },
+          { name: 'desc', label: 'Présentation', type: 'multiline', inlineMarkup: true },
           // Portrait : volontairement ABSENT du registre — `Team` affiche les
           // photos de la médiathèque par emplacements (`equipe-1`…`equipe-4`),
           // pas par membre. À réajouter quand le composant lit `photo`.
         ],
       },
-    ],
+    ]),
     implemented: true,
   },
   {
@@ -235,14 +302,14 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'image_left', label: 'Image à gauche' },
       { id: 'image_right', label: 'Image à droite' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
-      { name: 'body', label: 'Récit', type: 'multiline', required: true },
+      { name: 'body', label: 'Récit', type: 'multiline', required: true, inlineMarkup: true },
       { name: 'signature', label: 'Signature', type: 'text', help: 'Le nom affiché sur la photo.' },
       { name: 'signerole', label: 'Fonction', type: 'text', help: 'Ex. « Le fondateur ».' },
       CHIPS,
       IMAGE_FIELD,
-    ],
+    ]),
     implemented: true,
   },
   {
@@ -253,7 +320,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -282,10 +349,10 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
             ],
           },
           { name: 'title', label: 'Titre', type: 'text', required: true },
-          { name: 'desc', label: 'Description', type: 'multiline' },
+          { name: 'desc', label: 'Description', type: 'multiline', inlineMarkup: true },
         ],
       },
-    ],
+    ]),
     implemented: true,
   },
   {
@@ -297,21 +364,30 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
     ],
-    fields: [TITLE, SUBTITLE],
+    fields: avecCouleursBloc([TITLE, SUBTITLE]),
     usesRestaurantSettings: true,
     implemented: true,
   },
   {
     type: 'map',
-    label: 'Carte',
-    description: 'Un plan de localisation.',
+    label: 'Plan',
+    description: 'Un plan de localisation sur la page.',
     variants: [],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       { name: 'latitude', label: 'Latitude', type: 'text', translatable: false },
       { name: 'longitude', label: 'Longitude', type: 'text', translatable: false },
-      { name: 'zoom', label: 'Zoom', type: 'number', translatable: false },
-    ],
+      {
+        name: 'zoom',
+        label: 'Niveau de zoom',
+        type: 'number',
+        translatable: false,
+        min: 1,
+        max: 20,
+        step: 1,
+        help: 'De 1 (vue très large) à 20 (très rapproché).',
+      },
+    ]),
     implemented: false,
   },
   {
@@ -322,7 +398,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
     ],
-    fields: [TITLE, SUBTITLE],
+    fields: avecCouleursBloc([TITLE, SUBTITLE]),
     implemented: true,
   },
   {
@@ -333,7 +409,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -346,7 +422,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
           { name: 'label', label: 'Libellé affiché', type: 'text', required: true },
         ],
       },
-    ],
+    ]),
     implemented: true,
   },
   {
@@ -358,17 +434,21 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
         name: 'maxItems',
-        label: 'Nombre d\u2019articles affich\u00e9s',
+        label: 'Nombre d’articles affichés',
         type: 'number',
         translatable: false,
-        help: 'Les articles les plus r\u00e9cents sont affich\u00e9s en premier. Laisser vide pour tout afficher.',
+        min: 1,
+        max: 24,
+        step: 1,
+        unit: 'articles',
+        help: 'Les plus récents d’abord. Laisser vide pour tout afficher.',
       },
-    ],
+    ]),
     providesFrom: 'blog',
     implemented: true,
   },
@@ -380,7 +460,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'accordion', label: 'Accordéon' },
       { id: 'list', label: 'Liste' },
     ],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       SUBTITLE,
       {
@@ -389,10 +469,10 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         type: 'list',
         itemFields: [
           { name: 'question', label: 'Question', type: 'text', required: true },
-          { name: 'answer', label: 'Réponse', type: 'multiline', required: true },
+          { name: 'answer', label: 'Réponse', type: 'multiline', required: true, inlineMarkup: true },
         ],
       },
-    ],
+    ]),
     implemented: false,
   },
   {
@@ -403,7 +483,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'banner', label: 'Bandeau' },
       { id: 'card', label: 'Encart' },
     ],
-    fields: [TITLE, { name: 'body', label: 'Texte', type: 'multiline' }, CTA],
+    fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Texte', type: 'multiline', inlineMarkup: true }, CTA]),
     implemented: false,
   },
   {
@@ -411,11 +491,11 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     label: 'Vidéo',
     description: 'Une vidéo intégrée.',
     variants: [],
-    fields: [
+    fields: avecCouleursBloc([
       TITLE,
       { name: 'url', label: 'Adresse de la vidéo', type: 'text', translatable: false, required: true },
       { name: 'poster', label: 'Image de prévisualisation', type: 'image', translatable: false },
-    ],
+    ]),
     implemented: false,
   },
   {
@@ -439,6 +519,8 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
           { value: 'lg', label: 'Grande' },
         ],
       },
+      BLOCK_SPACING,
+      VISIBLE_ON,
     ],
     implemented: false,
   },
@@ -447,7 +529,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     label: 'Contenu libre',
     description: 'Un bloc de contenu librement rédigé.',
     variants: [],
-    fields: [TITLE, { name: 'body', label: 'Contenu', type: 'multiline', required: true }],
+    fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Contenu', type: 'multiline', required: true, inlineMarkup: true }]),
     implemented: false,
   },
 ]

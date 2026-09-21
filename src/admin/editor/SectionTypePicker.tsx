@@ -18,28 +18,28 @@ interface SectionTypePickerProps {
   onClose: () => void
 }
 
-/** Icône associée à chaque type (pour l'affichage dans la grille). */
+/** Icône associée à chaque type (alignée sur Structure — pas de crayon générique). */
 const TYPE_ICONS: Partial<Record<string, string>> = {
   hero: 'image',
-  text: 'write',
+  text: 'type',
   image_text: 'image',
   menu: 'leaf',
-  menu_featured: 'leaf',
+  menu_featured: 'star',
   gallery: 'image',
   testimonials: 'users',
   team: 'users',
-  story: 'write',
+  story: 'type',
   engagements: 'leaf',
   location: 'pin',
   map: 'pin',
   reservation: 'calendar',
   contact: 'mail',
-  blog: 'write',
-  faq: 'settings',
+  blog: 'type',
+  faq: 'type',
   cta: 'arrow',
-  video: 'eye',
-  spacer: 'grid',
-  rich_text: 'write',
+  video: 'image',
+  spacer: 'columns',
+  rich_text: 'type',
 }
 
 export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps) {
@@ -64,7 +64,7 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="ajouter-section-titre"
+        aria-labelledby="ajouter-bloc-titre"
         style={{
           position: 'relative', background: t.surface, borderRadius: 16,
           padding: '24px 28px', maxWidth: 640, width: '90%', maxHeight: '80vh',
@@ -72,8 +72,8 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
-          <h3 id="ajouter-section-titre" style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0 }}>
-            Ajouter une section
+          <h3 id="ajouter-bloc-titre" style={{ fontFamily: 'var(--f-heading)', fontSize: 18, fontWeight: 700, color: t.heading, margin: 0 }}>
+            Ajouter un bloc
           </h3>
           <Bouton onClick={onClose} aria-label="Fermer">Fermer</Bouton>
         </div>
@@ -81,7 +81,7 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
         {/* Grille */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
           {SECTION_TYPES.filter((def) => def.implemented).map((def) => {
-            const iconName = TYPE_ICONS[def.type] ?? 'write'
+            const iconName = TYPE_ICONS[def.type] ?? 'type'
             return (
               <Bouton
                 key={def.type}
@@ -92,7 +92,7 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'flex', color: t.primary }}>
-                    {Icon[iconName] ? Icon[iconName](16, t.primary) : Icon.write(16, t.primary)}
+                    {Icon[iconName] ? Icon[iconName](16, t.primary) : Icon.type(16, t.primary)}
                   </span>
                   <span>{def.label}</span>
                 </span>

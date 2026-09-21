@@ -22,7 +22,8 @@ import {
   type PageVersionDetail,
   type PageVersionSummary,
 } from '@/cms/repository/versions'
-import { Bouton, titreColonne } from './chrome'
+import { titreColonne } from './chrome'
+import { GhostButton } from '@/admin/ui'
 
 interface PublicationPanelProps {
   pageId: string
@@ -73,13 +74,13 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
       <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: 'var(--f-heading)', fontSize: 16, fontWeight: 700, color: t.heading, marginRight: 'auto' }}>
+        <span id="controle-publication-titre" style={{ fontFamily: 'var(--f-heading)', fontSize: 16, fontWeight: 700, color: t.heading, marginRight: 'auto' }}>
           Avant de publier
         </span>
-        <Bouton disabled={loading} onClick={load}>
+        <GhostButton color={t.text} disabled={loading} busy={loading} onClick={() => { void load() }}>
           {loading ? 'Vérification…' : 'Revérifier'}
-        </Bouton>
-        <Bouton onClick={onClose}>Fermer</Bouton>
+        </GhostButton>
+        <GhostButton color={t.text} onClick={onClose}>Fermer</GhostButton>
       </div>
 
       {error && (
@@ -156,9 +157,9 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
                   {formatDate(version.createdAt)}
                   {version.createdBy ? ` · ${version.createdBy}` : ''}
                 </span>
-                <Bouton genre="actif" onClick={() => openVersion(version.id)} style={{ marginLeft: 'auto' }}>
+                <GhostButton color={t.primary} onClick={() => { void openVersion(version.id) }} style={{ marginLeft: 'auto' }}>
                   Voir
-                </Bouton>
+                </GhostButton>
               </div>
               {version.note && (
                 <div style={{ fontSize: 11, color: t.muted, marginTop: 2 }}>{version.note}</div>
@@ -177,9 +178,9 @@ export function PublicationPanel({ pageId, blockedReport, onClose }: Publication
             <span style={{ fontSize: 12.5, fontWeight: 700, color: t.text }}>
               Version {detail.summary.version}
             </span>
-            <Bouton onClick={() => setDetail(null)} style={{ marginLeft: 'auto' }}>
+            <GhostButton color={t.text} onClick={() => setDetail(null)} style={{ marginLeft: 'auto' }}>
               Fermer
-            </Bouton>
+            </GhostButton>
           </div>
           <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.55 }}>
             <div>

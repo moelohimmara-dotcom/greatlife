@@ -6,6 +6,9 @@ import { BurgerIllustration } from '@/lib/icons/FoodIcon'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { anchorHref, cmsGroup, cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition as choisirDisposition } from '@/cms/renderer/disposition'
+import { InlineHtml } from '@/cms/renderer/InlineHtml'
+import { sanitiserHex, voileBanniere } from '@/cms/model/sections/couleur'
+import { cmsSlotAttrs } from '@/cms/model/subblocks'
 
 /** Pastilles historiques — servent de repli tant que le CMS n'est pas activé. */
 const LEGACY_CHIPS = ['100% bio', 'Emballages éco', 'Prix accessibles']
@@ -57,6 +60,13 @@ interface HeroContent {
   secondaryLabel: string
   secondaryHref: string
   videoUrl: string
+  overlayTint?: string
+  titleColor?: string
+  taglineColor?: string
+  primaryColor?: string
+  secondaryColor?: string
+  blockTint?: string
+  imageAlt?: string
 }
 
 /**
@@ -67,10 +77,12 @@ function HeroPleinEcran({
   c,
   video,
   manqueVideo,
+  preview,
 }: {
   c: HeroContent
   video: string | null
   manqueVideo?: boolean
+  preview?: boolean
 }) {
   const { theme: t } = useSite()
   const fond = c.heroImg ? `url(${c.heroImg}) center/cover` : `linear-gradient(135deg, ${t.primary}, ${t.primaryDark})`
@@ -87,15 +99,19 @@ function HeroPleinEcran({
           loop
           playsInline
           poster={c.heroImg}
+          aria-label={c.imageAlt || undefined}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         >
           <source src={video} />
         </video>
       ) : (
-        <div style={{ position: 'absolute', inset: 0, background: fond }} />
+        <div
+          style={{ position: 'absolute', inset: 0, background: fond }}
+          {...(c.heroImg && c.imageAlt ? { role: 'img', 'aria-label': c.imageAlt } : { 'aria-hidden': true })}
+        />
       )}
       {/* Voile : sans lui, un titre clair sur une photo claire devient illisible. */}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.62))' }} />
+      <div style={{ position: 'absolute', inset: 0, background: voileBanniere(c.overlayTint) }} />
 
       <motion.div
         initial={{ opacity: 0, y: 18 }}
@@ -106,12 +122,10 @@ function HeroPleinEcran({
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.14)', borderRadius: '100px', padding: '8px 16px', marginBottom: '24px', border: '1px solid rgba(255,255,255,0.28)' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.gold }} />
-          <span style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>{c.tagline}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em', ...(c.taglineColor ? { color: c.taglineColor } : {}) }} {...cmsSlotAttrs(preview, 'tagline')}>{c.tagline}</span>
         </div>
-        <h1 style={{ fontFamily: 'var(--f-heading)', fontSize: 'clamp(38px, 6vw, 66px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, fontVariationSettings: '"opsz" 144' }}>
-          {c.title}
-        </h1>
-        <p style={{ fontSize: '18px', lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '620px', opacity: 0.92 }}>{c.subtitle}</p>
+        <InlineHtml as="h1" html={c.title} profile="inline" {...cmsSlotAttrs(preview, 'title')} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: 'calc(clamp(38px, 6vw, 66px) * var(--font-scale, 1))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, fontVariationSettings: '"opsz" 144', ...(c.titleColor ? { color: c.titleColor } : {}) }} />
+        <InlineHtml as="p" html={c.subtitle} {...cmsSlotAttrs(preview, 'subtitle')} style={{ fontSize: '18px', lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '620px', opacity: 0.92 }} />
         {manqueVideo && (
           <p style={{
             display: 'inline-block',
@@ -129,10 +143,10 @@ function HeroPleinEcran({
           </p>
         )}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a href={c.primaryHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
+          <a href={c.primaryHref} {...cmsSlotAttrs(preview, 'primaryCta')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: c.primaryColor ?? t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
             {c.primaryLabel} {Icon.arrow(16)}
           </a>
-          <a href={c.secondaryHref} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', border: '2px solid rgba(255,255,255,0.4)' }}>
+          <a href={c.secondaryHref} {...cmsSlotAttrs(preview, 'secondaryCta')} style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,255,255,0.12)', color: c.secondaryColor ?? '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', border: '2px solid rgba(255,255,255,0.4)' }}>
             {c.secondaryLabel}
           </a>
         </div>
@@ -152,11 +166,11 @@ function HeroPleinEcran({
  * Bannière « Centrée » — aucune image, un bloc compact. Pour un site qui veut
  * aller droit au but, ou quand aucune photo n'est encore disponible.
  */
-function HeroCentre({ c }: { c: HeroContent }) {
+function HeroCentre({ c, preview }: { c: HeroContent; preview?: boolean }) {
   const { theme: t } = useSite()
 
   return (
-    <section style={{ position: 'relative', overflow: 'hidden', padding: '88px 24px 96px', background: t.surfaceAlt }}>
+    <section style={{ position: 'relative', overflow: 'hidden', padding: '88px 24px 96px', background: c.blockTint ?? t.surfaceAlt }}>
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -165,17 +179,15 @@ function HeroCentre({ c }: { c: HeroContent }) {
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.surfaceAlt, borderRadius: '100px', padding: '8px 16px', marginBottom: '24px', border: `1px solid ${t.shadow}` }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.primary }} />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: t.muted }}>{c.tagline}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: c.taglineColor ?? t.muted }} {...cmsSlotAttrs(preview, 'tagline')}>{c.tagline}</span>
         </div>
-        <h1 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: 'clamp(36px, 5.5vw, 56px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, fontVariationSettings: '"opsz" 144' }}>
-          {c.title}
-        </h1>
-        <p style={{ fontSize: '18px', color: t.muted, lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '560px' }}>{c.subtitle}</p>
+        <InlineHtml as="h1" html={c.title} profile="inline" {...cmsSlotAttrs(preview, 'title')} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: c.titleColor ?? t.heading, fontSize: 'calc(clamp(36px, 5.5vw, 56px) * var(--font-scale, 1))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, fontVariationSettings: '"opsz" 144' }} />
+        <InlineHtml as="p" html={c.subtitle} {...cmsSlotAttrs(preview, 'subtitle')} style={{ fontSize: '18px', color: t.muted, lineHeight: 1.55, margin: '24px auto 32px', maxWidth: '560px' }} />
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a href={c.primaryHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
+          <a href={c.primaryHref} {...cmsSlotAttrs(preview, 'primaryCta')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: c.primaryColor ?? t.primary, color: '#fff', fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
             {c.primaryLabel} {Icon.arrow(16)}
           </a>
-          <a href={c.secondaryHref} style={{ display: 'inline-flex', alignItems: 'center', background: 'transparent', color: t.heading, fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', border: `2px solid ${t.primary}33` }}>
+          <a href={c.secondaryHref} {...cmsSlotAttrs(preview, 'secondaryCta')} style={{ display: 'inline-flex', alignItems: 'center', background: 'transparent', color: c.secondaryColor ?? t.heading, fontWeight: 600, padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none', border: `2px solid ${t.primary}33` }}>
             {c.secondaryLabel}
           </a>
         </div>
@@ -205,6 +217,7 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
   const subtitle = pick(cmsText(cms, 'subtitle'), legacy.heroSub)
   const chipLabels = pick(cmsTextList(cms, 'chips'), LEGACY_CHIPS)
   const heroImg = cmsText(cms, 'image') ?? legacyHeroImg
+  const imageAlt = cmsText(cms, 'imageAlt')
   const pill = pick(cmsText(cms, 'pill'), 'Bio')
 
   const badge = cmsGroup(cms, 'badge')
@@ -230,6 +243,13 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
     tagline, title, subtitle, chipLabels, heroImg, pill,
     badgeLabel, badgeName, badgeValue,
     primaryLabel, primaryHref, secondaryLabel, secondaryHref, videoUrl,
+    overlayTint: sanitiserHex(cmsText(cms, 'overlayTint')) ?? undefined,
+    titleColor: sanitiserHex(cmsText(cms, 'titleColor')) ?? undefined,
+    taglineColor: sanitiserHex(cmsText(cms, 'taglineColor')) ?? undefined,
+    primaryColor: sanitiserHex(cmsText(cms, 'primaryColor')) ?? undefined,
+    secondaryColor: sanitiserHex(cmsText(cms, 'secondaryColor')) ?? undefined,
+    blockTint: sanitiserHex(cmsText(cms, 'blockTint')) ?? undefined,
+    imageAlt,
   }
 
   const disposition = normaliserDisposition(variant)
@@ -241,7 +261,7 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
     vide, sans que rien ne l'explique. Le champ le dit dans l'éditeur.
   */
   if (disposition === 'fullscreen') {
-    return <HeroPleinEcran c={contenu} video={null} />
+    return <HeroPleinEcran c={contenu} video={null} preview={preview} />
   }
   if (disposition === 'video') {
     return (
@@ -249,11 +269,12 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
         c={contenu}
         video={videoUrl || null}
         manqueVideo={Boolean(preview) && !videoUrl}
+        preview={preview}
       />
     )
   }
   if (disposition === 'centered') {
-    return <HeroCentre c={contenu} />
+    return <HeroCentre c={contenu} preview={preview} />
   }
 
   // --- « Image + texte » : RENDU HISTORIQUE, INCHANGÉ ------------------------
@@ -261,7 +282,7 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
   // ce qu'elle produisait avant ce lot — `npm run verify:lot1` le vérifie octet
   // par octet contre la révision `0528c544`.
   return (
-    <section className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '40px 24px 100px' }}>
+    <section className="section-pad-top" style={{ position: 'relative', overflow: 'hidden', padding: '40px 24px 100px', ...(contenu.blockTint ? { background: contenu.blockTint } : {}) }}>
       <div style={{ position: 'absolute', top: '-100px', right: '-80px', width: '500px', height: '500px', borderRadius: '50%', background: `radial-gradient(circle, ${t.primary}15, transparent 70%)`, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-60px', left: '-120px', width: '400px', height: '400px', borderRadius: '50%', background: `radial-gradient(circle, ${t.gold}12, transparent 70%)`, pointerEvents: 'none' }} />
 
@@ -273,28 +294,29 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
             padding: '8px 16px', marginBottom: '24px', border: `1px solid ${t.shadow}`,
           }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: t.primary }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: t.muted, letterSpacing: '0.01em' }}>{tagline}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: contenu.taglineColor ?? t.muted, letterSpacing: '0.01em' }} {...cmsSlotAttrs(preview, 'tagline')}>{tagline}</span>
           </div>
-          <h1 style={{
-            fontFamily: 'var(--f-heading)', color: t.heading,
-            fontSize: 'clamp(36px, 5.5vw, 60px)', fontWeight: 700,
+          <InlineHtml as="h1" html={title} profile="inline" {...cmsSlotAttrs(preview, 'title')} style={{
+            fontFamily: 'var(--font-heading, var(--f-heading))', color: contenu.titleColor ?? t.heading,
+            fontSize: 'calc(clamp(36px, 5.5vw, 60px) * var(--font-scale, 1))',
+            fontWeight: 'var(--font-heading-weight, 700)' as unknown as number,
             lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0,
             fontVariationSettings: '"opsz" 144',
-          }}>{title}</h1>
-          <p style={{ fontSize: '18px', color: t.muted, lineHeight: 1.55, margin: '24px 0 32px', maxWidth: '480px' }}>{subtitle}</p>
+          }} />
+          <InlineHtml as="p" html={subtitle} {...cmsSlotAttrs(preview, 'subtitle')} style={{ fontSize: '18px', color: t.muted, lineHeight: 1.55, margin: '24px 0 32px', maxWidth: '480px' }} />
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href={primaryHref} style={{
+            <a href={primaryHref} {...cmsSlotAttrs(preview, 'primaryCta')} style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: t.primary, color: '#fff', fontWeight: 600,
+              background: contenu.primaryColor ?? t.primary, color: '#fff', fontWeight: 600,
               padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none',
               boxShadow: `0 4px 16px ${t.shadowDeep}`, transition: 'transform 0.2s',
             }} onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.03)')}
               onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
               {primaryLabel} {Icon.arrow(16)}
             </a>
-            <a href={secondaryHref} style={{
+            <a href={secondaryHref} {...cmsSlotAttrs(preview, 'secondaryCta')} style={{
               display: 'inline-flex', alignItems: 'center',
-              background: 'transparent', color: t.heading, fontWeight: 600,
+              background: 'transparent', color: contenu.secondaryColor ?? t.heading, fontWeight: 600,
               padding: '14px 28px', borderRadius: '100px', fontSize: '15px', textDecoration: 'none',
               border: `2px solid ${t.primary}33`,
             }}>{secondaryLabel}</a>
@@ -318,6 +340,7 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: softShadow(t), border: `1px solid ${t.shadow}`, overflow: 'hidden',
           }}>
+            {heroImg && contenu.imageAlt ? <span className="cms-sr-only">{contenu.imageAlt}</span> : null}
             {!heroImg && <div style={{ position: 'absolute', inset: '30px', borderRadius: '50%', border: `2px dashed ${t.primary}22` }} />}
             {!heroImg && (
               <div style={{ position: 'relative', width: '60%', height: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -327,7 +350,7 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
               style={{ position: 'absolute', bottom: '10%', right: '5%', background: t.surface, borderRadius: '16px', padding: '12px 18px', boxShadow: softShadow(t), border: `1px solid ${t.shadow}` }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{badgeLabel}</div>
-              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '18px', fontWeight: 700, color: t.heading }}>{badgeName}</div>
+              <div style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 700, color: t.heading }}>{badgeName}</div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: t.accent }}>{badgeValue}</div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.7 }}

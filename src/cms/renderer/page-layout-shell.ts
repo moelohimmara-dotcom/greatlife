@@ -279,4 +279,21 @@ export const CSS_GABARITS_PAGE = `
     position: relative;
   }
 }
+
+[data-cms-layout] [data-cms-section][data-cms-spacing="compact"] .section-pad {
+  padding-top: 40px !important;
+  padding-bottom: 40px !important;
+}
+[data-cms-layout] [data-cms-section][data-cms-spacing="roomy"] .section-pad {
+  padding-top: 120px !important;
+  padding-bottom: 120px !important;
+}
+[data-cms-layout] [data-cms-section][data-cms-spacing="compact"] .section-pad-top {
+  padding-top: 20px !important;
+  padding-bottom: 56px !important;
+}
+[data-cms-layout] [data-cms-section][data-cms-spacing="roomy"] .section-pad-top {
+  padding-top: 56px !important;
+  padding-bottom: 120px !important;
+}
 `

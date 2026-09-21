@@ -1,0 +1,42 @@
+export {
+  EDITOR_META_KEY,
+  EMPTY_SELECTION,
+  type EditorGroup,
+  type EditorMeta,
+  type EditorSurface,
+  type GroupLock,
+  type PackAlign,
+  type SelectionState,
+  type SlotPointer,
+} from './types'
+
+export {
+  addSlotsToGroup,
+  applyGroupModeClick,
+  canGroup,
+  canLock,
+  canPatchSlot,
+  canUngroup,
+  canUseMarkup,
+  colorFieldForSlot,
+  findGroupForSlot,
+  groupSelection,
+  lockGroup,
+  markupProfileForField,
+  readEditorMeta,
+  renameGroup,
+  sanitizeGroups,
+  selectClick,
+  selectInGroupMode,
+  setGroupPackAlign,
+  showsGroupProperties,
+  slotablesFromFields,
+  ungroup,
+  unlock,
+  writeEditorMeta,
+  type GroupDecision,
+  type GroupModeClickResult,
+  type MarkupProfile,
+} from './rules'
+
+export { cmsSlotAttrs } from './slots'

@@ -18,7 +18,7 @@ import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 const DISPOSITIONS = ['card', 'wide'] as const
 
-export function Reservation({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
+export function Reservation({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t } = useSite()
 
   const title = pick(cmsText(cms, 'title'), 'Réservez votre table')
@@ -77,7 +77,7 @@ export function Reservation({ content: cms, variant }: Partial<SectionComponentP
   return (
     <section className="section-pad" {...(large ? { 'data-disposition': 'wide' } : {})} style={{ padding: '100px 24px', background: t.surface }}>
       <div style={{ maxWidth: large ? '1100px' : '680px', margin: '0 auto' }}>
-        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
         <Reveal delay={0.1}>
           <OrganicCard style={{ padding: large ? '48px' : '32px' }}>
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>

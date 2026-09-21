@@ -1,9 +1,19 @@
-export function Switch({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (v: boolean) => void }) {
+import type { ButtonHTMLAttributes } from 'react'
+
+export function Switch({
+  checked,
+  onCheckedChange,
+  ...rest
+}: {
+  checked: boolean
+  onCheckedChange: (v: boolean) => void
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      {...rest}
       onClick={() => onCheckedChange(!checked)}
       style={{
         width: 40,

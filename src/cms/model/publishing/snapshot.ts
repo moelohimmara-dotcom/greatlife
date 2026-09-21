@@ -16,6 +16,7 @@ import type { Page, PageSeo, PageStatus } from '../page'
 import type { PageLayout } from '../page-layout'
 import { normaliserPageLayout } from '../page-layout'
 import type { PageSection } from '../section'
+import { EDITOR_META_KEY } from '../subblocks/types'
 
 /** Version du format de snapshot. Un format inconnu est REFUSÉ (docs/10 §5). */
 export const SNAPSHOT_FORMAT_VERSION = 1
@@ -42,10 +43,47 @@ export interface SnapshotSection {
   settings: Record<string, unknown>
 }
 
+/**
+ * Chrome du site figé à la publication (TDR §22, arbitrage propriétaire 2026-09-21).
+ * Vit DANS l’instantané de page d’accueil : pas de colonne ni de clé site_content
+ * supplémentaire. Absent des anciennes archives → le public utilise le gabarit,
+ * jamais le JSON de travail.
+ */
+export interface SnapshotChromeLink {
+  id: string
+  label: Bilingue
+  target: string
+  visible: boolean
+  isCta: boolean
+}
+
+export interface SnapshotChromeRestaurant {
+  name: Bilingue
+  slogan: Bilingue
+  address: Bilingue
+  hours: Bilingue
+  phone: string
+  emailContact: string
+  emailReservation: string
+  currency: string
+  social: { facebook: string; instagram: string; whatsapp: string }
+}
+
+export interface SnapshotChrome {
+  restaurant: SnapshotChromeRestaurant
+  /** Présentation (en-tête / pied). `logoUrl` uniquement sous `header`. */
+  chromePresentation: Record<string, unknown>
+  typography: Record<string, unknown> | null
+  headerLinks: SnapshotChromeLink[]
+  footerLinks: SnapshotChromeLink[]
+}
+
 export interface PageSnapshot {
   formatVersion: number
   page: SnapshotPage
   sections: SnapshotSection[]
+  /** Absent = archive d’avant le gel du chrome. */
+  chrome?: SnapshotChrome
 }
 
 /**
@@ -64,8 +102,9 @@ export function buildSnapshot(
   page: Page,
   sections: readonly PageSection[],
   asPublished?: { status: PageStatus; publishedAt: string },
+  chrome?: SnapshotChrome,
 ): PageSnapshot {
-  return {
+  const snapshot: PageSnapshot = {
     formatVersion: SNAPSHOT_FORMAT_VERSION,
     page: {
       slug: page.slug,
@@ -83,9 +122,49 @@ export function buildSnapshot(
       position: section.position,
       visible: section.visible,
       anchor: section.anchor,
-      content: asRecord(section.content),
+      content: contenuPublie(asRecord(section.content)),
       settings: asRecord(section.settings),
     })),
+  }
+  if (chrome) snapshot.chrome = chrome
+  return snapshot
+}
+
+/**
+ * Fige le chrome à partir du JSON restaurant de TRAVAIL et des liens déjà
+ * résolus. Fonction pure : pas de lecture réseau.
+ */
+export function freezeChrome(input: {
+  restaurantRaw: Record<string, unknown> | null
+  headerLinks: readonly SnapshotChromeLink[]
+  footerLinks: readonly SnapshotChromeLink[]
+}): SnapshotChrome {
+  const raw = input.restaurantRaw ?? {}
+  const social = asRecord(raw.social)
+  const presentation = normaliserPresentationFigee(raw)
+  const typo = raw.typography && typeof raw.typography === 'object' && !Array.isArray(raw.typography)
+    ? asRecord(raw.typography)
+    : null
+  return {
+    restaurant: {
+      name: (raw.name ?? '') as Bilingue,
+      slogan: (raw.slogan ?? '') as Bilingue,
+      address: (raw.address ?? '') as Bilingue,
+      hours: (raw.hours ?? '') as Bilingue,
+      phone: str(raw.phone),
+      emailContact: str(raw.emailContact),
+      emailReservation: str(raw.emailReservation),
+      currency: str(raw.currency) || 'FG',
+      social: {
+        facebook: str(social.facebook),
+        instagram: str(social.instagram),
+        whatsapp: str(social.whatsapp),
+      },
+    },
+    chromePresentation: presentation,
+    typography: typo && Object.keys(typo).length > 0 ? typo : null,
+    headerLinks: input.headerLinks.map(copierLien),
+    footerLinks: input.footerLinks.map(copierLien),
   }
 }
 
@@ -134,21 +213,26 @@ export function parseSnapshot(raw: unknown): SnapshotRead {
     return { ok: false, error: 'Cette version ne contient pas de page exploitable.' }
   }
 
+  const snapshot: PageSnapshot = {
+    formatVersion,
+    page: {
+      slug: typeof page.slug === 'string' ? page.slug : '',
+      title: (page.title ?? '') as Bilingue,
+      sortOrder: Number(page.sortOrder ?? 0),
+      seo: (page.seo ?? {}) as PageSeo,
+      status: (page.status ?? 'draft') as PageStatus,
+      publishedAt: typeof page.publishedAt === 'string' ? page.publishedAt : null,
+      layout: normaliserPageLayout(typeof page.layout === 'string' ? page.layout : undefined),
+    },
+    sections,
+  }
+  if (Object.prototype.hasOwnProperty.call(value, 'chrome')) {
+    snapshot.chrome = lireChrome(value.chrome)
+  }
+
   return {
     ok: true,
-    snapshot: {
-      formatVersion,
-      page: {
-        slug: typeof page.slug === 'string' ? page.slug : '',
-        title: (page.title ?? '') as Bilingue,
-        sortOrder: Number(page.sortOrder ?? 0),
-        seo: (page.seo ?? {}) as PageSeo,
-        status: (page.status ?? 'draft') as PageStatus,
-        publishedAt: typeof page.publishedAt === 'string' ? page.publishedAt : null,
-        layout: normaliserPageLayout(typeof page.layout === 'string' ? page.layout : undefined),
-      },
-      sections,
-    },
+    snapshot,
   }
 }
 
@@ -157,6 +241,17 @@ export function parseSnapshot(raw: unknown): SnapshotRead {
 // module ne peut pas importer le client, qui tire `@/lib/supabase` et donc
 // Vite. Deux fonctions de trois lignes, assumées ici pour garder la frontière
 // de pureté (même arbitrage que `@/cms/renderer`).
+
+/**
+ * R8 — le public ignore les groupes et verrous. On ne les fige donc pas
+ * dans l’instantané : le brouillon `page_sections.content` les garde.
+ */
+function contenuPublie(content: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...content }
+  delete out[EDITOR_META_KEY]
+  delete out.groups
+  return out
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -167,4 +262,57 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function asList(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
+}
+
+function str(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function copierLien(lien: SnapshotChromeLink): SnapshotChromeLink {
+  return {
+    id: lien.id,
+    label: lien.label,
+    target: lien.target,
+    visible: lien.visible,
+    isCta: lien.isCta,
+  }
+}
+
+function lireLiens(raw: unknown): SnapshotChromeLink[] {
+  return asList(raw).map((entry) => {
+    const o = asRecord(entry)
+    return {
+      id: str(o.id) || str(o.target),
+      label: (o.label ?? '') as Bilingue,
+      target: str(o.target),
+      visible: o.visible !== false,
+      isCta: o.isCta === true,
+    }
+  })
+}
+
+function lireChrome(raw: unknown): SnapshotChrome {
+  const o = asRecord(raw)
+  return freezeChrome({
+    restaurantRaw: {
+      ...asRecord(o.restaurant),
+      chromePresentation: o.chromePresentation,
+      typography: o.typography,
+    },
+    headerLinks: lireLiens(o.headerLinks),
+    footerLinks: lireLiens(o.footerLinks),
+  })
+}
+
+/** Une seule vérité pour le logo : `chromePresentation.header.logoUrl`. */
+function normaliserPresentationFigee(raw: Record<string, unknown>): Record<string, unknown> {
+  const racine = asRecord(raw.chromePresentation)
+  const header = { ...asRecord(racine.header) }
+  const logoRacine = str(raw.logoUrl).trim()
+  const logoHeader = str(header.logoUrl).trim()
+  if (!logoHeader && logoRacine) header.logoUrl = logoRacine
+  else if (logoHeader) header.logoUrl = logoHeader
+  const out: Record<string, unknown> = { ...racine }
+  if (Object.keys(header).length > 0) out.header = header
+  return out
 }

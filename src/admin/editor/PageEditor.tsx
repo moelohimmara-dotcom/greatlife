@@ -8,29 +8,56 @@
  * AdminPanel à la place de l'écran `content` existant.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { empreinteSauvegarde } from '@/cms/model/save-plan'
 import { useSite } from '@/contexts/SiteContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageStatus } from '@/cms/model/page'
 import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
-import { PageLayoutPicker } from './PageLayoutPicker'
 import type { PublicationReport } from '@/cms/model/publishing'
 import {
   SETTING_KEYS,
   fetchSetting,
+  flushRestaurantDrafts,
   resolveRestaurant,
   toRestaurantSettings,
+  completerRestaurantDepuisPlat,
   type ResolvedRestaurant,
+  type RestaurantSettings,
 } from '@/cms/repository/settings'
 import { useEditor } from './useEditor'
+import { resoudreEtatConsole } from './console-etat'
+import { useBrouillonHistory, saisieTexteSeule } from './draft-history'
 import { SectionList } from './SectionList'
 import { PreviewPane } from './PreviewPane'
 import { PropertyPanel } from './PropertyPanel'
+import { ChromePanel } from './ChromePanel'
 import { PublicationPanel } from './PublicationPanel'
 import { SectionTypePicker } from './SectionTypePicker'
-import { Bouton, titreColonne } from './chrome'
+import { GhostButton, PrimaryButton, StatusPill } from '@/admin/ui'
+import { Bouton, CIBLE, ESPACE, HAUTEUR, RAYON, titreColonne } from './chrome'
+import { Icon } from '@/lib/icons'
+import { chromeDepuisReglages, type ChromePresentation } from '@/cms/model/sections/chrome-presentation'
+import type { LienChrome } from '@/cms/model/sections/site-chrome'
+import { typoDepuisReglages, type TypoReglages } from '@/cms/model/sections/typo'
+import {
+  applyGroupModeClick,
+  canGroup,
+  EMPTY_SELECTION,
+  findGroupForSlot,
+  groupSelection,
+  readEditorMeta,
+  selectClick,
+  ungroup,
+  type SelectionState,
+} from '@/cms/model/subblocks'
+import { ecrireChampLocale, peutEditerInplace, profilInplace } from '@/cms/model/inplace'
+import { getSectionDefinition } from '@/cms/model/sections/schemas'
+import type { CibleApercu } from './inplace-dom'
 
 interface PageEditorProps {
+  /** Titre affiché dans la barre — pas le nom de l’écran de console. */
+  pageLabel?: string
   /** ID de la page à éditer. */
   pageId: string
   /** Sections initiales (chargées depuis la base). */
@@ -38,60 +65,276 @@ interface PageEditorProps {
   /** Statut de publication : c'est lui qui décide si le public voit le CMS. */
   status: PageStatus
   layout: PageLayout
-  onLayoutChange: (layout: PageLayout) => void
-  /** `true` pendant la bascule de publication. */
+  onLayoutChange: (layout: PageLayout) => void | Promise<void>
+  flushLayout?: () => void | Promise<void>
+  layoutPersisting?: boolean
+  layoutDirty?: boolean
   publishing: boolean
-  /** Met l'instantané en ligne (y compris si la page est déjà publiée). */
   onPublish: () => void
-  /** Retire la page du site public (repassage en brouillon). */
   onUnpublish: () => void
-  /**
-   * Rapport d'une publication refusée par les contrôles du TDR §24.
-   * Non nul ⇒ le panneau s'ouvre de lui-même sur ce qui a bloqué.
-   */
   blockedReport?: PublicationReport | null
+  actionError?: string | null
+  /** Conservé pour compat : la sortie se fait via le menu latéral (hamburger / rail). */
+  onQuitConsole?: () => void
+  onOuvrirApparence?: () => void
 }
 
 export function PageEditor({
+  pageLabel = 'Page d’accueil',
   pageId,
   initialSections,
   status,
   layout,
   onLayoutChange,
+  flushLayout,
+  layoutPersisting = false,
+  layoutDirty = false,
   publishing,
   onPublish,
   onUnpublish,
   blockedReport = null,
+  actionError = null,
+  onOuvrirApparence,
 }: PageEditorProps) {
-  const { theme: t } = useSite()
+  const { theme: t, content: platSite } = useSite()
   const editor = useEditor(pageId, initialSections)
+  const historique = useBrouillonHistory()
+  const restoringRef = useRef(false)
+  const editorRef = useRef(editor)
+  editorRef.current = editor
+  const layoutRef = useRef(layout)
+  layoutRef.current = layout
+
+  const capturerBrouillon = useCallback(() => ({
+    sections: structuredClone(editorRef.current.sections),
+    removedIds: [...editorRef.current.removedIds],
+    selected: editorRef.current.selected,
+    layout: layoutRef.current,
+  }), [])
+
+  const noterHistorique = useCallback((kind: 'coalesce' | 'immediate') => {
+    if (restoringRef.current) return
+    historique.noter(kind, capturerBrouillon())
+  }, [capturerBrouillon, historique])
+
+  const appliquerBrouillon = useCallback((snap: ReturnType<typeof capturerBrouillon>) => {
+    restoringRef.current = true
+    editor.replaceDraft(snap.sections, snap.removedIds, snap.selected)
+    if (snap.layout !== layoutRef.current) void onLayoutChange(snap.layout)
+    window.requestAnimationFrame(() => {
+      restoringRef.current = false
+    })
+  }, [editor, onLayoutChange])
+
+  const annuler = useCallback(() => {
+    const prev = historique.undo(capturerBrouillon())
+    if (prev) appliquerBrouillon(prev)
+  }, [appliquerBrouillon, capturerBrouillon, historique])
+
+  const retablir = useCallback(() => {
+    const next = historique.redo(capturerBrouillon())
+    if (next) appliquerBrouillon(next)
+  }, [appliquerBrouillon, capturerBrouillon, historique])
 
   /*
     L'APERÇU DOIT MONTRER LES VRAIES COORDONNÉES (revue du 2026-09-20, I-4).
 
-    `PreviewPane` n'était appelé SANS `restaurant` : il retombait donc sur des
-    valeurs codées en dur (« Conakry, Guinée », « +224 000 00 00 00 »), et le
-    restaurateur voyait dans son propre aperçu un numéro de téléphone qui n'était
-    pas le sien. Un aperçu qui ment est pire que pas d'aperçu : c'est sur lui
-    qu'on décide de publier (TDR §4).
-
-    On charge donc les réglages réels, une fois, comme le fait le site public
-    (`PublicSite` → `fetchSetting`). Tant qu'ils ne sont pas arrivés, l'aperçu
-    n'affiche AUCUNE coordonnée inventée — il n'en affiche aucune.
+    Lecture A (`site_content.restaurant`) puis repli B (plat `site_config`)
+    une fois au chargement. Le public, lui, lit l’instantané chrome — pas
+    `fetchSetting` en direct.
   */
   const [restaurant, setRestaurant] = useState<ResolvedRestaurant | undefined>(undefined)
+  const [chromePresentation, setChromePresentation] = useState<ChromePresentation>({})
+  const [liensEntete, setLiensEntete] = useState<LienChrome[] | undefined>(undefined)
+  const [liensPied, setLiensPied] = useState<LienChrome[] | undefined>(undefined)
+  const [typo, setTypo] = useState<TypoReglages | null>(null)
   useEffect(() => {
     let actif = true
     fetchSetting(SETTING_KEYS.restaurant).then((result) => {
       if (!actif || !result.ok) return
-      setRestaurant(resolveRestaurant(toRestaurantSettings(result.data), editor.locale))
+      const raw = completerRestaurantDepuisPlat(result.data ?? {}, {
+        restaurantName: platSite.restaurantName,
+        phone: platSite.phone,
+        address: platSite.address,
+        hours: platSite.hours,
+        emailContact: platSite.emailContact,
+        emailReservation: platSite.emailReservation,
+        slogan: platSite.slogan,
+      })
+      setRestaurant(resolveRestaurant(toRestaurantSettings(raw), editor.locale))
+      setChromePresentation(chromeDepuisReglages(raw))
+      setTypo(typoDepuisReglages(raw))
     })
     return () => {
       actif = false
     }
-  }, [editor.locale])
+  }, [editor.locale, platSite.restaurantName, platSite.phone, platSite.address, platSite.emailContact])
   const [showPicker, setShowPicker] = useState(false)
   const [showPublication, setShowPublication] = useState(false)
+  const [plusOuvert, setPlusOuvert] = useState(false)
+  const plusRef = useRef<HTMLDivElement>(null)
+  const [apercuElargi, setApercuElargi] = useState(false)
+  const [chrome, setChrome] = useState<'header' | 'footer' | null>(null)
+  const [chromeTick, setChromeTick] = useState(0)
+  const [slotSel, setSlotSel] = useState<SelectionState>(EMPTY_SELECTION)
+  const slotSelRef = useRef(slotSel)
+  slotSelRef.current = slotSel
+  const [cibleApercu, setCibleApercu] = useState<CibleApercu | null>(null)
+  const [focusDepuisApercu, setFocusDepuisApercu] = useState(false)
+
+  const appliquerPointeur = useCallback((id: string, detail?: { slot: string | null; shift: boolean; toggle?: boolean }) => {
+    setFocusDepuisApercu(true)
+    if (editor.groupMode && id !== 'cms-header' && id !== 'cms-footer') {
+      if (!detail?.slot) return
+      setChrome(null)
+      editor.selectById(id)
+      const index = editor.sections.findIndex((s) => s.id === id)
+      if (index < 0) return
+      const section = editor.sections[index]
+      const actuel = section.content ?? {}
+      const { content, selection } = applyGroupModeClick(
+        actuel,
+        slotSelRef.current,
+        {
+          surface: 'page',
+          sectionId: id,
+          slot: detail.slot,
+          shift: false,
+        },
+      )
+      if (content !== actuel) {
+        noterHistorique('immediate')
+        editor.updateContent(index, content)
+      }
+      setSlotSel(selection)
+      return
+    }
+    if (id === 'cms-header') {
+      setChrome('header')
+      editor.select(null)
+      setSlotSel((prev) => selectClick(prev, {
+        surface: 'header',
+        sectionId: null,
+        slot: detail?.slot ?? null,
+        shift: Boolean(detail?.shift),
+        toggle: Boolean(detail?.toggle),
+      }))
+      return
+    }
+    if (id === 'cms-footer') {
+      setChrome('footer')
+      editor.select(null)
+      setSlotSel((prev) => selectClick(prev, {
+        surface: 'footer',
+        sectionId: null,
+        slot: detail?.slot ?? null,
+        shift: Boolean(detail?.shift),
+        toggle: Boolean(detail?.toggle),
+      }))
+      return
+    }
+    setChrome(null)
+    editor.selectById(id)
+    setSlotSel((prev) => selectClick(prev, {
+      surface: 'page',
+      sectionId: id,
+      slot: detail?.slot ?? null,
+      shift: Boolean(detail?.shift),
+      toggle: Boolean(detail?.toggle),
+    }))
+  }, [editor, noterHistorique])
+
+  const viderSelectionEmplacements = useCallback(() => {
+    setSlotSel((prev) => ({ ...prev, slots: [], groupId: null }))
+  }, [])
+
+  const selectionnerTousEmplacements = useCallback((id: string, slots: string[]) => {
+    if (id === 'cms-header') {
+      setChrome('header')
+      editor.select(null)
+      setSlotSel({ surface: 'header', sectionId: null, slots, groupId: null })
+      return
+    }
+    if (id === 'cms-footer') {
+      setChrome('footer')
+      editor.select(null)
+      setSlotSel({ surface: 'footer', sectionId: null, slots, groupId: null })
+      return
+    }
+    setChrome(null)
+    editor.selectById(id)
+    setSlotSel({ surface: 'page', sectionId: id, slots, groupId: null })
+  }, [editor])
+
+  const grouperRaccourci = useCallback(() => {
+    const sel = slotSelRef.current
+    if (sel.surface === 'page' && sel.sectionId) {
+      const index = editor.sections.findIndex((s) => s.id === sel.sectionId)
+      if (index >= 0) {
+        const section = editor.sections[index]
+        const content = section.content ?? {}
+        if (canGroup(content, sel.slots, sel.surface).ok) {
+          const next = groupSelection(content, sel.slots, {
+            id: `g-${sel.slots.join('_')}`,
+            label: 'Groupe',
+          })
+          noterHistorique('immediate')
+          editor.updateContent(index, next)
+          const created = readEditorMeta(next).groups.find((g) =>
+            g.slots.length === sel.slots.length && sel.slots.every((s) => g.slots.includes(s)),
+          )
+          setSlotSel({
+            surface: 'page',
+            sectionId: section.id,
+            slots: created?.slots ?? sel.slots,
+            groupId: created?.id ?? null,
+          })
+          return
+        }
+      }
+    }
+    if (editor.groupMode) editor.stopGroupMode()
+    else editor.startGroupMode()
+  }, [editor, noterHistorique])
+
+  const appliquerClicGroupe = useCallback((index: number, slot: string) => {
+    const cible = editor.sections[index]
+    if (!cible) return
+    editor.select(index)
+    setChrome(null)
+    const actuel = cible.content ?? {}
+    const { content, selection } = applyGroupModeClick(
+      actuel,
+      slotSelRef.current,
+      {
+        surface: 'page',
+        sectionId: cible.id,
+        slot,
+        shift: false,
+      },
+    )
+    if (content !== actuel) {
+      noterHistorique('immediate')
+      editor.updateContent(index, content)
+    }
+    setSlotSel(selection)
+  }, [editor, noterHistorique])
+
+  const degrouperRaccourci = useCallback(() => {
+    const sel = slotSelRef.current
+    if (sel.surface !== 'page' || !sel.sectionId) return
+    const index = editor.sections.findIndex((s) => s.id === sel.sectionId)
+    if (index < 0) return
+    const content = editor.sections[index].content ?? {}
+    const meta = readEditorMeta(content)
+    const groupe = sel.groupId
+      ? meta.groups.find((g) => g.id === sel.groupId)
+      : (sel.slots[0] ? findGroupForSlot(meta.groups, sel.slots[0]) : undefined)
+    if (!groupe) return
+    noterHistorique('immediate')
+    editor.updateContent(index, ungroup(content, groupe.id))
+    setSlotSel((prev) => ({ ...prev, groupId: null }))
+  }, [editor, noterHistorique])
 
   // Une publication bloquée doit être EXPLIQUÉE, pas seulement refusée.
   useEffect(() => {
@@ -99,17 +342,102 @@ export function PageEditor({
   }, [blockedReport])
 
   // Section actuellement sélectionnée (objet, pas juste l'index)
-  const selectedSection = editor.selected !== null ? editor.sections[editor.selected] : null
+  const selectedSection = chrome ? null : (editor.selected !== null ? editor.sections[editor.selected] : null)
+
+  const appliquerRestaurant = useCallback((settings: RestaurantSettings) => {
+    setRestaurant(resolveRestaurant(settings, editor.locale))
+    setChromeTick((n) => n + 1)
+  }, [editor.locale])
 
   const isPublished = status === 'published'
 
+  const saveRef = useRef(editor.save)
+  saveRef.current = editor.save
+  const savedFp = useRef(empreinteSauvegarde(initialSections) + '#')
+
+  useEffect(() => {
+    const fp = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
+    if (fp === savedFp.current) return
+    if (editor.saving) return
+    const t = window.setTimeout(async () => {
+      const ok = await saveRef.current()
+      if (ok) savedFp.current = fp
+    }, 1200)
+    return () => window.clearTimeout(t)
+  }, [editor.sections, editor.removedIds, editor.saving])
+
+  const empreinteCourante = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
+  const brouillonSale = empreinteCourante !== savedFp.current || layoutDirty
+
+  /** Empreinte du contenu au dernier alignement avec le site public (chargement publié ou publication réussie). */
+  const fpPublieRef = useRef<string | null>(
+    status === 'published' ? empreinteSauvegarde(initialSections) + '#' : null,
+  )
+  const publishingRef = useRef(publishing)
+  useEffect(() => {
+    const finPubOk = publishingRef.current && !publishing && status === 'published' && !actionError
+    publishingRef.current = publishing
+    if (finPubOk) {
+      fpPublieRef.current = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
+    }
+  }, [publishing, status, actionError, editor.sections, editor.removedIds])
+
+  const horsSyncPublic = isPublished
+    ? (fpPublieRef.current === null || empreinteCourante !== fpPublieRef.current || layoutDirty)
+    : true
+
+  const consoleEtat = resoudreEtatConsole({
+    erreurSauvegarde: editor.error,
+    erreurAction: actionError,
+    publicationBloquee: Boolean(blockedReport),
+    enregistrementEnCours: editor.saving || layoutPersisting,
+    brouillonSale,
+    sitePasAJour: horsSyncPublic,
+    pagePubliee: isPublished,
+    avertissement: editor.avertissement,
+  })
+  const couleurEtat = consoleEtat.teinte === 'accent'
+    ? t.accent
+    : consoleEtat.teinte === 'gold'
+      ? t.gold
+      : t.primary
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!brouillonSale) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [brouillonSale])
+
+  /* Quitter via la barre latérale démonte l'éditeur : on enregistre ce qui est encore sale
+     (l'ancien bouton Tableau de bord faisait ce flush ; le hamburger n'appelle plus handleQuit). */
+  useEffect(() => {
+    return () => {
+      void Promise.resolve(flushLayout?.()).catch(() => {})
+      void saveRef.current().catch(() => {})
+    }
+  }, [flushLayout])
+
   const choisirMiseEnPage = (next: PageLayout) => {
+    noterHistorique('immediate')
     const premiere = editor.sections[0]
     if (premiere?.type === 'hero') {
       const imposee = dispositionBannierePourMiseEnPage(next, premiere.variant)
       if (imposee) editor.setVariant(0, imposee)
     }
-    if (editor.sections.length > 0) editor.select(0)
+    if (editor.sections.length > 0) {
+      setChrome(null)
+      editor.select(0)
+      setSlotSel({
+        surface: 'page',
+        sectionId: editor.sections[0].id,
+        slots: [],
+        groupId: null,
+      })
+    }
     onLayoutChange(next)
   }
 
@@ -127,99 +455,261 @@ export function PageEditor({
    * « Repasser en brouillon » et le public ne bougeait jamais.
    */
   const handlePublish = async () => {
+    await Promise.resolve(flushLayout?.())
+    await flushRestaurantDrafts().catch(() => {})
     const saved = await editor.save()
+    if (saved) savedFp.current = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
     if (!saved) return
     onPublish()
   }
 
+
+  useEffect(() => {
+    if (!showPublication && !plusOuvert) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (plusOuvert) setPlusOuvert(false)
+      else setShowPublication(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [plusOuvert, showPublication])
+
+  useEffect(() => {
+    if (!plusOuvert) return
+    const onPointer = (e: PointerEvent) => {
+      const racine = plusRef.current
+      if (racine && e.target instanceof Node && !racine.contains(e.target)) {
+        setPlusOuvert(false)
+      }
+    }
+    window.addEventListener('pointerdown', onPointer)
+    return () => window.removeEventListener('pointerdown', onPointer)
+  }, [plusOuvert])
+
+  useEffect(() => {
+    const saisie = (cible: EventTarget | null) => {
+      if (!(cible instanceof HTMLElement)) return false
+      const tag = cible.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      if (cible.isContentEditable) return true
+      return Boolean(cible.closest('input, textarea, select, [contenteditable="true"]'))
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (saisie(e.target) || saisie(document.activeElement)) return
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = e.key.toLowerCase()
+        if (k === 'z' && e.shiftKey) {
+          e.preventDefault()
+          retablir()
+          return
+        }
+        if (k === 'z') {
+          e.preventDefault()
+          annuler()
+          return
+        }
+        if (k === 'y') {
+          e.preventDefault()
+          retablir()
+          return
+        }
+      }
+      if (e.key === 'Escape' && editor.groupMode) {
+        e.preventDefault()
+        editor.stopGroupMode()
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault()
+        grouperRaccourci()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [annuler, editor.groupMode, editor.stopGroupMode, grouperRaccourci, retablir])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 0 }}>
-      {/* Barre d'outils */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-        borderBottom: `1px solid ${t.shadow}`, background: t.surface,
-        flexWrap: 'wrap',
-      }}>
-        <span
-          title={isPublished
-            ? "Les visiteurs voient la dernière version mise en ligne. Pour qu'une mise en page ou un texte les atteigne, cliquez « Mettre à jour le site »."
-            : 'Les visiteurs voient encore l’ancien site. Publiez pour appliquer vos modifications.'}
-          style={{
-            fontSize: 13, fontWeight: 600, padding: '10px 14px', borderRadius: 100,
-            minHeight: 44, display: 'inline-flex', alignItems: 'center',
-            background: isPublished ? `${t.primary}14` : `${t.accent}14`,
-            color: isPublished ? t.primary : t.accent,
-            border: `1px solid ${isPublished ? `${t.primary}33` : `${t.accent}44`}`,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {isPublished ? 'En ligne' : 'Brouillon, pas encore sur le site'}
-        </span>
+      {/* Trois clusters : console d’édition | langue+historique | publication collée. */}
+      <div
+        className="admin-editor-toolbar"
+        style={{
+          padding: '6px 16px',
+          borderBottom: `1px solid ${t.shadow}`,
+          background: t.surface,
+        }}
+      >
+        <div className="admin-editor-toolbar-start">
+          <h2 className="admin-editor-toolbar-title" style={{ color: t.heading }} title={pageLabel}>
+            Console d’édition
+          </h2>
+          <StatusPill
+            label={consoleEtat.label}
+            color={couleurEtat}
+            title={consoleEtat.title}
+          />
+        </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/*
-            Contrôle avant publication (TDR §24) et historique des versions
-            (TDR §23). Le restaurateur doit pouvoir savoir CE QUI BLOQUE et
-            retrouver un état antérieur, sans quitter l'éditeur.
-          */}
-          <Bouton
-            genre={showPublication ? 'actif' : 'secondaire'}
-            aria-pressed={showPublication}
-            aria-expanded={showPublication}
-            title="Vérifier la page avant publication et consulter les versions enregistrées."
-            onClick={() => setShowPublication((open) => !open)}
+        <div className="admin-editor-toolbar-center">
+          <div
+            role="group"
+            aria-label="Langue de l’aperçu et des textes"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'stretch',
+              height: HAUTEUR,
+              borderRadius: RAYON,
+              border: `1px solid ${t.shadow}`,
+              overflow: 'hidden',
+              flex: '0 0 auto',
+            }}
           >
-            Contrôle et versions
-          </Bouton>
-          <div role="group" aria-label="Langue de l’aperçu" style={{ display: 'flex', gap: 8 }}>
             {([
-              { id: 'fr' as const, label: 'Français' },
-              { id: 'en' as const, label: 'English' },
-            ]).map((lang) => (
-              <Bouton
-                key={lang.id}
-                genre={editor.locale === lang.id ? 'actif' : 'secondaire'}
-                aria-pressed={editor.locale === lang.id}
-                onClick={() => editor.setLocale(lang.id)}
-              >
-                {lang.label}
-              </Bouton>
-            ))}
+              { id: 'fr' as const, court: 'FR', nom: 'Français' },
+              { id: 'en' as const, court: 'EN', nom: 'English' },
+            ]).map((lang, i) => {
+              const actif = editor.locale === lang.id
+              return (
+                <Bouton
+                  key={lang.id}
+                  genre={actif ? 'actif' : 'silencieux'}
+                  aria-pressed={actif}
+                  aria-label={lang.nom}
+                  title={lang.nom}
+                  onClick={() => editor.setLocale(lang.id)}
+                  style={{
+                    height: HAUTEUR,
+                    minHeight: HAUTEUR,
+                    minWidth: CIBLE,
+                    border: 'none',
+                    borderRadius: 0,
+                    borderLeft: i === 0 ? 'none' : `1px solid ${t.shadow}`,
+                    background: actif ? `${t.primary}14` : 'transparent',
+                    color: actif ? t.primary : t.text,
+                  }}
+                >
+                  {lang.court}
+                </Bouton>
+              )
+            })}
           </div>
+          <div role="group" aria-label="Annuler et rétablir" style={{ display: 'flex', alignItems: 'center', gap: ESPACE }}>
+            <Bouton
+              carre
+              genre="secondaire"
+              disabled={!historique.canUndo}
+              aria-label="Annuler"
+              title="Annuler — les blocs, pas le menu"
+              onClick={annuler}
+            >
+              <span aria-hidden="true">{Icon.undo(16, historique.canUndo ? t.heading : t.muted)}</span>
+            </Bouton>
+            <Bouton
+              carre
+              genre="secondaire"
+              disabled={!historique.canRedo}
+              aria-label="Rétablir"
+              title="Rétablir — les blocs, pas le menu"
+              onClick={retablir}
+            >
+              <span aria-hidden="true">{Icon.redo(16, historique.canRedo ? t.heading : t.muted)}</span>
+            </Bouton>
+          </div>
+        </div>
+
+        <div className="admin-editor-toolbar-end">
+          {actionError && (
+            <span role="alert" className="admin-editor-toolbar-msg" title={actionError} style={{ color: t.accent }}>
+              {actionError}
+            </span>
+          )}
           {editor.error && (
-            <span role="alert" style={{ fontSize: 13, color: t.accent, maxWidth: 280 }}>{editor.error}</span>
+            <span role="alert" className="admin-editor-toolbar-msg" title={editor.error} style={{ color: t.accent }}>
+              {editor.error}
+            </span>
           )}
           {editor.avertissement && !editor.error && (
-            <span role="status" title={editor.avertissement} style={{ fontSize: 13, fontWeight: 600, color: t.gold, maxWidth: 280 }}>
+            <span role="status" className="admin-editor-toolbar-msg" title={editor.avertissement} style={{ color: t.gold }}>
               {editor.avertissement}
             </span>
           )}
-          <Bouton
-            genre="secondaire"
-            disabled={editor.saving}
-            onClick={editor.save}
+          <GhostButton
+            className="admin-editor-toolbar-wide"
+            color={showPublication ? t.primary : t.text}
+            aria-pressed={showPublication}
+            aria-expanded={showPublication}
+            title="Vérifier la page avant publication et consulter les versions enregistrées."
+            onClick={() => setShowPublication((open) => {
+              const next = !open
+              if (next) setApercuElargi(false)
+              return next
+            })}
+            style={showPublication ? { background: `${t.primary}14`, borderColor: t.primary } : undefined}
           >
-            {editor.saving ? 'Sauvegarde…' : 'Sauvegarder'}
-          </Bouton>
-          <Bouton
-            genre="primaire"
+            Contrôle
+          </GhostButton>
+          <div className="admin-editor-toolbar-plus" ref={plusRef}>
+            <Bouton
+              carre
+              genre="secondaire"
+              aria-label="Autres actions"
+              aria-haspopup="menu"
+              aria-expanded={plusOuvert}
+              title="Autres actions"
+              onClick={() => setPlusOuvert((o) => !o)}
+            >
+              <span aria-hidden="true">{Icon.more(16, t.heading)}</span>
+            </Bouton>
+            {plusOuvert ? (
+              <div
+                role="menu"
+                className="admin-editor-toolbar-plus-menu"
+                style={{ background: t.surface, border: `1px solid ${t.shadow}` }}
+              >
+                <GhostButton
+                  color={showPublication ? t.primary : t.text}
+                  aria-pressed={showPublication}
+                  title="Vérifier la page avant publication et consulter les versions enregistrées."
+                  onClick={() => {
+                    setPlusOuvert(false)
+                    setShowPublication((open) => {
+                      const next = !open
+                      if (next) setApercuElargi(false)
+                      return next
+                    })
+                  }}
+                  style={{
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    ...(showPublication ? { background: `${t.primary}14`, borderColor: t.primary } : {}),
+                  }}
+                >
+                  Contrôle
+                </GhostButton>
+              </div>
+            ) : null}
+          </div>
+          <PrimaryButton
             disabled={publishing || editor.saving}
+            busy={publishing || editor.saving}
             title={isPublished
               ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
               : 'Publier : les visiteurs verront ce contenu.'}
-            onClick={handlePublish}
+            onClick={() => { void handlePublish() }}
           >
             {publishing ? 'Publication…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
-          </Bouton>
+          </PrimaryButton>
           {isPublished && (
-            <Bouton
-              genre="danger"
+            <GhostButton
+              color={t.accent}
               disabled={publishing || editor.saving}
+              busy={publishing || editor.saving}
               title="Retirer cette version : les visiteurs reverront l’ancien site."
               onClick={onUnpublish}
             >
-              Retirer du site
-            </Bouton>
+              Retirer
+            </GhostButton>
           )}
         </div>
       </div>
@@ -227,62 +717,165 @@ export function PageEditor({
       {/* Layout 3 colonnes — minmax(0,1fr) : sans ça la rangée grandit
           avec la liste des blocs, l’aperçu a un 100vh de plusieurs écrans
           et le bas de la fenêtre n’est plus que du fond crème. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 320px', gridTemplateRows: 'minmax(0, 1fr)', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div
+        className={apercuElargi ? 'admin-editor-grid is-preview-wide' : 'admin-editor-grid'}
+        style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', flex: 1, minHeight: 0, position: 'relative' }}
+      >
         {/* Colonne 1 : Structure */}
-        <div style={{
-          borderRight: `1px solid ${t.shadow}`, background: t.surface,
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        <div className={showPublication ? 'admin-editor-structure is-locked' : 'admin-editor-structure'} style={{
+          borderRight: apercuElargi ? 'none' : `1px solid ${t.shadow}`, background: t.surface,
+          display: apercuElargi ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden',
           minHeight: 0,
         }}>
-          <div style={{ padding: '14px 14px 8px', ...titreColonne(t) }}>
-            Structure
+          <div style={{ padding: '12px 12px 8px' }}>
+            <div style={titreColonne(t)}>Structure</div>
+            <p style={{ margin: '0 0 4px', fontSize: 12, lineHeight: 1.4, color: t.muted, fontWeight: 500 }}>
+              Mise en page, puis blocs
+            </p>
           </div>
-          <PageLayoutPicker value={layout} onChange={choisirMiseEnPage} disabled={editor.saving} />
           <SectionList
             sections={editor.sections}
-            selected={editor.selected}
-            onSelect={editor.select}
-            onReorder={editor.reorder}
-            onToggleVisibility={editor.toggleVisibility}
-            onRemove={editor.removeSection}
+            selected={chrome ? null : editor.selected}
+            selectedSlots={slotSel.sectionId === selectedSection?.id ? slotSel.slots : []}
+            selectedGroupId={slotSel.groupId}
+            chrome={chrome}
+            locale={editor.locale}
+            layout={layout}
+            onLayoutChange={choisirMiseEnPage}
+            layoutDisabled={editor.saving || showPublication}
+            onSelect={(index) => {
+              setChrome(null)
+              setFocusDepuisApercu(false)
+              editor.select(index)
+              const cible = index !== null ? editor.sections[index] : null
+              setSlotSel({
+                surface: 'page',
+                sectionId: cible?.id ?? null,
+                slots: [],
+                groupId: null,
+              })
+            }}
+            onSelectSlot={(index, slot, shift) => {
+              setFocusDepuisApercu(false)
+              if (editor.groupMode) {
+                appliquerClicGroupe(index, slot)
+                return
+              }
+              setChrome(null)
+              editor.select(index)
+              const cible = editor.sections[index]
+              setSlotSel(selectClick(slotSel, {
+                surface: 'page',
+                sectionId: cible?.id ?? null,
+                slot,
+                shift,
+                toggle: false,
+              }))
+            }}
+            onSelectGroup={(index, groupId) => {
+              setChrome(null)
+              editor.select(index)
+              const cible = editor.sections[index]
+              setSlotSel(selectClick(slotSel, {
+                surface: 'page',
+                sectionId: cible?.id ?? null,
+                slot: null,
+                groupId,
+                shift: false,
+              }))
+            }}
+            onSelectChrome={(id) => {
+              setChrome(id)
+              editor.select(null)
+              setSlotSel({ surface: id, sectionId: null, slots: [], groupId: null })
+            }}
+            onReorder={(from, to) => { noterHistorique('immediate'); editor.reorder(from, to) }}
+            onToggleVisibility={(index) => { noterHistorique('immediate'); editor.toggleVisibility(index) }}
+            onRemove={(index) => { noterHistorique('immediate'); editor.removeSection(index) }}
+            onDuplicate={(index) => {
+              noterHistorique('immediate')
+              editor.duplicateSection(index)
+              setChrome(null)
+            }}
             onAdd={() => setShowPicker(true)}
           />
         </div>
 
+        {/* Colonne 2+3 : aperçu + Modifier, ou aperçu + Contrôle */}
+        <div className={apercuElargi ? 'admin-editor-main is-preview-wide' : 'admin-editor-main'}>
         {/* Colonne 2 : Aperçu */}
-        <div style={{ overflow: 'hidden', background: t.bg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} layout={layout} />
+        <div style={{ overflow: 'hidden', background: t.surfaceAlt, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <PreviewPane
+            sections={editor.resolvedSections}
+            locale={editor.locale}
+            restaurant={restaurant}
+            layout={layout}
+            selectedSectionId={chrome === 'header' ? 'cms-header' : chrome === 'footer' ? 'cms-footer' : (selectedSection?.id ?? null)}
+            selectedSlots={
+              slotSel.groupId && selectedSection
+                ? (readEditorMeta(selectedSection.content).groups.find((g) => g.id === slotSel.groupId)?.slots ?? slotSel.slots)
+                : slotSel.slots
+            }
+            groupedSlots={selectedSection ? readEditorMeta(selectedSection.content).groups.flatMap((g) => g.slots) : []}
+            groupMode={editor.groupMode}
+            onPickSection={appliquerPointeur}
+            onClearSlots={viderSelectionEmplacements}
+            onExitGroupMode={editor.stopGroupMode}
+            onSelectAllSlots={selectionnerTousEmplacements}
+            onGroupShortcut={grouperRaccourci}
+            onUngroupShortcut={degrouperRaccourci}
+            onSlotHtml={(sectionId, slot, html) => {
+              const index = editor.sections.findIndex((s) => s.id === sectionId)
+              if (index < 0) return
+              const section = editor.sections[index]
+              const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
+              if (!field || !peutEditerInplace(section.content ?? {}, field)) return
+              const next = ecrireChampLocale(
+                section.content ?? {},
+                slot,
+                editor.locale,
+                html,
+                field.translatable !== false,
+              )
+              noterHistorique(saisieTexteSeule(section.content ?? {}, next) ? 'coalesce' : 'immediate')
+              editor.updateContent(index, next)
+            }}
+            peutEditerSlot={(sectionId, slot) => {
+              const section = editor.sections.find((s) => s.id === sectionId)
+              if (!section) return false
+              const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
+              return peutEditerInplace(section.content ?? {}, field)
+            }}
+            profilSlot={(sectionId, slot) => {
+              const section = editor.sections.find((s) => s.id === sectionId)
+              if (!section) return null
+              const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
+              if (!field) return null
+              return profilInplace(field)
+            }}
+            onCibleApercu={setCibleApercu}
+            apercuElargi={apercuElargi}
+            onApercuElargiChange={setApercuElargi}
+            chromeTick={chromeTick}
+            presentation={chromePresentation}
+            liensEntete={liensEntete}
+            liensPied={liensPied}
+            typo={typo}
+          />
         </div>
 
         <div style={{
-          borderLeft: `1px solid ${t.shadow}`, background: t.surface,
-          overflow: 'hidden', position: 'relative', minHeight: 0,
+          borderLeft: apercuElargi ? 'none' : `1px solid ${t.shadow}`, background: t.surface,
+          overflow: 'hidden', minHeight: 0,
+          display: apercuElargi ? 'none' : undefined,
         }}>
-          <div style={{ height: '100%', overflow: 'auto' }}>
-            {selectedSection ? (
-              <PropertyPanel
-                section={selectedSection}
-                locale={editor.locale}
-                pageLayout={layout}
-                onUpdate={(content) => editor.updateContent(editor.selected!, content)}
-                onVariantChange={(variant) => editor.setVariant(editor.selected!, variant)}
-              />
-            ) : (
-              <div style={{ padding: 32, color: t.muted }}>
-                <p style={{ fontSize: 15, fontWeight: 600, color: t.heading, margin: '0 0 8px' }}>
-                  Rien à modifier pour l’instant
-                </p>
-                <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
-                  Ajoutez un bloc dans Structure (à gauche). Son texte et ses images s’afficheront ici.
-                </p>
-              </div>
-            )}
-          </div>
-          {showPublication && (
+          {showPublication ? (
             <div
-              style={{ position: 'absolute', inset: 0, background: t.surface, zIndex: 2, overflow: 'auto' }}
-              role="region"
-              aria-label="Contrôle avant publication"
+              className="admin-publication-panel"
+              style={{ height: '100%' }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="controle-publication-titre"
             >
               <PublicationPanel
                 pageId={pageId}
@@ -290,14 +883,67 @@ export function PageEditor({
                 onClose={() => setShowPublication(false)}
               />
             </div>
+          ) : (
+          <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 14px 8px', ...titreColonne(t) }}>
+              Modifier
+            </div>
+            {chrome ? (
+              <ChromePanel
+                chrome={chrome}
+                locale={editor.locale}
+                onRestaurantResolved={appliquerRestaurant}
+                onPresentationChange={setChromePresentation}
+                onLiensChange={chrome === 'header' ? setLiensEntete : setLiensPied}
+                onOuvrirApparence={onOuvrirApparence}
+              />
+            ) : selectedSection ? (
+              <PropertyPanel
+                section={selectedSection}
+                locale={editor.locale}
+                pageLayout={layout}
+                groupMode={editor.groupMode}
+                onStartGroupMode={editor.startGroupMode}
+                onStopGroupMode={editor.stopGroupMode}
+                selection={slotSel.sectionId === selectedSection.id ? slotSel : {
+                  surface: 'page',
+                  sectionId: selectedSection.id,
+                  slots: [],
+                  groupId: null,
+                }}
+                onSelectionChange={setSlotSel}
+                eviterFocusChamp={focusDepuisApercu}
+                cibleApercu={cibleApercu}
+                onUpdate={(content) => {
+                  const prev = selectedSection.content ?? {}
+                  noterHistorique(saisieTexteSeule(prev, content) ? 'coalesce' : 'immediate')
+                  editor.updateContent(editor.selected!, content)
+                }}
+                onVariantChange={(variant) => {
+                  noterHistorique('immediate')
+                  editor.setVariant(editor.selected!, variant)
+                }}
+              />
+            ) : (
+              <div style={{ padding: '8px 16px 32px', color: t.muted }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: t.heading, margin: '0 0 8px' }}>
+                  Rien à modifier pour l’instant
+                </p>
+                <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+                  Cliquez En-tête ou Pied de page, ou un bloc dans Structure.
+                </p>
+              </div>
+            )}
+          </div>
           )}
+        </div>
         </div>
       </div>
 
       {/* Sélecteur de type (modal) */}
       {showPicker && (
         <SectionTypePicker
-          onSelect={(type) => { editor.addSection(type); setShowPicker(false) }}
+          onSelect={(type) => { noterHistorique('immediate'); editor.addSection(type); setShowPicker(false) }}
           onClose={() => setShowPicker(false)}
         />
       )}

@@ -11,7 +11,7 @@ import type { PageSection, SectionContent, SectionSettings, SectionType } from '
 import type { Page } from '../model/page'
 import { asObject, cmsErr, cmsOk, describeError, requireClient, type CmsResult } from './client'
 import { fetchPublishedPageSnapshot } from './pages'
-import { parseSnapshot } from '../model/publishing'
+import { parseSnapshot, type SnapshotChrome } from '../model/publishing'
 
 const TABLE = 'page_sections'
 
@@ -95,7 +95,7 @@ export async function fetchSectionsForPage(
  */
 export async function fetchPublicPageWithSections(
   slug: string,
-): Promise<CmsResult<{ page: Page; sections: PageSection[] } | null>> {
+): Promise<CmsResult<{ page: Page; sections: PageSection[]; chrome: SnapshotChrome | null } | null>> {
   const result = await fetchPublishedPageSnapshot(slug)
   if (!result.ok) return result
   if (!result.data) return cmsOk(null)
@@ -109,7 +109,7 @@ export async function fetchPublicPageWithSections(
     return cmsOk(null)
   }
 
-  const { page, sections } = parsed.snapshot
+  const { page, sections, chrome } = parsed.snapshot
   return cmsOk({
     // Le titre et le SEO viennent de l'INSTANTANÉ, pas de la ligne courante :
     // ce sont des données que le restaurateur peut modifier dans l'éditeur, et
@@ -138,6 +138,7 @@ export async function fetchPublicPageWithSections(
         createdAt: '',
         updatedAt: '',
       })),
+    chrome: chrome ?? null,
   })
 }
 

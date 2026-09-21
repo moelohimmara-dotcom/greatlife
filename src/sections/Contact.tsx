@@ -30,7 +30,7 @@ interface Subject {
 
 const DISPOSITIONS = ['card', 'wide'] as const
 
-export function Contact({ content: cms, variant }: Partial<SectionComponentProps> = {}) {
+export function Contact({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, setMessages } = useSite()
 
   const title = pick(cmsText(cms, 'title'), 'Écrivez-nous')
@@ -89,7 +89,7 @@ export function Contact({ content: cms, variant }: Partial<SectionComponentProps
   return (
     <section className="section-pad" {...(large ? { 'data-disposition': 'wide' } : {})} style={{ padding: '100px 24px', background: t.surfaceAlt }}>
       <div style={{ maxWidth: large ? '1100px' : '680px', margin: '0 auto' }}>
-        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
         <Reveal delay={0.1}>
           <OrganicCard style={{ padding: large ? '48px' : '32px' }}>
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>

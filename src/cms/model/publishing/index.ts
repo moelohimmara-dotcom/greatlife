@@ -22,5 +22,13 @@ export { PUBLICATION_CHECKS, PUBLICATION_CHECKS_NOT_VERIFIED, buildReport } from
 
 export { runPublicationChecks, sectionLabel, snapshotEmptinessFinding } from './checks'
 
-export { SNAPSHOT_FORMAT_VERSION, buildSnapshot, parseSnapshot } from './snapshot'
-export type { PageSnapshot, SnapshotPage, SnapshotRead, SnapshotSection } from './snapshot'
+export { SNAPSHOT_FORMAT_VERSION, buildSnapshot, parseSnapshot, freezeChrome } from './snapshot'
+export type {
+  PageSnapshot,
+  SnapshotChrome,
+  SnapshotChromeLink,
+  SnapshotChromeRestaurant,
+  SnapshotPage,
+  SnapshotRead,
+  SnapshotSection,
+} from './snapshot'

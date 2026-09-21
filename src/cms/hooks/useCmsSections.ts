@@ -39,6 +39,7 @@ import type { Page } from '@/cms/model/page'
 import { fetchPublicPageWithSections } from '@/cms/repository/sections'
 import { resolveContentObject } from '@/cms/model/i18n'
 import type { Locale } from '@/cms/model/i18n'
+import type { SnapshotChrome } from '@/cms/model/publishing'
 
 interface UseCmsSectionsResult {
   /** Sections publiées et visibles, dans l'ordre. */
@@ -53,12 +54,15 @@ interface UseCmsSectionsResult {
   enabled: boolean
   /** Page publiée (mise en page lue dans l'instantané, pas le brouillon). */
   page: Page | null
+  /** Chrome figé à la publication. `null` = archive sans chrome (gabarit). */
+  chrome: SnapshotChrome | null
 }
 
 export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
   const { cmsSections } = useSite()
   const [sections, setSections] = useState<PageSection[]>([])
   const [page, setPage] = useState<Page | null>(null)
+  const [chrome, setChrome] = useState<SnapshotChrome | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [enabled, setEnabled] = useState(false)
@@ -84,6 +88,7 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
           setEnabled(false)
           setSections([])
           setPage(null)
+          setChrome(null)
           return
         }
         if (!res.data) {
@@ -91,6 +96,7 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
           setEnabled(false)
           setSections([])
           setPage(null)
+          setChrome(null)
           return
         }
 
@@ -98,6 +104,7 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
         setEnabled(true)
         setSections(res.data.sections)
         setPage(res.data.page)
+        setChrome(res.data.chrome)
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Erreur de chargement')
@@ -114,9 +121,7 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
 
   /*
     Realtime : `SiteContext` écoute `pages` — qui porte le STATUT de publication
-    ET l'instantané publié — et non plus `page_sections`. La version précédente
-    de ce commentaire affirmait le contraire : `page_sections` n'est plus écouté
-    (voir `SiteContext.tsx:450`).
+    ET l'instantané publié (sections + chrome figé) — et non plus `page_sections`.
 
     C'est le comportement voulu : modifier le brouillon ne doit pas recharger le
     site public à chaque frappe. En revanche une publication change `pages`, donc
@@ -132,5 +137,5 @@ export function useCmsSections(locale: Locale = 'fr'): UseCmsSectionsResult {
     }))
   }, [sections, locale])
 
-  return { sections, resolvedSections, loading, error, enabled, page }
+  return { sections, resolvedSections, loading, error, enabled, page, chrome }
 }

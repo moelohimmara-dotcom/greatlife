@@ -76,6 +76,20 @@ export {
 } from './registry'
 export type { SectionComponentProps, SectionComponent, SectionDataSource } from './registry'
 export { normaliserDisposition } from './disposition'
+export { InlineHtml } from './InlineHtml'
+export {
+  sanitizeInlineHtml,
+  contientBalisage,
+  collerExterne,
+  retirerFormat,
+  envelopperListe,
+  envelopperAlignement,
+  envelopperCouleur,
+  envelopperSurbrillance,
+  envelopperCitation,
+  envelopperTaille,
+} from './inline-html'
+export type { MarkupProfile as HtmlMarkupProfile } from './inline-html'
 
 /**
  * Type des réglages du restaurant attendu par le rendu.

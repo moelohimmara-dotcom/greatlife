@@ -60,10 +60,22 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
     error: null,
     avertissement: null,
   })
+  /** Mode Grouper : cliquer les textes dans l’aperçu, sans Maj. */
+  const [groupMode, setGroupMode] = useState(false)
+  const startGroupMode = useCallback(() => setGroupMode(true), [])
+  const stopGroupMode = useCallback(() => setGroupMode(false), [])
 
   /** Sélectionne une section par son index. */
   const select = useCallback((index: number | null) => {
     setState((s) => ({ ...s, selected: index }))
+  }, [])
+
+  /** Sélectionne une section par son identifiant (clic dans l’aperçu). */
+  const selectById = useCallback((id: string) => {
+    setState((s) => {
+      const index = s.sections.findIndex((section) => section.id === id)
+      return index < 0 ? s : { ...s, selected: index }
+    })
   }, [])
 
   /** Change la langue d'édition. */
@@ -134,6 +146,40 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
       selected: s.sections.length, // Sélectionne la nouvelle section
     }))
   }, [pageId, state.sections.length])
+
+  /**
+   * Copie un bloc sous l’original (nouveau identifiant, contenu cloné).
+   * Les en-tête / pied ne passent pas par cette liste.
+   */
+  const duplicateSection = useCallback((index: number) => {
+    setState((s) => {
+      const source = s.sections[index]
+      if (!source) return s
+      const now = new Date().toISOString()
+      const copie: PageSection = {
+        ...structuredClone(source),
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        anchor: null,
+        createdAt: now,
+        updatedAt: now,
+      }
+      const sections = [...s.sections]
+      sections.splice(index + 1, 0, copie)
+      return { ...s, sections, selected: index + 1 }
+    })
+  }, [])
+
+  /** Restaure un brouillon (Annuler / Rétablir) sans fusionner. */
+  const replaceDraft = useCallback((sections: PageSection[], removedIds: string[], selected: number | null) => {
+    setState((s) => ({
+      ...s,
+      sections,
+      removedIds,
+      selected: selected !== null && selected >= sections.length
+        ? (sections.length === 0 ? null : sections.length - 1)
+        : selected,
+    }))
+  }, [])
 
   /**
    * Retire une section de la liste locale.
@@ -239,7 +285,7 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
           saving: false,
           error,
           avertissement: modifieEntreTemps
-            ? "Vous avez modifié le contenu pendant l'enregistrement : ces dernières modifications ne sont PAS enregistrées. Enregistrez à nouveau."
+            ? "Vous avez modifié le contenu pendant l'enregistrement : ces dernières modifications ne sont pas encore enregistrées. Elles s’enregistreront toutes seules — ou réessayez dans un instant."
             : null,
         }
       })
@@ -324,13 +370,19 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
 
   return {
     ...state,
+    groupMode,
+    startGroupMode,
+    stopGroupMode,
     select,
+    selectById,
     setLocale,
     updateContent,
     setVariant,
     toggleVisibility,
     reorder,
     addSection,
+    duplicateSection,
+    replaceDraft,
     removeSection,
     save,
     resolvedSections,

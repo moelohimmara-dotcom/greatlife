@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
-import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination } from '@/admin/ui'
+import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination, StatusPill, formeBouton, formePastille, CLASSE_BOUTON, ESPACE, HAUTEUR_ETAT } from '@/admin/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 import { ROLES, canAccessModule, canWriteModule, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { THEMES } from '@/config/themes'
-import { FONTS } from '@/config/fonts'
 import { BADGE_DEFS } from '@/config/badges'
 import type { MenuItem } from '@/data/menu'
 import { upsertMenuItem, deleteMenuItem, fetchMessages, upsertBlogPost, deleteBlogPost, fetchReservations, updateReservationStatus, deleteReservation, fetchOrders, updateOrderStatus, deleteOrder, uploadMedia, deleteMedia, updateMediaSlot, upsertAdminUser, deleteAdminUser, deleteMessage, appendReply, fetchAuditLog, logAudit, saveSiteConfig, updateAdminUserStatus, setUserInvitedAt, type BlogPost, type Reservation, type Order, type AuditEntry } from '@/lib/repository'
@@ -18,11 +17,13 @@ import { productPhotoSlotId } from '@/lib/productPhotoSlot'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { PageEditorWrapper } from '@/admin/editor/PageEditorWrapper'
 import { Bouton } from '@/admin/editor/chrome'
+import { TypoPanel } from '@/admin/editor/TypoPanel'
+import { SETTING_KEYS, fetchSetting, platDepuisRestaurant } from '@/cms/repository/settings'
+import { lireNavPref, ecrireNavPref, type AdminNavPref } from '@/admin/admin-nav'
 
 const ADMIN_URL = 'https://greatlife-conakry.netlify.app/admin'
 
@@ -63,47 +64,187 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
   ]],
 ]
 
+function menuEstMobile() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+}
+
+function IconeMenu() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
-  const { theme: t, rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
+  const { theme: t, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
   const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const [mobileNav, setMobileNav] = useState(false)
+  const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
+  const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
+  const editorFocus = active === 'content'
+  const editorHidesNav = editorFocus && !editorRail
+  const rail = editorFocus || navPref === 'rail'
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
   const go = (k: string) => { setActive(k); setMobileNav(false) }
   const NOTIF: Record<string, number> = { messages: unhandledMessagesCount, orders: pendingOrdersCount, reservations: pendingReservationsCount }
 
-  const Sidebar = (
-    /* `minHeight: 0` sur l'`aside` ET sur son `nav` : sans eux, `overflow: auto`
-       du `nav` reste inerte et la barre s'allonge jusqu'à 1179 px au lieu de
-       défiler dans sa propre colonne (défaut mesuré, voir la coquille plus bas). */
-    <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '22px 14px', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em', display: 'inline-flex', alignItems: 'baseline' }}>
-        Great<span style={{ color: t.accent }}>life</span> <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
-      </Link>
-      <nav style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, minHeight: 0, overflow: 'auto' }}>
+  useEffect(() => {
+    const html = document.documentElement
+    if (!editorFocus) {
+      html.classList.remove('admin-editor-lock')
+      return
+    }
+    html.classList.add('admin-editor-lock')
+    return () => { html.classList.remove('admin-editor-lock') }
+  }, [editorFocus])
+
+  useEffect(() => {
+    if (editorFocus) setEditorRail(navPref === 'rail')
+  }, [editorFocus])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const onChange = () => { if (!mq.matches) setMobileNav(false) }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    if (!mobileNav) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileNav(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileNav])
+
+  const toggleNav = useCallback(() => {
+    if (menuEstMobile()) {
+      setMobileNav((open) => !open)
+      return
+    }
+    if (editorFocus) {
+      setEditorRail((open) => {
+        const next = !open
+        if (next) {
+          setNavPref('rail')
+          ecrireNavPref('rail')
+        }
+        return next
+      })
+      return
+    }
+    setNavPref((prev) => {
+      const next: AdminNavPref = prev === 'open' ? 'rail' : 'open'
+      ecrireNavPref(next)
+      return next
+    })
+  }, [editorFocus])
+
+  const toggleLabel = (() => {
+    if (menuEstMobile()) return mobileNav ? 'Fermer le menu' : 'Ouvrir le menu'
+    if (editorHidesNav) return 'Ouvrir le menu'
+    if (rail) return 'Déplier le menu'
+    return 'Replier le menu'
+  })()
+  const toggleExpanded = menuEstMobile() ? mobileNav : !editorHidesNav && !rail
+  const toggleIcon = (() => {
+    if (menuEstMobile()) return mobileNav ? Icon.x(20, t.heading) : <IconeMenu />
+    if (editorHidesNav) return <IconeMenu />
+    return rail ? Icon.chevronRight(20, t.heading) : Icon.chevronLeft(20, t.heading)
+  })()
+
+  const boutonMenu = (place: 'sidebar' | 'main') => (
+    <Bouton
+      carre
+      genre="secondaire"
+      aria-label={toggleLabel}
+      title={toggleLabel}
+      aria-expanded={toggleExpanded}
+      aria-controls={menuEstMobile() ? 'admin-console-nav-tiroir' : 'admin-console-nav'}
+      className={place === 'main' ? 'admin-nav-toggle-main admin-mobile-menu' : 'admin-nav-toggle-side'}
+      onClick={toggleNav}
+      style={place === 'main' ? { display: 'none', position: 'absolute', top: 12, left: 12, zIndex: 20 } : undefined}
+    >
+      {toggleIcon}
+    </Bouton>
+  )
+
+  const renderNav = (compact: boolean, navId: string) => (
+    <aside
+      id={navId}
+      className={compact ? 'admin-nav-rail' : undefined}
+      style={{
+        background: t.surface,
+        borderRight: `1px solid ${t.shadow}`,
+        padding: compact ? '16px 8px' : '22px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'center' : 'space-between', gap: ESPACE, minHeight: 40 }}>
+        <Link
+          to="/"
+          title="Voir le site"
+          aria-label="Greatlife, voir le site"
+          style={{
+            fontFamily: 'var(--f-heading)',
+            fontWeight: 700,
+            fontSize: compact ? '18px' : '22px',
+            color: t.heading,
+            textDecoration: 'none',
+            letterSpacing: '-0.02em',
+            display: compact ? 'none' : 'inline-flex',
+            alignItems: 'baseline',
+            minWidth: 0,
+          }}
+        >
+          Great<span style={{ color: t.accent }}>life</span>{' '}
+          <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
+        </Link>
+        {boutonMenu('sidebar')}
+      </div>
+      <nav aria-label="Navigation de la console" style={{ marginTop: compact ? 16 : 24, display: 'flex', flexDirection: 'column', gap: compact ? 12 : 18, flex: 1, overflow: 'auto', minHeight: 0 }}>
         {NAV_GROUPS.map(([groupLabel, items]) => (
           <div key={groupLabel}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: t.heading, marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div
+              className="admin-nav-group"
+              style={{ fontSize: '12px', fontWeight: 700, color: t.heading, marginBottom: 8, paddingLeft: 4 }}
+            >{groupLabel}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: ESPACE, alignItems: compact ? 'center' : undefined }}>
               {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => {
                 const isActive = active === k
                 return (
                   <Bouton
                     key={k}
-                    etendu
+                    etendu={!compact}
+                    carre={compact}
                     genre={isActive ? 'primaire' : 'nav'}
                     onClick={() => go(k)}
-                    style={{ position: 'relative' }}
+                    title={l}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={NOTIF[k] > 0 ? `${l}, ${NOTIF[k]} en attente` : l}
+                    style={{ position: 'relative', justifyContent: compact ? 'center' : undefined }}
                   >
-                    <span style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.75 }}>
+                    <span aria-hidden="true" style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.75 }}>
                       {Icon[icon](16, isActive ? '#fff' : t.text)}
                     </span>
-                    <span style={{ flex: 1, textAlign: 'left' }}>{l}</span>
+                    {!compact && <span style={{ flex: 1, textAlign: 'left' }}>{l}</span>}
                     {NOTIF[k] > 0 && (
-                      <span style={{
-                        fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                        background: isActive ? 'rgba(255,255,255,0.25)' : t.accent, color: '#fff', minWidth: 18, textAlign: 'center',
-                      }}>{NOTIF[k]}</span>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          ...formePastille(),
+                          ...(compact
+                            ? { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, padding: '0 4px', fontSize: 10 }
+                            : { minWidth: HAUTEUR_ETAT, padding: '0 6px' }),
+                          background: isActive ? 'rgba(255,255,255,0.25)' : t.accent,
+                          color: '#fff',
+                        }}
+                      >{compact && NOTIF[k] > 9 ? '9+' : NOTIF[k]}</span>
                     )}
                   </Bouton>
                 )
@@ -112,63 +253,42 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           </div>
         ))}
       </nav>
-      <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '14px' }}>
-        <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
-        <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
-        <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
-        <Bouton etendu genre="danger" onClick={handleLogout}>
-          {Icon.logout(16, t.accent)} Déconnexion
+      <div style={{ borderTop: `1px solid ${t.shadow}`, paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined }}>
+        {!compact && (
+          <>
+            <div style={{ fontSize: '11px', color: t.muted, marginBottom: 2 }}>Connecté en tant que</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{user?.name}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: t.accent, marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
+          </>
+        )}
+        <Bouton
+          etendu={!compact}
+          carre={compact}
+          genre="danger"
+          onClick={handleLogout}
+          title="Déconnexion"
+          aria-label="Déconnexion"
+          style={{ justifyContent: compact ? 'center' : undefined }}
+        >
+          <span aria-hidden="true">{Icon.logout(16, t.accent)}</span>
+          {!compact && ' Déconnexion'}
         </Bouton>
-        <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
+        {!compact && (
+          <Link to="/" style={{ display: 'block', marginTop: '10px', fontSize: '12px', fontWeight: 500, color: t.primary, textAlign: 'center', textDecoration: 'none' }}>← Voir le site</Link>
+        )}
       </div>
     </aside>
   )
 
+  const layoutNav = editorHidesNav ? 'hidden' : rail ? 'rail' : 'open'
+
   return (
-    /*
-      LA CONSOLE PORTAIT LA POLICE DU NAVIGATEUR.
-
-      `--f-heading` et `--f-body` sont posés par `rootStyle`, qui n'était appliqué
-      qu'au site public (`PublicSite.tsx:100`), à l'écran de connexion
-      (`LoginScreen.tsx:34`) et à l'aperçu (`PreviewPane.tsx:57`) — **jamais à la
-      console**. Tous les `fontFamily: 'var(--f-heading)'` de ce fichier étaient
-      donc des déclarations INVALIDES : le navigateur les ignorait et la console
-      s'affichait dans sa police par défaut (Segoe UI sur Windows), pas dans
-      Fraunces + DM Sans.
-
-      Mesuré le 2026-09-21 sur le tableau de bord en production :
-      `getComputedStyle(nombre).fontFamily` = « ui-sans-serif, system-ui, … »
-      (la police par défaut de Chrome), et `--f-heading` résolu à vide.
-
-      `...rootStyle` en PREMIER : les déclarations de mise en page de la console
-      qui suivent continuent de gagner sur celles du thème.
-    */
-    /*
-      LA COQUILLE EST BORNÉE PAR LA FENÊTRE, ET UN SEUL BLOC DÉFILE.
-
-      Défaut MESURÉ le 2026-09-21 en production, fenêtre de 674 px de haut :
-      la barre latérale faisait **1179 px**, parfois **1451 px** ; le bloc
-      « Connecté en tant que / Déconnexion / Voir le site » était **hors écran** ;
-      et `window.scrollTo(0, 400)` faisait passer le haut de la barre de
-      **0 à −400 px** — elle défilait avec la page au lieu de rester en place.
-
-      CAUSE. `main` portait `minHeight: '100vh'` alors que son contenu dépasse
-      la fenêtre. Le contenu gagnait, donc la ligne de grille grandissait, donc
-      `aside` (étiré à la hauteur de la ligne) grandissait, donc le DOCUMENT
-      grandissait — et c'est le document qui défilait, emportant la barre.
-      Un enfant de grille ou de flex a par défaut pour taille minimale celle de
-      son CONTENU (`min-height: auto`) : **sans `minHeight: 0`, `overflow: auto`
-      ne peut jamais s'activer**, le parent grandit à la place.
-
-      Deux principes, donc :
-        - la coquille est bornée à la fenêtre (`100dvh`) et ne défile pas ;
-        - le SEUL bloc défilant est `main`, et la barre défile dans son `nav`.
-      `100dvh` et non `100vh` : sur mobile, `100vh` ignore la barre d'outils
-      rétractable et déborde de sa hauteur.
-    */
-    <div style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', height: '100dvh', overflow: 'hidden', background: t.bg }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', gridTemplateRows: 'minmax(0, 1fr)', height: '100%', minHeight: 0, overflow: 'hidden' }} className="admin-layout">
-        <div className="admin-sidebar-desktop" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>{Sidebar}</div>
+    <div data-admin-drawer={mobileNav ? 'open' : 'closed'} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', height: '100%', minHeight: 0, maxHeight: '100dvh', overflow: 'hidden', background: t.bg }}>
+      <div
+        data-admin-nav={layoutNav}
+        className={editorFocus ? 'admin-layout admin-layout-editor' : 'admin-layout'}
+      >
+        {!editorHidesNav && <div className="admin-sidebar-desktop">{renderNav(rail, 'admin-console-nav')}</div>}
         <main className={active === 'content' ? 'admin-main-pad admin-main-editor' : 'admin-main-pad'} style={{
           padding: active === 'content' ? 0 : '32px 36px',
           overflow: active === 'content' ? 'hidden' : 'auto',
@@ -178,16 +298,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           display: active === 'content' ? 'flex' : undefined,
           flexDirection: 'column',
         }}>
-          <Bouton
-            carre
-            genre="secondaire"
-            aria-label="Ouvrir le menu"
-            className="admin-mobile-menu"
-            onClick={() => setMobileNav(true)}
-            style={{ display: 'none', position: 'absolute', top: 16, right: 16, zIndex: 20 }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-          </Bouton>
+          {boutonMenu('main')}
           {roleNotice && (
             <div key={roleNotice.id} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60, maxWidth: 'min(92vw, 560px)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid ${t.accent}55`, background: t.surface, boxShadow: `0 8px 28px ${t.shadow}`, fontSize: '13px', fontWeight: 500, color: t.heading }}>
               <span style={{ display: 'inline-flex', color: t.accent }}>{Icon.check(18, t.accent)}</span>
@@ -199,23 +310,31 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         </main>
       </div>
       {mobileNav && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
+        <div role="dialog" aria-modal="true" aria-label="Menu de la console" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
           <div onClick={() => setMobileNav(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.4)' }} />
-          <div style={{ width: '260px', maxWidth: '82vw' }}>{Sidebar}</div>
+          <div style={{ width: '260px', maxWidth: '82vw' }}>{renderNav(false, 'admin-console-nav-tiroir')}</div>
         </div>
       )}
     </div>
   )
 }
 
+function DashCard({ label, value, sub, icon, color }: { label: string; value: React.ReactNode; sub: string; icon: React.ReactNode; color: string }) {
+  const { theme: t } = useSite()
+  return (
+    <OrganicCard style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 12, background: `${color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
+      <div style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, margin: '2px 0', letterSpacing: '-0.03em' }}>{value}</div>
+      <div style={{ fontSize: '12px', color: t.muted }}>{sub}</div>
+    </OrganicCard>
+  )
+}
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const ouvrir = (module: string) => navigate(`/admin?module=${module}`)
   const recentMessages = messages.slice(0, 4)
   const [period, setPeriod] = useState<'all' | '7' | '30'>('all')
   const [orders, setOrders] = useState<Order[]>([])
@@ -233,184 +352,33 @@ function Dashboard() {
   const confirmedOrders = filteredOrders.filter(o => o.status === 'confirmed')
   const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
   const revenue = confirmedOrders.reduce((sum, o) => sum + parsePrice(o.total), 0)
+  const pendingOrders = orders.filter(o => o.status === 'pending').length
+  const unhandledMessages = messages.filter(m => !m.handled).length
   const fmt = (n: number) => n.toLocaleString('fr-FR')
   const periodLabel = period === 'all' ? 'tout l\'historique' : `${period} derniers jours`
   const periodOpts: [string, string][] = [['all', 'Tout'], ['30', '30 jours'], ['7', '7 jours']]
-
-  /*
-    L'ESSENTIEL D'ABORD — ce qui attend une réponse, en trois gestes.
-    Une carte = un module de Pilotage, et le bouton mène au module.
-    Zéro à traiter reste neutre : un compteur au repos, pas une alarme.
-  */
-  const aTraiter = [
-    {
-      cle: 'messages', titre: 'Messages', couleur: t.accent,
-      nombre: unhandledMessagesCount,
-      total: messages.length,
-      zero: 'Tout est traité',
-      un: 'message attend une réponse',
-      pluriel: 'messages attendant une réponse',
-    },
-    {
-      cle: 'reservations', titre: 'Réservations', couleur: t.gold,
-      nombre: pendingReservationsCount,
-      total: reservationsCount,
-      zero: 'Aucune table à confirmer',
-      un: 'table à confirmer',
-      pluriel: 'tables à confirmer',
-    },
-    {
-      cle: 'orders', titre: 'Commandes', couleur: t.gold,
-      nombre: pendingOrdersCount,
-      total: ordersCount,
-      zero: 'Aucune commande à traiter',
-      un: 'commande à confirmer',
-      pluriel: 'commandes à confirmer',
-    },
-  ]
-
   return (
-    /*
-      LA COLONNE DE CONTENU EST PLAFONNÉE À 760 px.
-
-      Sans plafond, la rangée « À traiter » s'étire avec l'écran : mesuré à
-      1280 px de fenêtre, les grands chiffres étaient à ~300 px l'un de l'autre ;
-      à 1920 px la carte fait ~520 px et l'écart passe ~540 px, avec une zone
-      vide au milieu de chaque carte. Le propriétaire a confirmé que c'est CET
-      ÉCART qu'il fallait resserrer (2026-09-21).
-
-      D'où vient 760 : c'est arithmétique, pas esthétique.
-        - la fourchette documentée d'une carte KPI est **200-280 px** de large
-          (noirbook.org/topics/dashboard-design, KPI card ; artofstyleframe :
-          « Card size: 200–280px wide ») ;
-        - la rangée porte 3 cartes et 2 gouttières de 16 px ;
-        - 3 × 243 + 2 × 16 = 761 → 760 px retenu.
-
-      C'est la borne BASSE qu'on vise ici parce que c'est elle qui réduit
-      l'écart entre les chiffres, et elle reste dans la fourchette. Le plancher
-      de la grille suit : voir le commentaire de la rangée ci-dessous.
-
-      Wix documente une largeur maximale de 1248 px et ui-syntax ~1200 px : ce
-      sont des PLAFONDS, pas des cibles. 760 les respecte.
-    */
-    <div style={{ maxWidth: 760, margin: '0 auto' }}>
-      <PageHeader
-        title={`Bonjour ${user?.name || 'vous'}`}
-        subtitle="Voici ce qui attend une réponse sur votre site."
-        badge={
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}
-          </span>
-        }
+    <div>
+      <PageHeader title="Tableau de bord" subtitle="Pilotez votre site en toute liberté."
+        badge={<span role="status" aria-atomic="true" title={dsLabel} style={{ ...formePastille(), gap: 6, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, color: dsColor }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: dsColor, flexShrink: 0 }} /> {dsLabel}</span>}
       />
-
-      {/* 1. À TRAITER — la rangée la plus importante de la console. */}
-      {/*
-        `minHeight: '2.7em'` RÉSERVE DEUX LIGNES pour le libellé — toujours deux,
-        même quand il tient sur une.
-
-        MESURÉ le 2026-09-21 en production : « 3 messages attendant une réponse »
-        passait sur deux lignes alors que « 1 table à confirmer » en occupait une.
-        La troisième ligne de la première carte se retrouvait **26 px plus bas**
-        que celle des deux autres, et le pied de carte suivait : la rangée
-        paraissait cassée. Une hauteur réservée rend les trois cartes identiques
-        quelle que soit la longueur des libellés — c'est ce que les guides
-        appellent « consistent card heights ».
-      */}
-      {/*
-        LE PLANCHER DE LA GRILLE EST 200 px, PAS 300.
-
-        Défaut MESURÉ le 2026-09-21, après le premier resserrement : avec un
-        plancher de 300 px et un conteneur de 760 px, trois cartes ne tenaient
-        plus (3 × 300 + 2 × 16 = 932 > 760) → la grille passait à DEUX colonnes
-        et « 4 » descendait à la ligne suivante (écart relevé : −411 px entre le
-        2e et le 3e chiffre). Trois chiffres côte à côte sont le minimum du
-        bloc : le plancher descend donc à 200 px, borne basse documentée d'une
-        carte KPI (noirbook, artofstyleframe : « 200–280px wide »).
-
-        3 × 200 + 2 × 16 = 632 ≤ 760 : les trois cartes tiennent, et se
-        répartissent en 243 px chacune. Sur un écran étroit, la grille replie
-        proprement à une colonne au lieu de déborder.
-      */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '20px' }}>
-        {aTraiter.map(({ cle, titre, couleur, nombre, total, zero, un, pluriel }) => (
-          <OrganicCard
-            key={cle}
-            hover
-            onClick={() => ouvrir(cle)}
-            style={{ padding: '24px', border: `1px solid ${t.shadow}` }}
-          >
-            {/*
-              L'ICÔNE EST SUR LA LIGNE DU CHIFFRE, PAS SUR CELLE DU LIBELLÉ.
-
-              MESURÉ le 2026-09-21 : avec `justifyContent: 'space-between'`, le
-              bloc de texte partageait la ligne avec la pastille de l'icône. À
-              243 px de carte il ne restait que ~147 px au libellé, qui passait
-              donc sur TROIS lignes au lieu de deux — et la 3e ligne repartait
-              26 px plus bas que celle des voisins. En sortant l'icône de cette
-              ligne, le libellé récupère toute la largeur de la carte : deux
-              lignes suffisent, et `minHeight: '2.7em'` fait le reste.
-            */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: `${couleur}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {cle === 'messages' ? Icon.mail(18, t.accent) : (cle === 'reservations' ? Icon.calendar(18, t.gold) : Icon.coin(18, t.gold))}
-              </div>
-            </div>
-            <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10, lineHeight: 1.35, minHeight: '2.7em' }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
-            <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
-              {titre} · {total} au total
-            </div>
-            <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: `1px dashed ${t.shadow}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '12.5px', fontWeight: 700, color: t.primary }}>
-                {nombre === 0 ? 'Voir l\'historique' : 'Ouvrir et répondre'}
-              </span>
-              {Icon.arrow(13, t.primary)}
-            </div>
-          </OrganicCard>
+      <div style={{ display: 'flex', gap: ESPACE, marginTop: 18, flexWrap: 'wrap' }}>
+        {periodOpts.map(([k, l]) => (
+          <button key={k} onClick={() => setPeriod(k as 'all' | '7' | '30')} className={CLASSE_BOUTON} style={{
+            ...formeBouton(),
+            border: `1px solid ${period === k ? t.primary : t.shadow}`, background: period === k ? t.primary : 'transparent',
+            color: period === k ? '#fff' : t.muted, transition: 'all 0.15s',
+          }}>{l}</button>
         ))}
       </div>
-
-      {/* 2. LA JOURNÉE — chiffre d'affaires avec sa période, à côté des ressources. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 2fr) minmax(240px, 1fr)', gap: '16px', marginTop: '16px' }}>
-        <OrganicCard style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-            <div>
-              <div style={{ fontSize: '12.5px', color: t.muted, fontWeight: 600 }}>Chiffre d'affaires confirmé</div>
-              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '34px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em', marginTop: 10 }}>
-                {fmt(revenue)} <span style={{ fontSize: 13, color: t.muted, fontWeight: 700 }}>{content.currency}</span>
-              </div>
-              <div style={{ fontSize: '11.5px', color: t.muted, marginTop: 4 }}>
-                {confirmedOrders.length} commande{confirmedOrders.length > 1 ? 's' : ''} confirmée{confirmedOrders.length > 1 ? 's' : ''} · {periodLabel}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {periodOpts.map(([k, l]) => (
-                <button key={k} onClick={() => setPeriod(k as 'all' | '7' | '30')} style={{
-                  fontSize: '12px', fontWeight: 600, padding: '7px 13px', borderRadius: 100, cursor: 'pointer',
-                  border: `1px solid ${period === k ? t.primary : t.shadow}`, background: period === k ? t.primary : 'transparent',
-                  color: period === k ? '#fff' : t.muted, transition: 'all 0.15s',
-                }}>{l}</button>
-              ))}
-            </div>
-          </div>
-        </OrganicCard>
-        <OrganicCard style={{ padding: '24px' }}>
-          <div style={{ fontSize: '12.5px', color: t.muted, marginBottom: 10 }}>Ressources du site</div>
-          {([
-            ['Produits dans la carte', menu.length],
-            ['Commandes au total', ordersCount],
-            ['Réservations au total', reservationsCount],
-            ['Comptes de la console', adminUsers.length],
-          ] as [string, number][]).map(([lab, val]) => (
-            <div key={lab} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px dashed ${t.shadow}` }}>
-              <span style={{ fontSize: '12.5px', color: t.text }}>{lab}</span>
-              <span style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, color: t.heading }}>{val}</span>
-            </div>
-          ))}
-        </OrganicCard>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '16px' }}>
+        <DashCard label="Produits" value={menu.length} sub="toutes catégories" icon={Icon.leaf(20, t.primary)} color={t.primary} />
+        <DashCard label="Messages" value={messages.length} sub={`${unhandledMessages} non traité${unhandledMessages > 1 ? 's' : ''}`} icon={Icon.mail(20, t.accent)} color={t.accent} />
+        <DashCard label="Commandes" value={ordersCount} sub={`${pendingOrders} en attente`} icon={Icon.coin(20, t.gold)} color={t.gold} />
+        <DashCard label="Réservations" value={reservationsCount} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
+        <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
+        <DashCard label="Chiffre d\'affaires" value={<span>{fmt(revenue)} <span style={{ fontSize: 14, color: t.muted, fontWeight: 600 }}>{content.currency}</span></span>} sub={`${confirmedOrders.length} cmdes confirmées · ${periodLabel}`} icon={Icon.coin(20, t.primary)} color={t.primary} />
       </div>
-
       {dataSource === 'supabase' && auditEntries.length > 0 && (() => {
         const total = auditEntries.length
         const byActor = new Map<string, number>()
@@ -425,7 +393,6 @@ function Dashboard() {
         const maxActor = topActors[0]?.[1] ?? 1
         const maxAction = topActions[0]?.[1] ?? 1
         const last24 = auditEntries.filter(e => e.created_at && (now - new Date(e.created_at).getTime()) <= 86400000).length
-        const last = auditEntries[0]?.created_at ? dateFr(auditEntries[0].created_at) : ''
         return (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
@@ -434,7 +401,7 @@ function Dashboard() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
               <OrganicCard style={{ padding: '18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Par utilisateur</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Top utilisateurs</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {topActors.map(([a, n]) => (
                     <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -446,7 +413,7 @@ function Dashboard() {
                 </div>
               </OrganicCard>
               <OrganicCard style={{ padding: '18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Par action</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Top actions</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {topActions.map(([a, n]) => (
                     <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -458,11 +425,9 @@ function Dashboard() {
                 </div>
               </OrganicCard>
             </div>
-            <div style={{ fontSize: '11.5px', color: t.muted, marginTop: 10 }}>Dernière action : {last}</div>
           </>
         )
       })()}
-
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Messages récents</h3>
       </div>
@@ -489,8 +454,6 @@ function Dashboard() {
     </div>
   )
 }
-
-
 
 function SaveBar({ status, error }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: string }) {
   const { theme: t } = useSite()
@@ -676,10 +639,11 @@ function MenuEditor() {
           } else if (!res.ok) {
             setSaveStatus('error'); setSaveErr(res.error); setDirty(true)
           }
-        }} style={{
-          marginTop: 12, width: '100%', fontSize: '13px', fontWeight: 600, padding: '10px',
-          borderRadius: 12, cursor: 'pointer', border: `1px dashed ${t.primary}55`,
-          background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }} className={CLASSE_BOUTON} style={{
+          ...formeBouton(),
+          marginTop: 12, width: '100%',
+          border: `1px dashed ${t.primary}55`,
+          background: 'transparent', color: t.primary,
         }}>{Icon.plus(14, t.primary)} Ajouter un produit</button>
         <div style={{ marginTop: 8 }}>
           <Select value={newCat} onValueChange={setNewCat}>
@@ -727,7 +691,7 @@ function MenuEditor() {
             <FieldLabel>Badges</FieldLabel>
             {['omni', 'vege', 'gluten', 'arachide', 'lactose'].map(b => (
               <button key={b} onClick={() => update('badges', item.badges.includes(b) ? item.badges.filter(x => x !== b) : [...item.badges, b])}
-                style={{ fontSize: '11px', padding: '5px 11px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${t.primary}44`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text, transition: 'all 0.15s' }}>{BADGE_DEFS[b]?.label}</button>
+                className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.primary}44`, background: item.badges.includes(b) ? t.primary : 'transparent', color: item.badges.includes(b) ? '#fff' : t.text, transition: 'all 0.15s' }}>{BADGE_DEFS[b]?.label}</button>
             ))}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px', fontWeight: 500, color: t.text }}>
@@ -755,8 +719,8 @@ function MenuEditor() {
                 setSel(next.length ? Math.min(selIndex, next.length - 1) : 0)
                 setConfirmDel(false)
                 setSaveStatus('idle'); setSaveErr(undefined); setDirty(false)
-              }} style={{ fontSize: 12, fontWeight: 700, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
-              <button onClick={() => setConfirmDel(false)} style={{ fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+              }} className={CLASSE_BOUTON} style={{ ...formeBouton(), fontWeight: 700, border: '1px solid #dc2626', background: '#dc2626', color: '#fff' }}>Confirmer</button>
+              <button onClick={() => setConfirmDel(false)} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Annuler</button>
             </div>
           ) : (
             <GhostButton color="#dc2626" onClick={() => setConfirmDel(true)} title="Supprimer ce produit">{Icon.trash(13, '#dc2626')} Supprimer ce produit</GhostButton>
@@ -800,13 +764,8 @@ function ThemeEditor() {
           </button>
         ))}
       </div>
-      <div style={{ marginTop: 28, marginBottom: 20 }}><SectionTitle color={t.accent}>Typographie</SectionTitle></div>
-      <Select value={fontId} onValueChange={v => { setFontId(v); setSaveStatus('idle') }}>
-        <SelectTrigger style={{ maxWidth: '340px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10, padding: '11px 14px' }}><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {Object.entries(FONTS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <div style={{ marginTop: 28, marginBottom: 12 }}><SectionTitle color={t.accent}>Polices</SectionTitle></div>
+      <TypoPanel onLotApplique={(id) => { setFontId(id); setSaveStatus('idle') }} />
       <div style={{ marginTop: 28, marginBottom: 12 }}><SectionTitle color={t.gold}>Aperçu en direct</SectionTitle></div>
       <div style={{ padding: '26px', borderRadius: 18, background: t.surface, border: `1px solid ${t.shadow}` }}>
         <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em' }}>{content.heroTitle}</div>
@@ -933,7 +892,7 @@ function MediaManager() {
   return (
     <div style={{ maxWidth: '860px' }}>
       <PageHeader title="Médias" subtitle="Téléversez et redimensionnez vos images, puis assignez-les aux emplacements du site."
-        badge={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 100, background: `${t.primary}12`, fontSize: 12, fontWeight: 600, color: t.primary }}>{dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}</span>}
+        badge={<span role="status" aria-atomic="true" style={{ ...formePastille(), background: `${t.primary}12`, color: t.primary }}>{dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}</span>}
       />
 
       {!isSupabase && (
@@ -1059,17 +1018,17 @@ function MediaManager() {
                           </SelectContent>
                         </Select>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <Button size="sm" style={{ background: t.primary, color: '#fff', borderRadius: 8, flex: 1 }} onClick={() => handleSaveSlot(m)}>OK</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditSlotId(null)}>Annuler</Button>
+                          <PrimaryButton style={{ flex: 1 }} onClick={() => handleSaveSlot(m)}>OK</PrimaryButton>
+                          <GhostButton color={t.muted} onClick={() => setEditSlotId(null)}>Annuler</GhostButton>
                         </div>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                         {m.url && (
-                          <a href={m.url} target="_blank" rel="noreferrer" style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: 600, padding: '7px 0', borderRadius: 8, border: `1px solid ${t.primary}33`, color: t.primary, textDecoration: 'none' }}>Ouvrir</a>
+                          <a href={m.url} target="_blank" rel="noreferrer" className={CLASSE_BOUTON} style={{ ...formeBouton(), flex: 1, textAlign: 'center', border: `1px solid ${t.primary}33`, color: t.primary, textDecoration: 'none', background: 'transparent' }}>Ouvrir</a>
                         )}
-                        <Button size="sm" variant="outline" style={{ flex: 1, borderColor: t.primary + '44', color: t.primary, borderRadius: 8 }} onClick={() => { setEditSlotId(m.id || null); setEditSlotValue(m.slot) }}>Déplacer</Button>
-                        <Button size="sm" variant="outline" disabled={removingId === m.id} style={{ borderColor: '#dc262644', color: '#dc2626', borderRadius: 8, opacity: removingId === m.id ? 0.6 : 1 }} onClick={() => handleDelete(m)}>{removingId === m.id ? '…' : 'Suppr.'}</Button>
+                        <GhostButton color={t.primary} style={{ flex: 1 }} onClick={() => { setEditSlotId(m.id || null); setEditSlotValue(m.slot) }}>Déplacer</GhostButton>
+                        <GhostButton color="#dc2626" disabled={removingId === m.id} onClick={() => handleDelete(m)}>{removingId === m.id ? '…' : 'Suppr.'}</GhostButton>
                       </div>
                     )}
                   </div>
@@ -1482,7 +1441,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 10px', flexWrap: 'wrap' }}>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: 0 }}>Équipe</h3>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 10px', borderRadius: 100 }}>{adminUsers.length}</span>
+        <span style={{ ...formePastille(), color: t.muted, background: t.surfaceAlt }}>{adminUsers.length}</span>
         {isSupabase && isOwner && adminUsers.some(u => !u.invited_at && u.role !== 'owner') && (
           <GhostButton color={t.primary} onClick={inviteAllPending} disabled={status.kind === 'busy'}>Inviter tous les non-invités</GhostButton>
         )}
@@ -1549,13 +1508,13 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                 ) })()}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
+                <span style={{ ...formePastille(), background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
                 {u.active === false ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: '#dc262612', color: '#dc2626' }}>Suspendu</span>
+                  <StatusPill label="Suspendu" color="#dc2626" />
                 ) : isSupabase && !u.invited_at ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: `${t.gold || '#b8860b'}14`, color: t.gold || '#b8860b' }}>Invité</span>
+                  <StatusPill label="Invité" color={t.gold || '#b8860b'} />
                 ) : (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: '#16a34a12', color: '#16a34a' }}>Actif</span>
+                  <StatusPill label="Actif" color="#16a34a" />
                 )}
                 {isSupabase && u.active !== false && !u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
                   <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Inviter</GhostButton>
@@ -1582,19 +1541,19 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                       {writeMods.length > 0 && (
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.accent, marginBottom: 4 }}>Écriture ({writeMods.length})</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{writeMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: `${t.accent}14`, color: t.accent }}>{m}</span>)}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE }}>{writeMods.map(m => <span key={m} style={{ ...formePastille(), background: `${t.accent}14`, color: t.accent }}>{m}</span>)}</div>
                         </div>
                       )}
                       {readMods.length > 0 && (
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.primary, marginBottom: 4 }}>Lecture seule ({readMods.length})</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{readMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{m}</span>)}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE }}>{readMods.map(m => <span key={m} style={{ ...formePastille(), background: `${t.primary}12`, color: t.primary }}>{m}</span>)}</div>
                         </div>
                       )}
                       {noneMods.length > 0 && (
                         <div>
                           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 4 }}>Aucun accès ({noneMods.length})</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{noneMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 100, background: t.surface, color: t.muted, border: `1px solid ${t.shadow}` }}>{m}</span>)}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE }}>{noneMods.map(m => <span key={m} style={{ ...formePastille(), background: t.surface, color: t.muted, border: `1px solid ${t.shadow}`, fontWeight: 500 }}>{m}</span>)}</div>
                         </div>
                       )}
                     </>
@@ -1711,7 +1670,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
           <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             Historique des changements RBAC
-            <span style={{ fontSize: 12, fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '2px 10px', borderRadius: 100 }}>{rbacHistory.length}</span>
+            <span style={{ ...formePastille(), color: t.muted, background: t.surfaceAlt }}>{rbacHistory.length}</span>
           </h3>
           <GhostButton color={t.muted} onClick={() => setRbacHistOpen(o => !o)}>{rbacHistOpen ? 'Masquer' : 'Afficher'}</GhostButton>
         </div>
@@ -1898,8 +1857,8 @@ function BlogEditor() {
               </div>
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 9px', borderRadius: 100 }}>{post.category}</span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: post.published ? `${t.primary}15` : t.surfaceAlt, color: post.published ? t.primary : t.muted }}>{post.published ? 'Publié' : 'Brouillon'}</span>
+                  <span style={{ ...formePastille(), color: t.muted, background: t.surfaceAlt }}>{post.category}</span>
+                  <StatusPill label={post.published ? 'Publié' : 'Brouillon'} color={post.published ? t.primary : t.muted} bg={post.published ? undefined : t.surfaceAlt} />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: '15px', color: t.heading, lineHeight: 1.3 }}>{post.title || 'Sans titre'}</div>
                 <div style={{ fontSize: '12px', color: t.muted, fontFamily: 'var(--f-body)' }}>/{post.slug || slugify(post.title)}</div>
@@ -2149,7 +2108,7 @@ function MessagesManager() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: live ? t.primary : t.muted, animation: live ? 'pulse 2s infinite' : 'none' }} />
           <span style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{live ? 'Temps réel' : 'Actualisation périodique'}</span>
-          {newCount > 0 && <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: t.accent, color: '#fff' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>}
+          {newCount > 0 && <span role="status" aria-atomic="true" style={{ ...formePastille(), background: t.accent, color: '#fff' }}>{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>}
           <span style={{ fontSize: '11px', color: t.muted, marginLeft: 'auto' }}>{filtered.length} / {messages.length}</span>
         </div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -2158,18 +2117,18 @@ function MessagesManager() {
             <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(14, t.muted)}</span>
           </div>
           {([['all', 'Toutes'], ['unhandled', 'Non traitées'], ['handled', 'Traitées']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
-            <button key={k} onClick={() => setStatusFilter(k)} style={{ fontSize: '12px', fontWeight: 600, padding: '7px 12px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${statusFilter === k ? t.primary : t.shadow}`, background: statusFilter === k ? t.primary : 'transparent', color: statusFilter === k ? '#fff' : t.muted }}>{l}</button>
+            <button key={k} onClick={() => setStatusFilter(k)} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${statusFilter === k ? t.primary : t.shadow}`, background: statusFilter === k ? t.primary : 'transparent', color: statusFilter === k ? '#fff' : t.muted }}>{l}</button>
           ))}
           <GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter CSV</GhostButton>
         </div>
         {selectedIds.size > 0 && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, padding: '10px 12px', borderRadius: 12, background: `${t.primary}0a`, border: `1px solid ${t.primary}22`, flexWrap: 'wrap' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: t.heading }}>{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
-            <button onClick={() => bulkSetHandled(true)} disabled={bulkBusy} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary }}>{bulkBusy ? '…' : 'Marquer traités'}</button>
-            <button onClick={() => bulkSetHandled(false)} disabled={bulkBusy} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted }}>Non traités</button>
-            <button onClick={bulkDelete} disabled={bulkBusy} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(11, '#dc2626')} Supprimer</button>
+            <button onClick={() => bulkSetHandled(true)} disabled={bulkBusy} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.primary}44`, background: 'transparent', color: t.primary, opacity: bulkBusy ? 0.55 : 1 }}>{bulkBusy ? '…' : 'Marquer traités'}</button>
+            <button onClick={() => bulkSetHandled(false)} disabled={bulkBusy} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.muted}44`, background: 'transparent', color: t.muted, opacity: bulkBusy ? 0.55 : 1 }}>Non traités</button>
+            <button onClick={bulkDelete} disabled={bulkBusy} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626', opacity: bulkBusy ? 0.55 : 1 }}>{Icon.trash(11, '#dc2626')} Supprimer</button>
             {bulkErr && <span style={{ fontSize: '11px', color: t.accent, fontWeight: 600 }}>✗ {bulkErr}</span>}
-            <button onClick={() => setSelectedIds(new Set())} style={{ fontSize: '11px', fontWeight: 600, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, marginLeft: 'auto' }}>Tout désélectionner</button>
+            <button onClick={() => setSelectedIds(new Set())} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, marginLeft: 'auto' }}>Tout désélectionner</button>
           </div>
         )}
         {messages.length === 0 ? (
@@ -2214,23 +2173,23 @@ function MessagesManager() {
               <div style={{ fontSize: '12px', color: t.accent, fontWeight: 600, marginTop: '4px' }}>{selected.sujet}</div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {selected.handled && <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${t.primary}15`, color: t.primary }}>✓ Traité</span>}
+              {selected.handled && <StatusPill label="Traité" color={t.primary} />}
               {handledErr && <span style={{ fontSize: '11px', fontWeight: 600, color: t.accent }} title={handledErr}>✗ {handledErr}</span>}
-              <button onClick={toggleHandled} disabled={handling} style={{
-                fontSize: '12px', fontWeight: 600, padding: '7px 14px', borderRadius: '10px', cursor: 'pointer',
-                border: `1px solid ${selected.handled ? t.primary : t.shadow}`, background: selected.handled ? `${t.primary}0d` : 'transparent', color: selected.handled ? t.primary : t.muted,
+              <button onClick={toggleHandled} disabled={handling} className={CLASSE_BOUTON} style={{
+                ...formeBouton(),
+                border: `1px solid ${selected.handled ? t.primary : t.shadow}`, background: selected.handled ? `${t.primary}0d` : 'transparent', color: selected.handled ? t.primary : t.muted, opacity: handling ? 0.55 : 1,
               }}>{selected.handled ? '✓ Traité' : 'Marquer traité'}</button>
               {confirmDel === selected.id ? (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <button onClick={() => selected.id && removeMessage(selected.id)} disabled={delBusy} style={{ fontSize: '12px', fontWeight: 700, padding: '7px 12px', borderRadius: '10px', border: 'none', background: '#dc2626', color: '#fff', cursor: delBusy ? 'wait' : 'pointer' }}>{delBusy ? '…' : 'Confirmer'}</button>
-                  <button onClick={() => setConfirmDel(null)} style={{ fontSize: '12px', fontWeight: 600, padding: '7px 12px', borderRadius: '10px', cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Annuler</button>
+                  <button onClick={() => selected.id && removeMessage(selected.id)} disabled={delBusy} className={CLASSE_BOUTON} style={{ ...formeBouton(), fontWeight: 700, border: '1px solid #dc2626', background: '#dc2626', color: '#fff', cursor: delBusy ? 'wait' : 'pointer' }}>{delBusy ? '…' : 'Confirmer'}</button>
+                  <button onClick={() => setConfirmDel(null)} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Annuler</button>
                 </div>
               ) : (
-                <button onClick={() => setConfirmDel(selected.id ?? null)} title="Supprimer le message" style={{ fontSize: '12px', fontWeight: 600, padding: '7px 10px', borderRadius: '10px', cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(13, '#dc2626')}</button>
+                <button onClick={() => setConfirmDel(selected.id ?? null)} title="Supprimer le message" className={CLASSE_BOUTON} style={{ ...formeBouton({ carre: true }), border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(13, '#dc2626')}</button>
               )}
               {delErr && <span style={{ fontSize: '11px', color: t.accent, fontWeight: 600 }} title={delErr}>✗ {delErr}</span>}
-              <button onClick={() => { setSelectedIdx(null); setReplyText(''); setSending('idle') }} style={{
-                fontSize: '13px', fontWeight: 600, padding: '8px 14px', borderRadius: '10px', cursor: 'pointer',
+              <button onClick={() => { setSelectedIdx(null); setReplyText(''); setSending('idle') }} className={CLASSE_BOUTON} style={{
+                ...formeBouton(),
                 border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted,
               }}>Fermer</button>
             </div>
@@ -2261,17 +2220,13 @@ function MessagesManager() {
             <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', color: t.muted, fontWeight: 600, alignSelf: 'center' }}>Modèles :</span>
               {TEMPLATES.map((tpl, idx) => (
-                <button key={idx} onClick={() => setReplyText(tpl)} title={tpl} style={{ fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tpl.slice(0, 28)}…</button>
+                <button key={idx} onClick={() => setReplyText(tpl)} title={tpl} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tpl.slice(0, 28)}…</button>
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '12px', flexWrap: 'wrap' }}>
-              <Button onClick={sendReply} disabled={!replyText.trim() || sending === 'sending'} style={{
-                background: sending === 'sending' ? t.muted : t.primary, color: '#fff', fontWeight: 600,
-                padding: '11px 24px', borderRadius: '100px', border: 'none', cursor: sending === 'sending' ? 'wait' : 'pointer',
-                opacity: !replyText.trim() || sending === 'sending' ? 0.6 : 1,
-              }}>
+              <PrimaryButton onClick={sendReply} disabled={!replyText.trim() || sending === 'sending'} busy={sending === 'sending'}>
                 {sending === 'sending' ? 'Envoi…' : 'Répondre par email'}
-              </Button>
+              </PrimaryButton>
               {sending === 'sent' && <span style={{ fontSize: '13px', color: t.primary, fontWeight: 600 }}>✓ Email envoyé à {selected.email}</span>}
               {sending === 'error' && <span style={{ fontSize: '13px', color: t.accent, fontWeight: 600 }}>✗ Échec de l'envoi — réessayez</span>}
             </div>
@@ -2408,10 +2363,10 @@ function OrdersManager() {
           </Select>
           <GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter CSV</GhostButton>
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: ESPACE, marginTop: 14, flexWrap: 'wrap' }}>
           {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['preparing', 'En préparation'], ['ready', 'Prêtes'], ['delivered', 'Récupérées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)} style={{
-              fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${filter === k ? t.primary : t.shadow}`,
+            <button key={k} onClick={() => setFilter(k)} className={CLASSE_BOUTON} style={{
+              ...formeBouton(), border: `1px solid ${filter === k ? t.primary : t.shadow}`,
               background: filter === k ? t.primary : 'transparent', color: filter === k ? '#fff' : t.muted, transition: 'all 0.15s',
             }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts] ?? 0}</span></button>
           ))}
@@ -2435,7 +2390,7 @@ function OrdersManager() {
                   {o.notes && <div style={{ fontSize: '12px', color: t.muted, marginTop: 6, whiteSpace: 'pre-wrap' }}>Note : {o.notes}</div>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[o.status]}15`, color: statusColor[o.status] }}>{statusLabel[o.status] ?? o.status}</span>
+                  <StatusPill label={statusLabel[o.status] ?? o.status} color={statusColor[o.status]} />
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
                     {statusErr && <span style={{ fontSize: '10px', color: t.accent, fontWeight: 600, maxWidth: 220 }} title={statusErr}>✗ {statusErr}</span>}
@@ -2447,11 +2402,11 @@ function OrdersManager() {
                     </Select>
                     {canDo('orders', 'delete', user?.role ?? '') && (confirmDel === o.id ? (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <button onClick={() => removeOrder(o.id!)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
-                        <button onClick={() => setConfirmDel(null)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+                        <button onClick={() => removeOrder(o.id!)} className={CLASSE_BOUTON} style={{ ...formeBouton(), fontWeight: 700, border: '1px solid #dc2626', background: '#dc2626', color: '#fff' }}>Confirmer</button>
+                        <button onClick={() => setConfirmDel(null)} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Annuler</button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmDel(o.id ?? null)} title="Supprimer la commande" style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
+                      <button onClick={() => setConfirmDel(o.id ?? null)} title="Supprimer la commande" className={CLASSE_BOUTON} style={{ ...formeBouton({ carre: true }), border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
                     ))}
                   </div>
                 </div>
@@ -2607,10 +2562,10 @@ function ReservationsManager() {
           </Select>
           <GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter CSV</GhostButton>
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: ESPACE, marginTop: 14, flexWrap: 'wrap' }}>
           {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)} style={{
-              fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', border: `1px solid ${filter === k ? t.primary : t.shadow}`,
+            <button key={k} onClick={() => setFilter(k)} className={CLASSE_BOUTON} style={{
+              ...formeBouton(), border: `1px solid ${filter === k ? t.primary : t.shadow}`,
               background: filter === k ? t.primary : 'transparent', color: filter === k ? '#fff' : t.muted, transition: 'all 0.15s',
             }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{counts[k as keyof typeof counts] ?? 0}</span></button>
           ))}
@@ -2623,7 +2578,7 @@ function ReservationsManager() {
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
                   <span style={{ fontSize: '14px', fontWeight: 700, color: t.heading, textTransform: 'capitalize' }}>{fmtDate(g.date)}</span>
                   <span style={{ fontSize: '12px', color: t.muted }}>{g.rows.length} résa · {g.rows.reduce((n, r) => n + (r.status !== 'cancelled' ? r.guests : 0), 0)} couverts</span>
-                  {g.date === today && <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: `${t.accent}18`, color: t.accent }}>Aujourd'hui</span>}
+                  {g.date === today && <StatusPill label="Aujourd'hui" color={t.accent} />}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 12, borderLeft: `2px solid ${t.shadow}` }}>
                   {g.rows.map(r => (
@@ -2634,7 +2589,7 @@ function ReservationsManager() {
                           <div style={{ fontSize: '12px', color: t.muted, marginTop: 2 }}>{r.email}{r.phone ? ` · ${r.phone}` : ''}{r.message ? ` · ${r.message.slice(0, 60)}${r.message.length > 60 ? '…' : ''}` : ''}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status] ?? r.status}</span>
+                          <StatusPill label={statusLabel[r.status] ?? r.status} color={statusColor[r.status]} />
                           <Select value={r.status} onValueChange={v => updateStatus(r.id!, v)}>
                             <SelectTrigger style={{ width: 120, borderColor: t.shadow, borderRadius: 8, background: t.surfaceAlt, padding: '5px 9px', fontSize: 11 }}>{statusLabel[r.status] ?? r.status}</SelectTrigger>
                             <SelectContent>
@@ -2643,11 +2598,11 @@ function ReservationsManager() {
                           </Select>
                           {canDo('reservations', 'delete', user?.role ?? '') && (confirmDel === r.id ? (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <button onClick={() => removeResa(r.id!)} style={{ fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 7, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>OK</button>
-                              <button onClick={() => setConfirmDel(null)} style={{ fontSize: 10, fontWeight: 600, padding: '4px 8px', borderRadius: 7, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Non</button>
+                              <button onClick={() => removeResa(r.id!)} className={CLASSE_BOUTON} style={{ ...formeBouton(), fontWeight: 700, border: '1px solid #dc2626', background: '#dc2626', color: '#fff' }}>OK</button>
+                              <button onClick={() => setConfirmDel(null)} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Non</button>
                             </div>
                           ) : (
-                            <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer" style={{ fontSize: 10, fontWeight: 600, padding: '4px 7px', borderRadius: 7, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(11, '#dc2626')}</button>
+                            <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer" className={CLASSE_BOUTON} style={{ ...formeBouton({ carre: true }), border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(11, '#dc2626')}</button>
                           ))}
                         </div>
                       </div>
@@ -2670,7 +2625,7 @@ function ReservationsManager() {
                   {r.message && <div style={{ fontSize: '13px', color: t.text, marginTop: 8, whiteSpace: 'pre-wrap' }}>{r.message}</div>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: `${statusColor[r.status]}15`, color: statusColor[r.status] }}>{statusLabel[r.status] ?? r.status}</span>
+                  <StatusPill label={statusLabel[r.status] ?? r.status} color={statusColor[r.status]} />
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {statusSending && <span style={{ fontSize: '10px', color: t.muted }}>Envoi notif…</span>}
                     {statusErr && <span style={{ fontSize: '10px', color: t.accent, fontWeight: 600, maxWidth: 220 }} title={statusErr}>✗ {statusErr}</span>}
@@ -2682,11 +2637,11 @@ function ReservationsManager() {
                     </Select>
                     {canDo('reservations', 'delete', user?.role ?? '') && (confirmDel === r.id ? (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <button onClick={() => removeResa(r.id!)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer' }}>Confirmer</button>
-                        <button onClick={() => setConfirmDel(null)} style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer' }}>Annuler</button>
+                        <button onClick={() => removeResa(r.id!)} className={CLASSE_BOUTON} style={{ ...formeBouton(), fontWeight: 700, border: '1px solid #dc2626', background: '#dc2626', color: '#fff' }}>Confirmer</button>
+                        <button onClick={() => setConfirmDel(null)} className={CLASSE_BOUTON} style={{ ...formeBouton(), border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted }}>Annuler</button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer la réservation" style={{ fontSize: 11, fontWeight: 600, padding: '5px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
+                      <button onClick={() => setConfirmDel(r.id ?? null)} title="Supprimer la réservation" className={CLASSE_BOUTON} style={{ ...formeBouton({ carre: true }), border: `1px solid #dc262644`, background: 'transparent', color: '#dc2626' }}>{Icon.trash(12, '#dc2626')}</button>
                     ))}
                   </div>
                 </div>
@@ -2739,10 +2694,10 @@ function TeamContentsEditor() {
       <PageHeader title="Équipe & contenus" subtitle="Gérez les membres de l'équipe, les engagements et les témoignages clients."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: ESPACE, marginTop: 18, flexWrap: 'wrap' }}>
         {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k as 'team' | 'engagements' | 'testimonials')} style={{
-            fontSize: '13px', fontWeight: 600, padding: '8px 16px', borderRadius: 100, cursor: 'pointer',
+          <button key={k} onClick={() => setTab(k as 'team' | 'engagements' | 'testimonials')} className={CLASSE_BOUTON} style={{
+            ...formeBouton(),
             border: `1px solid ${tab === k ? t.primary : t.shadow}`, background: tab === k ? t.primary : 'transparent',
             color: tab === k ? '#fff' : t.muted, transition: 'all 0.15s',
           }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{k === 'team' ? content.team.length : k === 'engagements' ? content.engagements.length : content.testimonials.length}</span></button>
@@ -2763,9 +2718,9 @@ function TeamContentsEditor() {
               </div>
             </OrganicCard>
           ))}
-          <button onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])} style={{
-            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
-            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          <button onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])} className={CLASSE_BOUTON} style={{
+            ...formeBouton(),
+            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary,
           }}>{Icon.plus(14, t.primary)} Ajouter un membre</button>
         </div>
       )}
@@ -2791,9 +2746,9 @@ function TeamContentsEditor() {
               </div>
             </OrganicCard>
           ))}
-          <button onClick={() => setEngagements([...content.engagements, { icon: 'leaf', title: 'Nouvel engagement', desc: '' }])} style={{
-            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
-            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          <button onClick={() => setEngagements([...content.engagements, { icon: 'leaf', title: 'Nouvel engagement', desc: '' }])} className={CLASSE_BOUTON} style={{
+            ...formeBouton(),
+            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary,
           }}>{Icon.plus(14, t.primary)} Ajouter un engagement</button>
         </div>
       )}
@@ -2810,9 +2765,9 @@ function TeamContentsEditor() {
               </div>
             </OrganicCard>
           ))}
-          <button onClick={() => setTestimonials([...content.testimonials, { author: 'Client', text: '' }])} style={{
-            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
-            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          <button onClick={() => setTestimonials([...content.testimonials, { author: 'Client', text: '' }])} className={CLASSE_BOUTON} style={{
+            ...formeBouton(),
+            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary,
           }}>{Icon.plus(14, t.primary)} Ajouter un témoignage</button>
         </div>
       )}
@@ -2922,7 +2877,7 @@ function AuditManager() {
             <OrganicCard key={e.id} style={{ padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${t.primary}14`, color: t.primary }}>{e.action}</span>
+                  <span style={{ ...formePastille(), background: `${t.primary}14`, color: t.primary }}>{e.action}</span>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: t.heading }}>{e.target || '—'}</span>
                 </div>
                 <span style={{ fontSize: '11px', color: t.muted }}>{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : ''}</span>
@@ -2945,6 +2900,35 @@ function SettingsEditor() {
   const [importStatus, setImportStatus] = useState<'idle' | 'busy' | 'ok' | 'error'>('idle')
   const [importErr, setImportErr] = useState<string | undefined>(undefined)
   const fileRef = React.useRef<HTMLInputElement>(null)
+  const identiteChargee = React.useRef(false)
+
+  useEffect(() => {
+    if (dataSource === 'loading' || identiteChargee.current) return
+    let actif = true
+    void fetchSetting(SETTING_KEYS.restaurant).then((res) => {
+      if (!actif || !res.ok) return
+      identiteChargee.current = true
+      const identite = platDepuisRestaurant(res.data, {
+        restaurantName: content.restaurantName,
+        phone: content.phone,
+        address: content.address,
+        hours: content.hours,
+        emailContact: content.emailContact,
+        emailReservation: content.emailReservation,
+        slogan: content.slogan,
+      })
+      setContent({
+        ...content,
+        restaurantName: identite.restaurantName ?? content.restaurantName,
+        phone: identite.phone ?? content.phone,
+        address: identite.address ?? content.address,
+        hours: identite.hours ?? content.hours,
+        emailContact: identite.emailContact ?? content.emailContact,
+        emailReservation: identite.emailReservation ?? content.emailReservation,
+      })
+    })
+    return () => { actif = false }
+  }, [dataSource])
   const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
   const inp = inputStyle(t)
   const save = async () => {
@@ -3005,7 +2989,7 @@ function SettingsEditor() {
   }
   return (
     <div style={{ maxWidth: '760px' }}>
-      <PageHeader title="Réglages globaux" subtitle="Identité et coordonnées du restaurant, appliquées sur tout le site."
+      <PageHeader title="Réglages globaux" subtitle="Identité et coordonnées : les mêmes que le pied de page (nom, téléphone, adresse, e-mail)."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div style={{ display: 'grid', gap: '22px', marginTop: '24px' }}>
@@ -3075,18 +3059,6 @@ const AccessBanner = () => {
 
 export function Admin() {
   const [active, setActive] = useState('dashboard')
-  const location = useLocation()
-  /*
-    SAUT DEPUIS LE TABLEAU DE BORD : les cartes « À traiter » naviguent en
-    écrivant /admin?module=… dans l'URL. Ici, on fait suivre : un changement
-    de recherche met à jour le module actif — le restaurateur ne perd pas la page
-    où il voulait aller. Sans cet effet, un lien par défaut ne placeholder
-    jamais rien (défaut mesuré).
-  */
-  useEffect(() => {
-    const m = new URLSearchParams(location.search).get('module')
-    if (m) setActive(m)
-  }, [location.search])
   const { user } = useAuth()
   const role = user?.role ?? 'guest'
   const effective = canAccessModule(active, role) ? active : 'dashboard'
@@ -3122,7 +3094,12 @@ export function Admin() {
           {effective === 'messages' && <MessagesManager />}
           {effective === 'orders' && <OrdersManager />}
           {effective === 'reservations' && <ReservationsManager />}
-          {effective === 'content' && <PageEditorWrapper />}
+          {effective === 'content' && (
+            <PageEditorWrapper
+              onQuitConsole={() => setActive('dashboard')}
+              onOuvrirApparence={() => setActive('theme')}
+            />
+          )}
           {effective === 'team' && <TeamContentsEditor />}
           {effective === 'menu' && <MenuEditor />}
           {effective === 'theme' && <ThemeEditor />}

@@ -1,7 +1,7 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { MENU, type MenuItem } from '@/data/menu'
 import type { SiteContent, ContactMessage, MessageReply } from '@/contexts/SiteContext'
-import { fusionBilingue, clefsCoordonnees, fusionnePatch } from '@/cms/model/contenu-patch'
+import { fusionBilingue, clefsMiroirRestaurant, fusionnePatch } from '@/cms/model/contenu-patch'
 
 const MENU_TABLE = 'menu_items'
 const CONTENT_TABLE = 'site_content'
@@ -212,6 +212,7 @@ async function ecrireCoordonneesCanoniques(
   if ('emailReservation' in champ) suivant.emailReservation = String(champ.emailReservation ?? '')
   if ('address' in champ) suivant.address = fusionBilingue(actuel.address, String(champ.address ?? ''))
   if ('hours' in champ) suivant.hours = fusionBilingue(actuel.hours, String(champ.hours ?? ''))
+  if ('restaurantName' in champ) suivant.name = fusionBilingue(actuel.name, String(champ.restaurantName ?? ''))
 
   const { error } = await sb.from(CONTENT_TABLE).upsert(
     {
@@ -278,7 +279,7 @@ export async function updateSiteContentFields(
     )
     if (error) return { ok: false, error: errMsg(error) }
 
-    if (clefsCoordonnees(patch as Record<string, unknown>).length > 0) {
+    if (clefsMiroirRestaurant(patch as Record<string, unknown>).length > 0) {
       const miroir = await ecrireCoordonneesCanoniques(sb, patch as Record<string, unknown>)
       if (!miroir.ok) return miroir
     }

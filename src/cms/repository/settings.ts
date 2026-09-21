@@ -32,6 +32,16 @@ export const SETTING_KEYS = {
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS]
 
+/**
+ * Identité canonique — JSON `site_content.restaurant` :
+ *   `name` (bilingue), `phone`, `address` (bilingue), `emailContact`
+ * Pied (Chrome) et écran Coordonnées patchent CES clés.
+ * Repli lecture éditeur : plat `site_config` (`restaurantName`, `phone`,
+ * `address`, `emailContact`) si la clé canonique est vide.
+ * Public : instantané chrome, pas de lecture live.
+ */
+export { CLES_IDENTITE_CANONIQUES, completerRestaurantDepuisPlat, platDepuisRestaurant } from '../model/identite-restaurant'
+
 /** Réglages du restaurant — source unique pour header, footer, contact, localisation. */
 export interface RestaurantSettings {
   name: Bilingue
@@ -91,20 +101,77 @@ export async function fetchSetting(key: SettingKey): Promise<CmsResult<Record<st
 export async function saveSetting(
   key: SettingKey,
   value: Record<string, unknown>,
+  options: { merge?: boolean } = {},
+): Promise<CmsResult<true>> {
+  const run = () => ecrireSetting(key, value, options.merge === true)
+  if (key === SETTING_KEYS.restaurant) {
+    const prochaine = fileRestaurant.then(run, run)
+    fileRestaurant = prochaine.then(() => undefined, () => undefined)
+    return prochaine
+  }
+  return run()
+}
+
+/** File d’attente : Chrome (900 ms) et Typo (400 ms) ne s’écrasent plus. */
+let fileRestaurant: Promise<unknown> = Promise.resolve()
+
+const brouillonsAVider = new Set<() => Promise<void>>()
+
+/** Les panneaux En-tête / Typo s’y enregistrent pour vider leur délai avant Publier. */
+export function registerRestaurantDraftFlush(vider: () => Promise<void>): () => void {
+  brouillonsAVider.add(vider)
+  return () => { brouillonsAVider.delete(vider) }
+}
+
+export async function flushRestaurantDrafts(): Promise<void> {
+  await Promise.all([...brouillonsAVider].map((vider) => vider()))
+}
+
+async function ecrireSetting(
+  key: SettingKey,
+  value: Record<string, unknown>,
+  merge: boolean,
 ): Promise<CmsResult<true>> {
   const client = requireClient()
   if (!client.ok) return client
 
   try {
+    let payload = { ...value }
+    if (merge) {
+      const actuel = await fetchSetting(key)
+      if (!actuel.ok) return actuel
+      payload = { ...(actuel.data ?? {}), ...value }
+    }
+    if (key === SETTING_KEYS.restaurant) {
+      payload = normaliserRestaurantJson(payload)
+    }
+
     const { error } = await client.data
       .from(TABLE)
-      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      .upsert({ key, value: payload, updated_at: new Date().toISOString() }, { onConflict: 'key' })
 
     if (error) return cmsErr(describeError(error))
     return cmsOk(true)
   } catch (err) {
     return cmsErr(describeError(err))
   }
+}
+
+/** Une seule vérité pour le logo : `chromePresentation.header.logoUrl`. */
+export function normaliserRestaurantJson(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...raw }
+  const logoRacine = typeof out.logoUrl === 'string' ? out.logoUrl.trim() : ''
+  delete out.logoUrl
+  const pres = asObject(out.chromePresentation)
+  const header = asObject(pres.header)
+  const logoHeader = typeof header.logoUrl === 'string' ? header.logoUrl.trim() : ''
+  if (logoHeader) header.logoUrl = logoHeader
+  else if (logoRacine) header.logoUrl = logoRacine
+  else delete header.logoUrl
+  if (Object.keys(header).length > 0 || Object.keys(pres).length > 0) {
+    out.chromePresentation = { ...pres, header }
+  }
+  return out
 }
 
 function str(value: unknown): string {

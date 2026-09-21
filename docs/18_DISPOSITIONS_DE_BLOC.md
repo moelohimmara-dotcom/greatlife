@@ -393,3 +393,44 @@ Trois conséquences, toutes mesurables :
 
 Le pilote reste **la Bannière**, dont les 4 dispositions sont celles du TDR §13 et
 celles déjà déclarées dans le code.
+
+---
+
+## 12. Inspecteur « Modifier » (2026-09-21) — ce qui est livré, ce qui attend
+
+Lot incrémental de la colonne **Modifier** (`PropertyPanel`), après Structure et Aperçu.
+
+**Repris des CMS (sans copier une marque)** : presets nommés pour la structure ;
+nombres **bornés** (curseur + plus/moins, clamp à la saisie) ; pas de panneau CSS.
+
+**Livré**
+
+- Tiroirs **Disposition / Contenu / Options** (même chrome que Structure).
+- Plafonds `min` / `max` / `step` sur les champs `number` **déjà consommés**
+  (plats de la Carte, articles du Journal) et sur le zoom du bloc Plan (non rendu).
+- Validation modèle : message FR si la valeur sort de l’intervalle.
+
+**Arbitrage — tokens de présentation par bloc : non**
+
+Le TDR §13.1 ouvre des valeurs libres derrière « Avancé » (`settings` jsonb).
+Cela suppose un contrat lu par chaque composant public (couleurs, tailles, marges),
+des garde-fous de contraste, et un « revenir au thème ». **Pas implémenté ici** :
+aucun champ mort, pas de `titleScale` sur la Bannière (le titre a une taille
+fixe dans `Hero.tsx`, l’exposer sans la consommer mentirait). À trancher avant
+toute migration ou nouveau schéma « design tokens par bloc ».
+
+---
+
+## 12. Cadre du site (en-tête et pied) et boîte à outils texte
+
+L’en-tête n’est **pas** une section de page : c’est un **bloc système** dans
+Structure (non supprimable, hors réordonnancement). Le pied non plus : le
+composant `Footer` reste unique, branché sur les réglages du restaurant.
+
+Éléments nommés (WordPress template parts / Shopify header-group) : nom,
+liens du menu, bouton Réserver, accroche, coordonnées, horaires, réseaux.
+Pas de HTML libre dans le cadre.
+
+Boîte à outils texte : **Gras / Italique / Lien** sur les champs `inlineMarkup`
+(sous-titres, récits, descriptions). Le rendu n’accepte que `strong|em|a[href]`.
+

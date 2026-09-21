@@ -28,5 +28,6 @@ export function echelleCadreApercu(
 
 export function hauteurVerreApercu(hauteurScene: number, scale: number): number {
   if (hauteurScene <= 0 || scale <= 0) return 1
-  return Math.max(1, hauteurScene / scale)
+  // ceil : le viewport iframe est entier ; un verre tronqué coupait le pied (~1 px).
+  return Math.max(1, Math.ceil(hauteurScene / scale))
 }

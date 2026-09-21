@@ -17,7 +17,7 @@ const FALLBACK_POSTS: BlogPost[] = [
 
 const DISPOSITIONS = ['grid', 'list'] as const
 
-export function Blog({ content: cms, data, variant }: Partial<SectionComponentProps> = {}) {
+export function Blog({ content: cms, data, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, blogPosts, media } = useSite()
   const [expanded, setExpanded] = useState<string | null>(null)
 
@@ -54,7 +54,7 @@ export function Blog({ content: cms, data, variant }: Partial<SectionComponentPr
   if (disposition === 'list') {
     return (
       <section className="section-pad" data-disposition="list" style={{ padding: '100px 24px', maxWidth: '900px', margin: '0 auto' }}>
-        <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+        <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {posts.map((post, i) => {
             const postImg = postCover(post)
@@ -66,7 +66,7 @@ export function Blog({ content: cms, data, variant }: Partial<SectionComponentPr
                     background: postImg ? `url(${postImg}) center/cover` : `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`,
                   }} />
                   <div style={{ padding: '18px 22px' }}>
-                    <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
+                    <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
                     <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
                     {post.body && (
                       <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -87,7 +87,7 @@ export function Blog({ content: cms, data, variant }: Partial<SectionComponentPr
   }
   return (
     <section className="section-pad" style={{ padding: '100px 24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Reveal><SectionHead title={title} sub={subtitle} align="center" /></Reveal>
+      <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
       <div className="blog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px,1fr))', gap: '24px' }}>
         {posts.map((post, i) => {
           const illus = getIllus(post.title, post.category)
@@ -144,7 +144,7 @@ export function Blog({ content: cms, data, variant }: Partial<SectionComponentPr
                 )}
               </div>
               <div style={{ padding: '20px 22px' }}>
-                <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
+                <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
                 <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
                 {post.body && (
                   <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>

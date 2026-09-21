@@ -15,16 +15,49 @@
  * - image → input URL (placeholder Lot 6)
  */
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
+import { FieldLabel, GhostButton, inputStyle } from '@/admin/ui'
 import type { PageSection } from '@/cms/model/section'
 import type { Locale } from '@/cms/model/i18n'
-import type { ThemePalette } from '@/config/themes'
 import { getSectionDefinition, defaultVariant } from '@/cms/model/sections/schemas'
-import type { FieldDef } from '@/cms/model/sections/fields'
+import {
+  clampFieldNumber,
+  hasNumericBounds,
+  parseFieldNumber,
+  champEstAltImage,
+  nomChampAltImage,
+  type FieldDef,
+} from '@/cms/model/sections/fields'
 import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
-import { Bouton, CIBLE, RAYON, titreColonne, anneauFocus } from './chrome'
+import { Bouton, ESPACE, TiroirInspecteur, titreColonne, anneauFocus } from './chrome'
+import { TextToolbox } from './TextToolbox'
+import { ColorControl } from './ColorPicker'
+import { sanitiserHex } from '@/cms/model/sections/couleur'
+import type { ThemePalette } from '@/config/themes'
+import {
+  canGroup,
+  canLock,
+  canPatchSlot,
+  canUngroup,
+  colorFieldForSlot,
+  findGroupForSlot,
+  groupSelection,
+  lockGroup,
+  markupProfileForField,
+  readEditorMeta,
+  renameGroup,
+  showsGroupProperties,
+  slotablesFromFields,
+  ungroup,
+  unlock,
+  type EditorGroup,
+  type EditorMeta,
+  type GroupDecision,
+  type SelectionState,
+} from '@/cms/model/subblocks'
+import type { CibleApercu } from './inplace-dom'
 
 interface PropertyPanelProps {
   section: PageSection
@@ -32,10 +65,31 @@ interface PropertyPanelProps {
   onUpdate: (content: Record<string, unknown>) => void
   onVariantChange: (variant: string | null) => void
   pageLayout?: PageLayout
+  selection?: SelectionState
+  onSelectionChange?: (next: SelectionState) => void
+  groupMode?: boolean
+  onStartGroupMode?: () => void
+  onStopGroupMode?: () => void
+  eviterFocusChamp?: boolean
+  cibleApercu?: CibleApercu | null
 }
 
-export function PropertyPanel({ section, locale, onUpdate, onVariantChange, pageLayout }: PropertyPanelProps) {
+export function PropertyPanel({
+  section,
+  locale,
+  onUpdate,
+  onVariantChange,
+  pageLayout,
+  selection,
+  onSelectionChange,
+  groupMode = false,
+  onStartGroupMode,
+  onStopGroupMode,
+  eviterFocusChamp = false,
+  cibleApercu = null,
+}: PropertyPanelProps) {
   const { theme: t } = useSite()
+  const [avisOutil, setAvisOutil] = useState<string | null>(null)
   const def = getSectionDefinition(section.type)
   const content = section.content ?? {}
   const banniereImposee =
@@ -46,70 +100,377 @@ export function PropertyPanel({ section, locale, onUpdate, onVariantChange, page
 
   if (!def) return null
 
-  /** Met à jour un champ du contenu. */
+  const visibles = def.fields.filter((field) => champVisible(field, dispositionAffichee, section.type))
+  const champsContenuAffiches = visibles.filter((f) => familleChamp(f) === 'contenu' && !champEstAltImage(f, visibles))
+  const champsOptions = visibles.filter((f) => familleChamp(f) === 'options')
+  const meta = readEditorMeta(content)
+  const slotSeul = selection?.slots.length === 1 ? selection.slots[0] : null
+  const groupeActif = selection ? groupeDeSelection(selection, meta) : undefined
+  const panneauGroupe = Boolean(selection && showsGroupProperties(selection, content))
+  const decisionGrouper = selection
+    ? canGroup(content, selection.slots, selection.surface)
+    : { ok: false, reason: 'need-two' as const }
+  const peutGrouper = decisionGrouper.ok
+  const decisionDegrouper = groupeActif
+    ? canUngroup(content, groupeActif.id)
+    : { ok: false, reason: 'missing' as const }
+  const decisionBloquer = groupeActif
+    ? canLock(content, groupeActif.id)
+    : { ok: false, reason: 'missing' as const }
+  const titreDegrouper = decisionDegrouper.ok
+    ? 'Dégrouper'
+    : motifDecision(decisionDegrouper, 'degrouper')
+  const titreBloquer = decisionBloquer.ok
+    ? 'Les membres restent ensemble'
+    : motifDecision(decisionBloquer, 'bloquer')
+
+  const nature: 'groupe' | 'emplacement' | 'bloc' = panneauGroupe
+    ? 'groupe'
+    : slotSeul
+      ? 'emplacement'
+      : 'bloc'
+
+  const champFocus = slotSeul
+    ? champsContenuAffiches.find((f) => f.name === slotSeul)
+      ?? champsOptions.find((f) => f.name === slotSeul)
+    : undefined
+  const focusDansContenu = Boolean(champFocus && familleChamp(champFocus) === 'contenu')
+  const focusDansOptions = Boolean(champFocus && familleChamp(champFocus) === 'options')
+  const autresContenu = champFocus && focusDansContenu
+    ? champsContenuAffiches.filter((f) => f.name !== champFocus.name)
+    : champsContenuAffiches
+  const outilsGroupeUtiles = groupMode
+    || panneauGroupe
+    || meta.groups.length > 0
+    || (selection != null && selection.slots.length >= 2)
+
+  const champsSelection = selection && selection.surface === 'page'
+    ? slotablesFromFields(visibles).filter((f) =>
+      selection.slots.includes(f.name) && (f.type === 'text' || f.type === 'multiline' || f.name.endsWith('Cta')),
+    )
+    : []
+
   const setField = useCallback((name: string, value: unknown) => {
+    if (!canPatchSlot(content, name)) return
     onUpdate({ ...content, [name]: value })
   }, [content, onUpdate])
 
+  useEffect(() => {
+    setAvisOutil(null)
+  }, [selection?.slots.join('|'), selection?.groupId, section.id, groupMode])
+
+  useEffect(() => {
+    if (!slotSeul || eviterFocusChamp) return
+    const el = document.querySelector(`[data-cms-field="${CSS.escape(slotSeul)}"]`)
+    if (!(el instanceof HTMLElement)) return
+    el.scrollIntoView({ block: 'nearest' })
+    const cible = el.querySelector('input, textarea, [contenteditable="true"]')
+    if (cible instanceof HTMLElement) cible.focus()
+  }, [slotSeul, section.id, locale, eviterFocusChamp])
+
+  const appliquerGrouper = () => {
+    if (groupMode) {
+      onStopGroupMode?.()
+      return
+    }
+    if (selection && peutGrouper) {
+      const next = groupSelection(content, selection.slots, {
+        id: `g-${selection.slots.join('_')}`,
+        label: 'Groupe',
+      })
+      onUpdate(next)
+      const created = readEditorMeta(next).groups.find((g) =>
+        g.slots.length === selection.slots.length && selection.slots.every((s) => g.slots.includes(s)),
+      )
+      onSelectionChange?.({
+        surface: 'page',
+        sectionId: selection.sectionId,
+        slots: created?.slots ?? selection.slots,
+        groupId: created?.id ?? null,
+      })
+      return
+    }
+    onStartGroupMode?.()
+  }
+
+  const rendreChamp = (field: FieldDef) => {
+    const couleur = colorFieldForSlot(def.fields, field.name)
+    const teinte = couleur && typeof content[couleur.name] === 'string'
+      ? sanitiserHex(content[couleur.name] as string) ?? undefined
+      : undefined
+    return (
+      <div key={field.name} data-cms-field={field.name}>
+        <FieldEditor
+          field={field}
+          value={content[field.name]}
+          locale={locale}
+          locked={!canPatchSlot(content, field.name)}
+          profile={markupProfileForField(field) === 'rich' ? 'rich' : markupProfileForField(field) === 'inline' ? 'inline' : undefined}
+          slotColor={teinte}
+          inheritedColor={couleur ? teinteParDefaut(couleur, t) : undefined}
+          onSlotColorChange={couleur
+            ? (hex) => { if (canPatchSlot(content, couleur.name)) onUpdate({ ...content, [couleur.name]: hex ?? '' }) }
+            : undefined}
+          cibleApercu={slotSeul === field.name ? cibleApercu : null}
+          altValue={field.type === 'image' ? content[nomChampAltImage(field.name)] : undefined}
+          onAltChange={field.type === 'image'
+            ? (v) => setField(nomChampAltImage(field.name), v)
+            : undefined}
+          onChange={(v) => setField(field.name, v)}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div style={{ padding: '16px 16px 32px' }}>
-      {/* En-tête : type + variante */}
-      <div style={{ marginBottom: 16 }}>
+    <div style={{ padding: '0 12px 12px' }}>
+      <div style={{ marginBottom: 12 }}>
         <div style={titreColonne(t)}>
           {def.label}
         </div>
         <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
-          {def.description}
+          {nature === 'emplacement' && champFocus
+            ? `Texte sélectionné : ${champFocus.label}`
+            : nature === 'groupe'
+              ? 'Groupe de textes sélectionné'
+              : def.description}
         </div>
       </div>
 
-      {/* Sélecteur de variante */}
+      {champsSelection.length > 0 && (
+        <div
+          role="status"
+          aria-label="Sélection"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: ESPACE, minWidth: 0 }}
+        >
+          {champsSelection.map((f) => (
+            <span
+              key={f.name}
+              title={f.label}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                maxWidth: '100%',
+                minHeight: 28,
+                padding: '0 10px',
+                borderRadius: 99,
+                background: `${t.primary}18`,
+                color: t.heading,
+                fontSize: 12,
+                fontWeight: 600,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {f.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {outilsGroupeUtiles && (
+        <TiroirInspecteur
+          id="groupe"
+          titre="Groupe"
+          icone="group"
+          ouvertParDefaut={groupMode || panneauGroupe}
+          forcerOuvert={nature === 'groupe' || groupMode}
+        >
+          <div role="toolbar" aria-label="Actions de groupe" style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE, marginBottom: ESPACE }}>
+            <Bouton
+              genre={groupMode ? 'actif' : 'secondaire'}
+              aria-pressed={groupMode}
+              aria-label="Grouper"
+              title={groupMode
+                ? 'Cliquez de nouveau pour quitter le mode grouper (Ctrl+G)'
+                : peutGrouper
+                  ? 'Grouper les textes sélectionnés (Ctrl+G)'
+                  : 'Cliquez ici puis deux textes dans l’aperçu (Ctrl+G)'}
+              onClick={appliquerGrouper}
+            >
+              {Icon.group(16, t.heading)} Grouper
+            </Bouton>
+            {meta.groups.length > 0 && (
+              <>
+                <Bouton
+                  genre="silencieux"
+                  aria-label="Dégrouper"
+                  title={decisionDegrouper.ok ? titreDegrouper : 'Sélectionnez un groupe d’abord'}
+                  onClick={() => {
+                    if (!groupeActif) {
+                      setAvisOutil('Sélectionnez un groupe d’abord')
+                      return
+                    }
+                    if (!decisionDegrouper.ok) {
+                      setAvisOutil(titreDegrouper)
+                      return
+                    }
+                    onUpdate(ungroup(content, groupeActif.id))
+                    if (selection) onSelectionChange?.({ ...selection, groupId: null })
+                  }}
+                >
+                  {Icon.ungroup(16, t.heading)} Dégrouper
+                </Bouton>
+                <Bouton
+                  genre="silencieux"
+                  aria-label="Bloquer le groupe"
+                  title={titreBloquer}
+                  onClick={() => {
+                    if (!groupeActif || !decisionBloquer.ok) {
+                      setAvisOutil(titreBloquer || 'Sélectionnez un groupe d’abord')
+                      return
+                    }
+                    onUpdate(lockGroup(content, groupeActif.id, 'group'))
+                  }}
+                >
+                  {Icon.lock(16, t.heading)} Bloquer
+                </Bouton>
+              </>
+            )}
+          </div>
+          <p role="status" style={{ fontSize: 12, color: avisOutil ? t.accent : t.muted, margin: '0 0 8px', lineHeight: 1.4 }}>
+            {avisOutil
+              ?? (groupMode
+                ? 'Cliquez deux textes dans l’aperçu.'
+                : 'Pour regrouper : ouvrez ce tiroir, puis cliquez deux textes dans l’aperçu.')}
+          </p>
+          {groupeActif ? (
+            <>
+              <FieldLabel htmlFor="groupe-libelle">Nom du groupe</FieldLabel>
+              <input
+                id="groupe-libelle"
+                value={groupeActif.label}
+                onChange={(e) => onUpdate(renameGroup(content, groupeActif.id, e.target.value))}
+                style={inputStyle(t)}
+                {...anneauFocus(t)}
+              />
+              <p style={{ fontSize: 12, color: t.muted, margin: '8px 0 0', lineHeight: 1.4 }}>
+                {groupeActif.lock === 'group'
+                  ? 'Groupe bloqué : les textes restent ensemble. Débloquez pour dégrouper.'
+                  : 'Les textes de ce groupe restent ensemble dans ce bloc.'}
+              </p>
+              {groupeActif.lock === 'group' && (
+                <Bouton
+                  style={{ marginTop: 8 }}
+                  genre="silencieux"
+                  aria-label="Débloquer le groupe"
+                  onClick={() => onUpdate(unlock(content, groupeActif.id))}
+                >
+                  {Icon.unlock(16, t.heading)} Débloquer
+                </Bouton>
+              )}
+            </>
+          ) : panneauGroupe ? (
+            <p style={{ fontSize: 13, color: t.muted, margin: 0, lineHeight: 1.4 }}>
+              Plusieurs textes sont sélectionnés. Cliquez Grouper pour les garder ensemble.
+            </p>
+          ) : null}
+        </TiroirInspecteur>
+      )}
+
       {def.variants.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <label style={labelStyle(t)}>Disposition</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <TiroirInspecteur
+          id="disposition"
+          titre="Disposition"
+          icone="columns"
+          ouvertParDefaut={nature === 'bloc'}
+        >
+          <FieldLabel>Mise en page du bloc</FieldLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {def.variants.map((v) => {
               const interdit = Boolean(banniereImposee) && v.id !== 'fullscreen' && v.id !== 'video'
               const actif = dispositionAffichee === v.id
               return (
-                <Bouton
+                <GhostButton
                   key={v.id}
                   disabled={interdit}
-                  genre={actif ? 'actif' : 'secondaire'}
+                  color={actif ? t.primary : t.text}
                   aria-pressed={actif}
                   title={interdit ? 'Cette mise en page affiche la bannière en plein écran. Pour Image + texte, choisissez Colonne unique.' : undefined}
                   onClick={() => { if (!interdit) onVariantChange(v.id) }}
+                  style={actif ? { background: `${t.primary}14`, borderColor: t.primary } : undefined}
                 >
                   {v.label}
-                </Bouton>
+                </GhostButton>
               )
             })}
           </div>
           {banniereImposee && (
-            <p style={{ fontSize: 11, color: t.muted, lineHeight: 1.4, margin: '8px 0 0' }}>
+            <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '8px 0 0' }}>
               Cette mise en page affiche la bannière en plein écran. Vous pouvez garder Vidéo. Pour Image + texte ou Centré, choisissez Colonne unique.
             </p>
           )}
-        </div>
+        </TiroirInspecteur>
       )}
 
-      {/* Séparateur */}
-      <div style={{ height: 1, background: t.shadow, margin: '16px 0' }} />
+      {(champsContenuAffiches.length > 0 || (champFocus && focusDansContenu)) && (
+        <TiroirInspecteur
+          id="contenu"
+          titre="Contenu"
+          icone="write"
+          ouvertParDefaut={nature !== 'groupe' || focusDansContenu}
+          forcerOuvert={nature === 'emplacement' && focusDansContenu}
+          compte={champsContenuAffiches.length}
+        >
+          {champFocus && focusDansContenu && (
+            <div style={{ marginBottom: autresContenu.length > 0 ? 12 : 0 }}>
+              {rendreChamp(champFocus)}
+            </div>
+          )}
+          {nature === 'emplacement' && focusDansContenu && autresContenu.length > 0 ? (
+            <TiroirInspecteur
+              id="autres-contenu"
+              titre="Autres contenus"
+              ouvertParDefaut={false}
+              compte={autresContenu.length}
+            >
+              {autresContenu.map(rendreChamp)}
+            </TiroirInspecteur>
+          ) : !(champFocus && focusDansContenu) ? (
+            champsContenuAffiches.map(rendreChamp)
+          ) : null}
+        </TiroirInspecteur>
+      )}
 
-      {/* Champs du contenu */}
-      <div style={{ ...titreColonne(t), marginBottom: 12 }}>
-        Contenu
-      </div>
-
-      {def.fields.filter((field) => champVisible(field, dispositionAffichee, section.type)).map((field) => (
-        <FieldEditor
-          key={field.name}
-          field={field}
-          value={content[field.name]}
-          locale={locale}
-          onChange={(v) => setField(field.name, v)}
-        />
-      ))}
+      {champsOptions.length > 0 && (
+        <TiroirInspecteur
+          id="options"
+          titre="Options"
+          icone="more"
+          ouvertParDefaut={nature === 'bloc' && champsContenuAffiches.length === 0}
+          forcerOuvert={nature === 'emplacement' && focusDansOptions}
+          compte={champsOptions.length}
+        >
+          {champFocus && focusDansOptions ? (
+            <>
+              {rendreChamp(champFocus)}
+              {champsOptions.filter((f) => f.name !== champFocus.name).length > 0 && (
+                <TiroirInspecteur
+                  id="autres-options"
+                  titre="Autres options"
+                  ouvertParDefaut={false}
+                  compte={champsOptions.length - 1}
+                >
+                  {champsOptions.filter((f) => f.name !== champFocus.name).map(rendreChamp)}
+                </TiroirInspecteur>
+              )}
+            </>
+          ) : (
+            champsOptions.map((field) => (
+              <div key={field.name} data-cms-field={field.name}>
+                <FieldEditor
+                  field={field}
+                  value={content[field.name]}
+                  locale={locale}
+                  locked={!canPatchSlot(content, field.name)}
+                  onChange={(v) => setField(field.name, v)}
+                />
+              </div>
+            ))
+          )}
+        </TiroirInspecteur>
+      )}
     </div>
   )
 }
@@ -123,28 +484,37 @@ interface FieldEditorProps {
   value: unknown
   locale: Locale
   onChange: (value: unknown) => void
+  idPrefix?: string
+  locked?: boolean
+  profile?: 'inline' | 'rich'
+  slotColor?: string
+  inheritedColor?: string
+  onSlotColorChange?: (hex: string | undefined) => void
+  cibleApercu?: CibleApercu | null
+  altValue?: unknown
+  onAltChange?: (value: unknown) => void
 }
 
-function FieldEditor({ field, value, locale, onChange }: FieldEditorProps) {
+function FieldEditor({ field, value, locale, onChange, idPrefix, locked, profile, slotColor, inheritedColor, onSlotColorChange, cibleApercu, altValue, onAltChange }: FieldEditorProps) {
   switch (field.type) {
     case 'text':
-      return <TextField field={field} value={value} locale={locale} onChange={onChange} />
+      return <TextField field={field} value={value} locale={locale} onChange={onChange} idPrefix={idPrefix} locked={locked} profile={profile} slotColor={slotColor} inheritedColor={inheritedColor} onSlotColorChange={onSlotColorChange} cibleApercu={cibleApercu} />
     case 'multiline':
-      return <MultilineField field={field} value={value} locale={locale} onChange={onChange} />
+      return <MultilineField field={field} value={value} locale={locale} onChange={onChange} idPrefix={idPrefix} locked={locked} profile={profile} slotColor={slotColor} inheritedColor={inheritedColor} onSlotColorChange={onSlotColorChange} cibleApercu={cibleApercu} />
     case 'number':
-      return <NumberField field={field} value={value} onChange={onChange} />
+      return <NumberField field={field} value={value} onChange={onChange} idPrefix={idPrefix} />
     case 'select':
-      return <SelectField field={field} value={value} onChange={onChange} />
+      return <SelectField field={field} value={value} onChange={onChange} idPrefix={idPrefix} />
     case 'list':
-      // `locale` est transmis : les sous-champs d'une liste d'objets sont
-      // édités par le même FieldEditor, qui en a besoin (textes bilingues).
-      return <ListField field={field} value={value} locale={locale} onChange={onChange} />
+      return <ListField field={field} value={value} locale={locale} onChange={onChange} idPrefix={idPrefix} />
     case 'group':
-      return <GroupField field={field} value={value} locale={locale} onChange={onChange} />
+      return <GroupField field={field} value={value} locale={locale} onChange={onChange} idPrefix={idPrefix} locked={locked} />
     case 'image':
-      return <ImageField field={field} value={value} onChange={onChange} />
+      return <ImageField field={field} value={value} locale={locale} onChange={onChange} idPrefix={idPrefix} altValue={altValue} onAltChange={onAltChange} />
     case 'video':
-      return <VideoField field={field} value={value} onChange={onChange} />
+      return <VideoField field={field} value={value} onChange={onChange} idPrefix={idPrefix} />
+    case 'color':
+      return <ColorField field={field} value={value} onChange={onChange} />
     default:
       return null
   }
@@ -154,148 +524,299 @@ function FieldEditor({ field, value, locale, onChange }: FieldEditorProps) {
 /* Champs individuels                                                  */
 /* ------------------------------------------------------------------ */
 
-function TextField({ field, value, locale, onChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void }) {
+function TextField({ field, value, locale, onChange, idPrefix, locked, profile, slotColor, inheritedColor, onSlotColorChange, cibleApercu }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string; locked?: boolean; profile?: 'inline' | 'rich'; slotColor?: string; inheritedColor?: string; onSlotColorChange?: (hex: string | undefined) => void; cibleApercu?: CibleApercu | null }) {
   const { theme: t } = useSite()
-  // Résoudre la valeur bilingue
-  const resolved = resolveValue(value, locale)
+  const inputId = champId(idPrefix, field.name, locale)
+  const hint = locale === 'fr' ? 'Texte en français' : 'Text in English'
+  const markup = profile ?? (field.inlineMarkup ? 'inline' : undefined)
 
-  if (field.translatable !== false && isTranslationObject(value)) {
+  if (field.translatable !== false) {
+    const obj = asTranslation(value)
+    if (field.inlineMarkup) {
+      return (
+        <TextToolbox
+          id={inputId}
+          label={`${field.label}${field.required ? ' *' : ''}`}
+          localeHint={hint}
+          help={field.help}
+          value={obj[locale]}
+          disabled={locked}
+          profile={markup === 'rich' ? 'rich' : 'inline'}
+          slotColor={slotColor}
+          inheritedColor={inheritedColor}
+          onSlotColorChange={onSlotColorChange}
+          cibleApercu={cibleApercu}
+          onChange={(next) => onChange({ ...obj, [locale]: next })}
+        />
+      )
+    }
     return (
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(['fr', 'en'] as const).map((lang) => (
-            <div key={lang}>
-              <label htmlFor={`${field.name}-${lang}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.muted, marginBottom: 4 }}>
-                {lang === 'fr' ? 'Français' : 'English'}
-              </label>
-              <input
-                id={`${field.name}-${lang}`}
-                value={(value as Record<string, string>)[lang] ?? ''}
-                onChange={(e) => {
-                  const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
-                  onChange(obj)
-                }}
-                style={{ ...inputStyle(t), minHeight: CIBLE }}
-                {...anneauFocus(t)}
-              />
-            </div>
-          ))}
+        <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
+        <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+          {hint}
         </div>
+        <input
+          id={inputId}
+          value={obj[locale]}
+          disabled={locked}
+          onChange={(e) => onChange({ ...obj, [locale]: e.target.value })}
+          style={inputStyle(t)}
+          {...anneauFocus(t)}
+        />
+        {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
       </div>
     )
   }
 
+  const resolved = resolveValue(value, locale)
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-      <input value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle(t), minHeight: CIBLE }} {...anneauFocus(t)} />
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
+      <input id={inputId} value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)} style={inputStyle(t)} {...anneauFocus(t)} />
+      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
 
-function MultilineField({ field, value, locale, onChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void }) {
+function MultilineField({ field, value, locale, onChange, idPrefix, locked, profile, slotColor, inheritedColor, onSlotColorChange, cibleApercu }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string; locked?: boolean; profile?: 'inline' | 'rich'; slotColor?: string; inheritedColor?: string; onSlotColorChange?: (hex: string | undefined) => void; cibleApercu?: CibleApercu | null }) {
   const { theme: t } = useSite()
-  const resolved = resolveValue(value, locale)
+  const inputId = champId(idPrefix, field.name, `ml-${locale}`)
+  const hint = locale === 'fr' ? 'Texte en français' : 'Text in English'
 
-  /*
-    Même branche bilingue que `TextField`. Elle manquait ici.
-
-    ⚠️ SON ABSENCE A DÉTRUIT DES DONNÉES EN PRODUCTION
-    Sans cette branche, le composant écrivait une CHAÎNE SIMPLE là où la valeur
-    était un objet `{ fr, en }` : `onChange(e.target.value)`. Conséquences :
-      - la version ANGLAISE était perdue, définitivement et sans le moindre
-        avertissement ;
-      - le validateur restait muet, puisqu'il ne teste `isTranslation` que sur
-        les objets — une chaîne lui échappait ;
-      - et comme le public lit l'instantané figé, RIEN ne changeait à l'écran :
-        le restaurateur ne pouvait pas s'en apercevoir.
-    Mesuré : `hero.subtitle` et `story.body` avaient été abîmés ainsi.
-
-    Les deux composants doivent rester symétriques : un champ déclaré
-    traduisible se présente de la même façon, qu'il soit court ou long.
-  */
-  if (field.translatable !== false && isTranslationObject(value)) {
+  if (field.translatable !== false) {
+    const obj = asTranslation(value)
+    if (field.inlineMarkup) {
+      return (
+        <TextToolbox
+          id={inputId}
+          label={`${field.label}${field.required ? ' *' : ''}`}
+          localeHint={hint}
+          help={field.help}
+          multiline
+          disabled={locked}
+          profile={profile ?? 'rich'}
+          slotColor={slotColor}
+          inheritedColor={inheritedColor}
+          onSlotColorChange={onSlotColorChange}
+          cibleApercu={cibleApercu}
+          value={obj[locale]}
+          onChange={(next) => onChange({ ...obj, [locale]: next })}
+        />
+      )
+    }
     return (
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(['fr', 'en'] as const).map((lang) => (
-            <div key={lang}>
-              <label htmlFor={`${field.name}-ml-${lang}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.muted, marginBottom: 4 }}>
-                {lang === 'fr' ? 'Français' : 'English'}
-              </label>
-              <textarea
-                id={`${field.name}-ml-${lang}`}
-                value={(value as Record<string, string>)[lang] ?? ''}
-                onChange={(e) => {
-                  const obj = { ...(value as Record<string, string> || {}), [lang]: e.target.value }
-                  onChange(obj)
-                }}
-                rows={3}
-                style={{ ...inputStyle(t), fontSize: 13, resize: 'vertical', minHeight: 72 }}
-                {...anneauFocus(t)}
-              />
-            </div>
-          ))}
+        <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
+        <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+          {hint}
         </div>
+        <textarea
+          id={inputId}
+          value={obj[locale]}
+          disabled={locked}
+          onChange={(e) => onChange({ ...obj, [locale]: e.target.value })}
+          rows={3}
+          style={{ ...inputStyle(t), fontSize: 13, resize: 'vertical', minHeight: 72 }}
+          {...anneauFocus(t)}
+        />
       </div>
     )
   }
 
+  const resolved = resolveValue(value, locale)
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>{field.label}{field.required ? ' *' : ''}</label>
-      <textarea value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)}
+      <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
+      <textarea id={inputId} value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)}
         rows={3} style={{ ...inputStyle(t), resize: 'vertical', minHeight: 72 }} {...anneauFocus(t)} />
     </div>
   )
 }
 
-function NumberField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+function NumberField({ field, value, onChange, idPrefix }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void; idPrefix?: string }) {
   const { theme: t } = useSite()
+  const inputId = champId(idPrefix, field.name)
+  const sliderId = champId(idPrefix, field.name, 'curseur')
+  const parsed = parseFieldNumber(value)
+  const facultatif = field.required !== true
+  const vide = parsed === null
+  const borne = hasNumericBounds(field)
+  const min = field.min ?? 0
+  const max = field.max ?? 100
+  const step = field.step && field.step > 0 ? field.step : 1
+  const affiche = vide ? (facultatif ? '' : min) : parsed
+  const curseur = vide ? min : clampFieldNumber(field, parsed)
+  const unite = field.unit ? ` ${field.unit}` : ''
+
+  const ecrire = (n: number | null) => {
+    if (n === null) {
+      onChange(null)
+      return
+    }
+    onChange(clampFieldNumber(field, n))
+  }
+
+  const messageBorne = !vide && borne && (parsed < min || parsed > max)
+    ? `Choisissez un nombre entre ${min} et ${max}${unite}.`
+    : null
+
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>{field.label}</label>
-      <input type="number" value={typeof value === 'number' ? value : ''} onChange={(e) => {
-        const n = e.target.valueAsNumber
-        onChange(isNaN(n) ? null : n)
-      }} style={inputStyle(t)} placeholder={field.help} {...anneauFocus(t)} />
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      <FieldLabel htmlFor={inputId}>{field.label}</FieldLabel>
+      {vide && facultatif ? (
+        <div>
+          <p style={{ fontSize: 13, color: t.muted, margin: '0 0 8px', lineHeight: 1.4 }}>
+            {field.unit === 'plats' || field.unit === 'articles'
+              ? `Tous les ${field.unit} sont affichés.`
+              : 'Aucune limite : tout est affiché.'}
+          </p>
+          <GhostButton color={t.primary} onClick={() => ecrire(clampFieldNumber(field, field.max ? Math.min(12, field.max) : 12))}>
+            Limiter
+          </GhostButton>
+        </div>
+      ) : (
+        <>
+          {borne && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Bouton
+                carre
+                disabled={curseur <= min}
+                aria-label="Diminuer"
+                onClick={() => ecrire(curseur - step)}
+              >
+                −
+              </Bouton>
+              <input
+                id={sliderId}
+                className="admin-focus admin-range"
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={curseur}
+                aria-label={field.label}
+                aria-valuemin={min}
+                aria-valuemax={max}
+                aria-valuenow={curseur}
+                aria-valuetext={`${curseur}${unite}`}
+                onChange={(e) => ecrire(e.target.valueAsNumber)}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <Bouton
+                carre
+                disabled={curseur >= max}
+                aria-label="Augmenter"
+                onClick={() => ecrire(curseur + step)}
+              >
+                +
+              </Bouton>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              id={inputId}
+              type="number"
+              min={field.min}
+              max={field.max}
+              step={step}
+              value={affiche}
+              onChange={(e) => {
+                const raw = e.target.value
+                if (raw === '' && facultatif) {
+                  ecrire(null)
+                  return
+                }
+                const n = e.target.valueAsNumber
+                if (Number.isNaN(n)) return
+                ecrire(n)
+              }}
+              style={{ ...inputStyle(t), flex: 1 }}
+              {...anneauFocus(t)}
+            />
+            {field.unit && <span style={{ fontSize: 13, color: t.muted, flexShrink: 0 }}>{field.unit}</span>}
+          </div>
+          {facultatif && !vide && (
+            <GhostButton color={t.muted} onClick={() => ecrire(null)} style={{ marginTop: 8 }}>
+              Tout afficher
+            </GhostButton>
+          )}
+        </>
+      )}
+      {messageBorne && (
+        <div id={`${inputId}-erreur`} role="status" style={{ fontSize: 12, color: t.accent, marginTop: 4 }}>
+          {messageBorne}
+        </div>
+      )}
+      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
 
-function SelectField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+function SelectField({ field, value, onChange, idPrefix }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void; idPrefix?: string }) {
   const { theme: t } = useSite()
+  const inputId = champId(idPrefix, field.name)
+  const brut = typeof value === 'string' ? value.trim().replace(/^#/, '') : ''
+  const options = [...(field.options ?? [])]
+  if (brut && !options.some((o) => o.value === brut)) {
+    options.unshift({ value: brut, label: brut })
+  }
+  const actuel = brut && options.some((o) => o.value === brut)
+    ? brut
+    : (field.name === 'spacing' ? 'normal' : field.name === 'visibleOn' ? 'all' : field.name === 'target' ? (options[0]?.value ?? '') : '')
+  const presets = options.length > 0 && options.length <= 8 && field.name !== 'target'
+
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>{field.label}</label>
-      <select value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}
-        style={{ ...inputStyle(t), cursor: 'pointer' }} {...anneauFocus(t)}>
-        <option value="">Choisir</option>
-        {(field.options ?? []).map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      <FieldLabel htmlFor={presets ? undefined : inputId}>{field.label}</FieldLabel>
+      {presets ? (
+        <div role="group" aria-label={field.label} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {options.map((o) => {
+            const actif = actuel === o.value
+            return (
+              <GhostButton
+                key={o.value}
+                color={actif ? t.primary : t.text}
+                aria-pressed={actif}
+                onClick={() => onChange(o.value)}
+                style={actif ? { background: `${t.primary}14`, borderColor: t.primary } : undefined}
+              >
+                {o.label}
+              </GhostButton>
+            )
+          })}
+        </div>
+      ) : (
+        <select id={inputId} value={actuel} onChange={(e) => onChange(e.target.value)}
+          style={{ ...inputStyle(t), cursor: 'pointer' }} {...anneauFocus(t)}>
+          {field.name !== 'target' && <option value="">Choisir</option>}
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      )}
+      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
 
-function ListField({ field, value, locale, onChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void }) {
+function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string }) {
   const { theme: t } = useSite()
   const items = Array.isArray(value) ? value : []
 
   const addItem = () => {
     if (field.itemType) {
-      // Liste de valeurs simples (ex. chips)
-      onChange([...items, ''])
+      const vide = field.itemType === 'text' || field.itemType === 'multiline'
+        ? (field.translatable !== false ? { fr: '', en: '' } : '')
+        : ''
+      onChange([...items, vide])
     } else if (field.itemFields) {
-      // Liste d'objets (ex. membres, avis)
       const obj: Record<string, unknown> = {}
-      for (const f of field.itemFields) obj[f.name] = ''
+      for (const f of field.itemFields) {
+        obj[f.name] = (f.type === 'text' || f.type === 'multiline') && f.translatable !== false
+          ? { fr: '', en: '' }
+          : ''
+      }
       onChange([...items, obj])
     }
   }
@@ -332,10 +853,10 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>
+      <FieldLabel>
         {field.label}
         {field.maxItems && <span style={{ fontWeight: 400, color: t.muted }}> ({items.length}/{field.maxItems})</span>}
-      </label>
+      </FieldLabel>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map((item, i) => (
@@ -345,17 +866,26 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>
-                {field.itemType ? `Élément ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`}
+                {field.itemType ? `Ligne ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`}
               </span>
-              <Bouton carre genre="danger" aria-label="Retirer cet élément" onClick={() => removeItem(i)}>
+              <Bouton carre genre="danger" aria-label="Retirer cette ligne" onClick={() => removeItem(i)}>
                 {Icon.trash(16, t.accent)}
               </Bouton>
             </div>
 
             {field.itemType ? (
-              // Valeur simple
-              <input value={typeof item === 'string' ? item : ''} onChange={(e) => updateItem(i, e.target.value)}
-                style={inputStyle(t)} placeholder={`Élément ${i + 1}`} {...anneauFocus(t)} />
+              <FieldEditor
+                field={{
+                  name: 'ligne',
+                  label: '',
+                  type: field.itemType,
+                  translatable: field.translatable,
+                }}
+                value={item}
+                locale={locale}
+                onChange={(v) => updateItem(i, v)}
+                idPrefix={champId(idPrefix, field.name, String(i))}
+              />
             ) : field.itemFields ? (
               // Objet : TOUS les sous-champs sont édités, pas seulement le premier.
               // Avant, seul `itemFields[0]` était affiché : le rôle et la
@@ -366,7 +896,7 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
               // Les libellés sont repris : hors d'un sous-formulaire, le champ
               // n'est plus désigné par le titre de la liste.
               <div>
-                {field.itemFields.map((sub, k) => (
+                {field.itemFields.filter((sub) => !champEstAltImage(sub, field.itemFields ?? [])).map((sub, k) => (
                   <FieldEditor
                     key={sub.name}
                     field={{
@@ -377,6 +907,13 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
                     value={typeof item === 'object' && item !== null ? (item as Record<string, unknown>)[sub.name] : undefined}
                     locale={locale}
                     onChange={(v) => updateSubField(i, item, sub.name, v)}
+                    idPrefix={champId(idPrefix, field.name, String(i))}
+                    altValue={sub.type === 'image' && typeof item === 'object' && item !== null
+                      ? (item as Record<string, unknown>)[nomChampAltImage(sub.name)]
+                      : undefined}
+                    onAltChange={sub.type === 'image'
+                      ? (v) => updateSubField(i, item, nomChampAltImage(sub.name), v)
+                      : undefined}
                   />
                 ))}
               </div>
@@ -386,9 +923,9 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
       </div>
 
       {(!field.maxItems || items.length < field.maxItems) && (
-        <Bouton onClick={addItem} style={{ marginTop: 8 }}>
+        <GhostButton color={t.primary} onClick={addItem} style={{ marginTop: 8 }}>
           {Icon.plus(16, t.primary)} Ajouter
-        </Bouton>
+        </GhostButton>
       )}
       {/* L'aide n'est répétée dans aucun élément : elle ne s'affiche ici que si
           la liste est vide, sinon elle apparaîtrait une fois par élément. */}
@@ -397,7 +934,7 @@ function ListField({ field, value, locale, onChange }: { field: FieldDef; value:
   )
 }
 
-function GroupField({ field, value, locale, onChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void }) {
+function GroupField({ field, value, locale, onChange, idPrefix, locked }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string; locked?: boolean }) {
   const { theme: t } = useSite()
   const obj = (typeof value === 'object' && value !== null && !Array.isArray(value)) ? value as Record<string, unknown> : {}
 
@@ -407,25 +944,38 @@ function GroupField({ field, value, locale, onChange }: { field: FieldDef; value
 
   return (
     <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: `1px solid ${t.shadow}`, background: `${t.primary}03` }}>
-      <label style={{ ...labelStyle(t), marginBottom: 8 }}>{field.label}</label>
-      {field.itemFields?.map((sub) => (
-        <FieldEditor key={sub.name} field={sub} value={obj[sub.name]} locale={locale} onChange={(v) => updateSubField(sub.name, v)} />
+      <FieldLabel>{field.label}</FieldLabel>
+      {field.itemFields?.filter((sub) => !champEstAltImage(sub, field.itemFields ?? [])).map((sub) => (
+        <FieldEditor
+          key={sub.name}
+          field={sub}
+          value={obj[sub.name]}
+          locale={locale}
+          onChange={(v) => updateSubField(sub.name, v)}
+          idPrefix={champId(idPrefix, field.name)}
+          locked={locked}
+          altValue={sub.type === 'image' ? obj[nomChampAltImage(sub.name)] : undefined}
+          onAltChange={sub.type === 'image' ? (v) => updateSubField(nomChampAltImage(sub.name), v) : undefined}
+        />
       ))}
       {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
 
-function VideoField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+function VideoField({ field, value, onChange, idPrefix }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void; idPrefix?: string }) {
   const { theme: t, media } = useSite()
   const actuel = typeof value === 'string' ? value : ''
   const videos = media.filter((m) => m.url && (m.content_type?.startsWith('video/') || /\.(mp4|webm|ogg)(\?|$)/i.test(m.url)))
+  const selectId = champId(idPrefix, field.name, 'video')
+  const inputId = champId(idPrefix, field.name)
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>{field.label}</label>
+      <FieldLabel htmlFor={videos.length > 0 ? selectId : inputId}>{field.label}</FieldLabel>
       {videos.length > 0 && (
         <select
+          id={selectId}
           value={videos.some((m) => m.url === actuel) ? actuel : ''}
           onChange={(e) => { if (e.target.value) onChange(e.target.value) }}
           style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 8 }}
@@ -438,6 +988,7 @@ function VideoField({ field, value, onChange }: { field: FieldDef; value: unknow
         </select>
       )}
       <input
+        id={videos.length > 0 ? undefined : inputId}
         value={actuel}
         onChange={(e) => onChange(e.target.value)}
         style={inputStyle(t)}
@@ -449,14 +1000,98 @@ function VideoField({ field, value, onChange }: { field: FieldDef; value: unknow
   )
 }
 
-function ImageField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+function ColorField({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
   const { theme: t } = useSite()
+  const actuel = typeof value === 'string' ? sanitiserHex(value) ?? undefined : undefined
+  return (
+    <ColorControl
+      label={field.label}
+      value={actuel}
+      inherited={teinteParDefaut(field, t)}
+      against={contrasteDeclare(field.against, t)}
+      help={field.help}
+      onChange={(v) => onChange(v ?? '')}
+    />
+  )
+}
+
+function teinteParDefaut(field: FieldDef, t: ThemePalette): string {
+  if (field.name === 'blockTint') return t.bg
+  if (field.name === 'overlayTint') return '#000000'
+  if (field.name === 'headingColor' || field.name === 'titleColor') return t.heading
+  if (field.name === 'taglineColor') return t.muted
+  if (field.name === 'primaryColor') return t.primary
+  if (field.name === 'secondaryColor') return t.heading
+  return t.primary
+}
+
+function contrasteDeclare(against: string | undefined, t: ThemePalette): string | undefined {
+  if (!against) return undefined
+  if (against.startsWith('#')) return against
+  const table: Record<string, string> = {
+    text: t.text,
+    bg: t.bg,
+    surface: t.surface,
+    heading: t.heading,
+    cream: t.cream,
+    primary: t.primary,
+  }
+  return table[against]
+}
+
+function ImageField({ field, value, locale, onChange, idPrefix, altValue, onAltChange }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string; altValue?: unknown; onAltChange?: (v: unknown) => void }) {
+  const { theme: t, media } = useSite()
+  const actuel = typeof value === 'string' ? value : ''
+  const photos = media.filter((m) => m.url && (m.content_type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(m.url)))
+  const inputId = champId(idPrefix, field.name)
+  const selectId = champId(idPrefix, field.name, 'photo')
+  const altId = champId(idPrefix, nomChampAltImage(field.name), locale)
+  const altObj = asTranslation(altValue)
+  const altTexte = altObj[locale] ?? ''
+  const photoSansAlt = actuel.trim().length > 0 && altTexte.trim().length === 0
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle(t)}>{field.label}</label>
-      <input value={typeof value === 'string' ? value : ''} onChange={(e) => onChange(e.target.value)}
-        style={inputStyle(t)} placeholder="URL de l'image" {...anneauFocus(t)} />
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      <FieldLabel htmlFor={photos.length > 0 ? selectId : inputId}>{field.label}</FieldLabel>
+      {photos.length > 0 && (
+        <select
+          id={selectId}
+          value={photos.some((m) => m.url === actuel) ? actuel : ''}
+          onChange={(e) => { if (e.target.value) onChange(e.target.value) }}
+          style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 8 }}
+          {...anneauFocus(t)}
+        >
+          <option value="">Choisir une photo déjà téléversée</option>
+          {photos.map((m) => (
+            <option key={m.id || m.url} value={m.url}>{m.filename || m.slot}</option>
+          ))}
+        </select>
+      )}
+      <input
+        id={inputId}
+        value={actuel}
+        onChange={(e) => onChange(e.target.value)}
+        style={inputStyle(t)}
+        placeholder="Ou coller l’adresse d’une photo…"
+        {...anneauFocus(t)}
+      />
+      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {onAltChange && (
+        <div style={{ marginTop: 10 }}>
+          <FieldLabel htmlFor={altId}>Texte alternatif</FieldLabel>
+          <input
+            id={altId}
+            value={altTexte}
+            onChange={(e) => onAltChange({ ...altObj, [locale]: e.target.value })}
+            style={inputStyle(t)}
+            aria-describedby={`${altId}-aide`}
+            placeholder="Décrivez la photo pour les non-voyants"
+            {...anneauFocus(t)}
+          />
+          <div id={`${altId}-aide`} role={photoSansAlt ? 'status' : undefined} style={{ fontSize: 12, color: photoSansAlt ? t.accent : t.muted, marginTop: 4, lineHeight: 1.4 }}>
+            Décrivez la photo pour les non-voyants
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -464,6 +1099,19 @@ function ImageField({ field, value, onChange }: { field: FieldDef; value: unknow
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
+
+function asTranslation(value: unknown): { fr: string; en: string } {
+  if (isTranslationObject(value)) {
+    const obj = value as Record<string, string>
+    return { fr: obj.fr ?? '', en: obj.en ?? '' }
+  }
+  if (typeof value === 'string') return { fr: value, en: '' }
+  return { fr: '', en: '' }
+}
+
+function champId(prefix: string | undefined, name: string, extra?: string) {
+  return [prefix, name, extra].filter(Boolean).join('-')
+}
 
 function champVisible(field: FieldDef, variant: string | null, type: PageSection['type']): boolean {
   if (!field.forVariants || field.forVariants.length === 0) return true
@@ -485,14 +1133,44 @@ function isTranslationObject(v: unknown): boolean {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && ('fr' in (v as Record<string, unknown>) || 'en' in (v as Record<string, unknown>))
 }
 
-function labelStyle(t: ThemePalette): React.CSSProperties {
-  return { display: 'block', fontSize: 12, fontWeight: 600, color: t.text, marginBottom: 5 }
+function familleChamp(field: FieldDef): 'contenu' | 'options' {
+  if (field.type === 'number' || field.type === 'select' || field.type === 'boolean' || field.type === 'color') return 'options'
+  return 'contenu'
 }
 
-function inputStyle(t: ThemePalette): React.CSSProperties {
-  return {
-    width: '100%', padding: '10px 16px', borderRadius: RAYON, minHeight: CIBLE,
-    border: `1px solid ${t.shadow}`, background: t.bg,
-    fontSize: 13, color: t.text, outline: 'none',
+function motifDecision(decision: GroupDecision, action: 'grouper' | 'degrouper' | 'bloquer'): string {
+  if (decision.ok) return ''
+  if (action === 'grouper') {
+    if (decision.reason === 'need-two') {
+      return 'Cliquez Grouper, puis deux textes du même bloc dans l’aperçu'
+    }
+    if (decision.reason === 'already-grouped') return 'Ces textes font déjà partie d’un groupe'
+    if (decision.reason === 'chrome') return 'On ne groupe pas l’en-tête ni le pied de page'
   }
+  if (action === 'degrouper') {
+    if (decision.reason === 'locked') return 'Débloquez le groupe avant de le dégrouper'
+    if (decision.reason === 'missing') return 'Sélectionnez un groupe d’abord'
+    if (decision.reason === 'singleton') return 'Un seul texte ne forme pas un groupe'
+  }
+  if (action === 'bloquer') {
+    if (decision.reason === 'missing') return 'Sélectionnez un groupe d’abord'
+    if (decision.reason === 'locked') return 'Ce groupe est déjà bloqué'
+  }
+  return 'Action indisponible pour cette sélection'
 }
+
+function groupeDeSelection(selection: SelectionState, meta: EditorMeta): EditorGroup | undefined {
+  if (selection.groupId) return meta.groups.find((g) => g.id === selection.groupId)
+  if (selection.slots.length === 1) return findGroupForSlot(meta.groups, selection.slots[0])
+  if (selection.slots.length < 2) return undefined
+  const groupes = selection.slots
+    .map((slot) => findGroupForSlot(meta.groups, slot))
+    .filter((g): g is EditorGroup => Boolean(g))
+  if (groupes.length === 0) return undefined
+  const premier = groupes[0]
+  if (groupes.every((g) => g.id === premier.id) && premier.slots.length === selection.slots.length) {
+    return premier
+  }
+  return undefined
+}
+

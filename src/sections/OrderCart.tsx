@@ -122,7 +122,7 @@ export function OrderCart() {
               style={{ width: '100%', maxWidth: '560px', maxHeight: '90vh', overflow: 'auto', background: t.surface, borderRadius: '20px', boxShadow: `0 24px 60px ${t.shadowDeep}` }}
             >
               <div style={{ padding: '20px 24px', borderBottom: `1px solid ${t.shadow}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: t.surface, zIndex: 2, borderRadius: '20px 20px 0 0' }}>
-                <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '20px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h3 style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: '20px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 10 }}>
                   Ma commande
                 </h3>
                 <button onClick={() => setOpen(false)} aria-label="Fermer" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.muted, padding: 4, display: 'inline-flex' }}>{Icon.x(20, t.muted)}</button>
@@ -200,7 +200,7 @@ export function OrderCart() {
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 14, background: `linear-gradient(135deg, ${t.primary}10, ${t.gold}08)`, border: `1px solid ${t.primary}20` }}>
                         <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>Total</span>
-                        <span style={{ fontFamily: 'var(--f-heading)', fontSize: '22px', fontWeight: 700, color: t.accent }}>{totalLabel}<span style={{ fontSize: '12px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span></span>
+                        <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '22px', fontWeight: 700, color: t.accent }}>{totalLabel}<span style={{ fontSize: '12px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span></span>
                       </div>
 
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

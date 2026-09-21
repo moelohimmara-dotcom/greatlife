@@ -86,13 +86,7 @@ export interface PublicationSectionInput {
 /**
  * Un lien de menu tel que le contrôle le voyait.
  *
- * ⚠️ PLUS ALIMENTÉ DEPUIS LA DÉCISION DU 2026-09-19 (constat M3).
- * Le site public ne rend PAS `navigation_items` : `PublicNav` et `Footer` portent
- * des listes écrites en dur, et aucun écran d'administration ne touche la
- * navigation. Valider ces liens revenait donc à vérifier 13 entrées que personne
- * ne voit — et à faire échouer une publication sur une donnée sans effet.
- * Le type est conservé pour le jour où la navigation sera branchée ; il n'est
- * plus consommé par `PublicationInput`.
+ * Liens du chrome figés à la publication (en-tête + pied).
  */
 export interface PublicationNavInput {
   label: Bilingue
@@ -120,41 +114,25 @@ export interface PublicationInput {
   menu: readonly PublicationMenuInput[]
   restaurant: PublicationRestaurantInput
   locale?: Locale
+  /**
+   * Liens du chrome qui seront figés. Absent = les contrôles n°2 et n°6
+   * restent non exécutés (jeux d’essai historiques). Fourni à la publication.
+   */
+  navigation?: readonly PublicationNavInput[]
+  /** Pages publiées connues, pour résoudre une cible de type `page`. */
+  publishedPageIds?: readonly string[]
 }
 
 /**
- * Contrôles que le site ne permet PAS encore de vérifier, avec la raison.
- *
- * POURQUOI C'EST ÉCRIT ICI ET PAS DANS UN COMMENTAIRE
- * Ces deux contrôles portent sur la navigation. Or le site public ne la rend
- * pas : `PublicNav` et `Footer` ont des listes en dur, et aucun écran
- * d'administration ne modifie `navigation_items`. Les exécuter reviendrait à
- * valider une fiction ; les retirer sans rien dire afficherait un vert mensonger.
- * Ils sont donc déclarés NON VÉRIFIÉS, et le panneau de publication le montre.
- *
- * CE QUE CELA COÛTE, ET C'EST ASSUMÉ
- * Les ancres que le public utilise ne sont plus vérifiées AU MOMENT DE PUBLIER.
- * Elles le sont au moment de DÉVELOPPER, par `npm run verify:anchors`, qui les
- * confronte à celles de `pages.published_snapshot` — la source que le public
- * reçoit réellement. C'est un filet de développement, pas de publication : la
- * limite est réelle et documentée.
- *
- * CE QUI GARANTIT QUE CES DEUX CONTRÔLES NE BLOQUENT JAMAIS — ET SA LIMITE
- * La garantie n'est PAS dans le type : `buildReport` fait primer le niveau le
- * plus grave, donc un constat sur `navigation` ou `links` l'emporterait sur
- * `notVerified` et réafficherait le contrôle en `error`. Ce qui la rend vraie
- * aujourd'hui, c'est qu'AUCUN code ne produit de constat pour ces deux
- * identifiants — et c'est MESURÉ, pas supposé : `npm run verify:lot3` exige que
- * les deux valent `skipped`, que leur motif soit non vide, qu'aucun ne vaille
- * `ok`, et que fournir les anciens liens ne change pas le rapport.
- * Si un jour un constat réapparaît sur l'un des deux, `verify:lot3` échoue et le
- * dit — plutôt que de laisser un vert silencieux.
+ * Conservé pour les jeux d’essai qui n’alimentent pas `navigation`.
+ * À la publication réelle, `runPublicationChecks` passe `{}` : les contrôles
+ * n°2 et n°6 s’exécutent (arbitrage propriétaire 2026-09-21).
  */
 export const PUBLICATION_CHECKS_NOT_VERIFIED: Partial<Record<PublicationCheckId, string>> = {
   navigation:
-    "La navigation du site n'est pas encore gérée depuis le CMS : elle ne peut pas être vérifiée.",
+    "La navigation du site n'a pas été fournie à ce contrôle : elle ne peut pas être vérifiée.",
   links:
-    "Les liens du menu ne sont pas encore gérés depuis le CMS : ils ne peuvent pas être vérifiés.",
+    "Les liens du menu n'ont pas été fournis à ce contrôle : ils ne peuvent pas être vérifiés.",
 }
 
 /** Assemble le rapport à partir des constats. Les 7 contrôles apparaissent toujours. */

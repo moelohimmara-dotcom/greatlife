@@ -8,11 +8,10 @@
  *   page `draft`     → rendu historique (composants + `site_content`)
  *   page `published` → rendu CMS (`page_sections`, via le renderer)
  *
- * Aucun drapeau dans le navigateur : la décision vient de la base, et la RLS
- * garantit qu'un visiteur ne reçoit jamais une section non publiée (TDR §31).
+ * Chrome (en-tête, pied, typo, logo, liens) : lu dans l’instantané publié,
+ * jamais dans `site_content.restaurant` live (arbitrage 2026-09-21).
  */
 
-import { useEffect, useState } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { CartProvider } from '@/contexts/CartContext'
 import { PublicNav } from '@/components/nav/PublicNav'
@@ -30,9 +29,15 @@ import { Footer } from './Footer'
 import { OrderCart } from './OrderCart'
 import { useCmsSections } from '@/cms/hooks/useCmsSections'
 import { PageRenderer } from '@/cms/renderer/PageRenderer'
-import { fetchSetting, resolveRestaurant, SETTING_KEYS, DEFAULT_RESTAURANT } from '@/cms/repository/settings'
+import { resolveRestaurant, DEFAULT_RESTAURANT } from '@/cms/repository/settings'
+import { assurerPolicesChargees } from '@/config/fonts'
+import { styleTypo, typoDepuisReglages, type TypoReglages } from '@/cms/model/sections/typo'
+import { chromeDepuisReglages } from '@/cms/model/sections/chrome-presentation'
 import { miseEnPageSurBanniere, normaliserPageLayout } from '@/cms/model/page-layout'
-import type { RestaurantSettings, ResolvedRestaurant } from '@/cms/repository/settings'
+import type { ResolvedRestaurant } from '@/cms/repository/settings'
+import type { SnapshotChrome } from '@/cms/model/publishing'
+import type { LienChrome } from '@/cms/model/sections/site-chrome'
+import { useEffect } from 'react'
 
 /**
  * Ancres héritées, utilisées uniquement par le chemin legacy (avant bascule CMS).
@@ -55,38 +60,52 @@ const ANCHORS = {
   blog: 'blog',
 } as const
 
-export function PublicSite() {
-  const { visibility, rootStyle } = useSite()
-  const { resolvedSections, loading, enabled, page } = useCmsSections()
-  const [restaurant, setRestaurant] = useState<ResolvedRestaurant>(
-    () => resolveRestaurant(DEFAULT_RESTAURANT, 'fr'),
-  )
+function restaurantDepuisChrome(chrome: SnapshotChrome | null): ResolvedRestaurant {
+  if (!chrome) return resolveRestaurant(DEFAULT_RESTAURANT, 'fr')
+  return resolveRestaurant(chrome.restaurant, 'fr')
+}
 
-  /*
-    Les coordonnées viennent des réglages du restaurant (TDR §16 : une source
-    unique). Elles ne doivent JAMAIS être recopiées en dur : une adresse figée
-    dans le code ne suivrait pas une modification faite dans l'administration.
-  */
+function typoDepuisChrome(chrome: SnapshotChrome | null): TypoReglages | null {
+  if (!chrome?.typography) return null
+  return typoDepuisReglages({ typography: chrome.typography })
+}
+
+function liensDepuisChrome(liens: SnapshotChrome['headerLinks'] | undefined): LienChrome[] {
+  return (liens ?? []).map((l) => ({
+    id: l.id,
+    label: l.label,
+    target: l.target,
+    visible: l.visible,
+    isCta: l.isCta,
+    source: 'settings' as const,
+  }))
+}
+
+export function PublicSite() {
+  const { visibility, rootStyle, content } = useSite()
+  const { resolvedSections, loading, enabled, page, chrome } = useCmsSections()
+
   useEffect(() => {
-    let cancelled = false
-    fetchSetting(SETTING_KEYS.restaurant).then((res) => {
-      if (cancelled) return
-      if (res.ok && res.data) {
-        setRestaurant(resolveRestaurant(res.data as unknown as RestaurantSettings, 'fr'))
-      }
-    }).catch(() => { /* repli sur les valeurs par défaut */ })
-    return () => { cancelled = true }
+    assurerPolicesChargees()
   }, [])
+
+  const restaurantPublie = restaurantDepuisChrome(chrome)
+  const typoPubliee = typoDepuisChrome(chrome)
+  const presentationPubliee = chrome
+    ? chromeDepuisReglages({ chromePresentation: chrome.chromePresentation })
+    : {}
 
   /*
     Tant qu'on ne sait pas si la page est publiée, peindre le rendu historique
     mentirait au visiteur (TDR §22 / flash observé).
   */
+  const enveloppe = { ...rootStyle, ...styleTypo(typoPubliee) }
+
   if (loading) {
     return (
       <CartProvider>
-        <div style={{ ...rootStyle, minHeight: '100vh' }} aria-busy="true">
-          <PublicNav />
+        <div style={{ ...enveloppe, minHeight: '100vh' }} data-cms-typo="" aria-busy="true">
+          <PublicNav restaurant={restaurantPublie} presentation={{}} liens={[]} />
         </div>
       </CartProvider>
     )
@@ -97,14 +116,26 @@ export function PublicSite() {
     const layout = normaliserPageLayout(page.layout)
     return (
       <CartProvider>
-        <div style={rootStyle} data-cms-shell={layout}>
-          <PublicNav overlay={miseEnPageSurBanniere(layout)} />
+        <div style={enveloppe} data-cms-shell={layout} data-cms-typo="">
+          <PublicNav
+            overlay={miseEnPageSurBanniere(layout)}
+            restaurant={restaurantPublie}
+            presentation={presentationPubliee}
+            liens={liensDepuisChrome(chrome?.headerLinks)}
+          />
           <PageRenderer
             page={page}
             sections={resolvedSections}
             locale="fr"
-            restaurant={restaurant}
-            pied={<Footer restaurant={restaurant} />}
+            restaurant={restaurantPublie}
+            pied={(
+              <Footer
+                restaurant={restaurantPublie}
+                locale="fr"
+                presentation={presentationPubliee}
+                liens={liensDepuisChrome(chrome?.footerLinks)}
+              />
+            )}
           />
           <OrderCart />
         </div>
@@ -113,10 +144,26 @@ export function PublicSite() {
   }
 
   // --- Chemin legacy : les données viennent de site_content ---
+  const restaurantLegacy: ResolvedRestaurant = {
+    name: content.restaurantName,
+    slogan: content.slogan,
+    address: content.address,
+    hours: content.hours,
+    phone: content.phone,
+    emailContact: content.emailContact,
+    emailReservation: content.emailReservation,
+    currency: content.currency,
+    social: {
+      facebook: content.socialFacebook,
+      instagram: content.socialInstagram,
+      whatsapp: content.socialWhatsapp,
+    },
+  }
+
   return (
     <CartProvider>
-      <div style={rootStyle}>
-        <PublicNav />
+      <div style={rootStyle} data-cms-typo="">
+          <PublicNav restaurant={restaurantLegacy} presentation={{}} liens={undefined} />
         {visibility.sections.home && <div id={ANCHORS.home}><Hero /></div>}
         {visibility.sections.carte && <div id={ANCHORS.carte}><Carte /></div>}
         {visibility.sections.histoire && <div id={ANCHORS.histoire}><Story /></div>}
@@ -127,7 +174,7 @@ export function PublicSite() {
         <div id={ANCHORS.reservation}><Reservation /></div>
         {visibility.testimonials && <div id={ANCHORS.temoignages}><Testimonials /></div>}
         {visibility.sections.blog && <div id={ANCHORS.blog}><Blog /></div>}
-        <Footer restaurant={restaurant} />
+        <Footer restaurant={restaurantLegacy} presentation={{}} liens={undefined} />
         <OrderCart />
       </div>
     </CartProvider>
