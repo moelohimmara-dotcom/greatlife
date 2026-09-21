@@ -73,11 +73,14 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   const NOTIF: Record<string, number> = { messages: unhandledMessagesCount, orders: pendingOrdersCount, reservations: pendingReservationsCount }
 
   const Sidebar = (
-    <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '22px 14px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+    /* `minHeight: 0` sur l'`aside` ET sur son `nav` : sans eux, `overflow: auto`
+       du `nav` reste inerte et la barre s'allonge jusqu'à 1179 px au lieu de
+       défiler dans sa propre colonne (défaut mesuré, voir la coquille plus bas). */
+    <aside style={{ background: t.surface, borderRight: `1px solid ${t.shadow}`, padding: '22px 14px', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Link to="/" style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, fontSize: '22px', color: t.heading, textDecoration: 'none', letterSpacing: '-0.02em', display: 'inline-flex', alignItems: 'baseline' }}>
         Great<span style={{ color: t.accent }}>life</span> <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
       </Link>
-      <nav style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, overflow: 'auto' }}>
+      <nav style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, minHeight: 0, overflow: 'auto' }}>
         {NAV_GROUPS.map(([groupLabel, items]) => (
           <div key={groupLabel}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: t.heading, marginBottom: 8, paddingLeft: 4 }}>{groupLabel}</div>
@@ -140,14 +143,37 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
       `...rootStyle` en PREMIER : les déclarations de mise en page de la console
       qui suivent continuent de gagner sur celles du thème.
     */
-    <div style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', height: '100%', minHeight: '100%', background: t.bg }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', height: '100%' }} className="admin-layout">
-<div className="admin-sidebar-desktop">{Sidebar}</div>
+    /*
+      LA COQUILLE EST BORNÉE PAR LA FENÊTRE, ET UN SEUL BLOC DÉFILE.
+
+      Défaut MESURÉ le 2026-09-21 en production, fenêtre de 674 px de haut :
+      la barre latérale faisait **1179 px**, parfois **1451 px** ; le bloc
+      « Connecté en tant que / Déconnexion / Voir le site » était **hors écran** ;
+      et `window.scrollTo(0, 400)` faisait passer le haut de la barre de
+      **0 à −400 px** — elle défilait avec la page au lieu de rester en place.
+
+      CAUSE. `main` portait `minHeight: '100vh'` alors que son contenu dépasse
+      la fenêtre. Le contenu gagnait, donc la ligne de grille grandissait, donc
+      `aside` (étiré à la hauteur de la ligne) grandissait, donc le DOCUMENT
+      grandissait — et c'est le document qui défilait, emportant la barre.
+      Un enfant de grille ou de flex a par défaut pour taille minimale celle de
+      son CONTENU (`min-height: auto`) : **sans `minHeight: 0`, `overflow: auto`
+      ne peut jamais s'activer**, le parent grandit à la place.
+
+      Deux principes, donc :
+        - la coquille est bornée à la fenêtre (`100dvh`) et ne défile pas ;
+        - le SEUL bloc défilant est `main`, et la barre défile dans son `nav`.
+      `100dvh` et non `100vh` : sur mobile, `100vh` ignore la barre d'outils
+      rétractable et déborde de sa hauteur.
+    */
+    <div style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', height: '100dvh', overflow: 'hidden', background: t.bg }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', gridTemplateRows: 'minmax(0, 1fr)', height: '100%', minHeight: 0, overflow: 'hidden' }} className="admin-layout">
+        <div className="admin-sidebar-desktop" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>{Sidebar}</div>
         <main className={active === 'content' ? 'admin-main-pad admin-main-editor' : 'admin-main-pad'} style={{
           padding: active === 'content' ? 0 : '32px 36px',
           overflow: active === 'content' ? 'hidden' : 'auto',
           position: 'relative',
-          minHeight: active === 'content' ? 0 : '100vh',
+          minHeight: 0,
           height: active === 'content' ? '100%' : undefined,
           display: active === 'content' ? 'flex' : undefined,
           flexDirection: 'column',
