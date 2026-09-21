@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
-import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination, formePastille, ESPACE, HAUTEUR_ETAT } from '@/admin/ui'
+import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination, formePastille, ESPACE, HAUTEUR_ETAT, StatusPill } from '@/admin/ui'
 import { lireNavPref, ecrireNavPref, type AdminNavPref } from '@/admin/admin-nav'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
@@ -84,6 +84,9 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   const [mobileNav, setMobileNav] = useState(false)
   const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
   const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
+  const menuToggleRef = useRef<HTMLButtonElement>(null)
+  const drawerPanelRef = useRef<HTMLDivElement>(null)
+  const focusAvantTiroir = useRef<HTMLElement | null>(null)
   const editorFocus = active === 'content'
   const editorHidesNav = editorFocus && !editorRail
   const rail = editorFocus || navPref === 'rail'
@@ -112,11 +115,50 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
+  /*
+    Tiroir mobile (D2) : focus initial dans le panneau, piège Tab, Esc ferme
+    et restitue le focus au hamburger. Backdrop hors tab order.
+  */
   useEffect(() => {
     if (!mobileNav) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileNav(false) }
+    focusAvantTiroir.current = (document.activeElement as HTMLElement) || menuToggleRef.current
+    const panel = drawerPanelRef.current
+    const selecteurs = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const focusables = () =>
+      panel ? Array.from(panel.querySelectorAll<HTMLElement>(selecteurs)).filter(
+        (el) => !el.hasAttribute('disabled') && el.offsetParent !== null,
+      ) : []
+    const premier = focusables()[0]
+    premier?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMobileNav(false)
+        return
+      }
+      if (e.key !== 'Tab' || !panel) return
+      const list = focusables()
+      if (list.length === 0) return
+      const first = list[0]
+      const last = list[list.length - 1]
+      const actif = document.activeElement as HTMLElement | null
+      if (e.shiftKey) {
+        if (actif === first || !panel.contains(actif)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else if (actif === last || !panel.contains(actif)) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      const cible = focusAvantTiroir.current || menuToggleRef.current
+      window.setTimeout(() => cible?.focus(), 0)
+    }
   }, [mobileNav])
 
   const toggleNav = useCallback(() => {
@@ -157,6 +199,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
 
   const boutonMenu = (place: 'sidebar' | 'main') => (
     <Bouton
+      ref={place === 'main' ? menuToggleRef : undefined}
       carre
       genre="secondaire"
       aria-label={toggleLabel}
@@ -187,26 +230,58 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'center' : 'space-between', gap: ESPACE, minHeight: 40 }}>
-        <Link
-          to="/"
-          title="Voir le site"
-          aria-label="Greatlife, voir le site"
-          style={{
-            fontFamily: 'var(--f-heading)',
-            fontWeight: 700,
-            fontSize: compact ? '18px' : '22px',
-            color: t.heading,
-            textDecoration: 'none',
-            letterSpacing: '-0.02em',
-            display: compact ? 'none' : 'inline-flex',
-            alignItems: 'baseline',
-            minWidth: 0,
-          }}
-        >
-          Great<span style={{ color: t.accent }}>life</span>{' '}
-          <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
-        </Link>
+      <div style={{
+        display: 'flex',
+        flexDirection: compact ? 'column' : 'row',
+        alignItems: 'center',
+        justifyContent: compact ? 'center' : 'space-between',
+        gap: ESPACE,
+        minHeight: 40,
+      }}>
+        {compact ? (
+          <Link
+            to="/"
+            title="Voir le site"
+            aria-label="Greatlife, voir le site"
+            style={{
+              fontFamily: 'var(--f-heading)',
+              fontWeight: 700,
+              fontSize: '20px',
+              color: t.heading,
+              textDecoration: 'none',
+              letterSpacing: '-0.02em',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              flexShrink: 0,
+            }}
+          >
+            G<span aria-hidden="true" style={{ color: t.accent, fontSize: 11, marginLeft: 1 }}>.</span>
+          </Link>
+        ) : (
+          <Link
+            to="/"
+            title="Voir le site"
+            aria-label="Greatlife, voir le site"
+            style={{
+              fontFamily: 'var(--f-heading)',
+              fontWeight: 700,
+              fontSize: '22px',
+              color: t.heading,
+              textDecoration: 'none',
+              letterSpacing: '-0.02em',
+              display: 'inline-flex',
+              alignItems: 'baseline',
+              minWidth: 0,
+            }}
+          >
+            Great<span style={{ color: t.accent }}>life</span>{' '}
+            <span style={{ fontSize: '11px', color: t.muted, fontWeight: 500, marginLeft: 4 }}>admin</span>
+          </Link>
+        )}
         {boutonMenu('sidebar')}
       </div>
       <nav aria-label="Navigation de la console" style={{ marginTop: compact ? 16 : 24, display: 'flex', flexDirection: 'column', gap: compact ? 12 : 18, flex: 1, overflow: 'auto', minHeight: 0 }}>
@@ -315,7 +390,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         }}>
           {boutonMenu('main')}
           {roleNotice && (
-            <div key={roleNotice.id} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60, maxWidth: 'min(92vw, 560px)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid ${t.accent}55`, background: t.surface, boxShadow: `0 8px 28px ${t.shadow}`, fontSize: '13px', fontWeight: 500, color: t.heading }}>
+            <div key={roleNotice.id} role="status" aria-live="polite" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 60, maxWidth: 'min(92vw, 560px)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1px solid ${t.accent}55`, background: t.surface, boxShadow: `0 8px 28px ${t.shadow}`, fontSize: '13px', fontWeight: 500, color: t.heading }}>
               <span style={{ display: 'inline-flex', color: t.accent }}>{Icon.check(18, t.accent)}</span>
               <span style={{ flex: 1 }}>{roleNotice.msg}</span>
               <Bouton carre genre="silencieux" aria-label="Fermer" onClick={dismissRoleNotice}>×</Bouton>
@@ -325,9 +400,15 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         </main>
       </div>
       {mobileNav && (
-        <div role="dialog" aria-modal="true" aria-label="Menu de la console" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-          <div onClick={() => setMobileNav(false)} style={{ flex: 1, background: 'rgba(0,0,0,0.4)' }} />
-          <div style={{ width: '260px', maxWidth: '82vw' }}>{renderNav(false, 'admin-console-nav-tiroir')}</div>
+        <div role="dialog" aria-modal="true" aria-label="Menu de la console" className="admin-nav-drawer" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
+          <div
+            aria-hidden="true"
+            onClick={() => setMobileNav(false)}
+            style={{ flex: 1, background: 'rgba(0,0,0,0.4)', cursor: 'pointer' }}
+          />
+          <div ref={drawerPanelRef} className="admin-nav-drawer-panel" style={{ width: '260px', maxWidth: '82vw', overscrollBehavior: 'contain' }}>
+            {renderNav(false, 'admin-console-nav-tiroir')}
+          </div>
         </div>
       )}
     </div>
@@ -337,8 +418,21 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
 
 function Dashboard() {
   const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
-  const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
-  const dsColor = dataSource === 'supabase' ? t.primary : t.muted
+  /*
+    Pastille honnête (A1/A5) : jamais « Chargement… » avec des totaux seed.
+    Vocabulaire restaurateur — pas « Supabase ».
+  */
+  const dsLabel = dataLoading
+    ? 'Mise à jour…'
+    : dataSource === 'supabase'
+      ? 'En ligne'
+      : 'Aperçu local'
+  const dsDetail = dataLoading
+    ? 'Les chiffres se mettent à jour.'
+    : dataSource === 'supabase'
+      ? 'Connecté à votre espace en ligne.'
+      : 'Données locales d’aperçu — pas encore synchronisées.'
+  const dsColor = dataLoading ? t.muted : dataSource === 'supabase' ? t.primary : t.muted
   const { user } = useAuth()
   const navigate = useNavigate()
   const ouvrir = (module: string) => navigate(`/admin?module=${module}`)
@@ -362,6 +456,8 @@ function Dashboard() {
   const fmt = (n: number) => n.toLocaleString('fr-FR')
   const periodLabel = period === 'all' ? 'tout l\'historique' : `${period} derniers jours`
   const periodOpts: [string, string][] = [['all', 'Tout'], ['30', '30 jours'], ['7', '7 jours']]
+  /** Tant que le chargement tourne, ne pas afficher le seed MENU (~38) comme vérité. */
+  const afficher = (n: number) => (dataLoading ? '—' : n)
 
   /*
     L'ESSENTIEL D'ABORD — ce qui attend une réponse, en trois gestes.
@@ -419,14 +515,12 @@ function Dashboard() {
       Wix documente une largeur maximale de 1248 px et ui-syntax ~1200 px : ce
       sont des PLAFONDS, pas des cibles. 760 les respecte.
     */
-    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ maxWidth: 760, margin: '0 auto' }} aria-busy={dataLoading || undefined}>
       <PageHeader
         title={`Bonjour ${user?.name || 'vous'}`}
         subtitle="Voici ce qui attend une réponse sur votre site."
         badge={
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}
-          </span>
+          <StatusPill label={dsLabel} color={dsColor} title={dsDetail} />
         }
       />
 
@@ -459,11 +553,18 @@ function Dashboard() {
         proprement à une colonne au lieu de déborder.
       */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '20px' }}>
-        {aTraiter.map(({ cle, titre, couleur, nombre, total, zero, un, pluriel }) => (
+        {aTraiter.map(({ cle, titre, couleur, nombre, total, zero, un, pluriel }) => {
+          const libelle = dataLoading
+            ? `${titre}, mise à jour…`
+            : nombre === 0
+              ? `${titre}. ${zero}`
+              : `${titre}. ${nombre} ${nombre === 1 ? un : pluriel}. Ouvrir et répondre`
+          return (
           <OrganicCard
             key={cle}
             hover
             onClick={() => ouvrir(cle)}
+            aria-label={libelle}
             style={{ padding: '24px', border: `1px solid ${t.shadow}` }}
           >
             {/*
@@ -478,14 +579,16 @@ function Dashboard() {
               lignes suffisent, et `minHeight: '2.7em'` fait le reste.
             */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
+              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: dataLoading || nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{afficher(nombre)}</div>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: `${couleur}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {cle === 'messages' ? Icon.mail(18, t.accent) : (cle === 'reservations' ? Icon.calendar(18, t.gold) : Icon.coin(18, t.gold))}
               </div>
             </div>
-            <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10, lineHeight: 1.35, minHeight: '2.7em' }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
+            <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10, lineHeight: 1.35, minHeight: '2.7em' }}>
+              {dataLoading ? 'Mise à jour…' : nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}
+            </div>
             <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
-              {titre} · {total} au total
+              {titre} · {dataLoading ? '—' : `${total} au total`}
             </div>
             <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: `1px dashed ${t.shadow}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12.5px', fontWeight: 700, color: t.primary }}>
@@ -494,7 +597,8 @@ function Dashboard() {
               {Icon.arrow(13, t.primary)}
             </div>
           </OrganicCard>
-        ))}
+          )
+        })}
       </div>
 
       {/* 2. LA JOURNÉE — chiffre d'affaires avec sa période, à côté des ressources. */}
@@ -510,13 +614,14 @@ function Dashboard() {
                 {confirmedOrders.length} commande{confirmedOrders.length > 1 ? 's' : ''} confirmée{confirmedOrders.length > 1 ? 's' : ''} · {periodLabel}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div role="group" aria-label="Période du chiffre d'affaires" style={{ display: 'flex', gap: ESPACE, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {periodOpts.map(([k, l]) => (
-                <button key={k} onClick={() => setPeriod(k as 'all' | '7' | '30')} style={{
-                  fontSize: '12px', fontWeight: 600, padding: '7px 13px', borderRadius: 100, cursor: 'pointer',
-                  border: `1px solid ${period === k ? t.primary : t.shadow}`, background: period === k ? t.primary : 'transparent',
-                  color: period === k ? '#fff' : t.muted, transition: 'all 0.15s',
-                }}>{l}</button>
+                <Bouton
+                  key={k}
+                  genre={period === k ? 'primaire' : 'secondaire'}
+                  aria-pressed={period === k}
+                  onClick={() => setPeriod(k as 'all' | '7' | '30')}
+                >{l}</Bouton>
               ))}
             </div>
           </div>
@@ -531,7 +636,7 @@ function Dashboard() {
           ] as [string, number][]).map(([lab, val]) => (
             <div key={lab} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px dashed ${t.shadow}` }}>
               <span style={{ fontSize: '12.5px', color: t.text }}>{lab}</span>
-              <span style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, color: t.heading }}>{val}</span>
+              <span style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, color: t.heading }}>{afficher(val)}</span>
             </div>
           ))}
         </OrganicCard>

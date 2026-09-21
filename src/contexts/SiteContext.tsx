@@ -364,53 +364,76 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  /*
+    VÉRITÉ DU CHARGEMENT (lot UX dashboard, 2026-09-21).
+
+    Avant : un seed MENU local (~38 plats) restait visible sous la pastille
+    « Chargement… », et une exception / un démontage laissait dataLoading à
+    true sans `finally`. Le restaurateur voyait des chiffres locaux présentés
+    comme une mise à jour en cours.
+
+    Désormais : `dataLoading` passe à true au début de chaque load, un
+    filet de 15 s le coupe si la promesse ne revient pas, et `finally`
+    l'éteint toujours tant que le provider est monté. Le dashboard masque
+    les totaux seed tant que `dataLoading` (voir AdminPanel).
+  */
   const load = useCallback(async () => {
-    const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
-      fetchMenu(),
-      fetchContent(),
-      fetchMessages(),
-      fetchBlogPosts(),
-      fetchMedia(),
-      fetchAdminUsers(),
-      fetchOrders(),
-      fetchReservations(),
-    ])
-    if (!estMonte.current) return
-    const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || resaRes.fromDb
-    setDataSource(anyDb ? 'supabase' : 'local')
-    if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
-    if (contentRes.fromDb && contentRes.data) {
-      appliquerContenuDeLaBase(contentRes.data)
+    setDataLoading(true)
+    const gardeFou = window.setTimeout(() => {
+      if (estMonte.current) setDataLoading(false)
+    }, 15_000)
+    try {
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
+        fetchMenu(),
+        fetchContent(),
+        fetchMessages(),
+        fetchBlogPosts(),
+        fetchMedia(),
+        fetchAdminUsers(),
+        fetchOrders(),
+        fetchReservations(),
+      ])
+      if (!estMonte.current) return
+      const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || resaRes.fromDb
+      setDataSource(anyDb ? 'supabase' : 'local')
+      if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
+      if (contentRes.fromDb && contentRes.data) {
+        appliquerContenuDeLaBase(contentRes.data)
+      }
+      if (messagesRes.fromDb && messagesRes.data.length > 0) {
+        setMessages(messagesRes.data)
+      }
+      if (blogRes.fromDb && blogRes.data.length > 0) {
+        setBlogPosts(blogRes.data)
+      }
+      if (mediaRes.fromDb && mediaRes.data.length > 0) {
+        setMedia(mediaRes.data.map(mediaAssetToSlot))
+      }
+      if (adminRes.fromDb) setAdminUsers(adminRes.data)
+      // Les QUATRE compteurs viennent de la même règle pure (`@/cms/model/compteurs`).
+      // Avant, seuls les totaux étaient posés ici : les compteurs « à traiter »
+      // restaient à 0 jusqu'à ce qu'un événement temps réel les réveille — d'où
+      // « 0 » affiché alors que la base portait 1 réservation et 4 commandes.
+      const compteurs = compteursPilotage(
+        ordersRes.fromDb ? ordersRes.data : [],
+        resaRes.fromDb ? resaRes.data : [],
+      )
+      if (ordersRes.fromDb) {
+        setOrdersCount(compteurs.ordersCount)
+        setPendingOrdersCount(compteurs.pendingOrdersCount)
+      }
+      if (resaRes.fromDb) {
+        setReservationsCount(compteurs.reservationsCount)
+        setPendingReservationsCount(compteurs.pendingReservationsCount)
+      }
+      setLastMessageCount(messagesRes.data.length)
+    } catch {
+      if (estMonte.current) setDataSource((prev) => (prev === 'loading' ? 'local' : prev))
+    } finally {
+      window.clearTimeout(gardeFou)
+      if (estMonte.current) setDataLoading(false)
     }
-    if (messagesRes.fromDb && messagesRes.data.length > 0) {
-      setMessages(messagesRes.data)
-    }
-    if (blogRes.fromDb && blogRes.data.length > 0) {
-      setBlogPosts(blogRes.data)
-    }
-    if (mediaRes.fromDb && mediaRes.data.length > 0) {
-      setMedia(mediaRes.data.map(mediaAssetToSlot))
-    }
-    if (adminRes.fromDb) setAdminUsers(adminRes.data)
-    // Les QUATRE compteurs viennent de la même règle pure (`@/cms/model/compteurs`).
-    // Avant, seuls les totaux étaient posés ici : les compteurs « à traiter »
-    // restaient à 0 jusqu'à ce qu'un événement temps réel les réveille — d'où
-    // « 0 » affiché alors que la base portait 1 réservation et 4 commandes.
-    const compteurs = compteursPilotage(
-      ordersRes.fromDb ? ordersRes.data : [],
-      resaRes.fromDb ? resaRes.data : [],
-    )
-    if (ordersRes.fromDb) {
-      setOrdersCount(compteurs.ordersCount)
-      setPendingOrdersCount(compteurs.pendingOrdersCount)
-    }
-    if (resaRes.fromDb) {
-      setReservationsCount(compteurs.reservationsCount)
-      setPendingReservationsCount(compteurs.pendingReservationsCount)
-    }
-    setLastMessageCount(messagesRes.data.length)
-    setDataLoading(false)
-  }, [])
+  }, [appliquerContenuDeLaBase])
 
   // Chargement initial : inchangé (site public, premier rendu).
   useEffect(() => {

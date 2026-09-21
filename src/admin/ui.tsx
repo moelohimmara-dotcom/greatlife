@@ -99,6 +99,7 @@ export function StatusPill({
   return (
     <span
       role="status"
+      aria-live="polite"
       aria-atomic="true"
       title={detail}
       aria-label={detail === label ? label : `${label}. ${detail}`}

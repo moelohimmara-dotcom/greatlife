@@ -7,7 +7,7 @@ import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { Bouton } from '@/admin/editor/chrome'
 
 export function LoginScreen() {
   const { login } = useAuth()
@@ -23,9 +23,9 @@ export function LoginScreen() {
     try {
       const result = await login(email, password)
       if (result.ok) navigate('/admin')
-      else setError(result.error ?? 'Erreur inconnue')
+      else setError(result.error ?? 'Connexion impossible. Réessayez.')
     } catch {
-      setError('Erreur inconnue')
+      setError('Connexion impossible. Réessayez.')
     } finally {
       setLoading(false)
     }
@@ -45,28 +45,22 @@ export function LoginScreen() {
           <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
             <div>
               <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.com" required
+              <Input type="email" name="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.com" required spellCheck={false}
                 style={{ background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }} />
             </div>
             <div>
               <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Mot de passe</Label>
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
+              <Input type="password" name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
                 style={{ background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%' }} />
             </div>
             {error && (
-              <div style={{ fontSize: '13px', color: t.accent, fontWeight: 500, padding: '10px 14px', background: `${t.accent}0d`, borderRadius: '12px', border: `1px solid ${t.accent}22` }}>
+              <div role="alert" style={{ fontSize: '13px', color: t.accent, fontWeight: 500, padding: '10px 14px', background: `${t.accent}0d`, borderRadius: '12px', border: `1px solid ${t.accent}22` }}>
                 {error}
               </div>
             )}
-            <Button type="submit" disabled={loading} style={{
-              background: t.primary, color: '#fff', fontWeight: 600,
-              padding: '13px 28px', borderRadius: '100px', fontSize: '15px',
-              border: 'none', cursor: loading ? 'wait' : 'pointer',
-              boxShadow: `0 4px 16px ${t.shadowDeep}`,
-              display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
-            }}>
-              {loading ? 'Vérification…' : 'Se connecter'} {!loading && Icon.arrow(16)}
-            </Button>
+            <Bouton type="submit" genre="primaire" etendu busy={loading} disabled={loading} style={{ fontSize: 15, gap: 8 }}>
+              {loading ? 'Vérification…' : <>Se connecter {Icon.arrow(16)}</>}
+            </Bouton>
           </form>
         </OrganicCard>
         <div style={{ textAlign: 'center', marginTop: '20px' }}>

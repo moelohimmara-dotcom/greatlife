@@ -138,6 +138,16 @@ html.admin-editor-lock body {
   display: inline-flex !important;
 }
 
+.admin-nav-drawer {
+  overscroll-behavior: contain;
+}
+
+.admin-nav-drawer-panel {
+  overscroll-behavior: contain;
+  max-height: 100dvh;
+  overflow: auto;
+}
+
 [data-admin-drawer="open"] .admin-nav-toggle-main {
   display: none !important;
 }

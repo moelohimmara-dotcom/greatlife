@@ -31,6 +31,25 @@ export const useAuth = () => useContext(AuthContext)!
 
 const LOCAL_SESSION_KEY = 'greatlife-session'
 
+/** Messages d’erreur de connexion en français métier (jamais le jargon Supabase). */
+function messageAuthFr(raw?: string | null): string {
+  const m = (raw ?? '').toLowerCase()
+  if (!m) return 'Email ou mot de passe incorrect.'
+  if (m.includes('invalid login') || m.includes('invalid credentials') || m.includes('invalid_credentials')) {
+    return 'Email ou mot de passe incorrect.'
+  }
+  if (m.includes('email not confirmed') || m.includes('not confirmed')) {
+    return 'Confirmez votre email avant de vous connecter.'
+  }
+  if (m.includes('too many') || m.includes('rate limit')) {
+    return 'Trop de tentatives. Réessayez dans quelques minutes.'
+  }
+  if (m.includes('network') || m.includes('fetch')) {
+    return 'Connexion impossible pour le moment. Réessayez.'
+  }
+  return 'Email ou mot de passe incorrect.'
+}
+
 function readLocalSession(): AuthUser | null {
   try {
     const raw = localStorage.getItem(LOCAL_SESSION_KEY)
@@ -234,7 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         writeLocalSession(u)
         return { ok: true }
       }
-      return { ok: false, error: 'Identifiants incorrects ou accès non autorisé.' }
+      return { ok: false, error: 'Email ou mot de passe incorrect.' }
     }
     try {
       const { data, error } = await sb.auth.signInWithPassword({
@@ -244,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error || !data.user) {
         // Aucun repli sur des identifiants codés en dur : lorsque Supabase est
         // configuré, seule une authentification réelle ouvre l'accès administrateur.
-        return { ok: false, error: error?.message ?? 'Identifiants incorrects.' }
+        return { ok: false, error: messageAuthFr(error?.message) }
       }
       const info = await resolveUserFromTable(normalized)
       if (!info.ok) {
@@ -264,10 +283,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u)
       writeLocalSession(u)
       return { ok: true }
-    } catch (err) {
+    } catch {
       return {
         ok: false,
-        error: err instanceof Error ? err.message : 'Erreur de connexion.',
+        error: 'Connexion impossible pour le moment. Réessayez.',
       }
     }
   }
