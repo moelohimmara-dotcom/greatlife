@@ -250,7 +250,7 @@ export function PageEditor({
         </div>
 
         {/* Colonne 2 : Aperçu */}
-        <div style={{ overflow: 'hidden', background: t.surface, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ overflow: 'hidden', background: t.bg, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <PreviewPane sections={editor.resolvedSections} locale={editor.locale} restaurant={restaurant} layout={layout} />
         </div>
 

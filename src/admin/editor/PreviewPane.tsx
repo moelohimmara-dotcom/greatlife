@@ -54,10 +54,7 @@ const RESTAURANT_ABSENT: ResolvedRestaurant = {
 
 function PreviewShell({ children }: { children: React.ReactNode }) {
   const { rootStyle } = useSite()
-  const vars = { ...rootStyle }
-  delete vars.background
-  /* Pas de fond crème pleine hauteur : c’est lui qui faisait le « trou » sous les blocs. */
-  return <div style={vars}>{children}</div>
+  return <div style={rootStyle}>{children}</div>
 }
 
 function remplirIframe(iframe: HTMLIFrameElement, locale: string): HTMLDivElement | null {
@@ -79,7 +76,10 @@ function remplirIframe(iframe: HTMLIFrameElement, locale: string): HTMLDivElemen
   ${polices ? `<link rel="stylesheet" href="${polices}">` : ''}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { background: transparent; min-height: 0; height: auto; }
+    html, body {
+      background: var(--c-cream, #F5EFE6);
+      min-height: 100%;
+    }
     html { overflow-y: auto; }
   </style>
 </head>
@@ -165,7 +165,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
         ref={sceneRef}
         style={{
           flex: 1, minHeight: 0, borderRadius: 12, overflow: 'hidden',
-          border: `1px solid ${t.shadow}`, background: t.surface,
+          border: `1px solid ${t.shadow}`, background: t.bg,
           position: 'relative',
         }}
       >
@@ -183,7 +183,7 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
             marginLeft: -largeur / 2,
             border: cadre === 'telephone' ? `8px solid ${t.primaryDark}` : `1px solid ${t.shadow}`,
             borderRadius: cadre === 'telephone' ? 20 : 4,
-            background: t.surface,
+            background: t.bg,
             transform: `scale(${scale})`,
             transformOrigin: 'top center',
           }}

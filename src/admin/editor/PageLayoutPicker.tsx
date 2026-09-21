@@ -30,14 +30,9 @@ export function PageLayoutPicker({ value, onChange, disabled }: PageLayoutPicker
               aria-pressed={actif}
               title={item.help}
               onClick={() => onChange(item.id)}
-              style={{ flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '10px 16px', gap: 4 }}
+              style={{ flexDirection: 'column', alignItems: 'flex-start', height: 'auto', minHeight: 44, padding: '10px 14px' }}
             >
               <span>{item.label}</span>
-              {actif && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: t.muted, lineHeight: 1.35 }}>
-                  {item.help}
-                </span>
-              )}
             </Bouton>
           )
         })}
