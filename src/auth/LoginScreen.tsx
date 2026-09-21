@@ -7,7 +7,7 @@ import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PrimaryButton } from '@/admin/ui'
+import { Button } from '@/components/ui/button'
 
 export function LoginScreen() {
   const { login } = useAuth()
@@ -58,9 +58,15 @@ export function LoginScreen() {
                 {error}
               </div>
             )}
-            <PrimaryButton type="submit" disabled={loading} busy={loading} style={{ width: '100%' }}>
+            <Button type="submit" disabled={loading} style={{
+              background: t.primary, color: '#fff', fontWeight: 600,
+              padding: '13px 28px', borderRadius: '100px', fontSize: '15px',
+              border: 'none', cursor: loading ? 'wait' : 'pointer',
+              boxShadow: `0 4px 16px ${t.shadowDeep}`,
+              display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+            }}>
               {loading ? 'Vérification…' : 'Se connecter'} {!loading && Icon.arrow(16)}
-            </PrimaryButton>
+            </Button>
           </form>
         </OrganicCard>
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
