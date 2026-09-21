@@ -64,7 +64,7 @@ const NAV_GROUPS: [string, [string, string, string][]][] = [
 ]
 
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
-  const { theme: t, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
+  const { theme: t, rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
   const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const [mobileNav, setMobileNav] = useState(false)
@@ -122,7 +122,25 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   )
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', height: '100%', minHeight: '100%', background: t.bg }}>
+    /*
+      LA CONSOLE PORTAIT LA POLICE DU NAVIGATEUR.
+
+      `--f-heading` et `--f-body` sont posés par `rootStyle`, qui n'était appliqué
+      qu'au site public (`PublicSite.tsx:100`), à l'écran de connexion
+      (`LoginScreen.tsx:34`) et à l'aperçu (`PreviewPane.tsx:57`) — **jamais à la
+      console**. Tous les `fontFamily: 'var(--f-heading)'` de ce fichier étaient
+      donc des déclarations INVALIDES : le navigateur les ignorait et la console
+      s'affichait dans sa police par défaut (Segoe UI sur Windows), pas dans
+      Fraunces + DM Sans.
+
+      Mesuré le 2026-09-21 sur le tableau de bord en production :
+      `getComputedStyle(nombre).fontFamily` = « ui-sans-serif, system-ui, … »
+      (la police par défaut de Chrome), et `--f-heading` résolu à vide.
+
+      `...rootStyle` en PREMIER : les déclarations de mise en page de la console
+      qui suivent continuent de gagner sur celles du thème.
+    */
+    <div style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', height: '100%', minHeight: '100%', background: t.bg }}>
       <div style={{ display: 'grid', gridTemplateColumns: '248px 1fr', height: '100%' }} className="admin-layout">
 <div className="admin-sidebar-desktop">{Sidebar}</div>
         <main className={active === 'content' ? 'admin-main-pad admin-main-editor' : 'admin-main-pad'} style={{
