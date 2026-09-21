@@ -261,9 +261,8 @@ function Dashboard() {
         - 3 × 243 + 2 × 16 = 761 → 760 px retenu.
 
       C'est la borne BASSE qu'on vise ici parce que c'est elle qui réduit
-      l'écart entre les chiffres, et elle reste dans la fourchette. Descendre
-      plus bas sortirait de la fourchette et casserait le libellé sur deux
-      lignes partout (`minmax(300px, 1fr)` sur la grille protège ce plancher).
+      l'écart entre les chiffres, et elle reste dans la fourchette. Le plancher
+      de la grille suit : voir le commentaire de la rangée ci-dessous.
 
       Wix documente une largeur maximale de 1248 px et ui-syntax ~1200 px : ce
       sont des PLAFONDS, pas des cibles. 760 les respecte.
@@ -292,7 +291,22 @@ function Dashboard() {
         quelle que soit la longueur des libellés — c'est ce que les guides
         appellent « consistent card heights ».
       */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '20px' }}>
+      {/*
+        LE PLANCHER DE LA GRILLE EST 200 px, PAS 300.
+
+        Défaut MESURÉ le 2026-09-21, après le premier resserrement : avec un
+        plancher de 300 px et un conteneur de 760 px, trois cartes ne tenaient
+        plus (3 × 300 + 2 × 16 = 932 > 760) → la grille passait à DEUX colonnes
+        et « 4 » descendait à la ligne suivante (écart relevé : −411 px entre le
+        2e et le 3e chiffre). Trois chiffres côte à côte sont le minimum du
+        bloc : le plancher descend donc à 200 px, borne basse documentée d'une
+        carte KPI (noirbook, artofstyleframe : « 200–280px wide »).
+
+        3 × 200 + 2 × 16 = 632 ≤ 760 : les trois cartes tiennent, et se
+        répartissent en 243 px chacune. Sur un écran étroit, la grille replie
+        proprement à une colonne au lieu de déborder.
+      */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '20px' }}>
         {aTraiter.map(({ cle, titre, couleur, nombre, total, zero, un, pluriel }) => (
           <OrganicCard
             key={cle}
