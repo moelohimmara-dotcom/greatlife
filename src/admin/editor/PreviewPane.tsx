@@ -24,6 +24,7 @@ import { CartProvider } from '@/contexts/CartContext'
 import { Footer } from '@/sections/Footer'
 import { useSite } from '@/contexts/SiteContext'
 import { Bouton } from './chrome'
+import { echelleCadreApercu, hauteurVerreApercu } from './preview-geometry'
 
 type CadreApercu = 'bureau' | 'telephone'
 
@@ -78,8 +79,8 @@ function remplirIframe(iframe: HTMLIFrameElement, locale: string): HTMLDivElemen
   ${polices ? `<link rel="stylesheet" href="${polices}">` : ''}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { background: transparent; min-height: 0; }
-    html { overflow-y: scroll; }
+    html, body { background: transparent; min-height: 0; height: auto; }
+    html { overflow-y: auto; }
   </style>
 </head>
 <body>
@@ -129,8 +130,8 @@ export function PreviewPane({ sections, locale = 'fr', restaurant, layout }: Pre
 
   const visibleSections = sections.filter((s) => s.visible)
   const largeur = LARGEUR_CADRE[cadre]
-  const scale = scene.w > 0 ? Math.min(1, (scene.w - 16) / largeur) : 1
-  const hauteurIframe = scene.h > 0 ? Math.max(scene.h / scale, 1) : 800
+  const scale = echelleCadreApercu(scene.w, largeur)
+  const hauteurIframe = hauteurVerreApercu(scene.h, scale)
 
   return (
     <div style={{ padding: 16, flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
