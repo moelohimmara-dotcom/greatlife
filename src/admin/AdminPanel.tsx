@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
 import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination } from '@/admin/ui'
@@ -164,22 +164,14 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
   )
 }
 
-function DashCard({ label, value, sub, icon, color }: { label: string; value: React.ReactNode; sub: string; icon: React.ReactNode; color: string }) {
-  const { theme: t } = useSite()
-  return (
-    <OrganicCard style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 12, background: `${color}14`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
-      <div style={{ fontSize: '12px', color: t.muted, fontWeight: 500 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, margin: '2px 0', letterSpacing: '-0.03em' }}>{value}</div>
-      <div style={{ fontSize: '12px', color: t.muted }}>{sub}</div>
-    </OrganicCard>
-  )
-}
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content } = useSite()
+  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
   const dsLabel = dataLoading ? 'Chargement…' : dataSource === 'supabase' ? 'Supabase connecté' : 'Mode démo (local)'
   const dsColor = dataSource === 'supabase' ? t.primary : t.muted
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const ouvrir = (module: string) => navigate(`/admin?module=${module}`)
   const recentMessages = messages.slice(0, 4)
   const [period, setPeriod] = useState<'all' | '7' | '30'>('all')
   const [orders, setOrders] = useState<Order[]>([])
@@ -197,33 +189,121 @@ function Dashboard() {
   const confirmedOrders = filteredOrders.filter(o => o.status === 'confirmed')
   const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
   const revenue = confirmedOrders.reduce((sum, o) => sum + parsePrice(o.total), 0)
-  const pendingOrders = orders.filter(o => o.status === 'pending').length
-  const unhandledMessages = messages.filter(m => !m.handled).length
   const fmt = (n: number) => n.toLocaleString('fr-FR')
   const periodLabel = period === 'all' ? 'tout l\'historique' : `${period} derniers jours`
   const periodOpts: [string, string][] = [['all', 'Tout'], ['30', '30 jours'], ['7', '7 jours']]
+
+  /*
+    L'ESSENTIEL D'ABORD — ce qui attend une réponse, en trois gestes.
+    Une carte = un module de Pilotage, et le bouton mène au module.
+    Zéro à traiter reste neutre : un compteur au repos, pas une alarme.
+  */
+  const aTraiter = [
+    {
+      cle: 'messages', titre: 'Messages', couleur: t.accent,
+      nombre: unhandledMessagesCount,
+      zero: 'Tout est traité',
+      un: '1 message attend une réponse',
+      pluriel: 'messages attendant une réponse',
+    },
+    {
+      cle: 'reservations', titre: 'Réservations', couleur: t.gold,
+      nombre: pendingReservationsCount,
+      zero: 'Aucune table à confirmer',
+      un: '1 table à confirmer',
+      pluriel: 'tables à confirmer',
+    },
+    {
+      cle: 'orders', titre: 'Commandes', couleur: t.gold,
+      nombre: pendingOrdersCount,
+      zero: 'Aucune commande à traiter',
+      un: '1 commande à confirmer',
+      pluriel: 'commandes à confirmer',
+    },
+  ]
+
   return (
     <div>
-      <PageHeader title="Tableau de bord" subtitle="Pilotez votre site en toute liberté."
-        badge={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}</span>}
+      <PageHeader
+        title={`Bonjour ${user?.name || 'vous'}`}
+        subtitle="Voici ce qui attend une réponse sur votre site."
+        badge={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${dsColor}12`, border: `1px solid ${dsColor}33`, fontSize: '12px', fontWeight: 600, color: dsColor }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: dsColor }} /> {dsLabel}
+          </span>
+        }
       />
-      <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
-        {periodOpts.map(([k, l]) => (
-          <button key={k} onClick={() => setPeriod(k as 'all' | '7' | '30')} style={{
-            fontSize: '12.5px', fontWeight: 600, padding: '7px 14px', borderRadius: 100, cursor: 'pointer',
-            border: `1px solid ${period === k ? t.primary : t.shadow}`, background: period === k ? t.primary : 'transparent',
-            color: period === k ? '#fff' : t.muted, transition: 'all 0.15s',
-          }}>{l}</button>
+
+      {/* 1. À TRAITER — la rangée la plus importante de la console. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '20px' }}>
+        {aTraiter.map(({ cle, titre, couleur, nombre, zero, un, pluriel }) => (          <OrganicCard
+            key={cle}
+            hover
+            onClick={() => ouvrir(cle)}
+            style={{ padding: '24px', border: `1px solid ${t.shadow}` }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
+                <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10 }}>{nombre === 0 ? zero : `${nombre} ${un}`}</div>
+                <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
+                  {titre}{nombre === 0 ? ` — ${zero.charAt(0).toLowerCase()}${zero.slice(1)}` : ` — ${nombre} ${pluriel}`}
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: `${couleur}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {cle === 'messages' ? Icon.mail(20, t.accent) : (cle === 'reservations' ? Icon.calendar(20, t.gold) : Icon.coin(20, t.gold))}
+              </div>
+            </div>
+            <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: `1px dashed ${t.shadow}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '12.5px', fontWeight: 700, color: t.primary }}>
+                {nombre === 0 ? 'Voir l\'historique' : 'Ouvrir et répondre'}
+              </span>
+              {Icon.arrow(13, t.primary)}
+            </div>
+          </OrganicCard>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '16px', marginTop: '16px' }}>
-        <DashCard label="Produits" value={menu.length} sub="toutes catégories" icon={Icon.leaf(20, t.primary)} color={t.primary} />
-        <DashCard label="Messages" value={messages.length} sub={`${unhandledMessages} non traité${unhandledMessages > 1 ? 's' : ''}`} icon={Icon.mail(20, t.accent)} color={t.accent} />
-        <DashCard label="Commandes" value={ordersCount} sub={`${pendingOrders} en attente`} icon={Icon.coin(20, t.gold)} color={t.gold} />
-        <DashCard label="Réservations" value={reservationsCount} sub="tables" icon={Icon.calendar(20, t.gold)} color={t.gold} />
-        <DashCard label="Utilisateurs" value={adminUsers.length} sub="avec rôles" icon={Icon.users(20, t.primary)} color={t.primary} />
-        <DashCard label="Chiffre d\'affaires" value={<span>{fmt(revenue)} <span style={{ fontSize: 14, color: t.muted, fontWeight: 600 }}>{content.currency}</span></span>} sub={`${confirmedOrders.length} cmdes confirmées · ${periodLabel}`} icon={Icon.coin(20, t.primary)} color={t.primary} />
+
+      {/* 2. LA JOURNÉE — chiffre d'affaires avec sa période, à côté des ressources. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 2fr) minmax(240px, 1fr)', gap: '16px', marginTop: '16px' }}>
+        <OrganicCard style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: '12.5px', color: t.muted, fontWeight: 600 }}>Chiffre d'affaires confirmé</div>
+              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '34px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em', marginTop: 10 }}>
+                {fmt(revenue)} <span style={{ fontSize: 13, color: t.muted, fontWeight: 700 }}>{content.currency}</span>
+              </div>
+              <div style={{ fontSize: '11.5px', color: t.muted, marginTop: 4 }}>
+                {confirmedOrders.length} commande{confirmedOrders.length > 1 ? 's' : ''} confirmée{confirmedOrders.length > 1 ? 's' : ''} · {periodLabel}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {periodOpts.map(([k, l]) => (
+                <button key={k} onClick={() => setPeriod(k as 'all' | '7' | '30')} style={{
+                  fontSize: '12px', fontWeight: 600, padding: '7px 13px', borderRadius: 100, cursor: 'pointer',
+                  border: `1px solid ${period === k ? t.primary : t.shadow}`, background: period === k ? t.primary : 'transparent',
+                  color: period === k ? '#fff' : t.muted, transition: 'all 0.15s',
+                }}>{l}</button>
+              ))}
+            </div>
+          </div>
+        </OrganicCard>
+        <OrganicCard style={{ padding: '24px' }}>
+          <div style={{ fontSize: '12.5px', color: t.muted, marginBottom: 10 }}>Ressources du site</div>
+          {([
+            ['Produits dans la carte', menu.length],
+            ['Commandes au total', ordersCount],
+            ['Réservations au total', reservationsCount],
+            ['Comptes de la console', adminUsers.length],
+          ] as [string, number][]).map(([lab, val]) => (
+            <div key={lab} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px dashed ${t.shadow}` }}>
+              <span style={{ fontSize: '12.5px', color: t.text }}>{lab}</span>
+              <span style={{ fontFamily: 'var(--f-heading)', fontWeight: 700, color: t.heading }}>{val}</span>
+            </div>
+          ))}
+        </OrganicCard>
       </div>
+
       {dataSource === 'supabase' && auditEntries.length > 0 && (() => {
         const total = auditEntries.length
         const byActor = new Map<string, number>()
@@ -238,6 +318,7 @@ function Dashboard() {
         const maxActor = topActors[0]?.[1] ?? 1
         const maxAction = topActions[0]?.[1] ?? 1
         const last24 = auditEntries.filter(e => e.created_at && (now - new Date(e.created_at).getTime()) <= 86400000).length
+        const last = auditEntries[0]?.created_at ? dateFr(auditEntries[0].created_at) : ''
         return (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
@@ -246,7 +327,7 @@ function Dashboard() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
               <OrganicCard style={{ padding: '18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Top utilisateurs</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Par utilisateur</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {topActors.map(([a, n]) => (
                     <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -258,7 +339,7 @@ function Dashboard() {
                 </div>
               </OrganicCard>
               <OrganicCard style={{ padding: '18px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Top actions</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 12 }}>Par action</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {topActions.map(([a, n]) => (
                     <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -270,9 +351,11 @@ function Dashboard() {
                 </div>
               </OrganicCard>
             </div>
+            <div style={{ fontSize: '11.5px', color: t.muted, marginTop: 10 }}>Dernière action : {last}</div>
           </>
         )
       })()}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '28px 0 12px' }}>
         <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '18px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>Messages récents</h3>
       </div>
@@ -299,6 +382,8 @@ function Dashboard() {
     </div>
   )
 }
+
+
 
 function SaveBar({ status, error }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: string }) {
   const { theme: t } = useSite()
@@ -2883,6 +2968,18 @@ const AccessBanner = () => {
 
 export function Admin() {
   const [active, setActive] = useState('dashboard')
+  const location = useLocation()
+  /*
+    SAUT DEPUIS LE TABLEAU DE BORD : les cartes « À traiter » naviguent en
+    écrivant /admin?module=… dans l'URL. Ici, on fait suivre : un changement
+    de recherche met à jour le module actif — le restaurateur ne perd pas la page
+    où il voulait aller. Sans cet effet, un lien par défaut ne placeholder
+    jamais rien (défaut mesuré).
+  */
+  useEffect(() => {
+    const m = new URLSearchParams(location.search).get('module')
+    if (m) setActive(m)
+  }, [location.search])
   const { user } = useAuth()
   const role = user?.role ?? 'guest'
   const effective = canAccessModule(active, role) ? active : 'dashboard'
