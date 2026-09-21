@@ -314,17 +314,26 @@ function Dashboard() {
             onClick={() => ouvrir(cle)}
             style={{ padding: '24px', border: `1px solid ${t.shadow}` }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
-                <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10, lineHeight: 1.35, minHeight: '2.7em' }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
-                <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
-                  {titre} · {total} au total
-                </div>
+            {/*
+              L'ICÔNE EST SUR LA LIGNE DU CHIFFRE, PAS SUR CELLE DU LIBELLÉ.
+
+              MESURÉ le 2026-09-21 : avec `justifyContent: 'space-between'`, le
+              bloc de texte partageait la ligne avec la pastille de l'icône. À
+              243 px de carte il ne restait que ~147 px au libellé, qui passait
+              donc sur TROIS lignes au lieu de deux — et la 3e ligne repartait
+              26 px plus bas que celle des voisins. En sortant l'icône de cette
+              ligne, le libellé récupère toute la largeur de la carte : deux
+              lignes suffisent, et `minHeight: '2.7em'` fait le reste.
+            */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: `${couleur}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {cle === 'messages' ? Icon.mail(18, t.accent) : (cle === 'reservations' ? Icon.calendar(18, t.gold) : Icon.coin(18, t.gold))}
               </div>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: `${couleur}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {cle === 'messages' ? Icon.mail(20, t.accent) : (cle === 'reservations' ? Icon.calendar(20, t.gold) : Icon.coin(20, t.gold))}
-              </div>
+            </div>
+            <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10, lineHeight: 1.35, minHeight: '2.7em' }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
+            <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
+              {titre} · {total} au total
             </div>
             <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: `1px dashed ${t.shadow}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12.5px', fontWeight: 700, color: t.primary }}>
