@@ -86,29 +86,41 @@ Chaîne de publication (instantané publié, `033`), filets `verify:lot1`,
 | **N-8** | La **navigation** n'est ni rendue par le site, ni éditable | modèle d'édition | `navigation_items` : 13 lignes, aucun appelant |
 | **N-9** | Les **adresses publiques** `contact@` / `resa@greatlife.gn` n'existent pas | données | 🟥 **MESURÉ le 2026-09-20** : le domaine `greatlife.gn` **ne résout pas** (« le nom DNS n'existe pas »), ni MX ni A. Le courrier ne peut pas arriver. Vérifié par `npm run verify:coordonnees` |
 | **N-10** | Le **téléphone public** est `+224 000 00 00 00` | données | 🟥 **MESURÉ** : chiffres normalisés `224000000000` — une suite de 9 zéros, c'est un gabarit. Vérifié par `npm run verify:coordonnees` |
-| **N-11** | **8 réservations de test** sur 12, sans marqueur réversible | données | statut seul disponible |
+| **N-11** | **Réservations de test** dans la console | données | ✅ **CLOS le 2026-09-21 par le propriétaire** : « toutes les données présentes là sont fictives et uniquement pour des tests ». Il n'y a donc rien à trier — le vrai défaut était le **compteur** (N-15), pas la légitimité des lignes. État mesuré : 12 réservations (9 `cancelled`, 2 `confirmed`, 1 `pending`) |
 | **N-12** | Le **mode « Avancé »** du TDR §13.1 (valeurs libres + 3 garde-fous) n'est pas implémenté | modèle d'édition | seules les dispositions l'ont été ; libellé dit encore « Variante » |
 | **N-13** | `docs/12` annonce les migrations `001→029` alors que `033` existe | fiabilité | en-tête du document |
-| **N-14** | Le **hero public** a changé sans publication (publié `fullscreen` ≠ brouillon `image_text`) | à trancher par le propriétaire | mesuré le 2026-09-20 |
+| **N-14** | Le **hero public** a changé sans publication (publié `fullscreen` ≠ brouillon `image_text`) | à trancher par le propriétaire | ✅ **SANS OBJET, mesuré le 2026-09-21** : les **10 sections** sont identiques des deux côtés (`variant`, `visible`, `content`) — le hero est `fullscreen` **dans les deux**. La publication du 2026-09-20 23:53 a figé le brouillon tel quel. Publier ne changerait rien au site public |
+| **N-15** | Les compteurs **« à traiter »** (réservations, commandes) valent `0` au premier chargement | fiabilité | 🟥 **MESURÉ le 2026-09-21** : la base portait **1** réservation et **4** commandes `pending`, l'écran affichait « 0 » pour les deux. `SiteContext.tsx:365-372` chargeait les listes, `:391-392` ne posait que les **totaux** — les compteurs « en attente » n'étaient écrits que par le temps réel (`:549-550`). **CORRIGÉ** : règle unique dans `@/cms/model/compteurs`, 7/7 `test:compteurs`, sensibilité OUI |
+
 
 ---
 
 ## 5. Ce que je prends, et dans quel ordre
 
 **Pris par l'agent de vérification** (couloir `fiabilite-depot`) :
-`N-1, N-2, N-3, N-4, N-5, N-6, N-7, N-13` — puis `N-9, N-10, N-11` avec l'accord
+`N-1, N-2, N-3, N-4, N-5, N-6, N-7, N-13` — puis `N-9, N-10` avec l'accord
 du propriétaire, parce que ce sont des **écritures de données**.
+
+**Clos depuis** : `N-9`, `N-10` (coordonnées saisies et publiées), `N-11` (données
+fictives — rien à trier), `N-14` (sans objet : brouillon = publié), `N-15` (compteurs
+réparés).
 
 **Non pris, volontairement** :
 - `N-8` et `N-12` → couloir **modèle d'édition** (agent Cursor). La navigation et
   le mode Avancé touchent le rendu des sections et le panneau de propriétés.
-- `N-14` → **décision du propriétaire** : quelle disposition doit être publiée.
+- `N-11` reste **techniquement ouvert d'une autre façon** : la console garde des
+  lignes de test (12 réservations, 3 messages non traités). Ce n'est plus une
+  question d'accord — c'est du rangement, sans urgence.
 
-**Ordre recommandé** : **`N-9` et `N-10` d'abord** — un client qui appelle ou qui
-écrit **n'atteint personne** ; c'est une panne vivante, tournée vers l'extérieur.
-Puis `N-1` (les montants en texte), qui est une dette de maintenance et un
-obstacle aux états faits en base, mais qui ne casse **rien de visible**. Ensuite
-le reste.
+**Ordre recommandé** : **`N-1` d'abord** (les montants en texte), qui est une dette
+de maintenance et un obstacle aux états faits en base, mais qui ne casse **rien de
+visible**. Puis `N-2` (`SiteContext` sur le chemin public), puis le reste.
+
+**Leçon de `N-15`** : le tableau de bord avait été annoncé « vérifié en
+production » sur la foi des **libellés**, sans attente indépendante sur les
+**nombres**. Une vérification visuelle ne prouve que ce qu'on a chiffré d'avance.
+C'est la sixième affirmation inexacte de la session, et la première qu'un contrôle
+croisé avec la base aurait suffi à prendre.
 
 ---
 

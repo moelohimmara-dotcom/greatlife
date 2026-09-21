@@ -9,6 +9,7 @@ import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteConte
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 import { fetchAllPages as fetchAllPagesCms } from '@/cms/repository/pages'
+import { compteursPilotage, compterEnAttente } from '@/cms/model/compteurs'
 
 export interface SiteContent {
   slogan: string
@@ -388,8 +389,22 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       setMedia(mediaRes.data.map(mediaAssetToSlot))
     }
     if (adminRes.fromDb) setAdminUsers(adminRes.data)
-    if (ordersRes.fromDb) setOrdersCount(ordersRes.data.length)
-    if (resaRes.fromDb) setReservationsCount(resaRes.data.length)
+    // Les QUATRE compteurs viennent de la même règle pure (`@/cms/model/compteurs`).
+    // Avant, seuls les totaux étaient posés ici : les compteurs « à traiter »
+    // restaient à 0 jusqu'à ce qu'un événement temps réel les réveille — d'où
+    // « 0 » affiché alors que la base portait 1 réservation et 4 commandes.
+    const compteurs = compteursPilotage(
+      ordersRes.fromDb ? ordersRes.data : [],
+      resaRes.fromDb ? resaRes.data : [],
+    )
+    if (ordersRes.fromDb) {
+      setOrdersCount(compteurs.ordersCount)
+      setPendingOrdersCount(compteurs.pendingOrdersCount)
+    }
+    if (resaRes.fromDb) {
+      setReservationsCount(compteurs.reservationsCount)
+      setPendingReservationsCount(compteurs.pendingReservationsCount)
+    }
     setLastMessageCount(messagesRes.data.length)
     setDataLoading(false)
   }, [])
@@ -524,7 +539,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const res = await fetchOrders()
     if (res.fromDb) {
       setOrdersCount(res.data.length)
-      setPendingOrdersCount(res.data.filter(o => o.status === 'pending').length)
+      setPendingOrdersCount(compterEnAttente(res.data))
     }
   }
 
@@ -532,7 +547,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const res = await fetchReservations()
     if (res.fromDb) {
       setReservationsCount(res.data.length)
-      setPendingReservationsCount(res.data.filter(r => r.status === 'pending').length)
+      setPendingReservationsCount(compterEnAttente(res.data))
     }
   }
 

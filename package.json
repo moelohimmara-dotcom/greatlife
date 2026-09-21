@@ -20,6 +20,7 @@
     "verify:dispositions": "node scripts/verify-dispositions.mjs",
     "verify:page-layouts": "node scripts/verify-page-layouts.mjs",
     "test:save-plan": "node --test scripts/test-save-plan.mjs",
+    "test:compteurs": "node --test scripts/test-compteurs.mjs",
     "test:preview-geometry": "node --test scripts/test-preview-geometry.mjs",
     "test:product-photo": "node --test scripts/test-product-photo-slot.mjs",
     "verify:lot3": "node scripts/verify-lot3.mjs",
