@@ -244,7 +244,26 @@ function Dashboard() {
   ]
 
   return (
-    <div>
+    /*
+      LA COLONNE DE CONTENU EST PLAFONNÉE.
+
+      Sans plafond, la rangée « À traiter » s'étire avec l'écran : mesuré à
+      1280 px de fenêtre, les grands chiffres étaient déjà à ~300 px l'un de
+      l'autre ; à 1920 px la carte fait ~520 px et l'écart passe ~540 px, avec
+      une zone vide au milieu de chaque carte.
+
+      Ce n'est pas une préférence : c'est la recommandation convergente des
+      guides de tableaux de bord — Wix documente une largeur maximale de
+      **1248 px**, centrée, marges latérales qui s'étirent (UX Guidelines for
+      Dashboard Pages in Blocks) ; ui-syntax recommande ~1200 px (« Cap the
+      main content column at ~1200px for large screens ») ; le noirbook conclut
+      la même chose pour les écrans 1280→2560 (« a centered fixed-width layout
+      with a max-width of 1440px », ou des contraintes par widget).
+
+      1248 est retenu : c'est la valeur la plus basse des trois, donc la plus
+      dense. Les modules larges (éditeur, tableau) ne passent pas par ici.
+    */
+    <div style={{ maxWidth: 1248, margin: '0 auto' }}>
       <PageHeader
         title={`Bonjour ${user?.name || 'vous'}`}
         subtitle="Voici ce qui attend une réponse sur votre site."
@@ -256,6 +275,18 @@ function Dashboard() {
       />
 
       {/* 1. À TRAITER — la rangée la plus importante de la console. */}
+      {/*
+        `minHeight: '2.7em'` RÉSERVE DEUX LIGNES pour le libellé — toujours deux,
+        même quand il tient sur une.
+
+        MESURÉ le 2026-09-21 en production : « 3 messages attendant une réponse »
+        passait sur deux lignes alors que « 1 table à confirmer » en occupait une.
+        La troisième ligne de la première carte se retrouvait **26 px plus bas**
+        que celle des deux autres, et le pied de carte suivait : la rangée
+        paraissait cassée. Une hauteur réservée rend les trois cartes identiques
+        quelle que soit la longueur des libellés — c'est ce que les guides
+        appellent « consistent card heights ».
+      */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '20px' }}>
         {aTraiter.map(({ cle, titre, couleur, nombre, total, zero, un, pluriel }) => (
           <OrganicCard
@@ -267,7 +298,7 @@ function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontFamily: 'var(--f-heading)', fontSize: '44px', fontWeight: 700, color: nombre === 0 ? t.muted : couleur, lineHeight: 1, letterSpacing: '-0.03em' }}>{nombre}</div>
-                <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10 }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
+                <div style={{ fontSize: '14.5px', fontWeight: 600, color: t.heading, marginTop: 10, lineHeight: 1.35, minHeight: '2.7em' }}>{nombre === 0 ? zero : `${nombre} ${nombre === 1 ? un : pluriel}`}</div>
                 <div style={{ fontSize: '12px', color: t.muted, marginTop: 4 }}>
                   {titre} · {total} au total
                 </div>
