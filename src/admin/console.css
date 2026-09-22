@@ -968,7 +968,7 @@
 
   [data-admin-shell] .admin-bottom-nav {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--admin-radio-cols, 6), minmax(0, 1fr));
     position: fixed;
     left: 0;
     right: 0;
@@ -981,7 +981,8 @@
 
   [data-admin-shell] .admin-bottom-nav a,
   [data-admin-shell] .admin-bottom-nav button {
-    min-height: 44px;
+    min-height: 48px;
+    min-width: 0;
     border: none;
     background: transparent;
     color: color-mix(in srgb, #fff 72%, transparent);
@@ -990,29 +991,153 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    padding: 4px;
+    padding: 4px 2px;
+    position: relative;
   }
 
   [data-admin-shell] .admin-bottom-nav a.is-active,
   [data-admin-shell] .admin-bottom-nav a[aria-current='page'],
+  [data-admin-shell] .admin-bottom-nav button.is-active,
   [data-admin-shell] .admin-bottom-nav button[aria-current='page'] {
     color: #fff;
   }
 
+  [data-admin-shell] .admin-bottom-nav .admin-bottom-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  [data-admin-shell] .admin-bottom-nav .admin-bottom-label {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: center;
+    line-height: 1.15;
+  }
+
+  [data-admin-shell] .admin-bottom-nav .admin-bottom-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 100px;
+    background: var(--admin-coral);
+    color: var(--admin-on-ink);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
   [data-admin-shell] .admin-bottom-nav .admin-bottom-dot {
-    width: 6px;
-    height: 6px;
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--admin-coral);
   }
 
   [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
-    padding-bottom: 88px !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
   }
+}
+
+[data-admin-shell] .admin-plus-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overscroll-behavior: contain;
+}
+
+[data-admin-shell] .admin-plus-sheet-backdrop {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+[data-admin-shell] .admin-plus-sheet-panel {
+  background: var(--admin-ink);
+  border-radius: 16px 16px 0 0;
+  padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  max-height: min(70dvh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  box-shadow: 0 -8px 24px rgba(24, 32, 25, 0.2);
+}
+
+[data-admin-shell] .admin-plus-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 12px;
+}
+
+[data-admin-shell] .admin-plus-sheet-head strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-on-ink);
+}
+
+[data-admin-shell] .admin-plus-sheet-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-rail-border-soft);
+  background: transparent;
+  color: var(--admin-on-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+[data-admin-shell] .admin-plus-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-admin-shell] .admin-plus-sheet-list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--admin-on-ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+[data-admin-shell] .admin-plus-sheet-list a.is-active,
+[data-admin-shell] .admin-plus-sheet-list a[aria-current='page'] {
+  background: var(--admin-forest);
+  color: var(--admin-on-ink);
+  border: 1px solid var(--admin-forest);
 }
 
 /* ——— Ops : lignes, filtres, toolbar ——— */

@@ -12,6 +12,8 @@ import {
   NAV_GROUPS,
   MOBILE_TAB_KEYS,
   MOBILE_TAB_LABELS,
+  MOBILE_MORE_KEYS,
+  MOBILE_MORE_LABELS,
   pathForModule,
   moduleFromPathname,
   type AdminModuleKey,
@@ -36,6 +38,7 @@ export function AdminShell() {
   const location = useLocation()
   const active = moduleFromPathname(location.pathname)
   const [mobileNav, setMobileNav] = useState(false)
+  const [plusOpen, setPlusOpen] = useState(false)
   const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
   const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
   const menuToggleRef = useRef<HTMLButtonElement>(null)
@@ -48,6 +51,7 @@ export function AdminShell() {
   const go = (k: AdminModuleKey) => {
     navigate(pathForModule(k))
     setMobileNav(false)
+    setPlusOpen(false)
   }
   const NOTIF: Record<string, number> = { messages: unhandledMessagesCount, orders: pendingOrdersCount, reservations: pendingReservationsCount }
 
@@ -67,7 +71,12 @@ export function AdminShell() {
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
-    const onChange = () => { if (!mq.matches) setMobileNav(false) }
+    const onChange = () => {
+      if (!mq.matches) {
+        setMobileNav(false)
+        setPlusOpen(false)
+      }
+    }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [])
@@ -114,8 +123,21 @@ export function AdminShell() {
     }
   }, [mobileNav])
 
+  useEffect(() => {
+    if (!plusOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setPlusOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [plusOpen])
+
   const toggleNav = useCallback(() => {
     if (menuEstMobile()) {
+      setPlusOpen(false)
       setMobileNav((open) => !open)
       return
     }
@@ -342,12 +364,28 @@ export function AdminShell() {
   )
 
   const layoutNav = editorHidesNav ? 'hidden' : rail ? 'rail' : 'open'
+  const navItems = NAV_GROUPS.flatMap(([, items]) => items)
+  const role = user?.role ?? ''
   const mobileTabs = MOBILE_TAB_KEYS
     .map((k) => {
-      const found = NAV_GROUPS.flatMap(([, items]) => items).find(([key]) => key === k)
-      return found && canAccessModule(k, user?.role ?? '') ? found : null
+      const found = navItems.find(([key]) => key === k)
+      return found && canAccessModule(k, role) ? found : null
     })
     .filter((x): x is [AdminModuleKey, string, string] => Boolean(x))
+  const mobileMore = MOBILE_MORE_KEYS
+    .map((k) => {
+      const found = navItems.find(([key]) => key === k)
+      return found && canAccessModule(k, role) ? found : null
+    })
+    .filter((x): x is [AdminModuleKey, string, string] => Boolean(x))
+  const showPlus = mobileMore.length > 0
+  const plusHighlighted = showPlus && !MOBILE_TAB_KEYS.includes(active)
+  const radioCols = mobileTabs.length + (showPlus ? 1 : 0)
+  const openPlus = () => {
+    setMobileNav(false)
+    setPlusOpen(true)
+  }
+  const closePlus = () => setPlusOpen(false)
 
   return (
     <div
@@ -423,30 +461,91 @@ export function AdminShell() {
           </div>
         </div>
       )}
+      {plusOpen && showPlus && (
+        <div role="dialog" aria-modal="true" aria-label="Plus de modules" className="admin-plus-sheet">
+          <button
+            type="button"
+            className="admin-plus-sheet-backdrop"
+            aria-label="Fermer"
+            onClick={closePlus}
+          />
+          <div id="admin-plus-sheet-panel" className="admin-plus-sheet-panel">
+            <div className="admin-plus-sheet-head">
+              <strong>Plus</strong>
+              <button type="button" className="admin-plus-sheet-close" aria-label="Fermer" onClick={closePlus}>
+                <span aria-hidden="true">{Icon.x(18, 'var(--admin-on-ink)')}</span>
+              </button>
+            </div>
+            <nav aria-label="Modules hors radio" className="admin-plus-sheet-list">
+              {mobileMore.map(([k, l, icon]) => {
+                const label = MOBILE_MORE_LABELS[k] ?? l
+                const isActive = active === k
+                return (
+                  <NavLink
+                    key={k}
+                    to={pathForModule(k)}
+                    onClick={closePlus}
+                    aria-label={label}
+                    className={isActive ? 'is-active' : undefined}
+                  >
+                    <span aria-hidden="true">{Icon[icon](18, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}</span>
+                    <span>{label}</span>
+                  </NavLink>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
       {!editorFocus && mobileTabs.length > 0 && (
-        <nav className="admin-bottom-nav" aria-label="Raccourcis mobiles">
+        <nav
+          className="admin-bottom-nav"
+          aria-label="Radio de service"
+          style={{ ['--admin-radio-cols' as string]: String(Math.max(radioCols, 1)) }}
+        >
           {mobileTabs.map(([k, l, icon]) => {
             const count = NOTIF[k] ?? 0
-            const short = MOBILE_TAB_LABELS[k] ?? l
+            const label = MOBILE_TAB_LABELS[k] ?? l
             return (
               <NavLink
                 key={k}
                 to={pathForModule(k)}
                 end={k === 'dashboard'}
-                aria-label={count > 0 ? `${short}, ${count} en attente` : short}
+                aria-label={count > 0 ? `${label}, ${count} en attente` : label}
                 className={({ isActive }) => isActive ? 'is-active' : undefined}
                 style={{ textDecoration: 'none' }}
+                onClick={() => setPlusOpen(false)}
               >
                 {({ isActive }) => (
                   <>
-                    <span aria-hidden="true">{Icon[icon](18, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}</span>
-                    <span>{short}</span>
-                    {count > 0 && <span className="admin-bottom-dot" aria-hidden="true" />}
+                    <span className="admin-bottom-icon" aria-hidden="true">
+                      {Icon[icon](18, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
+                      {count > 0 && (
+                        <span className="admin-bottom-badge">{count > 9 ? '9+' : count}</span>
+                      )}
+                    </span>
+                    <span className="admin-bottom-label">{label}</span>
                   </>
                 )}
               </NavLink>
             )
           })}
+          {showPlus && (
+            <button
+              type="button"
+              className={plusHighlighted || plusOpen ? 'is-active' : undefined}
+              aria-label="Plus de modules"
+              aria-expanded={plusOpen}
+              aria-controls="admin-plus-sheet-panel"
+              onClick={() => (plusOpen ? closePlus() : openPlus())}
+            >
+              <span className="admin-bottom-icon" aria-hidden="true">
+                {Icon.more(18, plusHighlighted || plusOpen ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
+                {plusHighlighted && !plusOpen && <span className="admin-bottom-dot" />}
+              </span>
+              <span className="admin-bottom-label">Plus</span>
+            </button>
+          )}
         </nav>
       )}
     </div>

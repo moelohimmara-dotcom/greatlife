@@ -103,3 +103,29 @@ export const MOBILE_TAB_LABELS: Partial<Record<AdminModuleKey, string>> = {
   messages: 'Messages',
   menu: 'Carte',
 }
+
+export const MOBILE_MORE_KEYS: AdminModuleKey[] = [
+  'content',
+  'media',
+  'blog',
+  'settings',
+  'team',
+  'theme',
+  'visibility',
+  'forms',
+  'users',
+  'audit',
+]
+
+export const MOBILE_MORE_LABELS: Partial<Record<AdminModuleKey, string>> = {
+  content: 'Atelier',
+  media: 'Médias',
+  blog: 'Blog',
+  settings: 'Réglages',
+  team: 'Équipe',
+  theme: 'Apparence',
+  visibility: 'Visibilité',
+  forms: 'Formulaires',
+  users: 'Utilisateurs',
+  audit: 'Journal',
+}
