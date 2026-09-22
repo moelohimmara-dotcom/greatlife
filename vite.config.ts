@@ -4,6 +4,11 @@ import path from 'path'
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  // Le preview Vercel utilise un hostname dynamique relayé vers le serveur Vite.
+  // Sans cette autorisation, Vite renvoie une page d’erreur avant de charger React.
+  server: {
+    allowedHosts: true,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
