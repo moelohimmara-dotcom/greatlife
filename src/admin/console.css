@@ -40,6 +40,8 @@
   background: var(--admin-paper);
   color: var(--admin-ink);
   font-family: var(--admin-font-ui);
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 [data-admin-shell] .admin-skip-link {
@@ -620,12 +622,115 @@
   gap: 24px;
 }
 
+[data-admin-shell] .admin-ops-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 24px;
+  align-items: start;
+}
+
+[data-admin-shell] .admin-ops-split.is-list-only {
+  grid-template-columns: 1fr;
+}
+
+[data-admin-shell] .admin-ops-row.is-clickable {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+[data-admin-shell] button.admin-ops-row {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+[data-admin-shell] .admin-ops-row.is-clickable:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--admin-forest), 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
+}
+
 [data-admin-shell] .admin-conversation {
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
   border-radius: var(--admin-radius-panel);
   padding: 20px;
   box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-detail-panel {
+  position: sticky;
+  top: 12px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  padding: 20px;
+  box-shadow: var(--admin-shadow);
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+}
+
+[data-admin-shell] .admin-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+[data-admin-shell] .admin-theme-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  min-height: 44px;
+  border: none;
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+[data-admin-shell] .admin-theme-row:last-child {
+  border-bottom: none;
+}
+
+[data-admin-shell] .admin-theme-row.is-selected {
+  background: color-mix(in srgb, var(--admin-forest) 7%, var(--admin-surface));
+  box-shadow: inset 3px 0 0 var(--admin-lime);
+}
+
+[data-admin-shell] .admin-theme-row:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--admin-forest), 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
+}
+
+[data-admin-shell] .admin-theme-swatches {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-preview-surface {
+  padding: 22px;
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
 }
 
 /* Carte & prix — liste éditoriale */
@@ -1239,8 +1344,14 @@
 
 @media (max-width: 1023px) {
   [data-admin-shell] .admin-msg-split,
+  [data-admin-shell] .admin-ops-split,
   [data-admin-shell] .admin-menu-layout {
     grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-detail-panel {
+    position: static;
+    max-height: none;
   }
 
   [data-admin-shell] .admin-audit-row {

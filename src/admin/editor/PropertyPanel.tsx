@@ -101,8 +101,11 @@ export function PropertyPanel({
   if (!def) return null
 
   const visibles = def.fields.filter((field) => champVisible(field, dispositionAffichee, section.type))
-  const champsContenuAffiches = visibles.filter((f) => familleChamp(f) === 'contenu' && !champEstAltImage(f, visibles))
-  const champsOptions = visibles.filter((f) => familleChamp(f) === 'options')
+  const champsContenuAffiches = visibles.filter((f) => familleChamp(f, visibles) === 'contenu')
+  const champsMedia = visibles.filter((f) => familleChamp(f, visibles) === 'media')
+  const champsAction = visibles.filter((f) => familleChamp(f, visibles) === 'action')
+  const champsSeo = visibles.filter((f) => familleChamp(f, visibles) === 'seo')
+  const champsOptions = visibles.filter((f) => familleChamp(f, visibles) === 'options')
   const meta = readEditorMeta(content)
   const slotSeul = selection?.slots.length === 1 ? selection.slots[0] : null
   const groupeActif = selection ? groupeDeSelection(selection, meta) : undefined
@@ -131,11 +134,15 @@ export function PropertyPanel({
       : 'bloc'
 
   const champFocus = slotSeul
-    ? champsContenuAffiches.find((f) => f.name === slotSeul)
-      ?? champsOptions.find((f) => f.name === slotSeul)
+    ? [...champsContenuAffiches, ...champsMedia, ...champsAction, ...champsSeo, ...champsOptions]
+      .find((f) => f.name === slotSeul)
     : undefined
-  const focusDansContenu = Boolean(champFocus && familleChamp(champFocus) === 'contenu')
-  const focusDansOptions = Boolean(champFocus && familleChamp(champFocus) === 'options')
+  const focusFamille = champFocus ? familleChamp(champFocus, visibles) : null
+  const focusDansContenu = focusFamille === 'contenu'
+  const focusDansMedia = focusFamille === 'media'
+  const focusDansAction = focusFamille === 'action'
+  const focusDansSeo = focusFamille === 'seo'
+  const focusDansOptions = focusFamille === 'options'
   const autresContenu = champFocus && focusDansContenu
     ? champsContenuAffiches.filter((f) => f.name !== champFocus.name)
     : champsContenuAffiches
@@ -212,13 +219,48 @@ export function PropertyPanel({
             ? (hex) => { if (canPatchSlot(content, couleur.name)) onUpdate({ ...content, [couleur.name]: hex ?? '' }) }
             : undefined}
           cibleApercu={slotSeul === field.name ? cibleApercu : null}
-          altValue={field.type === 'image' ? content[nomChampAltImage(field.name)] : undefined}
-          onAltChange={field.type === 'image'
-            ? (v) => setField(nomChampAltImage(field.name), v)
-            : undefined}
+          altValue={undefined}
+          onAltChange={undefined}
           onChange={(v) => setField(field.name, v)}
         />
       </div>
+    )
+  }
+
+  const rendreGroupeChamps = (
+    id: string,
+    titre: string,
+    icone: string | undefined,
+    champs: FieldDef[],
+    opts: { ouvertParDefaut?: boolean; forcerOuvert?: boolean; focusIci?: boolean },
+  ) => {
+    if (champs.length === 0 && !(champFocus && opts.focusIci)) return null
+    const autres = champFocus && opts.focusIci
+      ? champs.filter((f) => f.name !== champFocus.name)
+      : champs
+    return (
+      <TiroirInspecteur
+        id={id}
+        titre={titre}
+        icone={icone}
+        ouvertParDefaut={opts.ouvertParDefaut}
+        forcerOuvert={opts.forcerOuvert}
+        compte={champs.length}
+      >
+        {champFocus && opts.focusIci && rendreChamp(champFocus)}
+        {nature === 'emplacement' && opts.focusIci && autres.length > 0 ? (
+          <TiroirInspecteur
+            id={`autres-${id}`}
+            titre={`Autres — ${titre}`}
+            ouvertParDefaut={false}
+            compte={autres.length}
+          >
+            {autres.map(rendreChamp)}
+          </TiroirInspecteur>
+        ) : !(champFocus && opts.focusIci) ? (
+          champs.map(rendreChamp)
+        ) : null}
+      </TiroirInspecteur>
     )
   }
 
@@ -419,12 +461,30 @@ export function PropertyPanel({
         </TiroirInspecteur>
       )}
 
+      {rendreGroupeChamps('media', 'Média', 'image', champsMedia, {
+        ouvertParDefaut: nature === 'bloc' && champsContenuAffiches.length === 0,
+        forcerOuvert: nature === 'emplacement' && focusDansMedia,
+        focusIci: focusDansMedia,
+      })}
+
+      {rendreGroupeChamps('action', 'Action', 'link', champsAction, {
+        ouvertParDefaut: false,
+        forcerOuvert: nature === 'emplacement' && focusDansAction,
+        focusIci: focusDansAction,
+      })}
+
+      {rendreGroupeChamps('seo', 'SEO & accessibilité', 'search', champsSeo, {
+        ouvertParDefaut: false,
+        forcerOuvert: nature === 'emplacement' && focusDansSeo,
+        focusIci: focusDansSeo,
+      })}
+
       {champsOptions.length > 0 && (
         <TiroirInspecteur
           id="options"
           titre="Options"
           icone="more"
-          ouvertParDefaut={nature === 'bloc' && champsContenuAffiches.length === 0}
+          ouvertParDefaut={nature === 'bloc' && champsContenuAffiches.length === 0 && champsMedia.length === 0}
           forcerOuvert={nature === 'emplacement' && focusDansOptions}
           compte={champsOptions.length}
         >
@@ -1119,7 +1179,12 @@ function isTranslationObject(v: unknown): boolean {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && ('fr' in (v as Record<string, unknown>) || 'en' in (v as Record<string, unknown>))
 }
 
-function familleChamp(field: FieldDef): 'contenu' | 'options' {
+function familleChamp(field: FieldDef, voisins: readonly FieldDef[] = []): 'contenu' | 'media' | 'action' | 'seo' | 'options' {
+  if (champEstAltImage(field, voisins) || /alt|seo|accessib/i.test(field.name) || /alternatif|accessib/i.test(field.label)) {
+    return 'seo'
+  }
+  if (field.type === 'image' || field.type === 'video') return 'media'
+  if (field.type === 'group' && /cta/i.test(field.name)) return 'action'
   if (field.type === 'number' || field.type === 'select' || field.type === 'boolean' || field.type === 'color') return 'options'
   return 'contenu'
 }

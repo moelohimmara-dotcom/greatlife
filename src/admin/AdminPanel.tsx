@@ -1018,36 +1018,55 @@ function ThemeEditor() {
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
   return (
-    <div style={{ maxWidth: '800px' }}>
-      <PageHeader title="Thème & ambiance" subtitle="Choisissez une ambiance. Le site change en direct."
+    <div className="admin-page" style={{ maxWidth: 800 }}>
+      <PageHeader
+        title="Apparence"
+        subtitle="Couleurs et polices du site public. Les changements s’appliquent tout de suite à l’aperçu."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div style={{ marginTop: 12, marginBottom: 20 }}><SectionTitle color={t.primary}>Palette de couleurs</SectionTitle></div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px,1fr))', gap: '14px' }}>
-        {Object.values(THEMES).map(th => (
-          <button key={th.id} onClick={() => { setThemeId(th.id); setSaveStatus('idle') }} style={{
-            cursor: 'pointer', border: themeId === th.id ? `2px solid ${t.accent}` : `1px solid ${t.shadow}`,
-            borderRadius: 16, padding: 16, background: th.surface, textAlign: 'left', transition: 'border 0.2s, transform 0.2s',
-            transform: themeId === th.id ? 'translateY(-2px)' : 'none',
-          }} onMouseEnter={e => { if (themeId !== th.id) (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)' }}
-            onMouseLeave={e => { if (themeId !== th.id) (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
-            <div style={{ display: 'flex', gap: 5, marginBottom: '10px' }}>
-              {[th.primary, th.accent, th.gold, th.bg].map((c, i) => <div key={i} style={{ width: '22px', height: '22px', borderRadius: 7, background: c, border: `1px solid ${th.shadow}` }} />)}
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '14px', color: th.heading }}>{th.label}</div>
-            {themeId === th.id && <div style={{ fontSize: '11px', color: th.accent, fontWeight: 600, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{Icon.check(12, th.accent)} Actif</div>}
-          </button>
-        ))}
+      <div className="admin-settings-section" style={{ marginTop: 20 }}>
+        <SectionTitle color={t.primary}>Palette de couleurs</SectionTitle>
+        <p className="admin-page-sub" style={{ color: t.muted, margin: '4px 0 12px' }}>Choisissez l’ambiance du restaurant. Une seule palette active à la fois.</p>
+        <div className="admin-ops-list" role="listbox" aria-label="Palettes de couleurs">
+          {Object.values(THEMES).map(th => {
+            const actif = themeId === th.id
+            return (
+              <button
+                key={th.id}
+                type="button"
+                role="option"
+                aria-selected={actif}
+                className={`admin-theme-row${actif ? ' is-selected' : ''}`}
+                onClick={() => { setThemeId(th.id); setSaveStatus('idle') }}
+              >
+                <span className="admin-theme-swatches" aria-hidden="true">
+                  {[th.primary, th.accent, th.gold, th.bg].map((c, i) => (
+                    <span key={i} className="admin-theme-swatch" style={{ background: c }} />
+                  ))}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: 14, color: 'var(--admin-ink)' }}>{th.label}</span>
+                  {actif && <span className="admin-chip is-live" style={{ marginTop: 6 }}>Active</span>}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
-      <div style={{ marginTop: 28, marginBottom: 12 }}><SectionTitle color={t.accent}>Polices</SectionTitle></div>
-      <TypoPanel onLotApplique={(id) => { setFontId(id); setSaveStatus('idle') }} />
-      <div style={{ marginTop: 28, marginBottom: 12 }}><SectionTitle color={t.gold}>Aperçu en direct</SectionTitle></div>
-      <div style={{ padding: '26px', borderRadius: 18, background: t.surface, border: `1px solid ${t.shadow}` }}>
-        <div style={{ fontFamily: 'var(--f-heading)', fontSize: '30px', fontWeight: 700, color: t.heading, letterSpacing: '-0.03em' }}>{content.heroTitle}</div>
-        <div style={{ fontSize: '14px', color: t.muted, marginTop: '8px' }}>{content.slogan}</div>
-        <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>
-          <span style={{ padding: '9px 18px', borderRadius: 100, background: t.primary, color: '#fff', fontSize: '13px', fontWeight: 600 }}>Bouton primaire</span>
-          <span style={{ padding: '9px 18px', borderRadius: 100, background: t.gold, color: '#fff', fontSize: '13px', fontWeight: 600 }}>Bouton accent</span>
+      <div className="admin-settings-section">
+        <SectionTitle color={t.accent}>Polices</SectionTitle>
+        <p className="admin-page-sub" style={{ color: t.muted, margin: '4px 0 12px' }}>Titres et textes du site. Visible pour vos clients dès la publication.</p>
+        <TypoPanel onLotApplique={(id) => { setFontId(id); setSaveStatus('idle') }} />
+      </div>
+      <div className="admin-settings-section">
+        <SectionTitle color={t.gold}>Aperçu</SectionTitle>
+        <div className="admin-preview-surface">
+          <div style={{ fontFamily: 'var(--f-heading)', fontSize: 28, fontWeight: 700, color: t.heading, letterSpacing: '-0.03em' }}>{content.heroTitle}</div>
+          <div style={{ fontSize: 14, color: t.muted, marginTop: 8 }}>{content.slogan}</div>
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ padding: '9px 18px', borderRadius: 12, background: t.primary, color: '#fff', fontSize: 13, fontWeight: 600 }}>Bouton principal</span>
+            <span style={{ padding: '9px 18px', borderRadius: 12, background: t.gold, color: '#fff', fontSize: 13, fontWeight: 600 }}>Bouton accent</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1704,167 +1723,174 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
   const currentEmail = currentUser?.email?.toLowerCase()
 
   return (
-    <div style={{ maxWidth: '920px' }}>
+    <div className="admin-page" style={{ maxWidth: 920 }}>
       <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)."
         actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>{Icon.plus(14, '#fff')} Ajouter nouveau</PrimaryButton>}
       />
 
       {!isSupabase && (
-        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
-          Mode local — la gestion des utilisateurs nécessite une connexion Supabase.
+        <div className="admin-empty" style={{ marginTop: 14, fontSize: 13 }}>
+          Mode local — la gestion des utilisateurs nécessite une connexion en ligne.
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 10px', flexWrap: 'wrap' }}>
-        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '17px', fontWeight: 700, margin: 0 }}>Équipe</h3>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '3px 10px', borderRadius: 100 }}>{adminUsers.length}</span>
-        {isSupabase && isOwner && adminUsers.some(u => !u.invited_at && u.role !== 'owner') && (
-          <GhostButton color={t.primary} onClick={inviteAllPending} disabled={status.kind === 'busy'}>Inviter tous les non-invités</GhostButton>
+      <div className="admin-settings-section" style={{ marginTop: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <h3 className="admin-editor-col-title" style={{ margin: 0 }}>Équipe</h3>
+          <span className="admin-chip">{adminUsers.length}</span>
+          {isSupabase && isOwner && adminUsers.some(u => !u.invited_at && u.role !== 'owner') && (
+            <GhostButton color={t.primary} onClick={inviteAllPending} disabled={status.kind === 'busy'}>Inviter tous les non-invités</GhostButton>
+          )}
+        </div>
+
+        {status.kind !== 'idle' && (
+          <div className={`admin-status-live${status.kind === 'err' ? ' is-error' : status.kind === 'ok' ? ' is-ok' : ''}`} role="status" aria-live="polite" style={{ marginBottom: 12 }}>
+            {status.msg}
+          </div>
+        )}
+
+        {editing && (
+          <div className="admin-detail-panel" style={{ position: 'static', maxHeight: 'none', marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <FieldLabel>Nom</FieldLabel>
+                <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inp} placeholder="Nom complet" />
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <FieldLabel>Email</FieldLabel>
+                <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inp} placeholder="email@greatlife.gn" />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 6, maxWidth: 260, marginTop: 12 }}>
+              <FieldLabel>Rôle</FieldLabel>
+              <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
+                <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-paper-muted)', padding: '11px 14px', fontSize: 14 }}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {ROLE_DESCRIPTIONS[editing.role] && (
+                <span className="admin-page-sub">{ROLE_DESCRIPTIONS[editing.role]}</span>
+              )}
+            </div>
+            <div className="admin-ops-actions" style={{ marginTop: 12, justifyContent: 'flex-start' }}>
+              <PrimaryButton onClick={saveEdit}>Enregistrer</PrimaryButton>
+              <GhostButton color={t.muted} onClick={() => setEditing(null)}>Annuler</GhostButton>
+            </div>
+          </div>
+        )}
+
+        {adminUsers.length === 0 ? (
+          <p className="admin-loading">Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Ajouter ».' : ''}</p>
+        ) : (
+          <div className="admin-ops-list">
+            {adminUsers.map(u => {
+              const role = ROLES.find(r => r.id === u.role) || ROLES.find(r => r.id === 'guest')!
+              const isSelf = u.email.toLowerCase() === currentEmail
+              return (
+                <React.Fragment key={u.id}>
+                  <div className={`admin-ops-row${expandedId === u.id ? ' is-selected' : ''}`}>
+                    <div className="admin-ops-main">
+                      <div className="admin-ops-title">
+                        {u.name}{' '}
+                        <span style={{ fontWeight: 400, opacity: 0.65 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span>
+                      </div>
+                      {ROLE_DESCRIPTIONS[role.id] && (
+                        <div className="admin-ops-meta">{ROLE_DESCRIPTIONS[role.id]}</div>
+                      )}
+                      {(() => { const s = roleSummary(u.role); return (
+                        <div className="admin-ops-meta">
+                          {s.modulesWrite} module{s.modulesWrite > 1 ? 's' : ''} en écriture · {s.modulesRead} en lecture · {s.actionsGranted}/{s.actionsTotal} actions
+                        </div>
+                      ) })()}
+                    </div>
+                    <div className="admin-ops-aside">
+                      <span className="admin-chip is-live">{role.name}</span>
+                      {u.active === false ? (
+                        <span className="admin-chip is-danger">Suspendu</span>
+                      ) : isSupabase && !u.invited_at ? (
+                        <span className="admin-chip is-warn">Invité</span>
+                      ) : (
+                        <span className="admin-chip is-live">Actif</span>
+                      )}
+                      <div className="admin-ops-actions">
+                        {isSupabase && u.active !== false && !u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                          <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Inviter</GhostButton>
+                        )}
+                        {isSupabase && u.active !== false && u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                          <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Renvoyer</GhostButton>
+                        )}
+                        {isSupabase && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                          <GhostButton color={u.active === false ? '#16a34a' : '#b8860b'} disabled={busyId === u.id} onClick={() => toggleActive(u)}>{u.active === false ? 'Réactiver' : 'Suspendre'}</GhostButton>
+                        )}
+                        <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
+                        <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
+                        <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>
+                      </div>
+                    </div>
+                  </div>
+                  {expandedId === u.id && (
+                    <div style={{ padding: '14px 16px', background: 'var(--admin-paper-muted)', borderBottom: '1px solid var(--admin-line)', fontSize: 12, color: 'var(--admin-ink)' }}>
+                      {(() => {
+                        const writeMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'write').map(m => MODULE_ACCESS[m].module)
+                        const readMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'read').map(m => MODULE_ACCESS[m].module)
+                        const noneMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'none').map(m => MODULE_ACCESS[m].module)
+                        return (
+                          <>
+                            {writeMods.length > 0 && (
+                              <div style={{ marginBottom: 8 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--admin-forest)', marginBottom: 4 }}>Écriture ({writeMods.length})</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{writeMods.map(m => <span key={m} className="admin-chip is-live">{m}</span>)}</div>
+                              </div>
+                            )}
+                            {readMods.length > 0 && (
+                              <div style={{ marginBottom: 8 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--admin-forest-mid)', marginBottom: 4 }}>Lecture seule ({readMods.length})</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{readMods.map(m => <span key={m} className="admin-chip">{m}</span>)}</div>
+                              </div>
+                            )}
+                            {noneMods.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', opacity: 0.55, marginBottom: 4 }}>Aucun accès ({noneMods.length})</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{noneMods.map(m => <span key={m} className="admin-chip" style={{ opacity: 0.7 }}>{m}</span>)}</div>
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                      {(() => {
+                        const acts = userActivity(u.email).slice(0, 8)
+                        if (acts.length === 0 && dataSource !== 'supabase') return null
+                        return (
+                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--admin-line)' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 6 }}>Activité récente ({acts.length})</div>
+                            {acts.length === 0 ? (
+                              <div className="admin-ops-meta">Aucune action enregistrée.</div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                {acts.map(e => (
+                                  <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                    <span className="admin-ops-meta"><span className="admin-chip" style={{ marginRight: 6 }}>{e.action}</span>{e.target}{e.detail ? ` — ${e.detail}` : ''}</span>
+                                    <span className="admin-mono" style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>{e.created_at ? dateFr(e.created_at) : ''}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+          </div>
         )}
       </div>
 
-      {status.kind !== 'idle' && (
-        <div style={{
-          fontSize: 13, padding: '9px 12px', borderRadius: 10, marginBottom: 12,
-          background: status.kind === 'ok' ? `${t.primary}12` : status.kind === 'err' ? '#dc262612' : `${t.primary}08`,
-          color: status.kind === 'err' ? '#dc2626' : t.heading,
-          border: `1px solid ${status.kind === 'err' ? '#dc262633' : t.primary + '22'}`,
-        }}>{status.msg}</div>
-      )}
-
-      {editing && (
-        <OrganicCard style={{ padding: 16, marginBottom: 12, display: 'grid', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ display: 'grid', gap: 6 }}>
-              <FieldLabel>Nom</FieldLabel>
-              <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inp} placeholder="Nom complet" />
-            </div>
-            <div style={{ display: 'grid', gap: 6 }}>
-              <FieldLabel>Email</FieldLabel>
-              <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inp} placeholder="email@greatlife.gn" />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gap: 6, maxWidth: 260 }}>
-            <FieldLabel>Rôle</FieldLabel>
-            <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
-              <SelectTrigger style={{ borderColor: t.shadow, borderRadius: 10, background: t.surfaceAlt, padding: '11px 14px', fontSize: 14 }}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {ROLE_DESCRIPTIONS[editing.role] && (
-              <span style={{ fontSize: 12, color: t.muted, lineHeight: 1.4 }}>{ROLE_DESCRIPTIONS[editing.role]}</span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <PrimaryButton onClick={saveEdit}>Enregistrer</PrimaryButton>
-            <GhostButton color={t.muted} onClick={() => setEditing(null)}>Annuler</GhostButton>
-          </div>
-        </OrganicCard>
-      )}
-
-      {adminUsers.length === 0 ? (
-        <p style={{ color: t.muted, fontSize: 14, padding: '16px 0' }}>Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Ajouter ».' : ''}</p>
-      ) : (
-        adminUsers.map(u => {
-          const role = ROLES.find(r => r.id === u.role) || ROLES.find(r => r.id === 'guest')!
-          const isSelf = u.email.toLowerCase() === currentEmail
-          return (
-            <React.Fragment key={u.id}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>{u.name} <span style={{ color: t.muted, fontWeight: 400 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span></span>
-                {ROLE_DESCRIPTIONS[role.id] && (
-                  <span style={{ fontSize: 11, color: t.muted, lineHeight: 1.3 }}>{ROLE_DESCRIPTIONS[role.id]}</span>
-                )}
-                {(() => { const s = roleSummary(u.role); return (
-                  <span style={{ fontSize: 10, color: t.muted, marginTop: 2 }}>
-                    {s.modulesWrite} module{s.modulesWrite > 1 ? 's' : ''} en écriture · {s.modulesRead} en lecture · {s.actionsGranted}/{s.actionsTotal} actions
-                  </span>
-                ) })()}
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{role.name}</span>
-                {u.active === false ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: '#dc262612', color: '#dc2626' }}>Suspendu</span>
-                ) : isSupabase && !u.invited_at ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: `${t.gold || '#b8860b'}14`, color: t.gold || '#b8860b' }}>Invité</span>
-                ) : (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: '#16a34a12', color: '#16a34a' }}>Actif</span>
-                )}
-                {isSupabase && u.active !== false && !u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
-                  <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Inviter</GhostButton>
-                )}
-                {isSupabase && u.active !== false && u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
-                  <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Renvoyer</GhostButton>
-                )}
-                {isSupabase && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
-                  <GhostButton color={u.active === false ? '#16a34a' : '#b8860b'} disabled={busyId === u.id} onClick={() => toggleActive(u)}>{u.active === false ? 'Réactiver' : 'Suspendre'}</GhostButton>
-                )}
-                <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
-                <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
-                <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>
-              </div>
-            </div>
-            {expandedId === u.id && (
-              <div style={{ marginBottom: 8, padding: '14px 16px', background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 12, fontSize: 12, color: t.text }}>
-                {(() => {
-                  const writeMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'write').map(m => MODULE_ACCESS[m].module)
-                  const readMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'read').map(m => MODULE_ACCESS[m].module)
-                  const noneMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'none').map(m => MODULE_ACCESS[m].module)
-                  return (
-                    <>
-                      {writeMods.length > 0 && (
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.accent, marginBottom: 4 }}>Écriture ({writeMods.length})</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{writeMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: `${t.accent}14`, color: t.accent }}>{m}</span>)}</div>
-                        </div>
-                      )}
-                      {readMods.length > 0 && (
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.primary, marginBottom: 4 }}>Lecture seule ({readMods.length})</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{readMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: `${t.primary}12`, color: t.primary }}>{m}</span>)}</div>
-                        </div>
-                      )}
-                      {noneMods.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.muted, marginBottom: 4 }}>Aucun accès ({noneMods.length})</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{noneMods.map(m => <span key={m} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 100, background: t.surface, color: t.muted, border: `1px solid ${t.shadow}` }}>{m}</span>)}</div>
-                        </div>
-                      )}
-                    </>
-                  )
-                })()}
-                {(() => {
-                  const acts = userActivity(u.email).slice(0, 8)
-                  if (acts.length === 0 && dataSource !== 'supabase') return null
-                  return (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${t.shadow}` }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: t.heading, marginBottom: 6 }}>Activité récente ({acts.length})</div>
-                      {acts.length === 0 ? (
-                        <div style={{ fontSize: 11, color: t.muted }}>Aucune action enregistrée.</div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          {acts.map(e => (
-                            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                              <span style={{ fontSize: 11, color: t.text }}><span style={{ fontWeight: 700, padding: '1px 7px', borderRadius: 100, background: `${t.primary}14`, color: t.primary, marginRight: 6 }}>{e.action}</span>{e.target}{e.detail ? ` — ${e.detail}` : ''}</span>
-                              <span style={{ fontSize: 10, color: t.muted, whiteSpace: 'nowrap' }}>{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : ''}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
-            </React.Fragment>
-          )
-        })
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '24px 0 10px', flexWrap: 'wrap' }}>
-        <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '16px', fontWeight: 700, margin: 0 }}>Matrice des permissions</h3>
+      <div className="admin-settings-section">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <h3 className="admin-editor-col-title" style={{ margin: 0 }}>Matrice des permissions</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {rbacStatus.kind !== 'idle' && (
             <span style={{ fontSize: 12, fontWeight: 600, color: rbacStatus.kind === 'err' ? '#dc2626' : t.primary }}>{rbacStatus.msg}</span>
@@ -1967,6 +1993,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
             </div>
           )
         )}
+      </div>
       </div>
     </div>
   )
@@ -2544,6 +2571,7 @@ function OrdersManager() {
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc')
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const ORDERS_PAGE = 12
   const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
@@ -2558,6 +2586,15 @@ function OrdersManager() {
     return sortKey === 'date_asc' ? da - db : db - da
   })
   const pagedOrders = sorted.slice((page - 1) * ORDERS_PAGE, page * ORDERS_PAGE)
+  const selected = selectedId ? orders.find(o => o.id === selectedId) ?? null : null
+  useEffect(() => {
+    if (!selectedId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); setSelectedId(null); setConfirmDel(null) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId])
   const counts = { all: orders.length, pending: orders.filter(o => o.status === 'pending').length, confirmed: orders.filter(o => o.status === 'confirmed').length, preparing: orders.filter(o => o.status === 'preparing').length, ready: orders.filter(o => o.status === 'ready').length, delivered: orders.filter(o => o.status === 'delivered').length, cancelled: orders.filter(o => o.status === 'cancelled').length }
   const exportCsv = () => {
     const rows = [['Réf', 'Nom', 'Email', 'Téléphone', 'Statut', 'Total', 'Retrait', 'Articles', 'Notes', 'Date'].join(';')]
@@ -2577,6 +2614,7 @@ function OrdersManager() {
     if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setOrders(prev => prev.filter(o => o.id !== id))
     setConfirmDel(null)
+    if (selectedId === id) setSelectedId(null)
     await logAudit({ actor: user?.email ?? '', action: 'order_delete', target: `Commande ${orders.find(o => o.id === id)?.ref ?? id}`, detail: 'Suppression de commande' })
   }
   const [statusSending, setStatusSending] = useState(false)
@@ -2613,7 +2651,7 @@ function OrdersManager() {
     )
   }
   return (
-    <div className="admin-page" style={{ maxWidth: 1120 }}>
+    <div className="admin-page-wide">
       <PageHeader title="Commandes" subtitle={`${orders.length} commande${orders.length > 1 ? 's' : ''} · actualisation auto`} />
       <div className="admin-status-live" role="status" aria-live="polite">
         {statusSending ? 'Envoi de la notification…' : statusErr ? `Erreur : ${statusErr}` : loading ? 'Chargement des commandes…' : ''}
@@ -2648,54 +2686,94 @@ function OrdersManager() {
             >{l} <span style={{ opacity: 0.7 }}>{counts[k as keyof typeof counts] ?? 0}</span></button>
           ))}
         </div>
-        <div className="admin-ops-list">
-          {sorted.length === 0 ? <div className="admin-ops-row" style={{ color: t.muted }}>Aucune commande dans ce filtre.</div> :
-          pagedOrders.map(o => (
-            <div key={o.id} className={`admin-ops-row${o.status === 'pending' ? ' is-urgent' : ''}`}>
-              <div className="admin-ops-main">
-                <div className="admin-ops-title">
-                  {o.nom}{' '}
-                  {o.ref && <span className="admin-mono" style={{ fontWeight: 500, opacity: 0.65 }}>· {o.ref}</span>}
-                </div>
-                <div className="admin-ops-meta">
-                  {o.email}{o.phone ? ` · ${o.phone}` : ''} · retrait {o.pickup_time || '—'}
-                  {o.created_at ? ` · ${dateFr(o.created_at)}` : ''}
-                </div>
-                {o.items.length > 0 && (
-                  <div className="admin-ops-meta" style={{ marginTop: 8 }}>
-                    {o.items.map((it, idx) => (
-                      <span key={idx} style={{ marginRight: 8 }}>{it.qty}× {it.name}</span>
-                    ))}
+        <div className={`admin-ops-split${selected ? '' : ' is-list-only'}`}>
+          <div className="admin-ops-list">
+            {sorted.length === 0 ? <div className="admin-ops-row" style={{ color: t.muted }}>Aucune commande dans ce filtre.</div> :
+            pagedOrders.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                className={`admin-ops-row is-clickable${o.status === 'pending' ? ' is-urgent' : ''}${selectedId === o.id ? ' is-selected' : ''}`}
+                onClick={() => setSelectedId(o.id ?? null)}
+                aria-pressed={selectedId === o.id}
+              >
+                <div className="admin-ops-main">
+                  <div className="admin-ops-title">
+                    {o.nom}{' '}
+                    {o.ref && <span className="admin-mono" style={{ fontWeight: 500, opacity: 0.65 }}>· {o.ref}</span>}
                   </div>
-                )}
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-forest)', marginTop: 8 }}>{o.total} FG</div>
-                {o.notes && <div className="admin-ops-meta" style={{ marginTop: 6 }}>Note : {o.notes}</div>}
-              </div>
-              <div className="admin-ops-aside">
-                <span className={`admin-chip${o.status === 'pending' ? ' is-danger' : o.status === 'confirmed' || o.status === 'ready' ? ' is-live' : ' is-warn'}`}>
-                  {statusLabel[o.status] ?? o.status}
-                </span>
-                <div className="admin-ops-actions">
-                  <Select value={o.status} onValueChange={v => updateStatus(o.id!, v)}>
-                    <SelectTrigger aria-label={`Statut de la commande ${o.ref || o.nom}`} style={{ width: 160, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[o.status] ?? o.status}</SelectTrigger>
-                    <SelectContent>
-                      {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {canDo('orders', 'delete', user?.role ?? '') && (confirmDel === o.id ? (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <Bouton genre="danger" onClick={() => removeOrder(o.id!)}>Confirmer</Bouton>
-                      <Bouton genre="secondaire" onClick={() => setConfirmDel(null)}>Annuler</Bouton>
-                    </div>
-                  ) : (
-                    <Bouton genre="danger" aria-label="Supprimer la commande" title="Supprimer la commande" onClick={() => setConfirmDel(o.id ?? null)}>
-                      {Icon.trash(14, 'var(--admin-coral)')}
-                    </Bouton>
-                  ))}
+                  <div className="admin-ops-meta">
+                    retrait {o.pickup_time || '—'}
+                    {o.created_at ? ` · ${dateFr(o.created_at)}` : ''}
+                    {o.items.length > 0 ? ` · ${o.items.reduce((n, it) => n + it.qty, 0)} article${o.items.reduce((n, it) => n + it.qty, 0) > 1 ? 's' : ''}` : ''}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-forest)', marginTop: 8 }}>{o.total} FG</div>
                 </div>
+                <div className="admin-ops-aside">
+                  <span className={`admin-chip${o.status === 'pending' ? ' is-danger' : o.status === 'confirmed' || o.status === 'ready' ? ' is-live' : ' is-warn'}`}>
+                    {statusLabel[o.status] ?? o.status}
+                  </span>
+                  <span className="admin-ticket-cta">Ouvrir</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          {selected && (
+            <aside className="admin-detail-panel" aria-label={`Détail commande ${selected.ref || selected.nom}`}>
+              <div className="admin-detail-head">
+                <div>
+                  <div className="admin-ops-title">{selected.nom}</div>
+                  <div className="admin-ops-meta">
+                    {selected.ref && <span className="admin-mono">{selected.ref}</span>}
+                    {selected.created_at ? ` · ${dateFr(selected.created_at)}` : ''}
+                  </div>
+                </div>
+                <Bouton genre="silencieux" aria-label="Fermer le détail" onClick={() => { setSelectedId(null); setConfirmDel(null) }}>Fermer</Bouton>
               </div>
-            </div>
-          ))}
+              <span className={`admin-chip${selected.status === 'pending' ? ' is-danger' : selected.status === 'confirmed' || selected.status === 'ready' ? ' is-live' : ' is-warn'}`}>
+                {statusLabel[selected.status] ?? selected.status}
+              </span>
+              <div className="admin-ops-meta" style={{ marginTop: 14 }}>
+                {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}
+              </div>
+              <div className="admin-ops-meta">Retrait : {selected.pickup_time || '—'}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--admin-forest)', marginTop: 12 }}>{selected.total} FG</div>
+              {selected.items.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, opacity: 0.6 }}>Articles</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {selected.items.map((it, idx) => (
+                      <li key={idx} style={{ fontSize: 14, marginBottom: 4 }}>{it.qty}× {it.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {selected.notes && (
+                <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, opacity: 0.6 }}>Note client</div>
+                  <p style={{ margin: 0, fontSize: 14, whiteSpace: 'pre-wrap' }}>{selected.notes}</p>
+                </div>
+              )}
+              <div className="admin-ops-actions" style={{ marginTop: 20, justifyContent: 'flex-start' }}>
+                <Select value={selected.status} onValueChange={v => updateStatus(selected.id!, v)}>
+                  <SelectTrigger aria-label={`Statut de la commande ${selected.ref || selected.nom}`} style={{ width: 160, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[selected.status] ?? selected.status}</SelectTrigger>
+                  <SelectContent>
+                    {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {canDo('orders', 'delete', user?.role ?? '') && (confirmDel === selected.id ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Bouton genre="danger" onClick={() => removeOrder(selected.id!)}>Confirmer</Bouton>
+                    <Bouton genre="secondaire" onClick={() => setConfirmDel(null)}>Annuler</Bouton>
+                  </div>
+                ) : (
+                  <Bouton genre="danger" aria-label="Supprimer la commande" title="Supprimer la commande" onClick={() => setConfirmDel(selected.id ?? null)}>
+                    {Icon.trash(14, 'var(--admin-coral)')}
+                  </Bouton>
+                ))}
+              </div>
+            </aside>
+          )}
         </div>
         <Pagination page={page} pageSize={ORDERS_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
         </>
@@ -2740,6 +2818,7 @@ function ReservationsManager() {
   const [dateFilter, setDateFilter] = useState('')
   const [view, setView] = useState<'list' | 'planning'>('list')
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const RESA_PAGE = 12
   const q = query.trim().toLowerCase()
@@ -2753,6 +2832,15 @@ function ReservationsManager() {
     return sortKey === 'date_asc' ? ka.localeCompare(kb) : kb.localeCompare(ka)
   })
   const pagedReservations = sorted.slice((page - 1) * RESA_PAGE, page * RESA_PAGE)
+  const selected = selectedId ? reservations.find(r => r.id === selectedId) ?? null : null
+  useEffect(() => {
+    if (!selectedId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); setSelectedId(null); setConfirmDel(null) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId])
   const counts = { all: reservations.length, pending: reservations.filter(r => r.status === 'pending').length, confirmed: reservations.filter(r => r.status === 'confirmed').length, cancelled: reservations.filter(r => r.status === 'cancelled').length }
   const exportCsv = () => {
     const rows = [['Nom', 'Email', 'Téléphone', 'Date', 'Heure', 'Couverts', 'Statut', 'Message', 'Créée le'].join(';')]
@@ -2772,6 +2860,7 @@ function ReservationsManager() {
     if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
     setReservations(prev => prev.filter(r => r.id !== id))
     setConfirmDel(null)
+    if (selectedId === id) setSelectedId(null)
     await logAudit({ actor: user?.email ?? '', action: 'reservation_delete', target: `Réservation ${reservations.find(r => r.id === id)?.nom ?? id}`, detail: 'Suppression de réservation' })
   }
   const [statusSending, setStatusSending] = useState(false)
@@ -2833,8 +2922,33 @@ function ReservationsManager() {
       ))}
     </div>
   )
+  const detailPanel = selected ? (
+    <aside className="admin-detail-panel" aria-label={`Détail réservation ${selected.nom}`}>
+      <div className="admin-detail-head">
+        <div>
+          <div className="admin-ops-title">{selected.nom}</div>
+          <div className="admin-ops-meta">{selected.date} à {selected.time} · {selected.guests} personne{selected.guests > 1 ? 's' : ''}</div>
+        </div>
+        <Bouton genre="silencieux" aria-label="Fermer le détail" onClick={() => { setSelectedId(null); setConfirmDel(null) }}>Fermer</Bouton>
+      </div>
+      <span className={`admin-chip${selected.status === 'pending' ? ' is-danger' : selected.status === 'confirmed' ? ' is-live' : ''}`}>
+        {statusLabel[selected.status] ?? selected.status}
+      </span>
+      <div className="admin-ops-meta" style={{ marginTop: 14 }}>
+        {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}
+      </div>
+      {selected.created_at && <div className="admin-ops-meta">Créée {dateFr(selected.created_at)}</div>}
+      {selected.message && (
+        <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, opacity: 0.6 }}>Message</div>
+          <p style={{ margin: 0, fontSize: 14, whiteSpace: 'pre-wrap' }}>{selected.message}</p>
+        </div>
+      )}
+      <div style={{ marginTop: 20 }}>{resaActions(selected)}</div>
+    </aside>
+  ) : null
   return (
-    <div className="admin-page" style={{ maxWidth: 1120 }}>
+    <div className="admin-page-wide">
       <PageHeader title="Réservations" subtitle={`${reservations.length} réservation${reservations.length > 1 ? 's' : ''} · ${totalGuests} couverts (hors annulées) · actualisation auto`} />
       <div className={`admin-status-live${statusErr ? ' is-error' : ''}`} role="status" aria-live="polite">
         {statusSending ? 'Envoi de la notification…' : statusErr ? `Erreur : ${statusErr}` : loading ? 'Chargement des réservations…' : ''}
@@ -2875,52 +2989,68 @@ function ReservationsManager() {
           ))}
         </div>
         {sorted.length === 0 ? <p className="admin-loading">Aucune réservation dans ce filtre.</p> :
-        view === 'planning' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-            {planningByDate.map(g => (
-              <div key={g.date}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-                  <span style={{ fontFamily: 'var(--admin-font-display)', fontSize: 18, fontWeight: 700, color: 'var(--admin-ink)', textTransform: 'capitalize' }}>{fmtDate(g.date)}</span>
-                  <span className="admin-ops-meta">{g.rows.length} résa · {g.rows.reduce((n, r) => n + (r.status !== 'cancelled' ? r.guests : 0), 0)} couverts</span>
-                  {g.date === today && <span className="admin-chip is-warn">Aujourd&apos;hui</span>}
-                </div>
-                <div className="admin-ops-list">
-                  {g.rows.map(r => (
-                    <div key={r.id} className={`admin-ops-row${r.status === 'pending' ? ' is-urgent' : ''}`}>
-                      <div className="admin-ops-main">
-                        <div className="admin-ops-title">{r.time} · {r.nom} <span style={{ fontWeight: 400, opacity: 0.65 }}>· {r.guests} pers.</span></div>
-                        <div className="admin-ops-meta">{r.email}{r.phone ? ` · ${r.phone}` : ''}{r.message ? ` · ${r.message.slice(0, 60)}${r.message.length > 60 ? '…' : ''}` : ''}</div>
-                      </div>
-                      <div className="admin-ops-aside">
-                        <span className={`admin-chip${r.status === 'pending' ? ' is-danger' : r.status === 'confirmed' ? ' is-live' : ''}`}>{statusLabel[r.status] ?? r.status}</span>
-                        {resaActions(r)}
+        <div className={`admin-ops-split${selected ? '' : ' is-list-only'}`}>
+          <div>
+            {view === 'planning' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                {planningByDate.map(g => (
+                  <div key={g.date}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+                      <span style={{ fontFamily: 'var(--admin-font-display)', fontSize: 18, fontWeight: 700, color: 'var(--admin-ink)', textTransform: 'capitalize' }}>{fmtDate(g.date)}</span>
+                      <span className="admin-ops-meta">{g.rows.length} résa · {g.rows.reduce((n, r) => n + (r.status !== 'cancelled' ? r.guests : 0), 0)} couverts</span>
+                      {g.date === today && <span className="admin-chip is-warn">Aujourd&apos;hui</span>}
+                    </div>
+                    <div className="admin-ops-list">
+                      {g.rows.map(r => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          className={`admin-ops-row is-clickable${r.status === 'pending' ? ' is-urgent' : ''}${selectedId === r.id ? ' is-selected' : ''}`}
+                          onClick={() => setSelectedId(r.id ?? null)}
+                          aria-pressed={selectedId === r.id}
+                        >
+                          <div className="admin-ops-main">
+                            <div className="admin-ops-title">{r.time} · {r.nom} <span style={{ fontWeight: 400, opacity: 0.65 }}>· {r.guests} pers.</span></div>
+                            <div className="admin-ops-meta">{r.email}{r.phone ? ` · ${r.phone}` : ''}</div>
+                          </div>
+                          <div className="admin-ops-aside">
+                            <span className={`admin-chip${r.status === 'pending' ? ' is-danger' : r.status === 'confirmed' ? ' is-live' : ''}`}>{statusLabel[r.status] ?? r.status}</span>
+                            <span className="admin-ticket-cta">Ouvrir</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="admin-ops-list">
+                {pagedReservations.map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`admin-ops-row is-clickable${r.status === 'pending' ? ' is-urgent' : ''}${selectedId === r.id ? ' is-selected' : ''}`}
+                    onClick={() => setSelectedId(r.id ?? null)}
+                    aria-pressed={selectedId === r.id}
+                  >
+                    <div className="admin-ops-main">
+                      <div className="admin-ops-title">{r.nom} <span style={{ fontWeight: 400, opacity: 0.65 }}>· {r.guests} personne{r.guests > 1 ? 's' : ''}</span></div>
+                      <div className="admin-ops-meta">
+                        {r.date} à {r.time}{r.created_at ? ` · créée ${dateFr(r.created_at)}` : ''}
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="admin-ops-aside">
+                      <span className={`admin-chip${r.status === 'pending' ? ' is-danger' : r.status === 'confirmed' ? ' is-live' : ''}`}>{statusLabel[r.status] ?? r.status}</span>
+                      <span className="admin-ticket-cta">Ouvrir</span>
+                    </div>
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
+            {view === 'list' && <Pagination page={page} pageSize={RESA_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />}
           </div>
-        ) : (
-          <div className="admin-ops-list">
-          {pagedReservations.map(r => (
-            <div key={r.id} className={`admin-ops-row${r.status === 'pending' ? ' is-urgent' : ''}`}>
-              <div className="admin-ops-main">
-                <div className="admin-ops-title">{r.nom} <span style={{ fontWeight: 400, opacity: 0.65 }}>· {r.guests} personne{r.guests > 1 ? 's' : ''}</span></div>
-                <div className="admin-ops-meta">
-                  {r.date} à {r.time} · {r.email}{r.phone ? ` · ${r.phone}` : ''}{r.created_at ? ` · créée ${dateFr(r.created_at)}` : ''}
-                </div>
-                {r.message && <div className="admin-ops-meta" style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{r.message}</div>}
-              </div>
-              <div className="admin-ops-aside">
-                <span className={`admin-chip${r.status === 'pending' ? ' is-danger' : r.status === 'confirmed' ? ' is-live' : ''}`}>{statusLabel[r.status] ?? r.status}</span>
-                {resaActions(r)}
-              </div>
-            </div>
-          ))}
-          </div>
-        )}
-        {view === 'list' && <Pagination page={page} pageSize={RESA_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />}
+          {detailPanel}
+        </div>}
         </>
       }
     </div>
