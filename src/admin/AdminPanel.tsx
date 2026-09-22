@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
-import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination, formePastille, ESPACE, HAUTEUR_ETAT, StatusPill } from '@/admin/ui'
+import { PageHeader, EmptyState, FieldLabel, inputStyle, GhostButton, PrimaryButton, Pagination, formePastille, ESPACE, HAUTEUR_ETAT } from '@/admin/ui'
 import { lireNavPref, ecrireNavPref, type AdminNavPref } from '@/admin/admin-nav'
 import '@/admin/console.css'
 import { useAuth } from '@/contexts/AuthContext'
@@ -79,7 +79,7 @@ function IconeMenu() {
 }
 
 function AdminShell({ active, setActive, children }: { active: string; setActive: (s: string) => void; children: React.ReactNode }) {
-  const { theme: t, rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
+  const { theme: t, rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount, dataSource, dataLoading } = useSite()
   const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const [mobileNav, setMobileNav] = useState(false)
@@ -339,14 +339,14 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-lime)', marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
           </>
         )}
-        <div style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', gap: ESPACE, width: compact ? undefined : '100%' }}>
+        <div className="admin-profile-actions" style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', gap: ESPACE, width: compact ? undefined : '100%' }}>
           <Bouton
             etendu={!compact}
             carre={compact}
             genre="secondaire"
-            onClick={() => { window.open('/', '_blank', 'noopener,noreferrer') }}
-            title="Voir le site"
-            aria-label="Voir le site"
+            onClick={() => go('settings')}
+            title="Compte"
+            aria-label="Compte et réglages"
             style={{
               justifyContent: compact ? 'center' : undefined,
               background: 'transparent',
@@ -355,8 +355,8 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
               flex: compact ? undefined : 1,
             }}
           >
-            {!compact && 'Voir le site'}
-            {compact && <span aria-hidden="true">{Icon.eye(16, 'var(--admin-on-ink)')}</span>}
+            {!compact && 'Compte'}
+            {compact && <span aria-hidden="true">{Icon.settings(16, 'var(--admin-on-ink)')}</span>}
           </Bouton>
           <Bouton
             etendu={!compact}
@@ -364,7 +364,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
             genre="danger"
             onClick={handleLogout}
             title="Déconnexion"
-            aria-label="Déconnexion"
+            aria-label="Se déconnecter"
             style={{
               justifyContent: compact ? 'center' : undefined,
               background: 'transparent',
@@ -426,11 +426,15 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           {boutonMenu('main')}
           {active !== 'content' && (
             <div className="admin-topbar" role="region" aria-label="Actions de la console">
-              <StatusPill
-                label={unhandledMessagesCount + pendingOrdersCount + pendingReservationsCount > 0 ? 'Service en cours' : 'À jour'}
-                color={unhandledMessagesCount + pendingOrdersCount + pendingReservationsCount > 0 ? 'var(--admin-saffron)' : 'var(--admin-forest)'}
-                title="État du service aujourd’hui"
-              />
+              <div className="admin-topbar-service">
+                <span className="admin-topbar-service-label">
+                  {unhandledMessagesCount + pendingOrdersCount + pendingReservationsCount > 0 ? 'Service en cours' : 'Service à jour'}
+                </span>
+                <span className={`admin-chip${dataSource === 'supabase' ? ' is-live' : ''}`}>
+                  <i aria-hidden="true" />
+                  {dataLoading ? 'Mise à jour…' : dataSource === 'supabase' ? 'En ligne' : 'Aperçu local'}
+                </span>
+              </div>
               <Bouton
                 genre="secondaire"
                 onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
@@ -491,7 +495,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
 
 
 function Dashboard() {
-  const { menu, messages, theme: t, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
+  const { menu, messages, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
   const dsLabel = dataLoading
     ? 'Mise à jour…'
     : dataSource === 'supabase'
@@ -526,7 +530,6 @@ function Dashboard() {
   const fmt = (n: number) => n.toLocaleString('fr-FR')
   const periodLabel = period === 'all' ? 'tout l\'historique' : `${period} derniers jours`
   const periodOpts: [string, string][] = [['all', 'Tout'], ['30', '30 jours'], ['7', '7 jours']]
-  const afficher = (n: number) => (dataLoading ? '—' : n)
 
   type Ticket = {
     id: string
@@ -536,6 +539,8 @@ function Dashboard() {
     title: string
     meta: string
     cta: string
+    status: string
+    statusTone: 'danger' | 'warn' | 'ok'
     urgent?: boolean
   }
 
@@ -552,6 +557,8 @@ function Dashboard() {
       title: o.nom || o.ref,
       meta: `${o.ref} · ${dateFr(o.created_at)} · ${o.total}`,
       cta: 'Ouvrir',
+      status: 'En attente',
+      statusTone: 'danger',
       urgent: true,
     })),
     ...pendingResas.map((r): Ticket => ({
@@ -562,6 +569,8 @@ function Dashboard() {
       title: r.nom || 'Client',
       meta: `${r.date || ''} ${r.time || ''} · ${r.guests ?? '?'} pers.`,
       cta: 'Confirmer',
+      status: 'À confirmer',
+      statusTone: 'warn',
       urgent: true,
     })),
     ...openMessages.map((m): Ticket => ({
@@ -572,6 +581,8 @@ function Dashboard() {
       title: m.nom,
       meta: m.sujet || dateFr(m.date),
       cta: 'Répondre',
+      status: 'Non traité',
+      statusTone: 'warn',
     })),
   ]
 
@@ -582,159 +593,170 @@ function Dashboard() {
   ]
 
   const activity = auditEntries.slice(0, 6)
+  const ticketTotal = tickets.length
+  const kickerDate = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date())
 
   return (
-    <div className="admin-page" aria-busy={dataLoading || undefined}>
+    <div className="admin-page admin-page-dash" aria-busy={dataLoading || undefined}>
       <div className="admin-live-status" role="status" aria-live="polite">
-        {dataLoading ? 'Mise à jour des chiffres…' : `${pendingOrdersCount} commandes, ${pendingReservationsCount} réservations, ${unhandledMessagesCount} messages en attente.`}
+        {dataLoading
+          ? 'Mise à jour des chiffres…'
+          : `${pendingOrdersCount} commandes, ${pendingReservationsCount} réservations, ${unhandledMessagesCount} messages en attente.`}
       </div>
 
-      <PageHeader
-        title={`Bonjour, ${user?.name || 'vous'}`}
-        subtitle="Votre service aujourd’hui — ce qui attend une réponse."
-        badge={<span className={`admin-chip ${dataSource === 'supabase' ? 'is-live' : ''}`}>{dsLabel}</span>}
-        actions={
-          <Bouton genre="primaire" onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}>
-            Voir le site
-          </Bouton>
-        }
-      />
-      <p className="cms-sr-only">{dsDetail}</p>
-
-      <div className="admin-work-lanes" aria-label="File de travail">
-        {lanes.map((lane) => {
-          const items = tickets.filter(t => t.lane === lane.key)
-          return (
-            <section key={lane.key} className="admin-work-lane" aria-labelledby={`lane-${lane.key}`}>
-              <h3 id={`lane-${lane.key}`}>
-                {lane.label}
-                <span>{dataLoading ? '…' : `${items.length} · ${lane.hint}`}</span>
-              </h3>
-              {dataLoading ? (
-                <div className="admin-empty" style={{ padding: 20 }}>Chargement…</div>
-              ) : items.length === 0 ? (
-                <div className="admin-empty" style={{ padding: 20, fontSize: 13 }}>
-                  Rien dans cette file pour l’instant.
-                </div>
-              ) : (
-                items.map((ticket) => (
-                  <button
-                    key={ticket.id}
-                    type="button"
-                    className={`admin-ticket${ticket.urgent ? ' is-urgent' : ''}`}
-                    onClick={() => ouvrir(ticket.module)}
-                  >
-                    <div className="admin-ticket-meta">
-                      <span>{ticket.kind}</span>
-                      <span className="admin-mono">{ticket.meta}</span>
-                    </div>
-                    <div className="admin-ticket-title">{ticket.title}</div>
-                    <div className="admin-ticket-cta">{ticket.cta}</div>
-                  </button>
-                ))
-              )}
-            </section>
-          )
-        })}
-      </div>
-
-      <div className="admin-split">
-        <div className="admin-stat-editorial">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-ink)', opacity: 0.6 }}>Performance commerciale</div>
-              <div className="admin-stat-figure" style={{ marginTop: 12 }}>
-                {fmt(revenue)} <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.55 }}>{content.currency}</span>
-              </div>
-              <div style={{ fontSize: 13, marginTop: 8, opacity: 0.65 }}>
-                {revenue === 0
-                  ? 'Aucune commande confirmée sur la période — ouvrir les commandes en attente.'
-                  : `${confirmedOrders.length} commande${confirmedOrders.length > 1 ? 's' : ''} confirmée${confirmedOrders.length > 1 ? 's' : ''} · ${periodLabel}`}
-              </div>
-              {revenue === 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <Bouton genre="primaire" onClick={() => ouvrir('orders')}>Ouvrir les commandes</Bouton>
-                </div>
-              )}
-            </div>
-            <div role="group" aria-label="Période du chiffre d'affaires" style={{ display: 'flex', gap: ESPACE, flexWrap: 'wrap' }}>
-              {periodOpts.map(([k, l]) => (
-                <Bouton
-                  key={k}
-                  genre={period === k ? 'primaire' : 'secondaire'}
-                  aria-pressed={period === k}
-                  onClick={() => setPeriod(k as 'all' | '7' | '30')}
-                >{l}</Bouton>
-              ))}
-            </div>
-          </div>
+      <section className="admin-dash-intro">
+        <div>
+          <p className="admin-dash-kicker">{kickerDate} · bon service</p>
+          <h1 className="admin-page-title admin-dash-hello">Bonjour, {user?.name || 'vous'}</h1>
+          <p className="admin-page-sub">Votre service aujourd’hui — ce qui attend une réponse.</p>
+          <p className="cms-sr-only">{dsDetail}</p>
         </div>
+        <div className="admin-service-summary" aria-label="Résumé du service">
+          <span><strong>{dataLoading ? '—' : pendingOrdersCount}</strong> commandes</span>
+          <span><strong>{dataLoading ? '—' : pendingReservationsCount}</strong> réservation{pendingReservationsCount === 1 ? '' : 's'}</span>
+          <span><strong>{dataLoading ? '—' : unhandledMessagesCount}</strong> messages</span>
+        </div>
+      </section>
 
-        <div className="admin-stat-editorial">
-          <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.6, marginBottom: 12 }}>Ressources du site</div>
-          {([
-            ['Produits dans la carte', menu.length],
-            ['Commandes au total', ordersCount],
-            ['Réservations au total', reservationsCount],
-            ['Comptes de la console', adminUsers.length],
-          ] as [string, number][]).map(([lab, val]) => (
-            <div key={lab} className="admin-activity-row" style={{ padding: '8px 0' }}>
-              <span style={{ fontSize: 13 }}>{lab}</span>
-              <strong style={{ fontFamily: 'var(--admin-font-display)', fontSize: 18 }}>{afficher(val)}</strong>
+      <div className="admin-dash-layout">
+        <section aria-labelledby="file-travail-titre">
+          <div className="admin-section-head">
+            <h2 id="file-travail-titre" className="admin-section-title">File de travail</h2>
+            <span className="admin-section-note">
+              {dataLoading
+                ? 'Mise à jour…'
+                : `${ticketTotal} élément${ticketTotal === 1 ? '' : 's'} · ${dsLabel}`}
+            </span>
+          </div>
+          <div className="admin-work-queue" aria-label="File de travail">
+            {lanes.map((lane) => {
+              const items = tickets.filter(tk => tk.lane === lane.key)
+              return (
+                <section key={lane.key} className="admin-work-lane" aria-labelledby={`lane-${lane.key}`}>
+                  <div className="admin-lane-head">
+                    <h3 id={`lane-${lane.key}`}>{lane.label}</h3>
+                    <span>{dataLoading ? '…' : `${items.length} ${lane.hint}`}</span>
+                  </div>
+                  {dataLoading ? (
+                    <div className="admin-empty admin-empty-compact">Chargement…</div>
+                  ) : items.length === 0 ? (
+                    <div className="admin-empty admin-empty-compact">Rien dans cette file pour l’instant.</div>
+                  ) : (
+                    items.map((ticket) => (
+                      <button
+                        key={ticket.id}
+                        type="button"
+                        className={`admin-ticket${ticket.urgent ? ' is-urgent' : ''}`}
+                        onClick={() => ouvrir(ticket.module)}
+                      >
+                        <div className="admin-ticket-main">
+                          <div className="admin-ticket-meta">
+                            <span className="admin-ticket-kind">{ticket.kind}</span>
+                            <span className="admin-mono">{ticket.meta}</span>
+                          </div>
+                          <div className="admin-ticket-title">{ticket.title}</div>
+                          <div className="admin-ticket-cta">{ticket.cta}</div>
+                        </div>
+                        <div className="admin-ticket-action">
+                          <span className={`admin-status admin-status-${ticket.statusTone}`}>{ticket.status}</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </section>
+              )
+            })}
+          </div>
+        </section>
+
+        <aside className="admin-dash-aside" aria-label="Activité et état du site">
+          <section className="admin-activity-card" aria-labelledby="activite-recente">
+            <h3 id="activite-recente">Activité récente</h3>
+            {activity.length === 0 ? (
+              <div className="admin-empty admin-empty-compact">Pas encore d’activité tracée.</div>
+            ) : (
+              activity.map((e) => (
+                <div key={e.id ?? `${e.action}-${e.created_at}`} className="admin-activity-event">
+                  <i className="admin-activity-dot" aria-hidden="true" />
+                  <div>
+                    <strong>{e.action}</strong>
+                    <p>{e.target || e.detail || e.actor || '—'}</p>
+                  </div>
+                  <time className="admin-mono">{dateFr(e.created_at)}</time>
+                </div>
+              ))
+            )}
+          </section>
+
+          <section className="admin-activity-card" aria-labelledby="etat-site">
+            <div className="admin-site-health">
+              <div>
+                <div className="admin-dash-kicker" id="etat-site">État du site</div>
+                <strong>{dataSource === 'supabase' ? 'Tout fonctionne' : 'Aperçu local'}</strong>
+              </div>
+              <span className={`admin-status ${dataSource === 'supabase' ? 'admin-status-ok' : 'admin-status-warn'}`}>
+                {dsLabel}
+              </span>
             </div>
+            <div
+              className="admin-health-progress"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={dataSource === 'supabase' ? 92 : 40}
+              aria-label="Disponibilité du site"
+            >
+              <i style={{ width: dataSource === 'supabase' ? '92%' : '40%' }} />
+            </div>
+            <p className="admin-section-note">
+              {dataLoading
+                ? 'Synchronisation en cours…'
+                : dataSource === 'supabase'
+                  ? 'Connecté à votre espace en ligne.'
+                  : 'Données locales — pas encore synchronisées.'}
+            </p>
+          </section>
+        </aside>
+      </div>
+
+      <section className="admin-perf-strip" aria-labelledby="perf-commerciale">
+        <div className="admin-perf-main">
+          <div className="admin-dash-kicker" id="perf-commerciale">Performance commerciale</div>
+          <div className="admin-stat-figure">
+            {fmt(revenue)} <span className="admin-stat-currency">{content.currency}</span>
+          </div>
+          <p className="admin-page-sub">
+            {revenue === 0
+              ? 'Aucune commande confirmée sur la période — ouvrir les commandes en attente.'
+              : `${confirmedOrders.length} commande${confirmedOrders.length > 1 ? 's' : ''} confirmée${confirmedOrders.length > 1 ? 's' : ''} · ${periodLabel}`}
+          </p>
+          {revenue === 0 && (
+            <div className="admin-perf-cta">
+              <Bouton genre="primaire" onClick={() => ouvrir('orders')}>Ouvrir les commandes</Bouton>
+            </div>
+          )}
+        </div>
+        <div className="admin-perf-meta" role="group" aria-label="Période du chiffre d'affaires">
+          {periodOpts.map(([k, l]) => (
+            <Bouton
+              key={k}
+              genre={period === k ? 'primaire' : 'secondaire'}
+              aria-pressed={period === k}
+              onClick={() => setPeriod(k as 'all' | '7' | '30')}
+            >{l}</Bouton>
           ))}
-        </div>
-      </div>
-
-      <div className="admin-split-equal">
-        <section className="admin-stat-editorial" aria-labelledby="activite-recente">
-          <h3 id="activite-recente" style={{ fontFamily: 'var(--admin-font-display)', fontSize: 18, fontWeight: 700, margin: '0 0 12px' }}>
-            Activité récente
-          </h3>
-          {activity.length === 0 ? (
-            <div className="admin-empty" style={{ padding: 20, fontSize: 13 }}>Pas encore d’activité tracée.</div>
-          ) : (
-            activity.map((e) => (
-              <div key={e.id ?? `${e.action}-${e.created_at}`} className="admin-activity-row">
-                <div>
-                  <div style={{ fontWeight: 600 }}>{e.action}</div>
-                  <div style={{ fontSize: 12, opacity: 0.65 }}>{e.target || e.detail || e.actor}</div>
-                </div>
-                <span className="admin-mono">{dateFr(e.created_at)}</span>
-              </div>
-            ))
-          )}
-        </section>
-
-        <section className="admin-stat-editorial" aria-labelledby="messages-recents">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 id="messages-recents" style={{ fontFamily: 'var(--admin-font-display)', fontSize: 18, fontWeight: 700, margin: 0 }}>
-              Messages
-            </h3>
-            <Bouton genre="silencieux" onClick={() => ouvrir('messages')}>Tout voir</Bouton>
+          <div className="admin-perf-stats">
+            <span>Carte <strong>{dataLoading ? '—' : menu.length}</strong></span>
+            <span>Commandes <strong>{dataLoading ? '—' : ordersCount}</strong></span>
+            <span>Réservations <strong>{dataLoading ? '—' : reservationsCount}</strong></span>
+            <span>Comptes <strong>{dataLoading ? '—' : adminUsers.length}</strong></span>
           </div>
-          {messages.length === 0 ? (
-            <EmptyState icon={Icon.mail(28, t.muted)} title="Aucun message" subtitle="Les demandes des clients apparaîtront ici." />
-          ) : (
-            messages.slice(0, 4).map((m, i) => (
-              <button
-                key={m.id ?? i}
-                type="button"
-                className={`admin-ticket${!m.handled ? ' is-urgent' : ''}`}
-                onClick={() => ouvrir('messages')}
-                style={{ marginBottom: 8 }}
-              >
-                <div className="admin-ticket-meta">
-                  <span>{m.handled ? 'Traité' : 'Non traité'}</span>
-                  <span>{dateFr(m.date)}</span>
-                </div>
-                <div className="admin-ticket-title">{m.nom}</div>
-                <div style={{ fontSize: 13, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.sujet}</div>
-              </button>
-            ))
-          )}
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   )
 }

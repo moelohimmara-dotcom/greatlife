@@ -113,12 +113,34 @@
 [data-admin-shell] .admin-topbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   min-height: 52px;
   padding: 8px 0 16px;
   border-bottom: 1px solid var(--admin-line);
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+}
+
+[data-admin-shell] .admin-topbar-service {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-topbar-service-label {
+  color: var(--admin-saffron);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+[data-admin-shell] .admin-chip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
 }
 
 [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
@@ -144,6 +166,10 @@
   margin: 0 auto;
 }
 
+[data-admin-shell] .admin-page-dash {
+  max-width: 1280px;
+}
+
 [data-admin-shell] .admin-page-title {
   font-family: var(--admin-font-display);
   font-size: 30px;
@@ -154,10 +180,88 @@
   margin: 0;
 }
 
+[data-admin-shell] .admin-dash-hello {
+  font-size: clamp(31px, 3.5vw, 46px);
+  letter-spacing: -0.035em;
+  margin: 5px 0 8px;
+  text-wrap: balance;
+}
+
 [data-admin-shell] .admin-page-sub {
   font-size: 14px;
   color: color-mix(in srgb, var(--admin-ink) 58%, transparent);
   margin: 6px 0 0;
+}
+
+[data-admin-shell] .admin-dash-kicker {
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  text-transform: none;
+}
+
+[data-admin-shell] .admin-dash-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0 22px;
+}
+
+[data-admin-shell] .admin-service-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+[data-admin-shell] .admin-service-summary span {
+  background: var(--admin-paper-muted);
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-service-summary strong {
+  color: var(--admin-ink);
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-dash-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(270px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+[data-admin-shell] .admin-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+[data-admin-shell] .admin-section-title {
+  font-family: var(--admin-font-display);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-section-note {
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 13px;
+  margin: 0;
+}
+
+[data-admin-shell] .admin-work-queue {
+  display: grid;
+  gap: 14px;
 }
 
 [data-admin-shell] .admin-mono {
@@ -177,39 +281,50 @@
   background: var(--admin-surface);
   border: 1px solid var(--admin-line);
   border-radius: var(--admin-radius-panel);
-  padding: 16px;
-  min-height: 160px;
+  padding: 15px;
   box-shadow: var(--admin-shadow);
 }
 
-[data-admin-shell] .admin-work-lane h3 {
-  font-family: var(--admin-font-display);
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 12px;
-  color: var(--admin-ink);
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+[data-admin-shell] .admin-work-queue .admin-work-lane {
+  min-height: 0;
 }
 
+[data-admin-shell] .admin-lane-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+[data-admin-shell] .admin-lane-head h3,
+[data-admin-shell] .admin-work-lane h3 {
+  font-family: var(--admin-font-display);
+  font-size: 19px;
+  font-weight: 650;
+  margin: 0;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-lane-head span,
 [data-admin-shell] .admin-work-lane h3 span {
   font-family: var(--admin-font-ui);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
 }
 
 [data-admin-shell] .admin-ticket {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 14px;
   border-radius: var(--admin-radius-control);
-  border: 1px solid var(--admin-line);
+  border: 1px solid #e2dbcd;
+  border-left: 3px solid var(--admin-forest-mid);
   background: var(--admin-paper-muted);
-  margin-bottom: 8px;
+  margin-top: 9px;
   text-align: left;
   width: 100%;
   cursor: pointer;
@@ -228,30 +343,203 @@
   box-shadow: 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
 }
 
+[data-admin-shell] .admin-ticket-main {
+  min-width: 0;
+}
+
 [data-admin-shell] .admin-ticket-meta {
   display: flex;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-ticket-kind {
+  color: var(--admin-ink);
+  font-weight: 600;
+}
+
+[data-admin-shell] .admin-ticket-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-ink);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-admin-shell] .admin-ticket-cta {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-forest);
+  margin-top: 6px;
+}
+
+[data-admin-shell] .admin-ticket-action {
+  text-align: right;
+}
+
+[data-admin-shell] .admin-ticket.is-urgent {
+  border-left-color: var(--admin-coral);
+}
+
+[data-admin-shell] .admin-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-status-danger {
+  background: #fce5e1;
+  color: #a73328;
+}
+
+[data-admin-shell] .admin-status-warn {
+  background: #fff0d1;
+  color: #875a0b;
+}
+
+[data-admin-shell] .admin-status-ok {
+  background: var(--admin-sage);
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-dash-aside {
+  display: grid;
+  gap: 14px;
+}
+
+[data-admin-shell] .admin-activity-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  padding: 18px;
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-activity-card h3 {
+  font-family: var(--admin-font-display);
+  font-size: 20px;
+  font-weight: 650;
+  margin: 0 0 14px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-activity-event {
+  display: grid;
+  grid-template-columns: 9px 1fr auto;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-activity-event:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+[data-admin-shell] .admin-activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--admin-saffron);
+  margin-top: 6px;
+  display: block;
+}
+
+[data-admin-shell] .admin-activity-event strong {
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-activity-event p {
+  margin: 2px 0 0;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-activity-event time {
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-site-health {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+}
+
+[data-admin-shell] .admin-site-health strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+[data-admin-shell] .admin-health-progress {
+  height: 7px;
+  background: var(--admin-paper-muted);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+[data-admin-shell] .admin-health-progress i {
+  display: block;
+  height: 100%;
+  background: var(--admin-forest-mid);
+  border-radius: inherit;
+}
+
+[data-admin-shell] .admin-perf-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 22px;
+  padding: 20px 22px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-perf-cta {
+  margin-top: 12px;
+}
+
+[data-admin-shell] .admin-perf-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-perf-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 14px;
   font-size: 12px;
   color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
 }
 
-[data-admin-shell] .admin-ticket-title {
-  font-size: 14px;
-  font-weight: 700;
+[data-admin-shell] .admin-perf-stats strong {
   color: var(--admin-ink);
-}
-
-[data-admin-shell] .admin-ticket-cta {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--admin-forest);
-}
-
-[data-admin-shell] .admin-ticket.is-urgent {
-  border-color: color-mix(in srgb, var(--admin-coral) 45%, var(--admin-line));
-  box-shadow: inset 3px 0 0 var(--admin-coral);
+  font-family: var(--admin-font-display);
+  font-size: 16px;
+  margin-left: 4px;
 }
 
 [data-admin-shell] .admin-stat-editorial {
@@ -264,11 +552,18 @@
 
 [data-admin-shell] .admin-stat-figure {
   font-family: var(--admin-font-display);
-  font-size: 48px;
+  font-size: clamp(36px, 4vw, 48px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
   color: var(--admin-ink);
+  margin-top: 10px;
+}
+
+[data-admin-shell] .admin-stat-currency {
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.55;
 }
 
 [data-admin-shell] .admin-activity-row {
@@ -320,6 +615,12 @@
   border: 1px dashed var(--admin-line);
 }
 
+[data-admin-shell] .admin-empty-compact {
+  padding: 16px 12px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
 [data-admin-shell] .admin-bottom-nav {
   display: none;
 }
@@ -366,6 +667,28 @@
   [data-admin-shell] .admin-work-lanes {
     grid-template-columns: 1fr 1fr;
   }
+
+  [data-admin-shell] .admin-dash-layout,
+  [data-admin-shell] .admin-perf-strip {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-dash-aside {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-admin-shell] .admin-dash-intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  [data-admin-shell] .admin-service-summary {
+    justify-content: flex-start;
+  }
+
+  [data-admin-shell] .admin-perf-meta {
+    align-items: flex-start;
+  }
 }
 
 [data-admin-shell] .admin-split {
@@ -397,10 +720,33 @@
   [data-admin-shell] .admin-topbar {
     margin-bottom: 12px;
     padding-bottom: 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
 
   [data-admin-shell] .admin-work-lanes {
     grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-dash-aside {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-service-summary {
+    width: 100%;
+  }
+
+  [data-admin-shell] .admin-service-summary span {
+    flex: 1;
+    text-align: center;
+  }
+
+  [data-admin-shell] .admin-ticket {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-ticket-action {
+    text-align: left;
   }
 
   [data-admin-shell] .admin-bottom-nav {
