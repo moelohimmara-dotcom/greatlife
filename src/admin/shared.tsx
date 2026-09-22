@@ -19,6 +19,23 @@ export function heureCourte(iso: string | undefined): string {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
+export function ageRelatifFr(iso: string | undefined, nowMs = Date.now()): string {
+  if (!iso) return ''
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return ''
+  const diff = Math.max(0, nowMs - t)
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'à l’instant'
+  if (mins === 1) return 'il y a 1 min'
+  if (mins < 60) return `il y a ${mins} min`
+  const hours = Math.floor(mins / 60)
+  if (hours === 1) return 'il y a 1 h'
+  if (hours < 24) return `il y a ${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'il y a 1 j'
+  return `il y a ${days} j`
+}
+
 export function SaveBar({ status, error }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: string }) {
   const label = status === 'saving' ? 'Enregistrement…' : status === 'saved' ? 'Enregistré' : status === 'error' ? 'Échec de l\'enregistrement' : ''
   if (!label && status === 'idle') return null
@@ -57,4 +74,3 @@ export const AccessBanner = () => {
     </div>
   )
 }
-

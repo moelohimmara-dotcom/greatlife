@@ -264,6 +264,164 @@
   gap: 14px;
 }
 
+[data-admin-shell] .admin-work-queue-board {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+[data-admin-shell] .admin-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+[data-admin-shell] .admin-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--admin-radius-control);
+  border: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-height: 64px;
+}
+
+[data-admin-shell] .admin-kpi-total {
+  cursor: default;
+  background: var(--admin-paper-muted);
+}
+
+[data-admin-shell] button.admin-kpi:hover {
+  border-color: var(--admin-forest-mid);
+}
+
+[data-admin-shell] .admin-kpi strong {
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 1.1;
+  color: var(--admin-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-admin-shell] .admin-kpi span {
+  font-size: 12px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-dash-intro-aside {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-ds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-paper-muted);
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-ds-badge.is-live {
+  background: color-mix(in srgb, var(--admin-forest) 12%, #fff);
+  border-color: color-mix(in srgb, var(--admin-forest) 28%, transparent);
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-ds-badge.is-demo {
+  background: #fff0d1;
+  border-color: color-mix(in srgb, #875a0b 25%, transparent);
+  color: #875a0b;
+}
+
+[data-admin-shell] .admin-ds-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-lane-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--admin-ink);
+  color: var(--admin-paper);
+  font-family: var(--admin-font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+[data-admin-shell] .admin-lane-empty {
+  text-align: left;
+  margin-top: 8px;
+}
+
+[data-admin-shell] .admin-lane-empty strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-ink);
+  margin-bottom: 4px;
+}
+
+[data-admin-shell] .admin-lane-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-ticket-source {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-forest) 10%, #fff);
+  color: var(--admin-forest);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+[data-admin-shell] .admin-ticket-age {
+  font-family: var(--admin-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
+  margin-left: auto;
+}
+
+[data-admin-shell] .admin-ticket-age.is-urgent {
+  color: var(--admin-coral);
+}
+
 [data-admin-shell] .admin-mono {
   font-family: var(--admin-font-mono);
   font-size: 12px;
@@ -287,6 +445,20 @@
 
 [data-admin-shell] .admin-work-queue .admin-work-lane {
   min-height: 0;
+  padding: 12px;
+  background: color-mix(in srgb, var(--admin-paper-muted) 65%, var(--admin-surface));
+}
+
+[data-admin-shell] .admin-work-queue-board .admin-lane-head {
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-work-queue-board .admin-lane-head h3 {
+  font-size: 17px;
+  display: flex;
+  align-items: center;
 }
 
 [data-admin-shell] .admin-lane-head {
@@ -317,20 +489,20 @@
 [data-admin-shell] .admin-ticket {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 13px 14px;
-  border-radius: var(--admin-radius-control);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 11px;
+  border-radius: 10px;
   border: 1px solid #e2dbcd;
   border-left: 3px solid var(--admin-forest-mid);
   background: var(--admin-paper-muted);
-  margin-top: 9px;
+  margin-top: 8px;
   text-align: left;
   width: 100%;
   cursor: pointer;
   font: inherit;
   color: inherit;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
 [data-admin-shell] .admin-ticket:hover {
@@ -350,44 +522,65 @@
 [data-admin-shell] .admin-ticket-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
-  font-size: 13px;
+  font-size: 12px;
   color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
 }
 
 [data-admin-shell] .admin-ticket-kind {
   color: var(--admin-ink);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 [data-admin-shell] .admin-ticket-detail {
   font-family: var(--admin-font-ui);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-admin-shell] .admin-ticket-title {
   display: block;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 750;
   color: var(--admin-ink);
-  margin-top: 6px;
+  margin-top: 5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 [data-admin-shell] .admin-ticket-cta {
-  display: inline-block;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: var(--admin-forest);
+  color: #fff;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--admin-forest);
-  margin-top: 6px;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-ticket:hover .admin-ticket-cta {
+  background: color-mix(in srgb, var(--admin-forest) 88%, #000);
 }
 
 [data-admin-shell] .admin-ticket-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   text-align: right;
 }
 
@@ -671,8 +864,13 @@
 }
 
 @media (max-width: 1023px) {
-  [data-admin-shell] .admin-work-lanes {
+  [data-admin-shell] .admin-work-lanes,
+  [data-admin-shell] .admin-work-queue-board {
     grid-template-columns: 1fr 1fr;
+  }
+
+  [data-admin-shell] .admin-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   [data-admin-shell] .admin-dash-layout,
@@ -731,8 +929,13 @@
     align-items: flex-start;
   }
 
-  [data-admin-shell] .admin-work-lanes {
+  [data-admin-shell] .admin-work-lanes,
+  [data-admin-shell] .admin-work-queue-board {
     grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   [data-admin-shell] .admin-dash-aside {
@@ -753,7 +956,14 @@
   }
 
   [data-admin-shell] .admin-ticket-action {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     text-align: left;
+  }
+
+  [data-admin-shell] .admin-ticket-age {
+    margin-left: 0;
   }
 
   [data-admin-shell] .admin-bottom-nav {
