@@ -242,6 +242,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<LoginResult> => {
     const normalized = email.trim().toLowerCase()
+
+    // Accès temporaires de démonstration : disponibles uniquement en développement.
+    // Ils restent indépendants de Supabase pour permettre de découvrir la console
+    // avant d'avoir créé les comptes administrateurs dans le projet connecté.
+    if (import.meta.env.DEV) {
+      const demoAccount = ADMIN_ACCOUNTS.find(
+        (account) => account.email === normalized && account.password === password,
+      )
+      if (demoAccount) {
+        const u = buildUserFromEmail(demoAccount.email, demoAccount.role, demoAccount.name)
+        setUser(u)
+        writeLocalSession(u)
+        return { ok: true }
+      }
+    }
+
     const sb = getSupabase()
     if (!sb) {
       const account = ADMIN_ACCOUNTS.find(
