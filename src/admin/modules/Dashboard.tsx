@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchAuditLog, type AuditEntry } from '@/lib/repository'
-import { dateFr, heureCourte } from '@/admin/shared'
+import { dateFr, heureCourte, ageRelatifFr } from '@/admin/shared'
 import { pathForModule } from '@/admin/routes'
 
 type Ticket = {
@@ -17,10 +17,27 @@ type Ticket = {
   cta: string
   status: string
   statusTone: 'danger' | 'warn' | 'ok'
+  age?: string
+  source?: string
   urgent?: boolean
 }
 
 type ActivityRow = { id: string; title: string; detail: string; when: string }
+
+const LANE_EMPTY: Record<Ticket['lane'], { title: string; hint: string }> = {
+  now: {
+    title: 'File claire',
+    hint: 'Aucune commande en attente. Les nouvelles demandes apparaîtront ici pour traitement immédiat.',
+  },
+  next: {
+    title: 'Rien à confirmer',
+    hint: 'Aucune réservation en attente. Ouvrez Réservations pour l’historique ou les tables du jour.',
+  },
+  watch: {
+    title: 'Boîte à jour',
+    hint: 'Tous les messages sont traités. Ouvrez Messages pour relire ou répondre à nouveau.',
+  },
+}
 
 export function Dashboard() {
   const {
@@ -39,6 +56,12 @@ export function Dashboard() {
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [syncedAt, setSyncedAt] = useState<number | null>(null)
   const [auditTried, setAuditTried] = useState(false)
+  const [nowTick, setNowTick] = useState(() => Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 30000)
+    return () => window.clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (dataSource === 'loading') return
@@ -63,57 +86,74 @@ export function Dashboard() {
     return () => { active = false }
   }, [dataSource])
 
-  const pendingOrders = orders.filter((o) => o.status === 'pending').slice(0, 6)
-  const pendingResas = reservations.filter((r) => r.status === 'pending').slice(0, 6)
-  const openMessages = messages.filter((m) => !m.handled).slice(0, 6)
   const currency = content.currency || 'FG'
 
-  const tickets: Ticket[] = [
-    ...pendingOrders.map((o): Ticket => {
-      const ageH = o.created_at ? (Date.now() - new Date(o.created_at).getTime()) / 3600000 : 0
-      const urgent = ageH >= 12
-      return {
-        id: `order-${o.id}`,
-        lane: 'now',
-        module: 'orders',
-        kind: 'Commande',
-        title: o.nom || o.ref,
-        refTech: o.ref,
-        detail: `${dateFr(o.created_at)} · ${o.total} ${currency}`.trim(),
-        cta: 'Ouvrir',
-        status: 'En attente',
-        statusTone: urgent ? 'danger' : 'warn',
-        urgent,
-      }
-    }),
-    ...pendingResas.map((r): Ticket => ({
-      id: `resa-${r.id}`,
-      lane: 'next',
-      module: 'reservations',
-      kind: 'Réservation',
-      title: r.nom || 'Client',
-      detail: [r.date ? dateFr(r.date) : '', r.time, `${r.guests ?? '?'} pers.`].filter(Boolean).join(' · '),
-      cta: 'Confirmer',
-      status: 'À confirmer',
-      statusTone: 'warn',
-    })),
-    ...openMessages.map((m): Ticket => ({
-      id: `msg-${m.id ?? m.email}-${m.date}`,
-      lane: 'watch',
-      module: 'messages',
-      kind: 'Message',
-      title: m.nom,
-      detail: m.sujet || 'Message',
-      cta: 'Répondre',
-      status: 'Non traité',
-      statusTone: 'warn',
-    })),
-  ]
+  const { tickets, pendingOrders, pendingResas, openMessages } = useMemo(() => {
+    const pendingOrders = orders.filter((o) => o.status === 'pending').slice(0, 8)
+    const pendingResas = reservations.filter((r) => r.status === 'pending').slice(0, 8)
+    const openMessages = messages.filter((m) => !m.handled).slice(0, 8)
+    const tickets: Ticket[] = [
+      ...pendingOrders.map((o): Ticket => {
+        const ageH = o.created_at ? (nowTick - new Date(o.created_at).getTime()) / 3600000 : 0
+        const urgent = ageH >= 12
+        const age = ageRelatifFr(o.created_at, nowTick)
+        return {
+          id: `order-${o.id}`,
+          lane: 'now',
+          module: 'orders',
+          kind: 'Commande',
+          title: o.nom || o.ref,
+          refTech: o.ref,
+          detail: [o.pickup_time ? `Retrait ${o.pickup_time}` : '', `${o.total} ${currency}`].filter(Boolean).join(' · '),
+          cta: 'Traiter',
+          status: urgent ? 'En retard' : 'À préparer',
+          statusTone: urgent ? 'danger' : 'warn',
+          age,
+          source: 'Site',
+          urgent,
+        }
+      }),
+      ...pendingResas.map((r): Ticket => {
+        const age = ageRelatifFr(r.created_at, nowTick)
+        const when = [r.date ? dateFr(r.date) : '', r.time, `${r.guests ?? '?'} pers.`].filter(Boolean).join(' · ')
+        return {
+          id: `resa-${r.id}`,
+          lane: 'next',
+          module: 'reservations',
+          kind: 'Réservation',
+          title: r.nom || 'Client',
+          detail: when,
+          cta: 'Confirmer',
+          status: 'À confirmer',
+          statusTone: 'warn',
+          age,
+          source: 'Site',
+        }
+      }),
+      ...openMessages.map((m): Ticket => {
+        const age = ageRelatifFr(m.date, nowTick)
+        return {
+          id: `msg-${m.id ?? m.email}-${m.date}`,
+          lane: 'watch',
+          module: 'messages',
+          kind: 'Message',
+          title: m.nom,
+          detail: m.sujet || 'Message',
+          cta: 'Répondre',
+          status: 'Non lu',
+          statusTone: 'warn',
+          age,
+          source: 'Contact',
+        }
+      }),
+    ]
+    return { tickets, pendingOrders, pendingResas, openMessages }
+  }, [orders, reservations, messages, currency, nowTick])
 
   const lanes: { key: Ticket['lane']; label: string; hint: string }[] = [
-    { key: 'now', label: 'Maintenant', hint: 'à traiter tout de suite' },
+    { key: 'now', label: 'Maintenant', hint: 'à traiter' },
     { key: 'next', label: 'Ensuite', hint: 'à confirmer' },
-    { key: 'watch', label: 'À surveiller', hint: 'messages ouverts' },
+    { key: 'watch', label: 'À surveiller', hint: 'ouverts' },
   ]
 
   const activity: ActivityRow[] = (() => {
@@ -155,11 +195,14 @@ export function Dashboard() {
 
   const ticketTotal = tickets.length
   const queueBooting = dataSource === 'loading' && ticketTotal === 0 && !auditTried
-  const dsLabel = dataLoading
+  const dsConnected = dataSource === 'supabase'
+  const dsBadge = dataLoading
     ? 'Mise à jour…'
-    : dataSource === 'supabase'
-      ? 'En ligne'
-      : 'Aperçu local'
+    : dsConnected
+      ? 'Supabase connecté'
+      : dataSource === 'loading'
+        ? 'Connexion…'
+        : 'Mode démo'
   const kickerDate = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -168,7 +211,7 @@ export function Dashboard() {
 
   const syncNote = (() => {
     if (dataLoading && dataSource === 'loading') return 'Synchronisation en cours…'
-    if (dataSource !== 'supabase') return 'Données locales — pas encore synchronisées.'
+    if (dataSource !== 'supabase') return 'Mode démo — données locales, pas encore synchronisées.'
     if (!syncedAt) return 'Connecté à votre espace en ligne.'
     const mins = Math.max(0, Math.round((Date.now() - syncedAt) / 60000))
     if (mins <= 0) return 'Dernière synchronisation à l’instant.'
@@ -192,12 +235,35 @@ export function Dashboard() {
           <h1 className="admin-page-title admin-dash-hello">Bonjour, {user?.name || 'vous'}</h1>
           <p className="admin-page-sub">Votre service aujourd’hui — ce qui attend une réponse.</p>
         </div>
-        <div className="admin-service-summary" aria-label="Résumé du service">
-          <span><strong>{dataSource === 'loading' ? '—' : pendingOrdersCount}</strong> commandes à traiter</span>
-          <span><strong>{dataSource === 'loading' ? '—' : pendingReservationsCount}</strong> réservation{pendingReservationsCount === 1 ? '' : 's'} à confirmer</span>
-          <span><strong>{dataSource === 'loading' ? '—' : unhandledMessagesCount}</strong> messages</span>
+        <div className="admin-dash-intro-aside">
+          <span
+            className={`admin-ds-badge${dsConnected ? ' is-live' : dataSource === 'loading' ? '' : ' is-demo'}`}
+            title={syncNote}
+          >
+            <i className="admin-ds-dot" aria-hidden="true" />
+            {dsBadge}
+          </span>
         </div>
       </section>
+
+      <div className="admin-kpi-strip" aria-label="Indicateurs du service">
+        <button type="button" className="admin-kpi" onClick={() => ouvrir('orders')}>
+          <strong>{pendingOrdersCount}</strong>
+          <span>Commandes</span>
+        </button>
+        <button type="button" className="admin-kpi" onClick={() => ouvrir('reservations')}>
+          <strong>{pendingReservationsCount}</strong>
+          <span>Réservations</span>
+        </button>
+        <button type="button" className="admin-kpi" onClick={() => ouvrir('messages')}>
+          <strong>{unhandledMessagesCount}</strong>
+          <span>Messages</span>
+        </button>
+        <div className="admin-kpi admin-kpi-total" aria-hidden={queueBooting || undefined}>
+          <strong>{ticketTotal}</strong>
+          <span>En file</span>
+        </div>
+      </div>
 
       <div className="admin-dash-layout">
         <section aria-labelledby="file-travail-titre">
@@ -206,24 +272,31 @@ export function Dashboard() {
             <span className="admin-section-note">
               {queueBooting
                 ? 'Mise à jour…'
-                : `${ticketTotal} élément${ticketTotal === 1 ? '' : 's'} · ${dsLabel}`}
+                : `${ticketTotal} élément${ticketTotal === 1 ? '' : 's'}`}
             </span>
           </div>
-          <div className="admin-work-queue" aria-label="File de travail">
+          <div className="admin-work-queue admin-work-queue-board" aria-label="File de travail">
             {lanes.map((lane) => {
               const items = tickets.filter((tk) => tk.lane === lane.key)
+              const empty = LANE_EMPTY[lane.key]
               return (
                 <section key={lane.key} className="admin-work-lane" aria-labelledby={`lane-${lane.key}`}>
                   <div className="admin-lane-head">
-                    <h3 id={`lane-${lane.key}`}>{lane.label}</h3>
-                    <span>{queueBooting ? '…' : `${items.length} ${lane.hint}`}</span>
+                    <h3 id={`lane-${lane.key}`}>
+                      {lane.label}
+                      <span className="admin-lane-count">{queueBooting ? '…' : items.length}</span>
+                    </h3>
+                    <span>{lane.hint}</span>
                   </div>
                   {queueBooting ? (
                     <div className="admin-ticket-skeleton" aria-hidden="true">
                       <i /><i /><i />
                     </div>
                   ) : items.length === 0 ? (
-                    <div className="admin-empty admin-empty-compact">Rien dans cette file pour l’instant.</div>
+                    <div className="admin-empty admin-empty-compact admin-lane-empty">
+                      <strong>{empty.title}</strong>
+                      <p>{empty.hint}</p>
+                    </div>
                   ) : (
                     items.map((ticket) => (
                       <button
@@ -231,19 +304,29 @@ export function Dashboard() {
                         type="button"
                         className={`admin-ticket${ticket.urgent ? ' is-urgent' : ''}`}
                         onClick={() => ouvrir(ticket.module)}
-                        aria-label={`${ticket.cta} — ${ticket.kind} ${ticket.title}, ${ticket.status}`}
+                        aria-label={`${ticket.cta} — ${ticket.kind} ${ticket.title}, ${ticket.status}${ticket.age ? `, ${ticket.age}` : ''}`}
                       >
                         <div className="admin-ticket-main">
                           <div className="admin-ticket-meta">
                             <span className="admin-ticket-kind">{ticket.kind}</span>
+                            {ticket.source && (
+                              <span className="admin-ticket-source">{ticket.source}</span>
+                            )}
                             {ticket.refTech && <span className="admin-mono">{ticket.refTech}</span>}
-                            <span className="admin-ticket-detail">{ticket.detail}</span>
+                            {ticket.age && (
+                              <span className={`admin-ticket-age${ticket.urgent ? ' is-urgent' : ''}`}>
+                                {ticket.age}
+                              </span>
+                            )}
                           </div>
                           <div className="admin-ticket-title">{ticket.title}</div>
-                          <span className="admin-ticket-cta" aria-hidden="true">{ticket.cta}</span>
+                          {ticket.detail && (
+                            <div className="admin-ticket-detail">{ticket.detail}</div>
+                          )}
                         </div>
                         <div className="admin-ticket-action">
                           <span className={`admin-status admin-status-${ticket.statusTone}`}>{ticket.status}</span>
+                          <span className="admin-ticket-cta" aria-hidden="true">{ticket.cta}</span>
                         </div>
                       </button>
                     ))
@@ -277,10 +360,10 @@ export function Dashboard() {
             <div className="admin-site-health">
               <div>
                 <div className="admin-dash-kicker" id="etat-site">État du site</div>
-                <strong>{dataSource === 'supabase' ? 'Tout fonctionne' : dataSource === 'loading' ? 'Connexion…' : 'Aperçu local'}</strong>
+                <strong>{dsConnected ? 'Tout fonctionne' : dataSource === 'loading' ? 'Connexion…' : 'Mode démo'}</strong>
               </div>
-              <span className={`admin-status ${dataSource === 'supabase' ? 'admin-status-ok' : 'admin-status-warn'}`}>
-                {dsLabel}
+              <span className={`admin-status ${dsConnected ? 'admin-status-ok' : 'admin-status-warn'}`}>
+                {dsBadge}
               </span>
             </div>
             <p className="admin-section-note">{syncNote}</p>
