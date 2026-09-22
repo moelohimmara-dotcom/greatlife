@@ -68,15 +68,16 @@ export function PageHeader({
 }) {
   const { theme: t } = useSite()
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: ESPACE }}>
+    <div className="admin-wf-header">
       <div>
+        <p className="admin-wf-eyebrow">GREATLIFE / ADMINISTRATION</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>
-          <h2 className="admin-page-title" style={{ margin: 0, color: t.heading }}>
+          <h1 className="admin-page-title" style={{ margin: 0, color: t.heading }}>
             {title}
-          </h2>
+          </h1>
           {badge}
         </div>
-        {subtitle && <p className="admin-page-sub" style={{ color: t.muted, margin: '4px 0 0' }}>{subtitle}</p>}
+        {subtitle && <p className="admin-page-sub" style={{ color: t.muted, margin: '6px 0 0' }}>{subtitle}</p>}
       </div>
       {actions && <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>{actions}</div>}
     </div>

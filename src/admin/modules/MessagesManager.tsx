@@ -188,9 +188,30 @@ export function MessagesManager() {
   return (
     <div className={`admin-page-wide admin-msg-split${selected ? '' : ' is-list-only'}`} style={{ gridTemplateColumns: selected ? undefined : '1fr' }}>
       <div>
-        <PageHeader title="Messages" subtitle={`${filtered.length} / ${messages.length} · ${live ? 'temps réel' : 'actualisation périodique'}`} />
+        <PageHeader
+          title="Messages"
+          subtitle="Centralisez les demandes et répondez sans perdre le fil."
+          actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter</GhostButton>}
+        />
         <div className="admin-status-live" role="status" aria-live="polite">
           {newCount > 0 ? `${newCount} nouveau${newCount > 1 ? 'x' : ''} message${newCount > 1 ? 's' : ''}` : sending === 'sending' ? 'Envoi de la réponse…' : sending === 'sent' ? 'Réponse envoyée' : sending === 'error' ? 'Échec de l\'envoi' : bulkErr || delErr || handledErr || ''}
+        </div>
+        <div className="admin-wf-kpis" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }} aria-label="Indicateurs messages">
+          <div>
+            <strong>{messages.filter((m) => !m.handled).length}</strong>
+            <span>Non lus</span>
+            <small>à traiter aujourd’hui</small>
+          </div>
+          <div>
+            <strong>{messages.length}</strong>
+            <span>Messages au total</span>
+            <small>{live ? 'temps réel' : 'actualisation périodique'}</small>
+          </div>
+          <div>
+            <strong>{messages.filter((m) => m.handled).length}</strong>
+            <span>Traités</span>
+            <small>déjà répondus</small>
+          </div>
         </div>
         <div className="admin-toolbar">
           <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 160 }}>
@@ -200,7 +221,6 @@ export function MessagesManager() {
           {([['all', 'Toutes'], ['unhandled', 'Non traitées'], ['handled', 'Traitées']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
             <button key={k} type="button" className="admin-filter-chip" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>{l}</button>
           ))}
-          <GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter CSV</GhostButton>
         </div>
         {selectedIds.size > 0 && (
           <div className="admin-toolbar" style={{ background: 'var(--admin-paper-muted)', padding: 12, borderRadius: 12, border: '1px solid var(--admin-line)' }}>

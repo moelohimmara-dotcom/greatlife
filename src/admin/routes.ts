@@ -65,18 +65,18 @@ export function moduleFromPathname(pathname: string): AdminModuleKey {
 }
 
 export const NAV_GROUPS: [string, [AdminModuleKey, string, string][]][] = [
-  ['Opérations', [
-    ['dashboard', 'Vue d’ensemble', 'grid'],
+  ['Pilotage', [
+    ['dashboard', 'Tableau de bord', 'grid'],
     ['orders', 'Commandes', 'coin'],
     ['reservations', 'Réservations', 'calendar'],
     ['messages', 'Messages', 'mail'],
   ]],
   ['Contenu', [
-    ['content', 'Éditeur du site', 'write'],
+    ['content', 'Modifier le site', 'write'],
     ['menu', 'Carte & prix', 'leaf'],
     ['blog', 'Blog', 'write'],
     ['media', 'Médiathèque', 'image'],
-    ['team', 'Équipe & engagements', 'users'],
+    ['team', 'Équipe & contenus', 'users'],
   ]],
   ['Configuration', [
     ['theme', 'Apparence', 'palette'],
@@ -97,7 +97,7 @@ export const MOBILE_TAB_KEYS: AdminModuleKey[] = [
 ]
 
 export const MOBILE_TAB_LABELS: Partial<Record<AdminModuleKey, string>> = {
-  dashboard: 'File',
+  dashboard: 'Accueil',
   orders: 'Commandes',
   reservations: 'Résas',
   messages: 'Messages',

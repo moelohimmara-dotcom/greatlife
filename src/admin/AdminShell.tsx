@@ -420,9 +420,14 @@ export function AdminShell() {
           {active !== 'content' && (
             <div className="admin-topbar" role="region" aria-label="Actions de la console">
               <div className="admin-topbar-service">
-                <span className="admin-topbar-service-label">
-                  {unhandledMessagesCount + pendingOrdersCount + pendingReservationsCount > 0 ? 'Service en cours' : 'Service à jour'}
-                </span>
+                <div className="admin-topbar-crumb" aria-label="Fil d’Ariane">
+                  Greatlife
+                  <span aria-hidden="true">{Icon.chevronRight(14, 'var(--admin-ink)')}</span>
+                  <strong>
+                    {NAV_GROUPS.flatMap(([, items]) => items).find(([k]) => k === active)?.[1]
+                      ?? 'Console'}
+                  </strong>
+                </div>
                 <span className={`admin-chip${dataSource === 'supabase' ? ' is-live' : ''}`}>
                   <i aria-hidden="true" />
                   {dataLoading ? 'Mise à jour…' : dataSource === 'supabase' ? 'En ligne' : 'Aperçu local'}

@@ -125,10 +125,50 @@ export function OrdersManager() {
   }
   return (
     <div className="admin-page-wide">
-      <PageHeader title="Commandes" subtitle={`${orders.length} commande${orders.length > 1 ? 's' : ''} · actualisation auto`} />
+      <PageHeader
+        title="Commandes"
+        subtitle="Traitez chaque commande sans perdre de temps."
+        actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter</GhostButton>}
+      />
       <div className="admin-status-live" role="status" aria-live="polite">
         {statusSending ? 'Envoi de la notification…' : statusErr ? `Erreur : ${statusErr}` : loading ? 'Chargement des commandes…' : ''}
       </div>
+      {!loading && orders.length > 0 && (
+        <>
+          <div className="admin-wf-kpis" aria-label="Indicateurs commandes">
+            <div>
+              <strong>{counts.pending}</strong>
+              <span>À traiter maintenant</span>
+              <small>en attente de confirmation</small>
+            </div>
+            <div>
+              <strong>{counts.preparing}</strong>
+              <span>En préparation</span>
+              <small>cuisine en cours</small>
+            </div>
+            <div>
+              <strong>{counts.all}</strong>
+              <span>Commandes au total</span>
+              <small>{counts.ready} prêtes</small>
+            </div>
+            <div>
+              <strong>{counts.pending + counts.confirmed}</strong>
+              <span>File active</span>
+              <small>attente + confirmées</small>
+            </div>
+          </div>
+          {counts.pending > 0 && (
+            <section className="admin-wf-alert" aria-label="Alerte commandes">
+              <span aria-hidden="true">{Icon.coin(20, 'var(--admin-coral)')}</span>
+              <span>
+                <strong>{counts.pending} commande{counts.pending > 1 ? 's' : ''} nécessitent votre attention</strong>
+                <small>Confirmez ou préparez-les pour ne pas faire attendre vos clients.</small>
+              </span>
+              <Bouton genre="silencieux" onClick={() => setFilter('pending')}>Voir les alertes</Bouton>
+            </section>
+          )}
+        </>
+      )}
       {loading ? <div className="admin-loading">Chargement…</div> :
         orders.length === 0 ? <div style={{ marginTop: 20 }}><EmptyState icon={Icon.coin(28, t.muted)} title="Aucune commande" subtitle="Les commandes en ligne des clients apparaîtront ici." /></div> :
         <>
@@ -146,7 +186,6 @@ export function OrdersManager() {
               <SelectItem value="amount_asc">Montant ↑</SelectItem>
             </SelectContent>
           </Select>
-          <GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter CSV</GhostButton>
         </div>
         <div className="admin-filter-row" role="group" aria-label="Filtrer par statut">
           {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['preparing', 'En préparation'], ['ready', 'Prêtes'], ['delivered', 'Récupérées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (

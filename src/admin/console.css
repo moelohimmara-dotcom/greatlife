@@ -702,6 +702,621 @@
   border-radius: inherit;
 }
 
+/* —— Wireframe IA (modèle → identité Greatlife) —— */
+[data-admin-shell] .admin-wf-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-eyebrow {
+  margin: 0 0 6px;
+  color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-admin-shell] .admin-wf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-resto-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-resto-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--admin-forest);
+  display: inline-block;
+}
+
+[data-admin-shell] .admin-wf-periods {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-surface);
+  gap: 2px;
+}
+
+[data-admin-shell] .admin-wf-period {
+  border: 0;
+  background: transparent;
+  padding: 7px 12px;
+  border-radius: 9px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-period.is-active {
+  background: var(--admin-sage);
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-attention {
+  display: grid;
+  grid-template-columns: 1.2fr auto;
+  gap: 12px 20px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: linear-gradient(135deg, var(--admin-paper-muted), var(--admin-surface));
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-wf-attention-label {
+  display: block;
+  color: var(--admin-coral);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+[data-admin-shell] .admin-wf-attention h2 {
+  margin: 6px 0 4px;
+  font-family: var(--admin-font-display);
+  font-size: 22px;
+  font-weight: 650;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-attention p {
+  margin: 0;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-attention-items {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-wf-attention-items button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-attention-items button:hover {
+  border-color: var(--admin-forest-mid);
+  background: var(--admin-paper);
+}
+
+[data-admin-shell] .admin-wf-attention-items button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-attention-items button > span:last-child {
+  margin-left: auto;
+  opacity: 0.45;
+}
+
+[data-admin-shell] .admin-wf-attention-items strong,
+[data-admin-shell] .admin-wf-attention-items small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-attention-items strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-wf-attention-items small {
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--admin-ink) 52%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+[data-admin-shell] .admin-wf-stat {
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-wf-stat span,
+[data-admin-shell] .admin-wf-stat small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-stat span {
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-admin-shell] .admin-wf-stat small {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--admin-ink) 42%, transparent);
+}
+
+[data-admin-shell] .admin-wf-stat strong {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--admin-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--admin-ink);
+  letter-spacing: -0.02em;
+}
+
+[data-admin-shell] .admin-wf-stat b {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.85fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+[data-admin-shell] .admin-wf-grid-secondary {
+  grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.85fr);
+}
+
+[data-admin-shell] .admin-wf-panel {
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-panel-head h2 {
+  margin: 0;
+  font-family: var(--admin-font-display);
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-chart-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-chart-head strong,
+[data-admin-shell] .admin-wf-chart-head small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-chart-head strong {
+  color: var(--admin-ink);
+  font-size: 14px;
+}
+
+[data-admin-shell] .admin-wf-chart-head small {
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-legend {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 6px 0 10px;
+  border-radius: 50%;
+  background: var(--admin-forest);
+  vertical-align: middle;
+}
+
+[data-admin-shell] .admin-wf-legend.is-orders {
+  background: var(--admin-saffron);
+}
+
+[data-admin-shell] .admin-wf-line-chart {
+  display: flex;
+  height: 200px;
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-wf-chart-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 22px;
+  color: color-mix(in srgb, var(--admin-ink) 40%, transparent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-admin-shell] .admin-wf-chart-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-grid-lines {
+  position: absolute;
+  inset: 0 0 22px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 44px,
+    var(--admin-line) 45px
+  );
+  pointer-events: none;
+}
+
+[data-admin-shell] .admin-wf-chart-area svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: calc(100% - 22px);
+  overflow: visible;
+}
+
+[data-admin-shell] .admin-wf-chart-area polyline {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+[data-admin-shell] .admin-wf-chart-area polyline.is-resa {
+  stroke: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-chart-area polyline.is-orders {
+  stroke: var(--admin-saffron);
+  stroke-dasharray: 5 4;
+}
+
+[data-admin-shell] .admin-wf-chart-labels {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  color: color-mix(in srgb, var(--admin-ink) 45%, transparent);
+  font-size: 11px;
+}
+
+[data-admin-shell] .admin-wf-site-state {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+[data-admin-shell] .admin-wf-site-state small {
+  display: block;
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-completion {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+[data-admin-shell] .admin-wf-completion strong {
+  font-family: var(--admin-font-display);
+  font-size: 22px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-completion span {
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-site-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-admin-shell] .admin-wf-site-checks span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--admin-paper-muted);
+  color: color-mix(in srgb, var(--admin-ink) 60%, transparent);
+}
+
+[data-admin-shell] .admin-wf-site-checks .is-ok {
+  background: var(--admin-sage);
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-table {
+  width: 100%;
+  overflow: auto;
+}
+
+[data-admin-shell] .admin-wf-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(72px, 0.6fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-line);
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-table-head {
+  color: color-mix(in srgb, var(--admin-ink) 45%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding-top: 0;
+}
+
+[data-admin-shell] .admin-wf-table-row strong,
+[data-admin-shell] .admin-wf-table-row small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-table-row strong {
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-table-row small {
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-quick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-quick:hover {
+  border-color: var(--admin-forest-mid);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+[data-admin-shell] .admin-wf-kpis > div {
+  padding: 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-wf-kpis strong,
+[data-admin-shell] .admin-wf-kpis span,
+[data-admin-shell] .admin-wf-kpis small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-kpis strong {
+  font-family: var(--admin-font-display);
+  font-size: 22px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-kpis span {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-wf-kpis small {
+  margin-top: 4px;
+  color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--admin-coral) 35%, var(--admin-line));
+  border-radius: var(--admin-radius-panel);
+  background: #fcefea;
+}
+
+[data-admin-shell] .admin-wf-alert > span {
+  min-width: 0;
+  flex: 1;
+}
+
+[data-admin-shell] .admin-wf-alert strong,
+[data-admin-shell] .admin-wf-alert small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-alert strong {
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-alert small {
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-topbar-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
+  font-size: 13px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-topbar-crumb strong {
+  color: var(--admin-ink);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  [data-admin-shell] .admin-wf-stats,
+  [data-admin-shell] .admin-wf-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  [data-admin-shell] .admin-wf-grid,
+  [data-admin-shell] .admin-wf-grid-secondary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  [data-admin-shell] .admin-wf-attention {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-wf-attention-items,
+  [data-admin-shell] .admin-wf-stats,
+  [data-admin-shell] .admin-wf-kpis,
+  [data-admin-shell] .admin-wf-quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-wf-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  [data-admin-shell] .admin-wf-periods {
+    width: 100%;
+    overflow: auto;
+  }
+}
+
 [data-admin-shell] .admin-perf-strip {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
