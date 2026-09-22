@@ -32,6 +32,8 @@ export const FONT_FAMILIES: readonly FontFamilyChoice[] = [
   { id: 'cormorant', label: 'Prestige', stack: "'Cormorant Garamond', Georgia, serif", google: 'Cormorant+Garamond:wght@400;500;600;700', titres: true, textes: false },
   { id: 'lora', label: 'Journal', stack: "'Lora', Georgia, serif", google: 'Lora:wght@400;500;600;700', titres: true, textes: true },
   { id: 'inter', label: 'Nette', stack: "'Inter', sans-serif", google: 'Inter:wght@400;500;600;700', titres: true, textes: true },
+  { id: 'manrope', label: 'Console', stack: "'Manrope', system-ui, sans-serif", google: 'Manrope:wght@400;500;600;700', titres: false, textes: true },
+  { id: 'ibmPlexMono', label: 'Données', stack: "'IBM Plex Mono', ui-monospace, monospace", google: 'IBM+Plex+Mono:wght@500;600', titres: false, textes: false },
   { id: 'dmSans', label: 'Souple', stack: "'DM Sans', sans-serif", google: 'DM+Sans:wght@400;500;600;700', titres: false, textes: true },
   { id: 'karla', label: 'Lisible', stack: "'Karla', sans-serif", google: 'Karla:wght@400;500;600;700', titres: false, textes: true },
 ]

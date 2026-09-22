@@ -15,7 +15,7 @@ import type { ThemePalette } from '@/config/themes'
 export const HAUTEUR = 40
 /** Zone cliquable minimale des contrôles principaux (Apple HIG / WCAG 2.2 2.5.5). */
 export const CIBLE = 44
-export const RAYON = 10
+export const RAYON = 12
 /** Écart entre contrôles (ui-ux-pro-max touch-spacing, Apple HIG, Material). */
 export const ESPACE = 8
 /** Hauteur visuelle des pastilles d’état (chips M3 24–32, pas un bouton). */

@@ -1,16 +1,16 @@
 {
   "SITE": {
-    "fichiers": 81,
-    "couleursHorsRole": 91,
+    "fichiers": 93,
+    "couleursHorsRole": 93,
     "rayonsHorsEchelle": 3,
-    "policesHorsEchelle": 40,
-    "espacementsHorsEchelle": 107
+    "policesHorsEchelle": 38,
+    "espacementsHorsEchelle": 105
   },
   "CONSOLE": {
-    "fichiers": 15,
-    "couleursHorsRole": 82,
-    "rayonsHorsEchelle": 7,
-    "policesHorsEchelle": 50,
-    "espacementsHorsEchelle": 191
+    "fichiers": 24,
+    "couleursHorsRole": 54,
+    "rayonsHorsEchelle": 22,
+    "policesHorsEchelle": 22,
+    "espacementsHorsEchelle": 100
   }
 }

@@ -71,12 +71,12 @@ export function PageHeader({
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: ESPACE }}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>
-          <h2 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '26px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+          <h2 className="admin-page-title" style={{ margin: 0, color: t.heading }}>
             {title}
           </h2>
           {badge}
         </div>
-        {subtitle && <p style={{ color: t.muted, fontSize: '14px', marginTop: 4, margin: '4px 0 0' }}>{subtitle}</p>}
+        {subtitle && <p className="admin-page-sub" style={{ color: t.muted, margin: '4px 0 0' }}>{subtitle}</p>}
       </div>
       {actions && <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>{actions}</div>}
     </div>
@@ -115,9 +115,9 @@ export function StatusPill({
 export function EmptyState({ icon, title, subtitle }: { icon?: React.ReactNode; title: string; subtitle?: string }) {
   const { theme: t } = useSite()
   return (
-    <div style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 16, background: t.surfaceAlt, border: `1px dashed ${t.shadow}` }}>
+    <div className="admin-empty" style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 16, background: t.surfaceAlt, border: `1px dashed ${t.shadow}` }}>
       {icon && <div style={{ opacity: 0.5, marginBottom: 12 }}>{icon}</div>}
-      <div style={{ fontWeight: 600, color: t.heading, fontSize: 15, marginBottom: subtitle ? 4 : 0 }}>{title}</div>
+      <div style={{ fontWeight: 600, color: t.heading, fontSize: 16, marginBottom: subtitle ? 4 : 0 }}>{title}</div>
       {subtitle && <div style={{ color: t.muted, fontSize: 13 }}>{subtitle}</div>}
     </div>
   )
