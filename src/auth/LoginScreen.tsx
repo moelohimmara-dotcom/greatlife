@@ -52,7 +52,7 @@ export function LoginScreen() {
         </div>
         <OrganicCard style={{ padding: '36px', background: 'var(--admin-surface)', border: '1px solid var(--admin-line)', boxShadow: 'var(--admin-shadow)' }}>
           <h2 style={{ fontFamily: 'var(--admin-font-display)', color: 'var(--admin-ink)', fontSize: '22px', fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Connexion</h2>
-          <p style={{ fontSize: '13px', color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', margin: '0 0 24px' }}>Accès réservé à l'équipe du restaurant.</p>
+          <p style={{ fontSize: '13px', color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', margin: '0 0 24px' }}>Accès réservé à l&apos;équipe du restaurant.</p>
           <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
             <div>
               <Label style={{ fontSize: '13px', fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', marginBottom: '6px' }}>Email</Label>
@@ -73,6 +73,23 @@ export function LoginScreen() {
               {loading ? 'Vérification…' : <>Se connecter {Icon.arrow(16)}</>}
             </Bouton>
           </form>
+          {import.meta.env.DEV && (
+            <div className="admin-demo-access" aria-label="Accès temporaires de démonstration">
+              <div className="admin-demo-access-head">
+                <span className="admin-demo-access-dot" aria-hidden="true" />
+                <div>
+                  <strong>Accès temporaires</strong>
+                  <span>Disponibles uniquement en développement</span>
+                </div>
+              </div>
+              <button type="button" className="admin-demo-account" onClick={() => { setEmail('owner@greatlife.com'); setPassword('greatlife2026') }}>
+                <span><b>Propriétaire</b><small>Accès complet au CMS</small></span><span aria-hidden="true">→</span>
+              </button>
+              <button type="button" className="admin-demo-account" onClick={() => { setEmail('gerant@greatlife.com'); setPassword('greatlife2026') }}>
+                <span><b>Gérante</b><small>Opérations et contenu</small></span><span aria-hidden="true">→</span>
+              </button>
+            </div>
+          )}
         </OrganicCard>
         <div style={{ textAlign: 'center', marginTop: '20px' }}>
           <Link to="/" style={{ fontSize: '13px', color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', textDecoration: 'none' }}>← Retour au site</Link>
