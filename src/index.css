@@ -6,6 +6,26 @@ html, body, #root {
   height: 100%;
 }
 
+:root {
+  --gl-admin-paper: #f4f5ef;
+  --gl-admin-surface: #ffffff;
+  --gl-admin-ink: #17231c;
+  --gl-admin-muted: #66756b;
+  --gl-admin-forest: #225d3b;
+  --gl-admin-lime: #c9dc72;
+  --gl-admin-line: #dbe2d8;
+}
+
+.dark {
+  --gl-admin-paper: #101812;
+  --gl-admin-surface: #19261e;
+  --gl-admin-ink: #ecf3e9;
+  --gl-admin-muted: #a7b8aa;
+  --gl-admin-forest: #72b887;
+  --gl-admin-lime: #c9dc72;
+  --gl-admin-line: #314236;
+}
+
 html {
   scroll-behavior: smooth;
 }

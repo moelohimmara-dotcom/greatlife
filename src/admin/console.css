@@ -2557,6 +2557,36 @@
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  [data-admin-shell] {
+    --admin-paper: var(--gl-admin-paper);
+    --admin-paper-muted: #142018;
+    --admin-surface: var(--gl-admin-surface);
+    --admin-ink: var(--gl-admin-ink);
+    --admin-ink-soft: #dce9dc;
+    --admin-forest: #2e754a;
+    --admin-forest-mid: #72b887;
+    --admin-line: var(--gl-admin-line);
+    --admin-shadow: 0 16px 40px rgba(0, 0, 0, .24);
+    --admin-shadow-soft: 0 6px 18px rgba(0, 0, 0, .16);
+  }
+
+  [data-admin-shell] .admin-layout,
+  [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
+    background: var(--admin-paper);
+  }
+
+  [data-admin-shell] .admin-card,
+  [data-admin-shell] .admin-panel,
+  [data-admin-shell] .admin-section-card,
+  [data-admin-shell] .admin-module-card,
+  [data-admin-shell] .admin-kpi,
+  [data-admin-shell] .admin-chip,
+  [data-admin-shell] .admin-ds-badge {
+    color: var(--admin-ink);
+  }
+}
+
 [data-admin-shell] .admin-inspector-panel {
   padding: 0 12px 20px;
   /* Composition « cassée » kit : le bloc actif dépasse légèrement */
