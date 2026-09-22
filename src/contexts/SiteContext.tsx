@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteContentFields, updateSiteConfigFields, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteContentFields, updateSiteConfigFields, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult, type Order, type Reservation } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 import { variablesCss } from '@/config/charte'
@@ -147,6 +147,8 @@ interface SiteContextValue {
   pendingOrdersCount: number
   pendingReservationsCount: number
   unhandledMessagesCount: number
+  orders: Order[]
+  reservations: Reservation[]
 }
 
 const SiteContext = createContext<SiteContextValue | null>(null)
@@ -239,6 +241,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [reservationsCount, setReservationsCount] = useState(0)
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
   const [pendingReservationsCount, setPendingReservationsCount] = useState(0)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
   const unhandledMessagesCount = messages.filter(m => !m.handled).length
   const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading')
   const [dataLoading, setDataLoading] = useState(true)
@@ -419,10 +423,12 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         resaRes.fromDb ? resaRes.data : [],
       )
       if (ordersRes.fromDb) {
+        setOrders(ordersRes.data)
         setOrdersCount(compteurs.ordersCount)
         setPendingOrdersCount(compteurs.pendingOrdersCount)
       }
       if (resaRes.fromDb) {
+        setReservations(resaRes.data)
         setReservationsCount(compteurs.reservationsCount)
         setPendingReservationsCount(compteurs.pendingReservationsCount)
       }
@@ -565,6 +571,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const refreshOrders = async () => {
     const res = await fetchOrders()
     if (res.fromDb) {
+      setOrders(res.data)
       setOrdersCount(res.data.length)
       setPendingOrdersCount(compterEnAttente(res.data))
     }
@@ -573,6 +580,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const refreshReservations = async () => {
     const res = await fetchReservations()
     if (res.fromDb) {
+      setReservations(res.data)
       setReservationsCount(res.data.length)
       setPendingReservationsCount(compterEnAttente(res.data))
     }
@@ -615,6 +623,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     blogPosts, setBlogPosts, saveApparenceFields, rbacOverrides, setRbacOverridesState, saveRbac, markMessageHandled: handleMarkMessageHandled,
     refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
     pendingOrdersCount, pendingReservationsCount, unhandledMessagesCount,
+    orders, reservations,
   }
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>
