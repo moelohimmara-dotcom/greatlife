@@ -125,6 +125,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true
     async function restore() {
+      // Mode aperçu local : la console est directement accessible sans identifiants.
+      // Ce raccourci est strictement limité au serveur de développement.
+      if (import.meta.env.DEV) {
+        const demo = ADMIN_ACCOUNTS[0]
+        const u = buildUserFromEmail(demo.email, demo.role, demo.name)
+        if (active) {
+          setUser(u)
+          setLoading(false)
+        }
+        return
+      }
+
       const sb = getSupabase()
       if (sb) {
         try {
