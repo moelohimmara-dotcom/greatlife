@@ -223,3 +223,10 @@ un client ne peut pas vous joindre.
    `verify:anchors`, `verify:publication`, `verify:rbac`, `verify:point3`,
    `verify:i18n`, `verify:dispositions`, `test:save-plan`.
 4. Annoncer le déploiement.
+
+---
+
+## 9. Journal de campagne console & CMS (sept. 2026)
+
+La campagne Structure / chrome / refonte kit / Vue d’ensemble est consignées dans
+**`docs/23_JOURNAL_CONSOLE_CMS_2026-09.md`** (commits, décisions, écarts, déploiement).
