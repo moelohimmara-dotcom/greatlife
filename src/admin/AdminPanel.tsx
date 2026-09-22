@@ -334,7 +334,6 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
       <div className="admin-nav-foot" style={{ borderTop: '1px solid var(--admin-rail-line)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined }}>
         {!compact && (
           <>
-            <div style={{ fontSize: '11px', marginBottom: 2, opacity: 0.7 }}>Compte</div>
             <strong style={{ fontSize: '14px', fontWeight: 600, color: 'var(--admin-on-ink)' }}>{user?.name}</strong>
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-lime)', marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
           </>
@@ -345,8 +344,8 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
             carre={compact}
             genre="secondaire"
             onClick={() => go('settings')}
-            title="Compte"
-            aria-label="Compte et réglages"
+            title="Réglages"
+            aria-label="Ouvrir les réglages"
             style={{
               justifyContent: compact ? 'center' : undefined,
               background: 'transparent',
@@ -355,7 +354,7 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
               flex: compact ? undefined : 1,
             }}
           >
-            {!compact && 'Compte'}
+            {!compact && 'Réglages'}
             {compact && <span aria-hidden="true">{Icon.settings(16, 'var(--admin-on-ink)')}</span>}
           </Bouton>
           <Bouton
@@ -494,42 +493,39 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
 }
 
 
+function heureCourte(iso: string | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
 function Dashboard() {
-  const { menu, messages, dataSource, dataLoading, adminUsers, ordersCount, reservationsCount, content, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount } = useSite()
+  const { messages, dataSource, dataLoading, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount, content } = useSite()
   const dsLabel = dataLoading
     ? 'Mise à jour…'
     : dataSource === 'supabase'
       ? 'En ligne'
       : 'Aperçu local'
-  const dsDetail = dataLoading
-    ? 'Les chiffres se mettent à jour.'
-    : dataSource === 'supabase'
-      ? 'Connecté à votre espace en ligne.'
-      : 'Données locales d’aperçu — pas encore synchronisées.'
   const { user } = useAuth()
   const navigate = useNavigate()
   const ouvrir = (module: string) => navigate(`/admin?module=${module}`)
-  const [period, setPeriod] = useState<'all' | '7' | '30'>('all')
   const [orders, setOrders] = useState<Order[]>([])
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
+  const [syncedAt, setSyncedAt] = useState<number | null>(null)
   useEffect(() => {
     if (dataSource !== 'supabase') return
     let active = true
-    fetchOrders().then(res => { if (active && res.fromDb) setOrders(res.data) })
-    fetchReservations().then(res => { if (active && res.fromDb) setReservations(res.data) })
-    fetchAuditLog().then(res => { if (active && res.fromDb) setAuditEntries(res.data) })
+    Promise.all([fetchOrders(), fetchReservations(), fetchAuditLog()]).then(([o, r, a]) => {
+      if (!active) return
+      if (o.fromDb) setOrders(o.data)
+      if (r.fromDb) setReservations(r.data)
+      if (a.fromDb) setAuditEntries(a.data)
+      setSyncedAt(Date.now())
+    })
     return () => { active = false }
   }, [dataSource])
-  const now = Date.now()
-  const periodMs = period === '7' ? 7 * 86400000 : period === '30' ? 30 * 86400000 : 0
-  const filteredOrders = period === 'all' ? orders : orders.filter(o => o.created_at && (now - new Date(o.created_at).getTime()) <= periodMs)
-  const confirmedOrders = filteredOrders.filter(o => o.status === 'confirmed')
-  const parsePrice = (s: string) => { const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10); return Number.isFinite(n) ? n : 0 }
-  const revenue = confirmedOrders.reduce((sum, o) => sum + parsePrice(o.total), 0)
-  const fmt = (n: number) => n.toLocaleString('fr-FR')
-  const periodLabel = period === 'all' ? 'tout l\'historique' : `${period} derniers jours`
-  const periodOpts: [string, string][] = [['all', 'Tout'], ['30', '30 jours'], ['7', '7 jours']]
 
   type Ticket = {
     id: string
@@ -537,7 +533,8 @@ function Dashboard() {
     module: string
     kind: string
     title: string
-    meta: string
+    refTech?: string
+    detail: string
     cta: string
     status: string
     statusTone: 'danger' | 'warn' | 'ok'
@@ -547,31 +544,36 @@ function Dashboard() {
   const pendingOrders = orders.filter(o => o.status === 'pending').slice(0, 6)
   const pendingResas = reservations.filter(r => r.status === 'pending').slice(0, 6)
   const openMessages = messages.filter(m => !m.handled).slice(0, 6)
+  const currency = content.currency || 'FG'
 
   const tickets: Ticket[] = [
-    ...pendingOrders.map((o): Ticket => ({
-      id: `order-${o.id}`,
-      lane: 'now',
-      module: 'orders',
-      kind: 'Commande',
-      title: o.nom || o.ref,
-      meta: `${o.ref} · ${dateFr(o.created_at)} · ${o.total}`,
-      cta: 'Ouvrir',
-      status: 'En attente',
-      statusTone: 'danger',
-      urgent: true,
-    })),
+    ...pendingOrders.map((o): Ticket => {
+      const ageH = o.created_at ? (Date.now() - new Date(o.created_at).getTime()) / 3600000 : 0
+      const urgent = ageH >= 12
+      return {
+        id: `order-${o.id}`,
+        lane: 'now',
+        module: 'orders',
+        kind: 'Commande',
+        title: o.nom || o.ref,
+        refTech: o.ref,
+        detail: `${dateFr(o.created_at)} · ${o.total} ${currency}`.trim(),
+        cta: 'Ouvrir',
+        status: 'En attente',
+        statusTone: urgent ? 'danger' : 'warn',
+        urgent,
+      }
+    }),
     ...pendingResas.map((r): Ticket => ({
       id: `resa-${r.id}`,
       lane: 'next',
       module: 'reservations',
       kind: 'Réservation',
       title: r.nom || 'Client',
-      meta: `${r.date || ''} ${r.time || ''} · ${r.guests ?? '?'} pers.`,
+      detail: [r.date ? dateFr(r.date) : '', r.time, `${r.guests ?? '?'} pers.`].filter(Boolean).join(' · '),
       cta: 'Confirmer',
       status: 'À confirmer',
       statusTone: 'warn',
-      urgent: true,
     })),
     ...openMessages.map((m): Ticket => ({
       id: `msg-${m.id ?? m.email}-${m.date}`,
@@ -579,7 +581,7 @@ function Dashboard() {
       module: 'messages',
       kind: 'Message',
       title: m.nom,
-      meta: m.sujet || dateFr(m.date),
+      detail: m.sujet || 'Message',
       cta: 'Répondre',
       status: 'Non traité',
       statusTone: 'warn',
@@ -592,13 +594,60 @@ function Dashboard() {
     { key: 'watch', label: 'À surveiller', hint: 'messages ouverts' },
   ]
 
-  const activity = auditEntries.slice(0, 6)
+  type ActivityRow = { id: string; title: string; detail: string; when: string }
+  const activity: ActivityRow[] = (() => {
+    if (auditEntries.length > 0) {
+      return auditEntries.slice(0, 6).map((e) => ({
+        id: String(e.id ?? `${e.action}-${e.created_at}`),
+        title: e.action,
+        detail: e.target || e.detail || e.actor || '—',
+        when: heureCourte(e.created_at) || dateFr(e.created_at),
+      }))
+    }
+    const rows: ActivityRow[] = []
+    for (const m of openMessages.slice(0, 3)) {
+      rows.push({
+        id: `act-msg-${m.id ?? m.email}`,
+        title: 'Message reçu',
+        detail: `${m.nom} attend une réponse`,
+        when: heureCourte(m.date) || dateFr(m.date),
+      })
+    }
+    for (const r of pendingResas.slice(0, 2)) {
+      rows.push({
+        id: `act-resa-${r.id}`,
+        title: 'Réservation à confirmer',
+        detail: `${r.nom || 'Client'} · ${r.guests ?? '?'} pers.`,
+        when: r.time || dateFr(r.date),
+      })
+    }
+    for (const o of pendingOrders.slice(0, 2)) {
+      rows.push({
+        id: `act-order-${o.id}`,
+        title: 'Commande en attente',
+        detail: o.nom || o.ref,
+        when: heureCourte(o.created_at) || dateFr(o.created_at),
+      })
+    }
+    return rows.slice(0, 6)
+  })()
+
   const ticketTotal = tickets.length
   const kickerDate = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(new Date())
+
+  const syncNote = (() => {
+    if (dataLoading) return 'Synchronisation en cours…'
+    if (dataSource !== 'supabase') return 'Données locales — pas encore synchronisées.'
+    if (!syncedAt) return 'Connecté à votre espace en ligne.'
+    const mins = Math.max(0, Math.round((Date.now() - syncedAt) / 60000))
+    if (mins <= 0) return 'Dernière synchronisation à l’instant.'
+    if (mins === 1) return 'Dernière synchronisation il y a 1 min.'
+    return `Dernière synchronisation il y a ${mins} min.`
+  })()
 
   return (
     <div className="admin-page admin-page-dash" aria-busy={dataLoading || undefined}>
@@ -613,11 +662,10 @@ function Dashboard() {
           <p className="admin-dash-kicker">{kickerDate} · bon service</p>
           <h1 className="admin-page-title admin-dash-hello">Bonjour, {user?.name || 'vous'}</h1>
           <p className="admin-page-sub">Votre service aujourd’hui — ce qui attend une réponse.</p>
-          <p className="cms-sr-only">{dsDetail}</p>
         </div>
         <div className="admin-service-summary" aria-label="Résumé du service">
-          <span><strong>{dataLoading ? '—' : pendingOrdersCount}</strong> commandes</span>
-          <span><strong>{dataLoading ? '—' : pendingReservationsCount}</strong> réservation{pendingReservationsCount === 1 ? '' : 's'}</span>
+          <span><strong>{dataLoading ? '—' : pendingOrdersCount}</strong> commandes à traiter</span>
+          <span><strong>{dataLoading ? '—' : pendingReservationsCount}</strong> réservation{pendingReservationsCount === 1 ? '' : 's'} à confirmer</span>
           <span><strong>{dataLoading ? '—' : unhandledMessagesCount}</strong> messages</span>
         </div>
       </section>
@@ -652,14 +700,16 @@ function Dashboard() {
                         type="button"
                         className={`admin-ticket${ticket.urgent ? ' is-urgent' : ''}`}
                         onClick={() => ouvrir(ticket.module)}
+                        aria-label={`${ticket.cta} — ${ticket.kind} ${ticket.title}, ${ticket.status}`}
                       >
                         <div className="admin-ticket-main">
                           <div className="admin-ticket-meta">
                             <span className="admin-ticket-kind">{ticket.kind}</span>
-                            <span className="admin-mono">{ticket.meta}</span>
+                            {ticket.refTech && <span className="admin-mono">{ticket.refTech}</span>}
+                            <span className="admin-ticket-detail">{ticket.detail}</span>
                           </div>
                           <div className="admin-ticket-title">{ticket.title}</div>
-                          <div className="admin-ticket-cta">{ticket.cta}</div>
+                          <span className="admin-ticket-cta" aria-hidden="true">{ticket.cta}</span>
                         </div>
                         <div className="admin-ticket-action">
                           <span className={`admin-status admin-status-${ticket.statusTone}`}>{ticket.status}</span>
@@ -677,16 +727,16 @@ function Dashboard() {
           <section className="admin-activity-card" aria-labelledby="activite-recente">
             <h3 id="activite-recente">Activité récente</h3>
             {activity.length === 0 ? (
-              <div className="admin-empty admin-empty-compact">Pas encore d’activité tracée.</div>
+              <div className="admin-empty admin-empty-compact">Rien à signaler pour le moment.</div>
             ) : (
               activity.map((e) => (
-                <div key={e.id ?? `${e.action}-${e.created_at}`} className="admin-activity-event">
+                <div key={e.id} className="admin-activity-event">
                   <i className="admin-activity-dot" aria-hidden="true" />
                   <div>
-                    <strong>{e.action}</strong>
-                    <p>{e.target || e.detail || e.actor || '—'}</p>
+                    <strong>{e.title}</strong>
+                    <p>{e.detail}</p>
                   </div>
-                  <time className="admin-mono">{dateFr(e.created_at)}</time>
+                  <time>{e.when}</time>
                 </div>
               ))
             )}
@@ -702,61 +752,10 @@ function Dashboard() {
                 {dsLabel}
               </span>
             </div>
-            <div
-              className="admin-health-progress"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={dataSource === 'supabase' ? 92 : 40}
-              aria-label="Disponibilité du site"
-            >
-              <i style={{ width: dataSource === 'supabase' ? '92%' : '40%' }} />
-            </div>
-            <p className="admin-section-note">
-              {dataLoading
-                ? 'Synchronisation en cours…'
-                : dataSource === 'supabase'
-                  ? 'Connecté à votre espace en ligne.'
-                  : 'Données locales — pas encore synchronisées.'}
-            </p>
+            <p className="admin-section-note">{syncNote}</p>
           </section>
         </aside>
       </div>
-
-      <section className="admin-perf-strip" aria-labelledby="perf-commerciale">
-        <div className="admin-perf-main">
-          <div className="admin-dash-kicker" id="perf-commerciale">Performance commerciale</div>
-          <div className="admin-stat-figure">
-            {fmt(revenue)} <span className="admin-stat-currency">{content.currency}</span>
-          </div>
-          <p className="admin-page-sub">
-            {revenue === 0
-              ? 'Aucune commande confirmée sur la période — ouvrir les commandes en attente.'
-              : `${confirmedOrders.length} commande${confirmedOrders.length > 1 ? 's' : ''} confirmée${confirmedOrders.length > 1 ? 's' : ''} · ${periodLabel}`}
-          </p>
-          {revenue === 0 && (
-            <div className="admin-perf-cta">
-              <Bouton genre="primaire" onClick={() => ouvrir('orders')}>Ouvrir les commandes</Bouton>
-            </div>
-          )}
-        </div>
-        <div className="admin-perf-meta" role="group" aria-label="Période du chiffre d'affaires">
-          {periodOpts.map(([k, l]) => (
-            <Bouton
-              key={k}
-              genre={period === k ? 'primaire' : 'secondaire'}
-              aria-pressed={period === k}
-              onClick={() => setPeriod(k as 'all' | '7' | '30')}
-            >{l}</Bouton>
-          ))}
-          <div className="admin-perf-stats">
-            <span>Carte <strong>{dataLoading ? '—' : menu.length}</strong></span>
-            <span>Commandes <strong>{dataLoading ? '—' : ordersCount}</strong></span>
-            <span>Réservations <strong>{dataLoading ? '—' : reservationsCount}</strong></span>
-            <span>Comptes <strong>{dataLoading ? '—' : adminUsers.length}</strong></span>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }
