@@ -230,3 +230,10 @@ un client ne peut pas vous joindre.
 
 La campagne Structure / chrome / refonte kit / Vue d’ensemble est consignées dans
 **`docs/23_JOURNAL_CONSOLE_CMS_2026-09.md`** (commits, décisions, écarts, déploiement).
+
+---
+
+## 9. Journal de campagne console & CMS (sept. 2026)
+
+La campagne Structure / chrome / refonte kit / Vue d’ensemble est consignées dans
+**`docs/23_JOURNAL_CONSOLE_CMS_2026-09.md`** (commits, décisions, écarts, déploiement).
