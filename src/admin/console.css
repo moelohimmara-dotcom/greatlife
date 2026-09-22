@@ -123,6 +123,15 @@
 
 [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
   background: var(--admin-paper);
+  padding: 24px 32px;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
+    padding: 56px 16px 32px;
+  }
 }
 
 [data-admin-shell] .admin-page {
@@ -862,6 +871,445 @@
 
 [data-admin-shell] .admin-settings-section:last-child {
   border-bottom: none;
+}
+
+/* ——— Visibilité / Équipe / RBAC (langage kit) ——— */
+[data-admin-shell] .admin-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  min-height: 44px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  margin-bottom: 8px;
+}
+
+[data-admin-shell] .admin-toggle-row-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--admin-ink);
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-hint-box {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-paper-muted);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  border: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-segment {
+  display: flex;
+  gap: 6px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-segment-btn {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--admin-line);
+  background: transparent;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  touch-action: manipulation;
+}
+
+[data-admin-shell] .admin-segment-btn.is-active {
+  background: var(--admin-forest);
+  border-color: var(--admin-forest);
+  color: var(--admin-on-ink);
+}
+
+[data-admin-shell] .admin-segment-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
+}
+
+[data-admin-shell] .admin-segment-count {
+  opacity: 0.65;
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-content-card {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-content-stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+[data-admin-shell] .admin-add-dashed {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px;
+  min-height: 44px;
+  border-radius: var(--admin-radius-control);
+  cursor: pointer;
+  border: 1px dashed color-mix(in srgb, var(--admin-forest) 45%, var(--admin-line));
+  background: transparent;
+  color: var(--admin-forest);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+
+[data-admin-shell] .admin-add-dashed:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
+}
+
+[data-admin-shell] .admin-search-field {
+  position: relative;
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+
+[data-admin-shell] .admin-search-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 30px;
+  font-size: 12px;
+  min-height: 44px;
+  border-radius: var(--admin-radius-control);
+  border: 1px solid var(--admin-line);
+  background: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  font-family: inherit;
+}
+
+[data-admin-shell] .admin-search-field-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+[data-admin-shell] .admin-rbac-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border-radius: var(--admin-radius-control);
+  background: color-mix(in srgb, var(--admin-saffron) 12%, var(--admin-surface));
+  border: 1px solid color-mix(in srgb, var(--admin-saffron) 35%, var(--admin-line));
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-rbac-pending-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-rbac-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-role {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  overflow: hidden;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-role-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--admin-paper-muted);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-rbac-role-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-rbac-role-meta {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  margin-top: 2px;
+}
+
+[data-admin-shell] .admin-rbac-modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px 12px;
+  padding: 12px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-module {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid var(--admin-line);
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-module.is-write {
+  background: color-mix(in srgb, var(--admin-forest) 7%, var(--admin-surface));
+}
+
+[data-admin-shell] .admin-rbac-module.is-read {
+  background: color-mix(in srgb, var(--admin-forest-mid) 6%, var(--admin-surface));
+}
+
+[data-admin-shell] .admin-rbac-module-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-module-head.has-actions {
+  margin-bottom: 6px;
+}
+
+[data-admin-shell] .admin-rbac-module-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-rbac-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+[data-admin-shell] .admin-rbac-action.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+[data-admin-shell] .admin-rbac-action-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+}
+
+[data-admin-shell] .admin-rbac-action-label.is-on {
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-rbac-module-level {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-rbac-footnote {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-rbac-hist {
+  margin-top: 24px;
+}
+
+[data-admin-shell] .admin-rbac-hist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-rbac-hist-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  font-size: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-rbac-hist-when {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  min-width: 110px;
+  font-family: var(--admin-font-mono);
+}
+
+[data-admin-shell] .admin-rbac-hist-action {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--admin-forest);
+  text-transform: capitalize;
+  min-width: 130px;
+}
+
+[data-admin-shell] .admin-user-detail {
+  padding: 14px 16px;
+  background: var(--admin-paper-muted);
+  border-bottom: 1px solid var(--admin-line);
+  font-size: 12px;
+  color: var(--admin-ink);
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-user-detail-group {
+  margin-bottom: 8px;
+}
+
+[data-admin-shell] .admin-user-detail-group:last-child {
+  margin-bottom: 0;
+}
+
+[data-admin-shell] .admin-user-detail-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+}
+
+[data-admin-shell] .admin-user-detail-label.is-write {
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-user-detail-label.is-read {
+  color: var(--admin-forest-mid);
+}
+
+[data-admin-shell] .admin-user-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-admin-shell] .admin-user-activity {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--admin-line);
+}
+
+[data-admin-shell] .admin-user-activity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-nav-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  overscroll-behavior: contain;
+}
+
+[data-admin-shell] .admin-nav-drawer-backdrop {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+[data-admin-shell] .admin-nav-drawer-panel {
+  width: min(260px, 82vw);
+  max-height: 100dvh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--admin-ink);
+  box-shadow: -8px 0 24px rgba(24, 32, 25, 0.18);
+}
+
+@media (max-width: 768px) {
+  [data-admin-shell] .admin-rbac-modules {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-rbac-hist-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  [data-admin-shell] .admin-content-card .admin-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+[data-admin-shell] .admin-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-grid-icon-title {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  [data-admin-shell] .admin-grid-icon-title {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* CMS — éditeur de page (Structure | Aperçu | Inspecteur) — accents peps ici seulement */

@@ -415,7 +415,6 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
           id="contenu-console"
           className={active === 'content' ? 'admin-main-pad admin-main-editor' : 'admin-main-pad'}
           style={{
-          padding: active === 'content' ? 0 : '24px 32px',
           overflow: active === 'content' ? 'hidden' : 'auto',
           position: 'relative',
           minHeight: 0,
@@ -453,13 +452,14 @@ function AdminShell({ active, setActive, children }: { active: string; setActive
         </main>
       </div>
       {mobileNav && (
-        <div role="dialog" aria-modal="true" aria-label="Menu de la console" className="admin-nav-drawer" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-          <div
-            aria-hidden="true"
+        <div role="dialog" aria-modal="true" aria-label="Menu de la console" className="admin-nav-drawer">
+          <button
+            type="button"
+            className="admin-nav-drawer-backdrop"
+            aria-label="Fermer le menu"
             onClick={() => setMobileNav(false)}
-            style={{ flex: 1, background: 'rgba(0,0,0,0.4)', cursor: 'pointer' }}
           />
-          <div ref={drawerPanelRef} className="admin-nav-drawer-panel" style={{ width: '260px', maxWidth: '82vw', overscrollBehavior: 'contain' }}>
+          <div ref={drawerPanelRef} className="admin-nav-drawer-panel">
             {renderNav(false, 'admin-console-nav-tiroir')}
           </div>
         </div>
@@ -1352,25 +1352,33 @@ function VisibilityEditor() {
   }
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
   return (
-    <div style={{ maxWidth: '640px' }}>
+    <div className="admin-page" style={{ maxWidth: 640 }}>
       <PageHeader title="Visibilité" subtitle="Affichez ou masquez des éléments du site en un clic."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div style={{ marginTop: 12, marginBottom: 16 }}><SectionTitle color={t.primary}>Sections de page</SectionTitle></div>
-      {rows.map(([k, l]) => (
-        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{l}</span>
-          <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
+      <div className="admin-settings-section" style={{ marginTop: 20 }}>
+        <SectionTitle color={t.primary}>Sections de page</SectionTitle>
+        <div style={{ marginTop: 12 }}>
+          {rows.map(([k, l]) => (
+            <div key={k} className="admin-toggle-row">
+              <span className="admin-toggle-row-label">{l}</span>
+              <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
+            </div>
+          ))}
         </div>
-      ))}
-      <div style={{ marginTop: 22, marginBottom: 16 }}><SectionTitle color={t.accent}>Éléments de contenu</SectionTitle></div>
-      {(['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const).map(k => (
-        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 12, marginBottom: 8 }}>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: t.heading }}>{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
-          <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
+      </div>
+      <div className="admin-settings-section">
+        <SectionTitle color={t.accent}>Éléments de contenu</SectionTitle>
+        <div style={{ marginTop: 12 }}>
+          {(['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const).map(k => (
+            <div key={k} className="admin-toggle-row">
+              <span className="admin-toggle-row-label">{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
+              <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
+            </div>
+          ))}
         </div>
-      ))}
-      <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: t.surfaceAlt, fontSize: 12, color: t.muted }}>
+      </div>
+      <div className="admin-hint-box">
         Les changements sont appliqués en direct sur le site après enregistrement.
       </div>
     </div>
@@ -1830,7 +1838,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                     </div>
                   </div>
                   {expandedId === u.id && (
-                    <div style={{ padding: '14px 16px', background: 'var(--admin-paper-muted)', borderBottom: '1px solid var(--admin-line)', fontSize: 12, color: 'var(--admin-ink)' }}>
+                    <div className="admin-user-detail">
                       {(() => {
                         const writeMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'write').map(m => MODULE_ACCESS[m].module)
                         const readMods = ALL_MODULES.filter(m => permLevelFor(m, u.role) === 'read').map(m => MODULE_ACCESS[m].module)
@@ -1838,21 +1846,21 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                         return (
                           <>
                             {writeMods.length > 0 && (
-                              <div style={{ marginBottom: 8 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--admin-forest)', marginBottom: 4 }}>Écriture ({writeMods.length})</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{writeMods.map(m => <span key={m} className="admin-chip is-live">{m}</span>)}</div>
+                              <div className="admin-user-detail-group">
+                                <div className="admin-user-detail-label is-write">Écriture ({writeMods.length})</div>
+                                <div className="admin-user-detail-chips">{writeMods.map(m => <span key={m} className="admin-chip is-live">{m}</span>)}</div>
                               </div>
                             )}
                             {readMods.length > 0 && (
-                              <div style={{ marginBottom: 8 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--admin-forest-mid)', marginBottom: 4 }}>Lecture seule ({readMods.length})</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{readMods.map(m => <span key={m} className="admin-chip">{m}</span>)}</div>
+                              <div className="admin-user-detail-group">
+                                <div className="admin-user-detail-label is-read">Lecture seule ({readMods.length})</div>
+                                <div className="admin-user-detail-chips">{readMods.map(m => <span key={m} className="admin-chip">{m}</span>)}</div>
                               </div>
                             )}
                             {noneMods.length > 0 && (
-                              <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', opacity: 0.55, marginBottom: 4 }}>Aucun accès ({noneMods.length})</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{noneMods.map(m => <span key={m} className="admin-chip" style={{ opacity: 0.7 }}>{m}</span>)}</div>
+                              <div className="admin-user-detail-group">
+                                <div className="admin-user-detail-label">Aucun accès ({noneMods.length})</div>
+                                <div className="admin-user-detail-chips">{noneMods.map(m => <span key={m} className="admin-chip" style={{ opacity: 0.7 }}>{m}</span>)}</div>
                               </div>
                             )}
                           </>
@@ -1862,14 +1870,14 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                         const acts = userActivity(u.email).slice(0, 8)
                         if (acts.length === 0 && dataSource !== 'supabase') return null
                         return (
-                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--admin-line)' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 6 }}>Activité récente ({acts.length})</div>
+                          <div className="admin-user-activity">
+                            <div className="admin-user-detail-label">Activité récente ({acts.length})</div>
                             {acts.length === 0 ? (
                               <div className="admin-ops-meta">Aucune action enregistrée.</div>
                             ) : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                                 {acts.map(e => (
-                                  <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                  <div key={e.id} className="admin-user-activity-row">
                                     <span className="admin-ops-meta"><span className="admin-chip" style={{ marginRight: 6 }}>{e.action}</span>{e.target}{e.detail ? ` — ${e.detail}` : ''}</span>
                                     <span className="admin-mono" style={{ opacity: 0.6, whiteSpace: 'nowrap' }}>{e.created_at ? dateFr(e.created_at) : ''}</span>
                                   </div>
@@ -1893,7 +1901,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         <h3 className="admin-editor-col-title" style={{ margin: 0 }}>Matrice des permissions</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {rbacStatus.kind !== 'idle' && (
-            <span style={{ fontSize: 12, fontWeight: 600, color: rbacStatus.kind === 'err' ? '#dc2626' : t.primary }}>{rbacStatus.msg}</span>
+            <span className={`admin-status-live${rbacStatus.kind === 'err' ? ' is-error' : ' is-ok'}`}>{rbacStatus.msg}</span>
           )}
           {isOwner && (
             <GhostButton color={t.muted} disabled={rbacBusy || !isSupabase} onClick={resetPerms}>Réinitialiser</GhostButton>
@@ -1901,60 +1909,60 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         </div>
       </div>
       {!isOwner && (
-        <div style={{ fontSize: 12, color: t.muted, marginBottom: 10 }}>Lecture seule — seul le propriétaire peut modifier les permissions.</div>
+        <div className="admin-ops-meta" style={{ marginBottom: 10 }}>Lecture seule — seul le propriétaire peut modifier les permissions.</div>
       )}
       {pendingCount > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '10px 14px', borderRadius: 12, background: `${t.accent}12`, border: `1px solid ${t.accent}33`, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>{pendingCount} modification{pendingCount > 1 ? 's' : ''} en attente</span>
+        <div className="admin-rbac-pending">
+          <span className="admin-rbac-pending-label">{pendingCount} modification{pendingCount > 1 ? 's' : ''} en attente</span>
           <PrimaryButton onClick={commitPerms} disabled={rbacBusy || !isSupabase}>{rbacBusy ? 'Enregistrement…' : 'Enregistrer'}</PrimaryButton>
           <GhostButton color={t.muted} disabled={rbacBusy} onClick={discardPerms}>Annuler</GhostButton>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
-          <input value={moduleQuery} onChange={e => setModuleQuery(e.target.value)} placeholder="Rechercher un module…" style={{ ...inp, paddingLeft: 30, fontSize: 12 }} />
-          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>{Icon.search(13, t.muted)}</span>
+      <div className="admin-toolbar" style={{ marginTop: 0, marginBottom: 10 }}>
+        <div className="admin-search-field">
+          <input value={moduleQuery} onChange={e => setModuleQuery(e.target.value)} placeholder="Rechercher un module…" aria-label="Rechercher un module" />
+          <span className="admin-search-field-icon" aria-hidden="true">{Icon.search(13, t.muted)}</span>
         </div>
-        {moduleQuery && <span style={{ fontSize: 11, color: t.muted }}>{filteredModules.length} module{filteredModules.length > 1 ? 's' : ''}</span>}
+        {moduleQuery && <span className="admin-ops-meta">{filteredModules.length} module{filteredModules.length > 1 ? 's' : ''}</span>}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+      <div className="admin-rbac-stack">
         {ROLES.map(r => {
           const s = roleSummary(r.id)
           return (
-            <div key={r.id} style={{ background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 16px', background: t.surfaceAlt, flexWrap: 'wrap' }}>
+            <div key={r.id} className="admin-rbac-role">
+              <div className="admin-rbac-role-head">
                 <div>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: t.heading }}>{ROLE_LABELS[r.id] ?? r.name}</span>
-                  <div style={{ fontSize: 11, color: t.muted, marginTop: 2 }}>{s.modulesWrite} écriture · {s.modulesRead} lecture · {s.actionsGranted}/{s.actionsTotal} actions</div>
+                  <div className="admin-rbac-role-title">{ROLE_LABELS[r.id] ?? r.name}</div>
+                  <div className="admin-rbac-role-meta">{s.modulesWrite} écriture · {s.modulesRead} lecture · {s.actionsGranted}/{s.actionsTotal} actions</div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px 12px', padding: 12 }}>
+              <div className="admin-rbac-modules">
                 {filteredModules.map(m => {
                   const acts = actionsFor(m)
                   const p = permLevelFor(m, r.id)
                   const locked = isLocked(m, r.id)
                   const disabled = !isOwner || rbacBusy || locked
                   return (
-                    <div key={m} style={{ padding: '8px 10px', borderRadius: 10, background: p === 'write' ? `${t.accent}0d` : p === 'read' ? `${t.primary}0a` : 'transparent', border: `1px solid ${t.shadow}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: acts.length > 0 ? 6 : 0 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: t.heading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{MODULE_ACCESS[m].module}</span>
+                    <div key={m} className={`admin-rbac-module${p === 'write' ? ' is-write' : p === 'read' ? ' is-read' : ''}`}>
+                      <div className={`admin-rbac-module-head${acts.length > 0 ? ' has-actions' : ''}`}>
+                        <span className="admin-rbac-module-name">{MODULE_ACCESS[m].module}</span>
                         {acts.length === 0 && <span style={{ fontSize: 11, fontWeight: 700, color: permColor(p) }}>{permIcon(p)}</span>}
                       </div>
                       {acts.length > 0 ? (
-                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <div className="admin-rbac-actions">
                           {acts.map(a => {
                             const on = roleHas(m, a, r.id)
                             const aLabel = a === 'create' ? 'Créer' : a === 'update' ? 'Modif.' : a === 'delete' ? 'Suppr.' : 'Publ.'
                             return (
-                              <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 5, opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }} title={locked ? 'Protégé (propriétaire)' : `${aLabel} : ${on ? 'autorisé' : 'interdit'}`}>
+                              <div key={a} className={`admin-rbac-action${disabled ? ' is-disabled' : ''}`} title={locked ? 'Protégé (propriétaire)' : `${aLabel} : ${on ? 'autorisé' : 'interdit'}`}>
                                 <Switch checked={on} onCheckedChange={() => togglePerm(m, a, r.id)} />
-                                <span style={{ fontSize: 11, fontWeight: 600, color: on ? t.accent : t.muted }}>{aLabel}</span>
+                                <span className={`admin-rbac-action-label${on ? ' is-on' : ''}`}>{aLabel}</span>
                               </div>
                             )
                           })}
                         </div>
                       ) : (
-                        <div style={{ fontSize: 11, color: t.muted }}>{p === 'write' ? 'Écriture' : p === 'read' ? 'Lecture seule' : 'Aucun accès'}</div>
+                        <div className="admin-rbac-module-level">{p === 'write' ? 'Écriture' : p === 'read' ? 'Lecture seule' : 'Aucun accès'}</div>
                       )}
                     </div>
                   )
@@ -1964,30 +1972,30 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
           )
         })}
       </div>
-      <div style={{ fontSize: 11, color: t.muted, marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+      <div className="admin-rbac-footnote">
         <span>Les modules sans actions (ex. Tableau de bord, Journal) restent en lecture seule. Le rôle propriétaire sur le module Utilisateurs est protégé (anti-verrouillage).</span>
       </div>
 
-      <div style={{ marginTop: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-          <h3 style={{ fontFamily: 'var(--f-heading)', color: t.heading, fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="admin-rbac-hist">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <h3 className="admin-editor-col-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             Historique des changements RBAC
-            <span style={{ fontSize: 12, fontWeight: 600, color: t.muted, background: t.surfaceAlt, padding: '2px 10px', borderRadius: 100 }}>{rbacHistory.length}</span>
+            <span className="admin-chip">{rbacHistory.length}</span>
           </h3>
           <GhostButton color={t.muted} onClick={() => setRbacHistOpen(o => !o)}>{rbacHistOpen ? 'Masquer' : 'Afficher'}</GhostButton>
         </div>
         {rbacHistOpen && (
           rbacHistory.length === 0 ? (
-            <p style={{ color: t.muted, fontSize: 13, padding: '8px 0' }}>Aucun changement RBAC enregistré pour le moment.</p>
+            <p className="admin-loading" style={{ marginTop: 0 }}>Aucun changement RBAC enregistré pour le moment.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
+            <div className="admin-rbac-hist-list">
               {rbacHistory.slice(0, 50).map(e => (
-                <div key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 12px', background: t.surface, border: `1px solid ${t.shadow}`, borderRadius: 10, fontSize: 12 }}>
-                  <span style={{ flexShrink: 0, fontSize: 10, color: t.muted, minWidth: 110 }}>{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                  <span style={{ flexShrink: 0, fontWeight: 700, color: t.accent, textTransform: 'capitalize', minWidth: 130 }}>{e.action.replace(/_/g, ' ')}</span>
-                  <span style={{ color: t.muted, flexShrink: 0 }}>{e.actor || 'système'}</span>
-                  <span style={{ color: t.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>→ {e.target}</span>
-                  <span style={{ color: t.muted, flexShrink: 0, fontSize: 11 }}>{e.detail}</span>
+                <div key={e.id} className="admin-rbac-hist-row">
+                  <span className="admin-rbac-hist-when">{e.created_at ? new Date(e.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  <span className="admin-rbac-hist-action">{e.action.replace(/_/g, ' ')}</span>
+                  <span className="admin-ops-meta" style={{ flexShrink: 0 }}>{e.actor || 'système'}</span>
+                  <span className="admin-ops-meta" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>→ {e.target}</span>
+                  <span className="admin-ops-meta" style={{ flexShrink: 0, fontSize: 11 }}>{e.detail}</span>
                 </div>
               ))}
             </div>
@@ -3090,49 +3098,53 @@ function TeamContentsEditor() {
   const tabs: [string, string][] = [['team', 'Équipe'], ['engagements', 'Engagements'], ['testimonials', 'Témoignages']]
 
   return (
-    <div style={{ maxWidth: '820px' }}>
+    <div className="admin-page" style={{ maxWidth: 820 }}>
       <PageHeader title="Équipe & contenus" subtitle="Gérez les membres de l'équipe, les engagements et les témoignages clients."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' }}>
+      <div className="admin-segment" role="tablist" aria-label="Sections équipe et contenus">
         {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k as 'team' | 'engagements' | 'testimonials')} style={{
-            fontSize: '13px', fontWeight: 600, padding: '8px 16px', borderRadius: 100, cursor: 'pointer',
-            border: `1px solid ${tab === k ? t.primary : t.shadow}`, background: tab === k ? t.primary : 'transparent',
-            color: tab === k ? '#fff' : t.muted, transition: 'all 0.15s',
-          }}>{l} <span style={{ opacity: 0.6, marginLeft: 4 }}>{k === 'team' ? content.team.length : k === 'engagements' ? content.engagements.length : content.testimonials.length}</span></button>
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            className={`admin-segment-btn${tab === k ? ' is-active' : ''}`}
+            onClick={() => setTab(k as 'team' | 'engagements' | 'testimonials')}
+          >
+            {l} <span className="admin-segment-count">{k === 'team' ? content.team.length : k === 'engagements' ? content.engagements.length : content.testimonials.length}</span>
+          </button>
         ))}
       </div>
 
       {tab === 'team' && (
-        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+        <div className="admin-content-stack">
           {content.team.map((m, i) => (
-            <OrganicCard key={i} style={{ padding: 16, display: 'grid', gap: 10 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div key={i} className="admin-content-card">
+              <div className="admin-grid-2">
                 <div><FieldLabel>Nom</FieldLabel><Input value={m.name} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={inp} /></div>
                 <div><FieldLabel>Rôle</FieldLabel><Input value={m.role} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} style={inp} /></div>
               </div>
               <div><FieldLabel>Description</FieldLabel><Textarea rows={2} value={m.desc} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} style={inp} /></div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="admin-ops-actions" style={{ justifyContent: 'flex-end' }}>
                 <GhostButton color="#dc2626" onClick={() => setTeam(content.team.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
               </div>
-            </OrganicCard>
+            </div>
           ))}
-          <button onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])} style={{
-            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
-            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>{Icon.plus(14, t.primary)} Ajouter un membre</button>
+          <button type="button" className="admin-add-dashed" onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])}>
+            {Icon.plus(14, 'var(--admin-forest)')} Ajouter un membre
+          </button>
         </div>
       )}
 
       {tab === 'engagements' && (
-        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+        <div className="admin-content-stack">
           {content.engagements.map((e, i) => (
-            <OrganicCard key={i} style={{ padding: 16, display: 'grid', gap: 10 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 10 }}>
+            <div key={i} className="admin-content-card">
+              <div className="admin-grid-icon-title">
                 <div><FieldLabel>Icône</FieldLabel>
                   <Select value={e.icon} onValueChange={v => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, icon: v } : x))}>
-                    <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 10, background: t.surfaceAlt, padding: '10px 12px' }}><SelectValue /></SelectTrigger>
+                    <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-paper-muted)', padding: '10px 12px', minHeight: 44 }}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {ENGAGEMENT_ICONS.map(ic => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}
                     </SelectContent>
@@ -3141,34 +3153,32 @@ function TeamContentsEditor() {
                 <div><FieldLabel>Titre</FieldLabel><Input value={e.title} onChange={ev => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, title: ev.target.value } : x))} style={inp} /></div>
               </div>
               <div><FieldLabel>Description</FieldLabel><Textarea rows={2} value={e.desc} onChange={ev => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, desc: ev.target.value } : x))} style={inp} /></div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="admin-ops-actions" style={{ justifyContent: 'flex-end' }}>
                 <GhostButton color="#dc2626" onClick={() => setEngagements(content.engagements.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
               </div>
-            </OrganicCard>
+            </div>
           ))}
-          <button onClick={() => setEngagements([...content.engagements, { icon: 'leaf', title: 'Nouvel engagement', desc: '' }])} style={{
-            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
-            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>{Icon.plus(14, t.primary)} Ajouter un engagement</button>
+          <button type="button" className="admin-add-dashed" onClick={() => setEngagements([...content.engagements, { icon: 'leaf', title: 'Nouvel engagement', desc: '' }])}>
+            {Icon.plus(14, 'var(--admin-forest)')} Ajouter un engagement
+          </button>
         </div>
       )}
 
       {tab === 'testimonials' && (
-        <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+        <div className="admin-content-stack">
           {content.testimonials.length === 0 && <EmptyState icon={Icon.mail(26, t.muted)} title="Aucun témoignage" subtitle="Ajoutez les avis de vos clients ; ils apparaîtront sur le site (si activés dans Visibilité)." />}
           {content.testimonials.map((tm, i) => (
-            <OrganicCard key={i} style={{ padding: 16, display: 'grid', gap: 10 }}>
+            <div key={i} className="admin-content-card">
               <div><FieldLabel>Auteur</FieldLabel><Input value={tm.author} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, author: e.target.value } : x))} style={inp} /></div>
               <div><FieldLabel>Témoignage</FieldLabel><Textarea rows={3} value={tm.text} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} style={inp} /></div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="admin-ops-actions" style={{ justifyContent: 'flex-end' }}>
                 <GhostButton color="#dc2626" onClick={() => setTestimonials(content.testimonials.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
               </div>
-            </OrganicCard>
+            </div>
           ))}
-          <button onClick={() => setTestimonials([...content.testimonials, { author: 'Client', text: '' }])} style={{
-            fontSize: 13, fontWeight: 600, padding: 10, borderRadius: 12, cursor: 'pointer',
-            border: `1px dashed ${t.primary}55`, background: 'transparent', color: t.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>{Icon.plus(14, t.primary)} Ajouter un témoignage</button>
+          <button type="button" className="admin-add-dashed" onClick={() => setTestimonials([...content.testimonials, { author: 'Client', text: '' }])}>
+            {Icon.plus(14, 'var(--admin-forest)')} Ajouter un témoignage
+          </button>
         </div>
       )}
     </div>

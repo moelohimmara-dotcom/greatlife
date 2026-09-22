@@ -96,7 +96,7 @@ html.admin-editor-lock body {
 }
 
 .admin-layout[data-admin-nav="rail"] {
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
 }
 
 .admin-layout[data-admin-nav="hidden"] {
@@ -111,7 +111,7 @@ html.admin-editor-lock body {
 }
 
 .admin-layout[data-admin-nav="rail"] .admin-sidebar-desktop {
-  width: 64px;
+  width: 72px;
 }
 
 .admin-layout[data-admin-nav="hidden"] .admin-sidebar-desktop {
@@ -508,7 +508,7 @@ select:focus-visible,
   .admin-sidebar-desktop { display: none !important; }
   .admin-mobile-menu,
   .admin-nav-toggle-main { display: inline-flex !important; }
-  .admin-main-pad { padding: 56px 18px 32px !important; }
+  .admin-main-pad { padding: 56px 16px 32px !important; max-width: 100%; box-sizing: border-box; }
   .admin-main-editor.admin-main-pad,
   .admin-main-editor {
     padding: 0 !important;
