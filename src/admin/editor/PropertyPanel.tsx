@@ -31,7 +31,7 @@ import {
   type FieldDef,
 } from '@/cms/model/sections/fields'
 import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
-import { Bouton, ESPACE, TiroirInspecteur, titreColonne, anneauFocus } from './chrome'
+import { Bouton, ESPACE, TiroirInspecteur, anneauFocus } from './chrome'
 import { TextToolbox } from './TextToolbox'
 import { ColorControl } from './ColorPicker'
 import { sanitiserHex } from '@/cms/model/sections/couleur'
@@ -223,12 +223,12 @@ export function PropertyPanel({
   }
 
   return (
-    <div style={{ padding: '0 12px 12px' }}>
-      <div style={{ marginBottom: 12 }}>
-        <div style={titreColonne(t)}>
+    <div className="admin-inspector-panel">
+      <div className="admin-inspector-lead">
+        <div className="admin-editor-col-title admin-inspector-block-title">
           {def.label}
         </div>
-        <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
+        <div className="admin-editor-col-sub">
           {nature === 'emplacement' && champFocus
             ? `Texte sélectionné : ${champFocus.label}`
             : nature === 'groupe'
@@ -241,27 +241,13 @@ export function PropertyPanel({
         <div
           role="status"
           aria-label="Sélection"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: ESPACE, minWidth: 0 }}
+          className="admin-inspector-chips"
         >
           {champsSelection.map((f) => (
             <span
               key={f.name}
               title={f.label}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                maxWidth: '100%',
-                minHeight: 28,
-                padding: '0 10px',
-                borderRadius: 99,
-                background: `${t.primary}18`,
-                color: t.heading,
-                fontSize: 12,
-                fontWeight: 600,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
+              className="admin-inspector-chip"
             >
               {f.label}
             </span>

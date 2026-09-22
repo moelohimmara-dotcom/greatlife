@@ -759,39 +759,482 @@
   border-bottom: none;
 }
 
-/* CMS — rythme éditorial (accents peps uniquement ici) */
+/* CMS — éditeur de page (Structure | Aperçu | Inspecteur) — accents peps ici seulement */
+[data-admin-shell] .admin-main-editor {
+  background: var(--admin-paper);
+  overflow-x: hidden !important;
+}
+
+[data-admin-shell] .admin-page-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  background: var(--admin-paper);
+  overflow-x: hidden;
+}
+
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
+  flex: 0 0 auto;
   background: var(--admin-ink);
   color: var(--admin-on-ink);
   border-bottom: 3px solid var(--admin-lime);
   padding: 8px 12px;
+  gap: 10px;
+  min-height: 56px;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar-title {
   color: var(--admin-on-ink) !important;
+  font-family: var(--admin-font-display);
+  font-size: 18px;
 }
 
-[data-admin-shell] .admin-main-editor .admin-apercu-scene {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--admin-aqua) 12%, transparent), transparent 40%),
-    var(--admin-paper-muted);
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn {
+  color: var(--admin-on-ink) !important;
+  border-color: var(--admin-rail-border-soft) !important;
+  background: transparent !important;
+  min-height: 44px;
+  min-width: 44px;
 }
 
-[data-admin-shell] .admin-main-editor .admin-apercu-cadre {
-  box-shadow: var(--admin-shadow);
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, #fff 10%, transparent) !important;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn[disabled] {
+  color: var(--admin-on-ink-soft) !important;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn.admin-editor-locale-btn.is-active,
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--admin-lime) 22%, transparent) !important;
+  border-color: var(--admin-lime) !important;
+  color: #fff !important;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-editor-publish {
+  background: var(--admin-forest) !important;
+  border-color: var(--admin-forest) !important;
+  color: #fff !important;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-editor-publish:hover:not(:disabled) {
+  background: var(--admin-forest-hover) !important;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-unpublish {
+  color: var(--admin-coral) !important;
+  border-color: color-mix(in srgb, var(--admin-coral) 55%, transparent) !important;
+}
+
+[data-admin-shell] .admin-editor-locale {
+  display: inline-flex;
+  align-items: stretch;
+  height: 44px;
+  border-radius: var(--admin-radius-control);
+  border: 1px solid var(--admin-rail-border-soft);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+[data-admin-shell] .admin-editor-locale-btn + .admin-editor-locale-btn {
+  border-left: 1px solid var(--admin-rail-border-soft) !important;
+}
+
+[data-admin-shell] .admin-editor-history {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-editor-toolbar-msg.is-danger {
+  color: var(--admin-coral) !important;
+}
+
+[data-admin-shell] .admin-editor-toolbar-msg.is-warn {
+  color: var(--admin-saffron) !important;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-plus-menu {
+  background: var(--admin-surface);
   border: 1px solid var(--admin-line);
-  border-radius: var(--admin-radius-panel);
+  border-radius: var(--admin-radius-control);
+  box-shadow: var(--admin-shadow);
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-plus-menu .admin-btn {
+  color: var(--admin-ink) !important;
+  border-color: var(--admin-line) !important;
+  background: var(--admin-surface) !important;
+}
+
+/* Grille 1440 : Structure ~35% | Aperçu ~40% | Inspecteur ~25% */
+[data-admin-shell] .admin-main-editor .admin-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.35fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-grid.is-preview-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.625fr);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--admin-paper);
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-main.is-preview-wide {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-structure {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
   background: var(--admin-surface);
   border-right: 1px solid var(--admin-line);
 }
 
+[data-admin-shell] .admin-main-editor .admin-editor-structure.is-hidden,
+[data-admin-shell] .admin-main-editor .admin-editor-inspector.is-hidden {
+  display: none !important;
+}
+
+[data-admin-shell] .admin-editor-col-head {
+  padding: 14px 14px 8px;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-editor-col-title {
+  font-family: var(--admin-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--admin-ink);
+  margin: 0;
+}
+
+[data-admin-shell] .admin-editor-col-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-editor-col-sub.is-emphasis {
+  color: var(--admin-ink);
+  font-weight: 600;
+}
+
+[data-admin-shell] .admin-editor-nature-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+}
+
+[data-admin-shell] .admin-block-tree {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 12px 16px;
+  min-height: 0;
+}
+
+[data-admin-shell] .admin-block-tree-blocs {
+  margin-top: 4px;
+}
+
+[data-admin-shell] .admin-layout-drawer,
+[data-admin-shell] .admin-block-family {
+  border-color: var(--admin-line) !important;
+  border-radius: var(--admin-radius-panel) !important;
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-block-item {
+  border-color: var(--admin-line) !important;
+  border-radius: var(--admin-radius-control) !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+[data-admin-shell] .admin-block-item.is-selected,
+[data-admin-shell] .admin-layout-drawer .admin-carte.is-selected {
+  border-color: color-mix(in srgb, var(--admin-forest) 45%, var(--admin-line)) !important;
+  background: color-mix(in srgb, var(--admin-forest) 7%, var(--admin-surface));
+  box-shadow: inset 3px 0 0 var(--admin-lime);
+}
+
+[data-admin-shell] .admin-block-add {
+  min-height: 44px;
+  border-style: dashed !important;
+  border-color: var(--admin-line) !important;
+  color: var(--admin-forest) !important;
+  background: var(--admin-paper-muted) !important;
+}
+
+[data-admin-shell] .admin-editor-preview {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  background: var(--admin-paper-muted);
+}
+
+[data-admin-shell] .admin-preview-pane {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-admin-shell] .admin-preview-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px 6px;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-preview-toolbar-start {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-preview-toolbar-start .admin-editor-col-sub {
+  flex: 1 1 100%;
+}
+
+[data-admin-shell] .admin-preview-toolbar-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-apercu-stage-bar {
+  height: 4px;
+  margin: 0 12px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--admin-lime), var(--admin-aqua));
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-main-editor .admin-apercu-scene {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 10px 10px;
+  border-radius: var(--admin-radius-media);
+  overflow: hidden;
+  border: 1px solid var(--admin-line);
+  position: relative;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--admin-aqua) 14%, transparent), transparent 42%),
+    var(--admin-paper-muted);
+}
+
+[data-admin-shell] .admin-apercu-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 14px;
+}
+
+[data-admin-shell] .admin-main-editor .admin-apercu-cadre {
+  box-shadow: var(--admin-shadow);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-chip.is-draft {
+  background: color-mix(in srgb, var(--admin-tangerine) 18%, #fff);
+  color: color-mix(in srgb, var(--admin-ink) 75%, var(--admin-tangerine));
+}
+
+[data-admin-shell] .admin-editor-inspector {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  background: var(--admin-surface);
+  border-left: 1px solid var(--admin-line);
+  transition: background-color 220ms ease, border-color 220ms ease;
+}
+
+[data-admin-shell] .admin-editor-inspector.has-selection {
+  background: color-mix(in srgb, var(--admin-ink) 4%, var(--admin-surface));
+  border-left: 3px solid var(--admin-tangerine);
+}
+
+[data-admin-shell] .admin-editor-inspector.is-publication,
 [data-admin-shell] .admin-main-editor .admin-publication-panel {
   background: var(--admin-ink-soft);
   color: var(--admin-on-ink-muted);
   border-left: 3px solid var(--admin-tangerine);
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+[data-admin-shell] .admin-inspector-scroll {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-admin-shell] .admin-inspector-panel {
+  padding: 0 12px 20px;
+  /* Composition « cassée » kit : le bloc actif dépasse légèrement */
+  margin-right: -4px;
+}
+
+[data-admin-shell] .admin-inspector-lead {
+  margin-bottom: 12px;
+}
+
+[data-admin-shell] .admin-inspector-block-title {
+  font-size: 18px;
+}
+
+[data-admin-shell] .admin-inspector-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-inspector-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--admin-lime) 28%, #fff);
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-inspector-empty {
+  padding: 8px 16px 32px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-inspector-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--admin-ink);
+  margin: 0 0 8px;
+  font-family: var(--admin-font-display);
+}
+
+[data-admin-shell] .admin-inspector-empty-body {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+[data-admin-shell] .admin-main-editor .admin-apercu-segment .admin-btn {
+  min-height: 44px;
+}
+
+@media (min-width: 1440px) {
+  [data-admin-shell] .admin-main-editor .admin-editor-grid:not(.is-preview-wide) {
+    grid-template-columns: minmax(280px, 0.35fr) minmax(0, 1fr);
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-main:not(.is-preview-wide) {
+    /* 40% + 25% du viewport éditeur ≈ 1.6 : 1 */
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  [data-admin-shell] .admin-main-editor .admin-editor-grid:not(.is-preview-wide) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(48vh, 1fr);
+    overflow: auto !important;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-structure {
+    max-height: 42vh;
+    border-right: none;
+    border-bottom: 1px solid var(--admin-line);
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-main:not(.is-preview-wide) {
+    grid-template-columns: 1fr;
+    min-height: 70vh;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-preview {
+    min-height: 52vh;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-inspector {
+    border-left: none;
+    border-top: 1px solid var(--admin-line);
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 375px) {
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
+    flex-wrap: wrap;
+    padding: 8px;
+  }
+
+  [data-admin-shell] .admin-preview-toolbar {
+    flex-direction: column;
+  }
+
+  [data-admin-shell] .admin-preview-toolbar-end {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  [data-admin-shell] .admin-inspector-panel {
+    margin-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-shell] .admin-block-item,
+  [data-admin-shell] .admin-editor-inspector {
+    transition: none;
+  }
 }
 
 @media (max-width: 1023px) {

@@ -54,7 +54,7 @@ export function PageLayoutPicker({
     <div
       role="group"
       aria-label="Mise en page"
-      className={CLASSE_CARTE}
+      className={`${CLASSE_CARTE} admin-layout-drawer`}
       style={{
         ...styleCarteTiroir(t),
         ...(disabled ? { opacity: 0.55, pointerEvents: 'none' as const } : {}),

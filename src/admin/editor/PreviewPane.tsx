@@ -31,7 +31,7 @@ import { Footer } from '@/sections/Footer'
 import { PublicNav } from '@/components/nav/PublicNav'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
-import { Bouton, ESPACE, titreColonne } from './chrome'
+import { Bouton } from './chrome'
 import { echelleCadreApercu, hauteurVerreApercu } from './preview-geometry'
 import { miseEnPageSurBanniere } from '@/cms/model/page-layout'
 import {
@@ -171,6 +171,8 @@ interface PreviewPaneProps {
   locale?: Locale
   restaurant?: ResolvedRestaurant
   layout?: PageLayout
+  /** État de publication affiché sur la scène (kit PreviewFrame). */
+  publicationState?: 'draft' | 'live' | 'outdated'
   selectedSectionId?: string | null
   selectedSlots?: string[]
   groupedSlots?: string[]
@@ -252,6 +254,7 @@ export function PreviewPane({
   locale = 'fr',
   restaurant,
   layout,
+  publicationState = 'draft',
   selectedSectionId = null,
   selectedSlots = [],
   groupedSlots = [],
@@ -689,27 +692,30 @@ export function PreviewPane({
   ])
 
   const agrandirLibelle = apercuElargi ? 'Revenir à l’édition' : 'Agrandir l’aperçu'
+  const badgePub = publicationState === 'live'
+    ? { label: 'Publié', className: 'is-live' }
+    : publicationState === 'outdated'
+      ? { label: 'À mettre à jour', className: 'is-warn' }
+      : { label: 'Brouillon', className: 'is-draft' }
 
   return (
-    <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div
-        style={{
-          padding: '12px 14px 8px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: ESPACE,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ ...titreColonne(t), marginBottom: 0 }}>Aperçu</div>
-          <p role="status" style={{ margin: '4px 0 0', fontSize: 12, lineHeight: 1.4, color: groupMode ? t.heading : t.muted, fontWeight: 500 }}>
+    <div className="admin-preview-pane">
+      <div className="admin-preview-toolbar">
+        <div className="admin-preview-toolbar-start">
+          <div className="admin-editor-col-title">Aperçu</div>
+          <span className={`admin-chip ${badgePub.className}`} role="status">
+            {badgePub.label}
+          </span>
+          <p
+            role="status"
+            className={groupMode ? 'admin-editor-col-sub is-emphasis' : 'admin-editor-col-sub'}
+          >
             {groupMode
               ? 'Cliquez les textes à regrouper dans l’aperçu'
               : 'Cliquez un texte dans l’aperçu pour le modifier ici.'}
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexShrink: 0 }}>
+        <div className="admin-preview-toolbar-end">
           <div className="admin-apercu-segment" role="group" aria-label="Affichage Bureau ou Téléphone">
             {([
               { id: 'bureau' as const, label: 'Bureau' },
@@ -746,37 +752,27 @@ export function PreviewPane({
           )}
         </div>
       </div>
+      <div className="admin-apercu-stage-bar" aria-hidden="true" />
       <div
         ref={sceneRef}
         className="admin-apercu-scene"
-        style={{
-          flex: 1, minHeight: 0, margin: '0 8px 8px', borderRadius: 12, overflow: 'hidden',
-          border: `1px solid ${t.shadow}`,
-          background: `color-mix(in srgb, ${t.heading} 8%, ${t.surfaceAlt})`,
-          position: 'relative',
-        }}
+        data-cadre={cadre}
       >
         {!scenePrete && (
-          <div
-            role="status"
-            style={{
-              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: t.muted, fontSize: 14,
-            }}
-          >
+          <div role="status" className="admin-apercu-loading">
             Préparation de l’aperçu…
           </div>
         )}
         {scenePrete && (
           <div
             className="admin-apercu-cadre"
+            data-cadre={cadre}
             style={{
               boxSizing: 'border-box',
               width: largeurVerre + bezel * 2,
               height: '100%',
               borderRadius: RAYON_CADRE[cadre],
-              border: `${bezel}px solid ${cadre === 'telephone' ? t.primaryDark : t.shadow}`,
-              boxShadow: `0 10px 28px ${t.shadowDeep}`,
+              border: `${bezel}px solid ${cadre === 'telephone' ? 'var(--admin-ink)' : 'var(--admin-line)'}`,
               overflow: 'hidden',
               position: 'relative',
               background: t.bg,

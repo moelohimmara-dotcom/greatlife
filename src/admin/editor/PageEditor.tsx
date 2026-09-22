@@ -35,7 +35,7 @@ import { ChromePanel } from './ChromePanel'
 import { PublicationPanel } from './PublicationPanel'
 import { SectionTypePicker } from './SectionTypePicker'
 import { GhostButton, PrimaryButton, StatusPill } from '@/admin/ui'
-import { Bouton, CIBLE, ESPACE, HAUTEUR, RAYON, titreColonne } from './chrome'
+import { Bouton, CIBLE, HAUTEUR } from './chrome'
 import { Icon } from '@/lib/icons'
 import { chromeDepuisReglages, type ChromePresentation } from '@/cms/model/sections/chrome-presentation'
 import type { LienChrome } from '@/cms/model/sections/site-chrome'
@@ -529,19 +529,19 @@ export function PageEditor({
     return () => window.removeEventListener('keydown', onKey)
   }, [annuler, editor.groupMode, editor.stopGroupMode, grouperRaccourci, retablir])
 
+  const aSelection = Boolean(chrome || selectedSection)
+  const etatPublicationApercu: 'draft' | 'live' | 'outdated' = !isPublished
+    ? 'draft'
+    : horsSyncPublic
+      ? 'outdated'
+      : 'live'
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 0 }}>
+    <div className="admin-page-editor">
       {/* Trois clusters : console d’édition | langue+historique | publication collée. */}
-      <div
-        className="admin-editor-toolbar"
-        style={{
-          padding: '6px 16px',
-          borderBottom: `1px solid ${t.shadow}`,
-          background: t.surface,
-        }}
-      >
+      <div className="admin-editor-toolbar">
         <div className="admin-editor-toolbar-start">
-          <h2 className="admin-editor-toolbar-title" style={{ color: t.heading }} title={pageLabel}>
+          <h2 className="admin-editor-toolbar-title" title={pageLabel}>
             Console d’édition
           </h2>
           <StatusPill
@@ -555,15 +555,7 @@ export function PageEditor({
           <div
             role="group"
             aria-label="Langue de l’aperçu et des textes"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'stretch',
-              height: HAUTEUR,
-              borderRadius: RAYON,
-              border: `1px solid ${t.shadow}`,
-              overflow: 'hidden',
-              flex: '0 0 auto',
-            }}
+            className="admin-editor-locale"
           >
             {([
               { id: 'fr' as const, court: 'FR', nom: 'Français' },
@@ -578,15 +570,14 @@ export function PageEditor({
                   aria-label={lang.nom}
                   title={lang.nom}
                   onClick={() => editor.setLocale(lang.id)}
+                  className={actif ? 'admin-editor-locale-btn is-active' : 'admin-editor-locale-btn'}
                   style={{
                     height: HAUTEUR,
-                    minHeight: HAUTEUR,
+                    minHeight: CIBLE,
                     minWidth: CIBLE,
                     border: 'none',
                     borderRadius: 0,
-                    borderLeft: i === 0 ? 'none' : `1px solid ${t.shadow}`,
-                    background: actif ? `${t.primary}14` : 'transparent',
-                    color: actif ? t.primary : t.text,
+                    borderLeft: i === 0 ? 'none' : undefined,
                   }}
                 >
                   {lang.court}
@@ -594,7 +585,7 @@ export function PageEditor({
               )
             })}
           </div>
-          <div role="group" aria-label="Annuler et rétablir" style={{ display: 'flex', alignItems: 'center', gap: ESPACE }}>
+          <div role="group" aria-label="Annuler et rétablir" className="admin-editor-history">
             <Bouton
               carre
               genre="secondaire"
@@ -603,7 +594,7 @@ export function PageEditor({
               title="Annuler — les blocs, pas le menu"
               onClick={annuler}
             >
-              <span aria-hidden="true">{Icon.undo(16, historique.canUndo ? t.heading : t.muted)}</span>
+              <span aria-hidden="true">{Icon.undo(16, 'currentColor')}</span>
             </Bouton>
             <Bouton
               carre
@@ -613,30 +604,30 @@ export function PageEditor({
               title="Rétablir — les blocs, pas le menu"
               onClick={retablir}
             >
-              <span aria-hidden="true">{Icon.redo(16, historique.canRedo ? t.heading : t.muted)}</span>
+              <span aria-hidden="true">{Icon.redo(16, 'currentColor')}</span>
             </Bouton>
           </div>
         </div>
 
         <div className="admin-editor-toolbar-end">
           {actionError && (
-            <span role="alert" className="admin-editor-toolbar-msg" title={actionError} style={{ color: t.accent }}>
+            <span role="alert" className="admin-editor-toolbar-msg is-danger" title={actionError}>
               {actionError}
             </span>
           )}
           {editor.error && (
-            <span role="alert" className="admin-editor-toolbar-msg" title={editor.error} style={{ color: t.accent }}>
+            <span role="alert" className="admin-editor-toolbar-msg is-danger" title={editor.error}>
               {editor.error}
             </span>
           )}
           {editor.avertissement && !editor.error && (
-            <span role="status" className="admin-editor-toolbar-msg" title={editor.avertissement} style={{ color: t.gold }}>
+            <span role="status" className="admin-editor-toolbar-msg is-warn" title={editor.avertissement}>
               {editor.avertissement}
             </span>
           )}
           <GhostButton
             className="admin-editor-toolbar-wide"
-            color={showPublication ? t.primary : t.text}
+            color="currentColor"
             aria-pressed={showPublication}
             aria-expanded={showPublication}
             title="Vérifier la page avant publication et consulter les versions enregistrées."
@@ -645,7 +636,6 @@ export function PageEditor({
               if (next) setApercuElargi(false)
               return next
             })}
-            style={showPublication ? { background: `${t.primary}14`, borderColor: t.primary } : undefined}
           >
             Contrôle
           </GhostButton>
@@ -659,16 +649,12 @@ export function PageEditor({
               title="Autres actions"
               onClick={() => setPlusOuvert((o) => !o)}
             >
-              <span aria-hidden="true">{Icon.more(16, t.heading)}</span>
+              <span aria-hidden="true">{Icon.more(16, 'currentColor')}</span>
             </Bouton>
             {plusOuvert ? (
-              <div
-                role="menu"
-                className="admin-editor-toolbar-plus-menu"
-                style={{ background: t.surface, border: `1px solid ${t.shadow}` }}
-              >
+              <div role="menu" className="admin-editor-toolbar-plus-menu">
                 <GhostButton
-                  color={showPublication ? t.primary : t.text}
+                  color="currentColor"
                   aria-pressed={showPublication}
                   title="Vérifier la page avant publication et consulter les versions enregistrées."
                   onClick={() => {
@@ -679,11 +665,7 @@ export function PageEditor({
                       return next
                     })
                   }}
-                  style={{
-                    width: '100%',
-                    justifyContent: 'flex-start',
-                    ...(showPublication ? { background: `${t.primary}14`, borderColor: t.primary } : {}),
-                  }}
+                  style={{ width: '100%', justifyContent: 'flex-start' }}
                 >
                   Contrôle
                 </GhostButton>
@@ -691,6 +673,7 @@ export function PageEditor({
             ) : null}
           </div>
           <PrimaryButton
+            className="admin-editor-publish"
             disabled={publishing || editor.saving}
             busy={publishing || editor.saving}
             title={isPublished
@@ -702,7 +685,8 @@ export function PageEditor({
           </PrimaryButton>
           {isPublished && (
             <GhostButton
-              color={t.accent}
+              className="admin-editor-unpublish"
+              color="currentColor"
               disabled={publishing || editor.saving}
               busy={publishing || editor.saving}
               title="Retirer cette version : les visiteurs reverront l’ancien site."
@@ -719,17 +703,18 @@ export function PageEditor({
           et le bas de la fenêtre n’est plus que du fond crème. */}
       <div
         className={apercuElargi ? 'admin-editor-grid is-preview-wide' : 'admin-editor-grid'}
-        style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', flex: 1, minHeight: 0, position: 'relative' }}
       >
         {/* Colonne 1 : Structure */}
-        <div className={showPublication ? 'admin-editor-structure is-locked' : 'admin-editor-structure'} style={{
-          borderRight: apercuElargi ? 'none' : `1px solid ${t.shadow}`, background: t.surface,
-          display: apercuElargi ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden',
-          minHeight: 0,
-        }}>
-          <div style={{ padding: '12px 12px 8px' }}>
-            <div style={titreColonne(t)}>Structure</div>
-            <p style={{ margin: '0 0 4px', fontSize: 12, lineHeight: 1.4, color: t.muted, fontWeight: 500 }}>
+        <div
+          className={[
+            'admin-editor-structure',
+            showPublication ? 'is-locked' : '',
+            apercuElargi ? 'is-hidden' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          <div className="admin-editor-col-head">
+            <div className="admin-editor-col-title">Structure</div>
+            <p className="admin-editor-col-sub">
               Mise en page, puis blocs
             </p>
           </div>
@@ -801,146 +786,147 @@ export function PageEditor({
           />
         </div>
 
-        {/* Colonne 2+3 : aperçu + Modifier, ou aperçu + Contrôle */}
+        {/* Colonne 2+3 : aperçu + Inspecteur, ou aperçu + Contrôle */}
         <div className={apercuElargi ? 'admin-editor-main is-preview-wide' : 'admin-editor-main'}>
-        {/* Colonne 2 : Aperçu */}
-        <div style={{ overflow: 'hidden', background: t.surfaceAlt, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <PreviewPane
-            sections={editor.resolvedSections}
-            locale={editor.locale}
-            restaurant={restaurant}
-            layout={layout}
-            selectedSectionId={chrome === 'header' ? 'cms-header' : chrome === 'footer' ? 'cms-footer' : (selectedSection?.id ?? null)}
-            selectedSlots={
-              slotSel.groupId && selectedSection
-                ? (readEditorMeta(selectedSection.content).groups.find((g) => g.id === slotSel.groupId)?.slots ?? slotSel.slots)
-                : slotSel.slots
-            }
-            groupedSlots={selectedSection ? readEditorMeta(selectedSection.content).groups.flatMap((g) => g.slots) : []}
-            groupMode={editor.groupMode}
-            onPickSection={appliquerPointeur}
-            onClearSlots={viderSelectionEmplacements}
-            onExitGroupMode={editor.stopGroupMode}
-            onSelectAllSlots={selectionnerTousEmplacements}
-            onGroupShortcut={grouperRaccourci}
-            onUngroupShortcut={degrouperRaccourci}
-            onSlotHtml={(sectionId, slot, html) => {
-              const index = editor.sections.findIndex((s) => s.id === sectionId)
-              if (index < 0) return
-              const section = editor.sections[index]
-              const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
-              if (!field || !peutEditerInplace(section.content ?? {}, field)) return
-              const next = ecrireChampLocale(
-                section.content ?? {},
-                slot,
-                editor.locale,
-                html,
-                field.translatable !== false,
-              )
-              noterHistorique(saisieTexteSeule(section.content ?? {}, next) ? 'coalesce' : 'immediate')
-              editor.updateContent(index, next)
-            }}
-            peutEditerSlot={(sectionId, slot) => {
-              const section = editor.sections.find((s) => s.id === sectionId)
-              if (!section) return false
-              const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
-              return peutEditerInplace(section.content ?? {}, field)
-            }}
-            profilSlot={(sectionId, slot) => {
-              const section = editor.sections.find((s) => s.id === sectionId)
-              if (!section) return null
-              const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
-              if (!field) return null
-              return profilInplace(field)
-            }}
-            onCibleApercu={setCibleApercu}
-            apercuElargi={apercuElargi}
-            onApercuElargiChange={setApercuElargi}
-            chromeTick={chromeTick}
-            presentation={chromePresentation}
-            liensEntete={liensEntete}
-            liensPied={liensPied}
-            typo={typo}
-          />
-        </div>
+          <div className="admin-editor-preview">
+            <PreviewPane
+              sections={editor.resolvedSections}
+              locale={editor.locale}
+              restaurant={restaurant}
+              layout={layout}
+              publicationState={etatPublicationApercu}
+              selectedSectionId={chrome === 'header' ? 'cms-header' : chrome === 'footer' ? 'cms-footer' : (selectedSection?.id ?? null)}
+              selectedSlots={
+                slotSel.groupId && selectedSection
+                  ? (readEditorMeta(selectedSection.content).groups.find((g) => g.id === slotSel.groupId)?.slots ?? slotSel.slots)
+                  : slotSel.slots
+              }
+              groupedSlots={selectedSection ? readEditorMeta(selectedSection.content).groups.flatMap((g) => g.slots) : []}
+              groupMode={editor.groupMode}
+              onPickSection={appliquerPointeur}
+              onClearSlots={viderSelectionEmplacements}
+              onExitGroupMode={editor.stopGroupMode}
+              onSelectAllSlots={selectionnerTousEmplacements}
+              onGroupShortcut={grouperRaccourci}
+              onUngroupShortcut={degrouperRaccourci}
+              onSlotHtml={(sectionId, slot, html) => {
+                const index = editor.sections.findIndex((s) => s.id === sectionId)
+                if (index < 0) return
+                const section = editor.sections[index]
+                const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
+                if (!field || !peutEditerInplace(section.content ?? {}, field)) return
+                const next = ecrireChampLocale(
+                  section.content ?? {},
+                  slot,
+                  editor.locale,
+                  html,
+                  field.translatable !== false,
+                )
+                noterHistorique(saisieTexteSeule(section.content ?? {}, next) ? 'coalesce' : 'immediate')
+                editor.updateContent(index, next)
+              }}
+              peutEditerSlot={(sectionId, slot) => {
+                const section = editor.sections.find((s) => s.id === sectionId)
+                if (!section) return false
+                const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
+                return peutEditerInplace(section.content ?? {}, field)
+              }}
+              profilSlot={(sectionId, slot) => {
+                const section = editor.sections.find((s) => s.id === sectionId)
+                if (!section) return null
+                const field = getSectionDefinition(section.type)?.fields.find((f) => f.name === slot)
+                if (!field) return null
+                return profilInplace(field)
+              }}
+              onCibleApercu={setCibleApercu}
+              apercuElargi={apercuElargi}
+              onApercuElargiChange={setApercuElargi}
+              chromeTick={chromeTick}
+              presentation={chromePresentation}
+              liensEntete={liensEntete}
+              liensPied={liensPied}
+              typo={typo}
+            />
+          </div>
 
-        <div style={{
-          borderLeft: apercuElargi ? 'none' : `1px solid ${t.shadow}`, background: t.surface,
-          overflow: 'hidden', minHeight: 0,
-          display: apercuElargi ? 'none' : undefined,
-        }}>
-          {showPublication ? (
-            <div
-              className="admin-publication-panel"
-              style={{ height: '100%' }}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="controle-publication-titre"
-            >
-              <PublicationPanel
-                pageId={pageId}
-                blockedReport={blockedReport}
-                onClose={() => setShowPublication(false)}
-              />
-            </div>
-          ) : (
-          <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '14px 14px 8px', ...titreColonne(t) }}>
-              Modifier
-            </div>
-            {chrome ? (
-              <ChromePanel
-                chrome={chrome}
-                locale={editor.locale}
-                onRestaurantResolved={appliquerRestaurant}
-                onPresentationChange={setChromePresentation}
-                onLiensChange={chrome === 'header' ? setLiensEntete : setLiensPied}
-                onOuvrirApparence={onOuvrirApparence}
-              />
-            ) : selectedSection ? (
-              <PropertyPanel
-                section={selectedSection}
-                locale={editor.locale}
-                pageLayout={layout}
-                groupMode={editor.groupMode}
-                onStartGroupMode={editor.startGroupMode}
-                onStopGroupMode={editor.stopGroupMode}
-                selection={slotSel.sectionId === selectedSection.id ? slotSel : {
-                  surface: 'page',
-                  sectionId: selectedSection.id,
-                  slots: [],
-                  groupId: null,
-                }}
-                onSelectionChange={setSlotSel}
-                eviterFocusChamp={focusDepuisApercu}
-                cibleApercu={cibleApercu}
-                onUpdate={(content) => {
-                  const prev = selectedSection.content ?? {}
-                  noterHistorique(saisieTexteSeule(prev, content) ? 'coalesce' : 'immediate')
-                  editor.updateContent(editor.selected!, content)
-                }}
-                onVariantChange={(variant) => {
-                  noterHistorique('immediate')
-                  editor.setVariant(editor.selected!, variant)
-                }}
-              />
+          <div
+            className={[
+              'admin-editor-inspector',
+              apercuElargi ? 'is-hidden' : '',
+              aSelection || showPublication ? 'has-selection' : '',
+              showPublication ? 'is-publication' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            {showPublication ? (
+              <div
+                className="admin-publication-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="controle-publication-titre"
+              >
+                <PublicationPanel
+                  pageId={pageId}
+                  blockedReport={blockedReport}
+                  onClose={() => setShowPublication(false)}
+                />
+              </div>
             ) : (
-              <div style={{ padding: '8px 16px 32px', color: t.muted }}>
-                <p style={{ fontSize: 15, fontWeight: 600, color: t.heading, margin: '0 0 8px' }}>
-                  Rien à modifier pour l’instant
-                </p>
-                <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
-                  Cliquez En-tête ou Pied de page, ou un bloc dans Structure.
-                </p>
+              <div className="admin-inspector-scroll">
+                <div className="admin-editor-col-head">
+                  <div className="admin-editor-col-title">Modifier</div>
+                </div>
+                {chrome ? (
+                  <ChromePanel
+                    chrome={chrome}
+                    locale={editor.locale}
+                    onRestaurantResolved={appliquerRestaurant}
+                    onPresentationChange={setChromePresentation}
+                    onLiensChange={chrome === 'header' ? setLiensEntete : setLiensPied}
+                    onOuvrirApparence={onOuvrirApparence}
+                  />
+                ) : selectedSection ? (
+                  <PropertyPanel
+                    section={selectedSection}
+                    locale={editor.locale}
+                    pageLayout={layout}
+                    groupMode={editor.groupMode}
+                    onStartGroupMode={editor.startGroupMode}
+                    onStopGroupMode={editor.stopGroupMode}
+                    selection={slotSel.sectionId === selectedSection.id ? slotSel : {
+                      surface: 'page',
+                      sectionId: selectedSection.id,
+                      slots: [],
+                      groupId: null,
+                    }}
+                    onSelectionChange={setSlotSel}
+                    eviterFocusChamp={focusDepuisApercu}
+                    cibleApercu={cibleApercu}
+                    onUpdate={(content) => {
+                      const prev = selectedSection.content ?? {}
+                      noterHistorique(saisieTexteSeule(prev, content) ? 'coalesce' : 'immediate')
+                      editor.updateContent(editor.selected!, content)
+                    }}
+                    onVariantChange={(variant) => {
+                      noterHistorique('immediate')
+                      editor.setVariant(editor.selected!, variant)
+                    }}
+                  />
+                ) : (
+                  <div className="admin-inspector-empty">
+                    <p className="admin-inspector-empty-title">
+                      Rien à modifier pour l’instant
+                    </p>
+                    <p className="admin-inspector-empty-body">
+                      Cliquez En-tête ou Pied de page, ou un bloc dans Structure.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-          )}
-        </div>
         </div>
       </div>
 
-      {/* Sélecteur de type (modal) */}
       {showPicker && (
         <SectionTypePicker
           onSelect={(type) => { noterHistorique('immediate'); editor.addSection(type); setShowPicker(false) }}

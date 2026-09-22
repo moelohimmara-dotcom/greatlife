@@ -231,7 +231,7 @@ export function SectionList({
   const { total: totalParType, rang: rangParIndex } = useMemo(() => rangsParType(sections), [sections])
 
   return (
-    <div style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', padding: '0 12px 12px' }}>
+    <div className="admin-block-tree">
       {/* Nature 1 — Mise en page (gabarit + chrome En-tête / Pied) */}
       <PageLayoutPicker
         value={layout}
@@ -242,8 +242,8 @@ export function SectionList({
       />
 
       {/* Nature 2 — Blocs de contenu, par famille métier */}
-      <div role="group" aria-label="Blocs de contenu" style={{ marginTop: 4 }}>
-        <div style={styleLibelleNature(t)}>Blocs</div>
+      <div role="group" aria-label="Blocs de contenu" className="admin-block-tree-blocs">
+        <div className="admin-editor-nature-label" style={styleLibelleNature(t)}>Blocs</div>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={items} strategy={verticalListSortingStrategy}>
@@ -258,7 +258,7 @@ export function SectionList({
                   key={groupe.cle}
                   role="group"
                   aria-label={`${groupe.label}, ${compte}`}
-                  className={CLASSE_CARTE}
+                  className={`${CLASSE_CARTE} admin-block-family`}
                   style={styleCarteTiroir(t)}
                 >
                   <Bouton
@@ -339,7 +339,7 @@ export function SectionList({
           </p>
         )}
 
-        <Bouton etendu onClick={onAdd} style={{ marginTop: 4, justifyContent: 'center' }}>
+        <Bouton etendu onClick={onAdd} className="admin-block-add" style={{ marginTop: 4, justifyContent: 'center' }}>
           <span aria-hidden="true">{Icon.plus(16, t.primary)}</span>
           Ajouter un bloc
         </Bouton>
@@ -473,7 +473,7 @@ function SortableItem({
   return (
     <div ref={setNodeRef} style={style}>
       <div
-        className={isSelected ? `${CLASSE_CARTE} is-selected` : CLASSE_CARTE}
+        className={isSelected ? `${CLASSE_CARTE} admin-block-item is-selected` : `${CLASSE_CARTE} admin-block-item`}
         style={{
           width: '100%',
           marginTop: 4,
