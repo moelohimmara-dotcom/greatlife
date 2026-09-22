@@ -2378,6 +2378,185 @@
   min-height: 0;
 }
 
+/* Refonte console 2026 — une surface calme, éditoriale et orientée action. */
+[data-admin-shell] {
+  --admin-paper: #f5f6f1;
+  --admin-paper-muted: #e9eee6;
+  --admin-surface: #ffffff;
+  --admin-ink: #15251c;
+  --admin-ink-soft: #20352a;
+  --admin-forest: #23613e;
+  --admin-forest-hover: #194c30;
+  --admin-forest-mid: #4a8b63;
+  --admin-lime: #c9dc72;
+  --admin-aqua: #8acbb0;
+  --admin-coral: #c84f3b;
+  --admin-saffron: #b57b20;
+  --admin-tangerine: #d97745;
+  --admin-line: #d7e0d5;
+  --admin-rail-line: rgba(220, 242, 226, .12);
+  --admin-rail-border-soft: rgba(220, 242, 226, .24);
+  --admin-radius-control: 10px;
+  --admin-radius-panel: 20px;
+  --admin-radius-media: 24px;
+  --admin-shadow: 0 14px 34px rgba(24, 49, 34, .08);
+  --admin-shadow-soft: 0 4px 16px rgba(24, 49, 34, .05);
+}
+
+[data-admin-shell] .admin-layout {
+  grid-template-columns: 248px minmax(0, 1fr);
+  background: var(--admin-paper);
+}
+
+[data-admin-shell] .admin-layout[data-admin-nav='rail'] {
+  grid-template-columns: 84px minmax(0, 1fr);
+}
+
+[data-admin-shell] .admin-rail {
+  background: linear-gradient(180deg, #16291f 0%, #102019 100%) !important;
+  border-right: 0 !important;
+  padding: 20px 14px !important;
+}
+
+[data-admin-shell] .admin-nav-brand {
+  padding: 2px 4px 16px;
+  border-bottom: 1px solid var(--admin-rail-line);
+}
+
+[data-admin-shell] .admin-nav-group {
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  font-size: 10px !important;
+  color: rgba(225, 246, 228, .47) !important;
+}
+
+[data-admin-shell] .admin-nav-item {
+  min-height: 42px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+[data-admin-shell] .admin-nav-item:hover {
+  background: rgba(201, 220, 114, .11) !important;
+  transform: translateX(2px);
+}
+
+[data-admin-shell] .admin-nav-item[aria-current='page'] {
+  background: var(--admin-forest) !important;
+  box-shadow: 0 8px 18px rgba(35, 97, 62, .28);
+}
+
+[data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
+  padding: 30px clamp(20px, 4vw, 56px) 48px;
+}
+
+[data-admin-shell] .admin-page {
+  max-width: 1240px;
+}
+
+[data-admin-shell] .admin-page-title {
+  font-size: clamp(30px, 3.5vw, 44px);
+  letter-spacing: -.045em;
+}
+
+[data-admin-shell] .admin-topbar {
+  min-height: 56px;
+  padding: 0 0 20px;
+  margin-bottom: 24px;
+  border-bottom-color: var(--admin-line);
+}
+
+[data-admin-shell] .admin-topbar-service-label {
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-chip,
+[data-admin-shell] .admin-ds-badge {
+  border: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  border-radius: 999px;
+  padding: 7px 11px;
+  box-shadow: var(--admin-shadow-soft);
+}
+
+[data-admin-shell] .admin-kpi-strip {
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+[data-admin-shell] .admin-kpi {
+  min-height: 106px;
+  justify-content: space-between;
+  padding: 18px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow-soft);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+[data-admin-shell] .admin-kpi:hover {
+  transform: translateY(-2px);
+  border-color: var(--admin-forest-mid);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-kpi strong {
+  font-family: var(--admin-font-display);
+  font-size: 34px;
+  letter-spacing: -.04em;
+}
+
+[data-admin-shell] .admin-dash-layout,
+[data-admin-shell] .admin-work-queue-board,
+[data-admin-shell] .admin-dash-aside {
+  gap: 20px;
+}
+
+[data-admin-shell] .admin-card,
+[data-admin-shell] .admin-panel,
+[data-admin-shell] .admin-section-card,
+[data-admin-shell] .admin-module-card {
+  border: 1px solid var(--admin-line) !important;
+  border-radius: var(--admin-radius-panel) !important;
+  background: var(--admin-surface) !important;
+  box-shadow: var(--admin-shadow-soft);
+}
+
+[data-admin-shell] .admin-section-head {
+  margin-bottom: 14px;
+}
+
+[data-admin-shell] .admin-section-head h2,
+[data-admin-shell] .admin-section-head h3 {
+  letter-spacing: -.025em;
+}
+
+[data-admin-shell] .admin-live-status {
+  color: var(--admin-forest);
+}
+
+@media (max-width: 768px) {
+  [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
+    padding: 68px 16px 92px;
+  }
+
+  [data-admin-shell] .admin-dash-intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  [data-admin-shell] .admin-kpi {
+    min-height: 92px;
+    padding: 14px;
+  }
+}
+
 [data-admin-shell] .admin-inspector-panel {
   padding: 0 12px 20px;
   /* Composition « cassée » kit : le bloc actif dépasse légèrement */

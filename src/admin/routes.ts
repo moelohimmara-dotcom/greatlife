@@ -75,14 +75,16 @@ export const NAV_GROUPS: [string, [AdminModuleKey, string, string][]][] = [
     ['content', 'Éditeur du site', 'write'],
     ['menu', 'Carte & prix', 'leaf'],
     ['blog', 'Blog', 'write'],
-    ['media', 'Médiathèque', 'image'],
     ['team', 'Équipe & engagements', 'users'],
   ]],
-  ['Configuration', [
-    ['theme', 'Apparence', 'palette'],
+  ['Apparence', [
+    ['theme', 'Thème & ambiance', 'palette'],
     ['visibility', 'Visibilité', 'eye'],
-    ['settings', 'Réglages du restaurant', 'settings'],
-    ['forms', 'Formulaires & notifications', 'settings'],
+    ['media', 'Médias', 'image'],
+  ]],
+  ['Système', [
+    ['settings', 'Réglages globaux', 'settings'],
+    ['forms', 'Formulaires & emails', 'settings'],
     ['users', 'Utilisateurs & rôles', 'users'],
     ['audit', "Journal d'activité", 'eye'],
   ]],
