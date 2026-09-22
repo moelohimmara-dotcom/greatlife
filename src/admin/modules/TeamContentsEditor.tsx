@@ -40,6 +40,28 @@ export function TeamContentsEditor() {
       <PageHeader title="Équipe & contenus" subtitle="Gérez les membres de l'équipe, les engagements et les témoignages clients."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
+      <div className="admin-wf-menu-summary" aria-label="Résumé des contenus">
+        <div>
+          <strong>{content.team.length}</strong>
+          <span>Membres</span>
+          <small>équipe</small>
+        </div>
+        <div>
+          <strong>{content.engagements.length}</strong>
+          <span>Engagements</span>
+          <small>sur le site</small>
+        </div>
+        <div>
+          <strong>{content.testimonials.length}</strong>
+          <span>Témoignages</span>
+          <small>avis clients</small>
+        </div>
+        <div className="is-status">
+          <strong>●</strong>
+          <span>{dataSource === 'supabase' ? 'Synchronisé' : 'Aperçu local'}</span>
+          <small>section {tabs.find(([k]) => k === tab)?.[1]}</small>
+        </div>
+      </div>
       <div className="admin-segment" role="tablist" aria-label="Sections équipe et contenus">
         {tabs.map(([k, l]) => (
           <button

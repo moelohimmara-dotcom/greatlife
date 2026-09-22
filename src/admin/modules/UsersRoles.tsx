@@ -356,9 +356,13 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
 
   const currentEmail = currentUser?.email?.toLowerCase()
 
+  const activeUsers = adminUsers.filter(u => u.active !== false).length
+  const pendingInvites = adminUsers.filter(u => !u.invited_at && u.role !== 'owner').length
+  const ownerCount = adminUsers.filter(u => u.role === 'owner').length
+
   return (
     <div className="admin-page" style={{ maxWidth: 920 }}>
-      <PageHeader title="Utilisateurs & rôles" subtitle="Permissions granulaires par module (voir / écrire / désactivé)."
+      <PageHeader title="Utilisateurs & rôles" subtitle="Gérez qui peut consulter et modifier chaque partie de la console."
         actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>{Icon.plus(14, '#fff')} Ajouter nouveau</PrimaryButton>}
       />
 
@@ -367,6 +371,29 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
           Mode local — la gestion des utilisateurs nécessite une connexion en ligne.
         </div>
       )}
+
+      <div className="admin-wf-menu-summary" aria-label="Résumé de l’équipe">
+        <div>
+          <strong>{adminUsers.length}</strong>
+          <span>Utilisateurs</span>
+          <small>{activeUsers} actif{activeUsers > 1 ? 's' : ''}</small>
+        </div>
+        <div>
+          <strong>{ownerCount}</strong>
+          <span>Propriétaires</span>
+          <small>accès complet</small>
+        </div>
+        <div>
+          <strong>{pendingInvites}</strong>
+          <span>Invitations</span>
+          <small>{pendingInvites > 0 ? 'en attente' : 'à jour'}</small>
+        </div>
+        <div className="is-status">
+          <strong>●</strong>
+          <span>{pendingCount > 0 ? `${pendingCount} droit(s) en attente` : 'Droits à jour'}</span>
+          <small>{isOwner ? 'vous pouvez modifier' : 'lecture'}</small>
+        </div>
+      </div>
 
       <div className="admin-settings-section" style={{ marginTop: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>

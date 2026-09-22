@@ -96,9 +96,48 @@ export function MenuEditor() {
   return (
     <div className="admin-page-wide admin-menu-layout">
       <div>
-        <PageHeader title="Carte & prix" subtitle={dirty ? 'Modifications non enregistrées' : 'Sélectionnez un produit.'} />
+        <PageHeader
+          title="Carte & prix"
+          subtitle="Les plats sont une source de vérité unique, affichée partout sur le site."
+          actions={<PrimaryButton onClick={() => {
+            const cat = newCat.trim() || (categories[0] ?? 'Burgers')
+            const newItem: MenuItem = { cat, name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
+            const index = menu.length
+            setMenu(prev => [...prev, newItem])
+            setSel(index)
+            setConfirmDel(false)
+            setSaveStatus('idle')
+            if (dataSource !== 'supabase') return
+            void upsertMenuItem(newItem).then((res) => {
+              if (res.ok && res.id) setMenu(prev => prev.map((m, i) => (i === index ? { ...m, id: res.id } : m)))
+              else if (!res.ok) { setSaveStatus('error'); setSaveErr(res.error); setDirty(true) }
+            })
+          }}>Ajouter un plat</PrimaryButton>}
+        />
+        <div className="admin-wf-menu-summary" aria-label="Résumé de la carte">
+          <div>
+            <strong>{menu.length}</strong>
+            <span>Plats publiés</span>
+            <small>{categories.length} catégories</small>
+          </div>
+          <div>
+            <strong>{menu.filter((m) => m.sig).length}</strong>
+            <span>Signatures</span>
+            <small>mis en avant</small>
+          </div>
+          <div>
+            <strong>{dirty ? 'Oui' : 'Non'}</strong>
+            <span>Modifs en cours</span>
+            <small>{canPersist ? 'sync auto' : 'aperçu local'}</small>
+          </div>
+          <div>
+            <strong>{filtered.length}</strong>
+            <span>Affichés</span>
+            <small>{query.trim() ? 'filtre actif' : 'toute la carte'}</small>
+          </div>
+        </div>
         <div style={{ marginTop: 14, position: 'relative' }}>
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" aria-label="Rechercher un produit" style={{ ...inp, paddingLeft: 36, minHeight: 44 }} />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un plat…" aria-label="Rechercher un produit" style={{ ...inp, paddingLeft: 36, minHeight: 44 }} />
           <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} aria-hidden="true">{Icon.search(15, t.muted)}</span>
         </div>
         <div className="admin-menu-list" style={{ marginTop: 14 }}>
@@ -119,26 +158,6 @@ export function MenuEditor() {
             </div>
           ))}
         </div>
-        <button type="button" onClick={async () => {
-          const cat = newCat.trim() || (categories[0] ?? 'Burgers')
-          const newItem: MenuItem = { cat, name: `Nouveau produit ${menu.length + 1}`, sig: false, price: '0', desc: '', vertus: '', badges: [] }
-          const index = menu.length
-          setMenu(prev => [...prev, newItem])
-          setSel(index)
-          setConfirmDel(false)
-          setSaveStatus('idle')
-          if (dataSource !== 'supabase') return
-          const res = await upsertMenuItem(newItem)
-          if (res.ok && res.id) {
-            setMenu(prev => prev.map((m, i) => (i === index ? { ...m, id: res.id } : m)))
-          } else if (!res.ok) {
-            setSaveStatus('error'); setSaveErr(res.error); setDirty(true)
-          }
-        }} style={{
-          marginTop: 12, width: '100%', fontSize: 13, fontWeight: 600, padding: 12, minHeight: 44,
-          borderRadius: 12, cursor: 'pointer', border: '1px dashed var(--admin-forest)',
-          background: 'transparent', color: 'var(--admin-forest)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit',
-        }}>{Icon.plus(14, 'var(--admin-forest)')} Ajouter un produit</button>
         <div style={{ marginTop: 8 }}>
           <Select value={newCat} onValueChange={setNewCat}>
             <SelectTrigger style={{ borderColor: t.primary + '44', borderRadius: 12, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13, minHeight: 44 }}>{newCat}</SelectTrigger>

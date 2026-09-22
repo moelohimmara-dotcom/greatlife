@@ -121,13 +121,23 @@ export function MediaManager() {
 
   return (
     <div className="admin-page" style={{ maxWidth: 1120 }}>
-      <PageHeader title="Médias" subtitle="Téléversez et redimensionnez vos images, puis assignez-les aux emplacements du site."
+      <PageHeader title="Médias" subtitle="Organisez vos images, vidéos et documents au même endroit."
         badge={<span className="admin-chip is-live">{dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}</span>}
+        actions={
+          <Button
+            type="button"
+            disabled={!isSupabase || uploading}
+            onClick={() => fileRef.current?.click()}
+            style={{ borderRadius: 12 }}
+          >
+            Importer des médias
+          </Button>
+        }
       />
       <div className="admin-status-live" role="status" aria-live="polite">{uploading ? 'Téléversement en cours…' : status.kind === 'ok' || status.kind === 'err' || status.kind === 'busy' ? status.msg : ''}</div>
       {!isSupabase && (
         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: `${t.gold || '#b8860b'}14`, color: t.heading, fontSize: 13, border: `1px solid ${t.primary}22` }}>
-          Mode local — la connexion Supabase n'est pas active. Les téléversements sont désactivés.
+          Mode local — la connexion n'est pas active. Les téléversements sont désactivés.
         </div>
       )}
 
@@ -169,7 +179,7 @@ export function MediaManager() {
           onChange={e => handleFile(e.target.files?.[0])}
         />
         <div
-          className="admin-media-drop"
+          className="admin-wf-media-drop"
           onClick={() => !uploading && isSupabase && fileRef.current?.click()}
           onDragOver={e => { e.preventDefault(); if (isSupabase) setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}

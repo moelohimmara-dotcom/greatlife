@@ -542,8 +542,12 @@ export function PageEditor({
       <div className="admin-editor-toolbar">
         <div className="admin-editor-toolbar-start">
           <h2 className="admin-editor-toolbar-title" title={pageLabel}>
-            Console d’édition
+            Modifier le site
           </h2>
+          <span className={`admin-wf-cms-save-state${brouillonSale ? '' : ' is-saved'}`}>
+            <i aria-hidden="true" />
+            {brouillonSale ? 'Brouillon non publié' : 'Enregistré'}
+          </span>
           <StatusPill
             label={consoleEtat.label}
             color={couleurEtat}

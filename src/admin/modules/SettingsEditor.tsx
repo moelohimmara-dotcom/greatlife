@@ -6,7 +6,7 @@ import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '
 import { logAudit, saveSiteConfig } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
 import { SETTING_KEYS, fetchSetting, platDepuisRestaurant } from '@/cms/repository/settings'
-import { SaveBar, SectionTitle } from '@/admin/shared'
+import { SaveBar } from '@/admin/shared'
 
 export function SettingsEditor() {
   const { content, setContent, theme: t, dataSource, saveContentFields, themeId, setThemeId, fontId, setFontId, visibility, setVisibility, rbacOverrides, setRbacOverridesState, saveRbac } = useSite()
@@ -100,21 +100,73 @@ export function SettingsEditor() {
     }
     if (fileRef.current) fileRef.current.value = ''
   }
+  const essentials = [
+    Boolean(content.restaurantName?.trim()),
+    Boolean(content.phone?.trim()),
+    Boolean(content.address?.trim()),
+    Boolean(content.hours?.trim()),
+    Boolean(content.emailContact?.trim()),
+    Boolean(content.emailReservation?.trim()),
+  ]
+  const essentialDone = essentials.filter(Boolean).length
+  const socialDone = [content.socialFacebook, content.socialInstagram, content.socialWhatsapp].filter(s => Boolean(s?.trim())).length
+
   return (
     <div className="admin-page" style={{ maxWidth: 960 }}>
-      <PageHeader title="Réglages du restaurant" subtitle="Identité et coordonnées, appliquées sur tout le site."
+      <PageHeader title="Réglages du restaurant" subtitle="Configurez les informations qui alimentent tout votre site."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
+      <div className="admin-wf-site-status" role="status">
+        <div>
+          <span className="admin-wf-eyebrow">VOTRE RESTAURANT</span>
+          <strong>{content.restaurantName || 'Sans nom'}</strong>
+          <small>
+            {essentialDone}/{essentials.length} informations essentielles
+            {content.phone ? ` · ${content.phone}` : ''}
+          </small>
+        </div>
+        <a className="admin-chip is-live" href="/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          Voir le site
+        </a>
+      </div>
+      <div className="admin-wf-menu-summary" aria-label="Complétude des réglages">
+        <div>
+          <strong>{essentialDone}/{essentials.length}</strong>
+          <span>Essentiels</span>
+          <small>identité & contact</small>
+        </div>
+        <div>
+          <strong>{socialDone}/3</strong>
+          <span>Réseaux</span>
+          <small>Facebook, Instagram, WhatsApp</small>
+        </div>
+        <div>
+          <strong>{content.currency || '—'}</strong>
+          <span>Devise</span>
+          <small>affichée sur la carte</small>
+        </div>
+        <div className="is-status">
+          <strong>●</strong>
+          <span>{dataSource === 'supabase' ? 'Synchronisé' : 'Aperçu local'}</span>
+          <small>réglages globaux</small>
+        </div>
+      </div>
       <nav className="admin-settings-toc" aria-label="Sommaire des réglages">
         <a href="#reglages-identite" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Identité</a>
         <a href="#reglages-localisation" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Localisation</a>
         <a href="#reglages-reseaux" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Réseaux</a>
         <a href="#reglages-notifications" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Notifications</a>
       </nav>
-      <div style={{ display: 'grid', gap: 24, marginTop: 8 }}>
-        <section id="reglages-identite" className="admin-settings-section">
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.primary}>Identité</SectionTitle></div>
-          <div style={{ display: 'grid', gap: 14 }}>
+      <div className="admin-wf-settings-grid">
+        <section id="reglages-identite" className="admin-wf-panel">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">IDENTITÉ</span>
+              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Présentez votre établissement</h2>
+            </div>
+            <span className="admin-chip">{[content.restaurantName, content.currency, content.phone].filter(s => Boolean(s?.trim())).length}/3</span>
+          </div>
+          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
             <div><FieldLabel>Nom du restaurant</FieldLabel><Input value={content.restaurantName} onChange={e => set('restaurantName', e.target.value)} style={inp} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div><FieldLabel>Devise</FieldLabel><Input value={content.currency} onChange={e => set('currency', e.target.value)} style={inp} placeholder="FG" /></div>
@@ -122,42 +174,65 @@ export function SettingsEditor() {
             </div>
           </div>
         </section>
-        <section id="reglages-localisation" className="admin-settings-section">
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Localisation & horaires</SectionTitle></div>
-          <div style={{ display: 'grid', gap: 14 }}>
+        <section id="reglages-localisation" className="admin-wf-panel">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">LOCALISATION</span>
+              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Adresse & horaires</h2>
+            </div>
+            <span className="admin-chip">{[content.address, content.hours].filter(s => Boolean(s?.trim())).length}/2</span>
+          </div>
+          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
             <div><FieldLabel>Adresse</FieldLabel><Input value={content.address} onChange={e => set('address', e.target.value)} style={inp} /></div>
             <div><FieldLabel>Horaires d'ouverture</FieldLabel><Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} /></div>
           </div>
         </section>
-        <section id="reglages-reseaux" className="admin-settings-section">
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.gold}>Réseaux sociaux</SectionTitle></div>
-          <div style={{ display: 'grid', gap: 14 }}>
+        <section id="reglages-reseaux" className="admin-wf-panel">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">RÉSEAUX</span>
+              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Présence en ligne</h2>
+            </div>
+            <span className="admin-chip">{socialDone}/3</span>
+          </div>
+          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
             <div><FieldLabel>Facebook (URL)</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} placeholder="https://facebook.com/..." /></div>
             <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
             <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
           </div>
         </section>
-        <section id="reglages-notifications" className="admin-settings-section">
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.accent}>Destinataires & notifications</SectionTitle></div>
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} placeholder="moelohimmara@gmail.com" /></div>
-            <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} placeholder="moelohimmara@gmail.com" /></div>
+        <section id="reglages-notifications" className="admin-wf-panel">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">NOTIFICATIONS</span>
+              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Destinataires</h2>
+            </div>
+            <span className="admin-chip">{[content.emailContact, content.emailReservation].filter(s => Boolean(s?.trim())).length}/2</span>
+          </div>
+          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
+            <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} placeholder="contact@…" /></div>
+            <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} placeholder="reservations@…" /></div>
             <div style={{ fontSize: '12px', color: t.muted, lineHeight: 1.5 }}>
               Chaque message, réservation ou commande du site notifie ces adresses, et le visiteur
               reçoit une auto-réponse (template dans « Formulaires & emails »).
             </div>
           </div>
         </section>
-        <section className="admin-settings-section">
-          <div style={{ marginBottom: 14 }}><SectionTitle color={t.primary}>Sauvegarde & transfert</SectionTitle></div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <section className="admin-wf-panel" style={{ gridColumn: '1 / -1' }}>
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">SAUVEGARDE</span>
+              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Transfert de configuration</h2>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
             <GhostButton color={t.primary} onClick={exportConfig}>{Icon.arrow(13, t.primary)} Exporter la configuration</GhostButton>
             <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={e => handleImport(e.target.files?.[0])} />
             <GhostButton color={t.accent} onClick={() => fileRef.current?.click()} disabled={importStatus === 'busy'}>{importStatus === 'busy' ? 'Import…' : 'Importer une configuration'}</GhostButton>
             {importStatus === 'ok' && <span className="admin-status-live is-ok" role="status">Importé</span>}
             {importStatus === 'error' && <span className="admin-status-live is-error" role="status" title={importErr}>{importErr}</span>}
           </div>
-          <div style={{ fontSize: '12px', color: t.muted, marginTop: 10 }}>L'export contient le contenu, le thème, les polices et la visibilité. L'import remplace la configuration courante et l'enregistre dans Supabase.</div>
+          <div style={{ fontSize: '12px', color: t.muted, marginTop: 10 }}>L'export contient le contenu, le thème, les polices et la visibilité. L'import remplace la configuration courante et l'enregistre dans votre espace en ligne.</div>
         </section>
       </div>
     </div>

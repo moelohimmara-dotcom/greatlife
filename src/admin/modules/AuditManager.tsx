@@ -5,7 +5,7 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, EmptyState, inputStyle, GhostButton } from '@/admin/ui'
 import { fetchAuditLog, type AuditEntry } from '@/lib/repository'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { dateFr } from '@/admin/shared'
+import { dateFr, heureCourte } from '@/admin/shared'
 
 export function AuditManager() {
   const { theme: t, dataSource } = useSite()
@@ -17,6 +17,7 @@ export function AuditManager() {
   const [actorFilter, setActorFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const inp = inputStyle(t)
   useEffect(() => {
     if (dataSource !== 'supabase') { setLoading(false); return }
@@ -50,6 +51,13 @@ export function AuditManager() {
   const hasFilters = filter !== 'all' || actorFilter !== 'all' || dateFrom !== '' || dateTo !== '' || q !== ''
   const resetFilters = () => { setFilter('all'); setActorFilter('all'); setDateFrom(''); setDateTo(''); setQuery('') }
   const actorName = (a: string) => a || 'système'
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000
+  const last24h = entries.filter(e => e.created_at && new Date(e.created_at).getTime() >= dayAgo).length
+  const uniqueActors = new Set(entries.map(e => actorName(e.actor))).size
+  const selected = selectedId ? filtered.find(e => e.id === selectedId) ?? entries.find(e => e.id === selectedId) ?? null : null
+  useEffect(() => {
+    if (selectedId && !filtered.some(e => e.id === selectedId)) setSelectedId(null)
+  }, [filtered, selectedId])
   const exportCsv = () => {
     const rows = [['Date', 'Acteur', 'Action', 'Cible', 'Détail'].join(';')]
     filtered.forEach(e => {
@@ -75,7 +83,33 @@ export function AuditManager() {
   }
   return (
     <div className="admin-page" style={{ maxWidth: 1120 }}>
-      <PageHeader title="Journal d'activité" subtitle={`${filtered.length} / ${entries.length} action${entries.length > 1 ? 's' : ''}${hasFilters ? ' (filtré)' : ''}`} />
+      <PageHeader
+        title="Journal d'activité"
+        subtitle="Comprenez qui a fait quoi, quand et avec quel résultat."
+        actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter CSV</GhostButton>}
+      />
+      <div className="admin-wf-kpis" aria-label="Résumé du journal">
+        <div>
+          <strong>{entries.length}</strong>
+          <span>Actions enregistrées</span>
+          <small>{filtered.length} affichée{filtered.length > 1 ? 's' : ''}</small>
+        </div>
+        <div>
+          <strong>{uniqueActors}</strong>
+          <span>Utilisateurs actifs</span>
+          <small>dans le journal</small>
+        </div>
+        <div>
+          <strong>{last24h}</strong>
+          <span>Dernières 24 h</span>
+          <small>actions récentes</small>
+        </div>
+        <div>
+          <strong>{actions.length}</strong>
+          <span>Types d’action</span>
+          <small>{hasFilters ? 'filtre actif' : 'tous types'}</small>
+        </div>
+      </div>
       <div className="admin-status-live" role="status" aria-live="polite">{loading ? 'Chargement du journal…' : ''}</div>
       <div className="admin-toolbar">
         <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
@@ -101,27 +135,60 @@ export function AuditManager() {
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>Du <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inp, width: 150, fontSize: 13, minHeight: 44 }} /></label>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>Au <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inp, width: 150, fontSize: 13, minHeight: 44 }} /></label>
         {hasFilters && <GhostButton color={t.muted} onClick={resetFilters}>Réinitialiser les filtres</GhostButton>}
-        <GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0} style={{ marginLeft: 'auto' }}>Exporter CSV</GhostButton>
       </div>
       {loading ? <div className="admin-loading">Chargement…</div> :
         filtered.length === 0 ? <EmptyState icon={Icon.eye(26, t.muted)} title="Aucune entrée" subtitle="Les actions sensibles du panneau seront tracées ici." /> :
-        <div className="admin-audit-list">
-          {filtered.map(e => (
-            <div key={e.id} className="admin-audit-row">
-              <span className="admin-mono" style={{ opacity: 0.65 }}>{e.created_at ? dateFr(e.created_at) : ''}</span>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="admin-chip is-live">{e.action}</span>
-                  <strong>{e.target || '—'}</strong>
-                </div>
-                {e.detail && <div className="admin-ops-meta" style={{ marginTop: 4 }}>{e.detail}</div>}
-                <div className="admin-ops-meta" style={{ marginTop: 4 }}>par {actorName(e.actor)}{e.actor === (user?.email ?? '') ? ' (vous)' : ''}</div>
-              </div>
+        <div className="admin-wf-resa-layout">
+          <div className="admin-wf-panel" style={{ padding: 0 }}>
+            <div className="admin-audit-list">
+              {filtered.map(e => (
+                <button
+                  type="button"
+                  key={e.id}
+                  className={`admin-audit-row admin-wf-activity-row${selectedId === e.id ? ' is-selected' : ''}`}
+                  onClick={() => setSelectedId(e.id ?? null)}
+                >
+                  <span className="admin-mono" style={{ opacity: 0.65 }}>{e.created_at ? dateFr(e.created_at) : ''}</span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="admin-chip is-live">{e.action}</span>
+                      <strong>{e.target || '—'}</strong>
+                    </div>
+                    {e.detail && <div className="admin-ops-meta" style={{ marginTop: 4 }}>{e.detail}</div>}
+                    <div className="admin-ops-meta" style={{ marginTop: 4 }}>par {actorName(e.actor)}{e.actor === (user?.email ?? '') ? ' (vous)' : ''}</div>
+                  </div>
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
+          <aside className="admin-wf-resa-detail" aria-label="Détail de l’action">
+            {selected ? (
+              <>
+                <p className="admin-wf-eyebrow">DÉTAIL DE L’ACTION</p>
+                <h2>{selected.action}</h2>
+                <span className="admin-chip is-live">{selected.target || '—'}</span>
+                <div className="admin-ops-meta" style={{ marginTop: 8 }}>
+                  {selected.created_at ? `${dateFr(selected.created_at)}${heureCourte(selected.created_at) ? ` · ${heureCourte(selected.created_at)}` : ''}` : 'Date inconnue'}
+                </div>
+                <div className="admin-ops-meta">par {actorName(selected.actor)}{selected.actor === (user?.email ?? '') ? ' (vous)' : ''}</div>
+                {selected.detail && (
+                  <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, opacity: 0.6 }}>Description</div>
+                    <p style={{ margin: 0, fontSize: 14, whiteSpace: 'pre-wrap' }}>{selected.detail}</p>
+                  </div>
+                )}
+                <GhostButton color={t.muted} onClick={() => setSelectedId(null)} style={{ marginTop: 12 }}>Fermer</GhostButton>
+              </>
+            ) : (
+              <>
+                <p className="admin-wf-eyebrow">DÉTAIL DE L’ACTION</p>
+                <h2>Sélectionnez une entrée</h2>
+                <p className="admin-page-sub" style={{ color: t.muted, margin: 0 }}>Cliquez une ligne du journal pour voir le détail.</p>
+              </>
+            )}
+          </aside>
         </div>
       }
     </div>
   )
 }
-

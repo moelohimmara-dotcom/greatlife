@@ -177,16 +177,42 @@ export function ReservationsManager() {
   ) : null
   return (
     <div className="admin-page-wide">
-      <PageHeader title="Réservations" subtitle={`${reservations.length} réservation${reservations.length > 1 ? 's' : ''} · ${totalGuests} couverts (hors annulées) · actualisation auto`} />
+      <PageHeader
+        title="Réservations"
+        subtitle="Comprenez l’état du service et agissez en quelques secondes."
+        actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter</GhostButton>}
+      />
       <div className={`admin-status-live${statusErr ? ' is-error' : ''}`} role="status" aria-live="polite">
         {statusSending ? 'Envoi de la notification…' : statusErr ? `Erreur : ${statusErr}` : loading ? 'Chargement des réservations…' : ''}
       </div>
       {loading ? <div className="admin-loading">Chargement…</div> :
         reservations.length === 0 ? <div style={{ marginTop: 20 }}><EmptyState icon={Icon.calendar(28, t.muted)} title="Aucune réservation" subtitle="Les demandes de table apparaîtront ici." /></div> :
         <>
+        <div className="admin-wf-resa-summary" aria-label="Résumé des réservations">
+          <div>
+            <span>Aujourd’hui</span>
+            <strong>{reservations.filter((r) => r.date === today).length}</strong>
+            <small>{reservations.filter((r) => r.date === today && r.status !== 'cancelled').reduce((n, r) => n + r.guests, 0)} couverts prévus</small>
+          </div>
+          <div>
+            <span>À confirmer</span>
+            <strong>{counts.pending}</strong>
+            <small>action recommandée</small>
+          </div>
+          <div>
+            <span>Confirmées</span>
+            <strong>{counts.confirmed}</strong>
+            <small>sur {counts.all} au total</small>
+          </div>
+          <div className="is-status">
+            <strong>●</strong>
+            <span>Service ouvert</span>
+            <small>{totalGuests} couverts filtrés</small>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 200 }}>
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher (nom, email, tel, date, heure)…" aria-label="Rechercher une réservation" style={{ ...inputStyle(t), paddingLeft: 34, fontSize: 13, minHeight: 44 }} />
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un client ou téléphone…" aria-label="Rechercher une réservation" style={{ ...inputStyle(t), paddingLeft: 34, fontSize: 13, minHeight: 44 }} />
             <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} aria-hidden="true">{Icon.search(15, t.muted)}</span>
           </div>
           <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ ...inputStyle(t), width: 160, fontSize: 13, minHeight: 44 }} title="Filtrer par date" aria-label="Filtrer par date" />
@@ -200,14 +226,10 @@ export function ReservationsManager() {
               <SelectItem value="guests_asc">Couverts ↑</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={view} onValueChange={v => setView(v as 'list' | 'planning')}>
-            <SelectTrigger style={{ width: 140, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13, minHeight: 44 }}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="list">Liste</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-            </SelectContent>
-          </Select>
-          <GhostButton color={t.primary} onClick={exportCsv} disabled={sorted.length === 0}>Exporter CSV</GhostButton>
+          <div role="group" aria-label="Mode d’affichage" style={{ display: 'inline-flex', gap: 6 }}>
+            <Bouton genre={view === 'planning' ? 'actif' : 'secondaire'} aria-pressed={view === 'planning'} onClick={() => setView('planning')}>Planning</Bouton>
+            <Bouton genre={view === 'list' ? 'actif' : 'secondaire'} aria-pressed={view === 'list'} onClick={() => setView('list')}>Liste</Bouton>
+          </div>
         </div>
         <div className="admin-filter-row" role="group" aria-label="Filtrer par statut">
           {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (

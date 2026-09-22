@@ -18,37 +18,64 @@ export function VisibilityEditor() {
     setTimeout(() => setSaveStatus('idle'), 4000)
   }
   const rows: [string, string][] = [['home', 'Accueil'], ['carte', 'La carte'], ['histoire', 'Notre histoire'], ['engagements', 'Engagements'], ['equipe', 'Équipe'], ['localisation', 'Localisation'], ['contact', 'Contact'], ['blog', 'Blog']]
+  const extras = (['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const)
+  const sectionsOn = rows.filter(([k]) => visibility.sections[k]).length
+  const sectionsOff = rows.length - sectionsOn
+  const extrasOn = extras.filter((k) => visibility[k]).length
   return (
-    <div className="admin-page" style={{ maxWidth: 640 }}>
+    <div className="admin-page" style={{ maxWidth: 720 }}>
       <PageHeader title="Visibilité" subtitle="Affichez ou masquez des éléments du site en un clic."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
-      <div className="admin-settings-section" style={{ marginTop: 20 }}>
-        <SectionTitle color={t.primary}>Sections de page</SectionTitle>
-        <div style={{ marginTop: 12 }}>
-          {rows.map(([k, l]) => (
-            <div key={k} className="admin-toggle-row">
-              <span className="admin-toggle-row-label">{l}</span>
-              <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
-            </div>
-          ))}
+      <div className="admin-wf-menu-summary" aria-label="Résumé de la visibilité">
+        <div>
+          <strong>{sectionsOn}</strong>
+          <span>Sections visibles</span>
+          <small>sur {rows.length}</small>
+        </div>
+        <div>
+          <strong>{sectionsOff}</strong>
+          <span>Sections masquées</span>
+          <small>hors navigation</small>
+        </div>
+        <div>
+          <strong>{extrasOn}</strong>
+          <span>Éléments actifs</span>
+          <small>sur {extras.length}</small>
+        </div>
+        <div className="is-status">
+          <strong>●</strong>
+          <span>{dataSource === 'supabase' ? 'Prêt à enregistrer' : 'Aperçu local'}</span>
+          <small>effet après enregistrement</small>
         </div>
       </div>
-      <div className="admin-settings-section">
-        <SectionTitle color={t.accent}>Éléments de contenu</SectionTitle>
-        <div style={{ marginTop: 12 }}>
-          {(['vertusPanel', 'suggestions', 'testimonials', 'badges'] as const).map(k => (
-            <div key={k} className="admin-toggle-row">
-              <span className="admin-toggle-row-label">{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
-              <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
-            </div>
-          ))}
+      <div className="admin-wf-theme-layout">
+        <div className="admin-wf-panel">
+          <SectionTitle color={t.primary}>Sections de page</SectionTitle>
+          <div style={{ marginTop: 12 }}>
+            {rows.map(([k, l]) => (
+              <div key={k} className="admin-toggle-row">
+                <span className="admin-toggle-row-label">{l}</span>
+                <Switch checked={visibility.sections[k]} onCheckedChange={() => toggle(k)} />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="admin-hint-box">
-        Les changements sont appliqués en direct sur le site après enregistrement.
+        <div className="admin-wf-panel">
+          <SectionTitle color={t.accent}>Éléments de contenu</SectionTitle>
+          <div style={{ marginTop: 12 }}>
+            {extras.map(k => (
+              <div key={k} className="admin-toggle-row">
+                <span className="admin-toggle-row-label">{k === 'vertusPanel' ? 'Panneau « Vertus » dépliable' : k === 'suggestions' ? 'Suggestions du moment' : k === 'testimonials' ? 'Témoignages' : 'Badges régime & allergènes'}</span>
+                <Switch checked={visibility[k]} onCheckedChange={() => toggleExtra(k)} />
+              </div>
+            ))}
+          </div>
+          <div className="admin-hint-box" style={{ marginTop: 16 }}>
+            Les changements sont appliqués en direct sur le site après enregistrement.
+          </div>
+        </div>
       </div>
     </div>
   )
 }
-

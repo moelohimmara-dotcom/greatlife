@@ -96,12 +96,53 @@ export function BlogEditor() {
   }
 
   const toolBtn: CSSProperties = { fontSize: 12, fontWeight: 600, padding: '5px 9px', borderRadius: 7, cursor: 'pointer', border: `1px solid ${t.shadow}`, background: t.surfaceAlt, color: t.heading, minWidth: 30 }
+  const publishedCount = blogPosts.filter(p => p.published).length
+  const draftCount = blogPosts.length - publishedCount
+  const categoriesUsed = new Set(blogPosts.map(p => p.category).filter(Boolean)).size
+  const withCover = blogPosts.filter(p => Boolean(p.cover_url)).length
+  const lastPublished = blogPosts.filter(p => p.published).sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0]
 
   return (
     <div className="admin-page" style={{ maxWidth: 960 }}>
-      <PageHeader title="Blog" subtitle="Rédigez et publiez des articles."
+      <PageHeader title="Blog" subtitle="Écrivez, organisez et publiez les histoires de Greatlife."
         actions={<PrimaryButton onClick={() => setEditing({ title: '', excerpt: '', body: '', category: 'Actualités', published: false, slug: '', cover_url: '', meta_description: '' })} disabled={!canDo('blog', 'create', user?.role ?? '')}>{Icon.plus(14, '#fff')} Nouvel article</PrimaryButton>}
       />
+      <div className="admin-wf-site-status" role="status">
+        <div>
+          <span className="admin-wf-eyebrow">ESPACE ÉDITORIAL</span>
+          <strong>{publishedCount > 0 ? 'Blog en ligne' : 'Aucun article publié'}</strong>
+          <small>
+            {lastPublished
+              ? `Dernière publication : ${lastPublished.title || 'Sans titre'}`
+              : 'Publiez un article pour le rendre visible sur le site.'}
+          </small>
+        </div>
+        <a className="admin-chip is-live" href="/blog" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          Voir le blog
+        </a>
+      </div>
+      <div className="admin-wf-kpis" aria-label="Résumé du blog">
+        <div>
+          <strong>{publishedCount}</strong>
+          <span>Articles publiés</span>
+          <small>sur {blogPosts.length} au total</small>
+        </div>
+        <div>
+          <strong>{draftCount}</strong>
+          <span>Brouillons</span>
+          <small>{draftCount > 0 ? 'à terminer' : 'aucun en attente'}</small>
+        </div>
+        <div>
+          <strong>{categoriesUsed}</strong>
+          <span>Catégories</span>
+          <small>utilisées</small>
+        </div>
+        <div>
+          <strong>{withCover}</strong>
+          <span>Avec image</span>
+          <small>à la une</small>
+        </div>
+      </div>
       <div className="admin-status-live" role="status" aria-live="polite">
         {saveStatus === 'saving' ? 'Enregistrement…' : saveStatus === 'saved' ? 'Article enregistré' : saveStatus === 'error' ? (saveErr || 'Échec') : ''}
       </div>

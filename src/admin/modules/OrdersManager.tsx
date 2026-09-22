@@ -43,6 +43,7 @@ export function OrdersManager() {
   const [filter, setFilter] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc')
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -186,6 +187,10 @@ export function OrdersManager() {
               <SelectItem value="amount_asc">Montant ↑</SelectItem>
             </SelectContent>
           </Select>
+          <div role="group" aria-label="Mode d’affichage" style={{ display: 'inline-flex', gap: 6 }}>
+            <Bouton genre={viewMode === 'kanban' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'kanban'} onClick={() => setViewMode('kanban')}>Kanban</Bouton>
+            <Bouton genre={viewMode === 'list' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>Liste</Bouton>
+          </div>
         </div>
         <div className="admin-filter-row" role="group" aria-label="Filtrer par statut">
           {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['preparing', 'En préparation'], ['ready', 'Prêtes'], ['delivered', 'Récupérées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
@@ -198,6 +203,142 @@ export function OrdersManager() {
             >{l} <span style={{ opacity: 0.7 }}>{counts[k as keyof typeof counts] ?? 0}</span></button>
           ))}
         </div>
+        {viewMode === 'kanban' ? (
+          <>
+            <div className="admin-wf-kanban" aria-label="Kanban des commandes">
+              {([
+                ['pending', 'Nouvelles'],
+                ['confirmed', 'Confirmées'],
+                ['preparing', 'En préparation'],
+                ['ready', 'Prêtes'],
+                ['delivered', 'Terminées'],
+              ] as const).map(([status, label]) => {
+                const col = sorted.filter((o) => o.status === status)
+                return (
+                  <section key={status} className="admin-wf-kanban-col" aria-labelledby={`kanban-${status}`}>
+                    <div className="admin-wf-kanban-head">
+                      <strong id={`kanban-${status}`}>{label}</strong>
+                      <b>{col.length}</b>
+                    </div>
+                    {col.length === 0 ? (
+                      <div className="admin-empty admin-empty-compact">Vide</div>
+                    ) : col.map((o) => {
+                      const qty = o.items.reduce((n, it) => n + it.qty, 0)
+                      const cta = status === 'pending' ? 'Confirmer' : status === 'preparing' ? 'Continuer' : status === 'ready' ? 'Marquer terminée' : 'Voir détail'
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          className={`admin-wf-kanban-card${selectedId === o.id ? ' is-selected' : ''}`}
+                          onClick={() => setSelectedId(o.id ?? null)}
+                          aria-pressed={selectedId === o.id}
+                        >
+                          <span>
+                            <strong>{o.ref || o.nom}</strong>
+                            <small>{o.pickup_time || '—'} · {o.created_at ? dateFr(o.created_at) : ''}</small>
+                          </span>
+                          <div>
+                            <strong>{o.nom}</strong>
+                            <small>{qty} article{qty > 1 ? 's' : ''} · {o.total} FG</small>
+                          </div>
+                          <em>{cta}</em>
+                        </button>
+                      )
+                    })}
+                  </section>
+                )
+              })}
+            </div>
+            {selected && (
+              <div className="admin-ops-split" style={{ marginTop: 16 }}>
+                <aside className="admin-detail-panel" aria-label={`Détail commande ${selected.ref || selected.nom}`}>
+                  <div className="admin-detail-head">
+                    <div>
+                      <div className="admin-ops-title">{selected.nom}</div>
+                      <div className="admin-ops-meta">
+                        {selected.ref && <span className="admin-mono">{selected.ref}</span>}
+                        {selected.created_at ? ` · ${dateFr(selected.created_at)}` : ''}
+                      </div>
+                    </div>
+                    <Bouton genre="silencieux" aria-label="Fermer le détail" onClick={() => { setSelectedId(null); setConfirmDel(null) }}>Fermer</Bouton>
+                  </div>
+                  <span className={`admin-chip${selected.status === 'pending' ? ' is-danger' : selected.status === 'confirmed' || selected.status === 'ready' ? ' is-live' : ' is-warn'}`}>
+                    {statusLabel[selected.status] ?? selected.status}
+                  </span>
+                  <div className="admin-ops-meta" style={{ marginTop: 14 }}>
+                    {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}
+                  </div>
+                  <div className="admin-ops-meta">Retrait : {selected.pickup_time || '—'}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--admin-forest)', marginTop: 12 }}>{selected.total} FG</div>
+                  {selected.items.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, opacity: 0.6 }}>Articles</div>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {selected.items.map((it, idx) => (
+                          <li key={idx} style={{ fontSize: 14, marginBottom: 4 }}>{it.qty}× {it.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {selected.notes && (
+                    <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, opacity: 0.6 }}>Note client</div>
+                      <p style={{ margin: 0, fontSize: 14, whiteSpace: 'pre-wrap' }}>{selected.notes}</p>
+                    </div>
+                  )}
+                  <div className="admin-ops-actions" style={{ marginTop: 20, justifyContent: 'flex-start' }}>
+                    <Select value={selected.status} onValueChange={v => updateStatus(selected.id!, v)}>
+                      <SelectTrigger aria-label={`Statut de la commande ${selected.ref || selected.nom}`} style={{ width: 160, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[selected.status] ?? selected.status}</SelectTrigger>
+                      <SelectContent>
+                        {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {canDo('orders', 'delete', user?.role ?? '') && (confirmDel === selected.id ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <Bouton genre="danger" onClick={() => removeOrder(selected.id!)}>Confirmer</Bouton>
+                        <Bouton genre="secondaire" onClick={() => setConfirmDel(null)}>Annuler</Bouton>
+                      </div>
+                    ) : (
+                      <Bouton genre="danger" aria-label="Supprimer la commande" title="Supprimer la commande" onClick={() => setConfirmDel(selected.id ?? null)}>
+                        {Icon.trash(14, 'var(--admin-coral)')}
+                      </Bouton>
+                    ))}
+                  </div>
+                </aside>
+                <section className="admin-wf-panel" aria-label="Vue cuisine">
+                  <div className="admin-wf-panel-head">
+                    <h2 style={{ margin: 0, fontFamily: 'var(--admin-font-display)', fontSize: 18 }}>Vue cuisine</h2>
+                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: 13, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)' }}>
+                    Affichage simplifié pour l’équipe — les commandes en préparation.
+                  </p>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {orders.filter((o) => o.status === 'preparing' || o.status === 'ready').slice(0, 6).map((o) => (
+                      <button
+                        key={`kit-${o.id}`}
+                        type="button"
+                        className="admin-wf-kanban-card"
+                        onClick={() => setSelectedId(o.id ?? null)}
+                      >
+                        <span>
+                          <strong>{o.ref || o.nom}</strong>
+                          <small>{statusLabel[o.status]}</small>
+                        </span>
+                        <div>
+                          <strong>{o.items.map((i) => `${i.qty}× ${i.name}`).join(', ') || '—'}</strong>
+                          <small>Retrait {o.pickup_time || '—'}</small>
+                        </div>
+                      </button>
+                    ))}
+                    {orders.filter((o) => o.status === 'preparing' || o.status === 'ready').length === 0 && (
+                      <div className="admin-empty admin-empty-compact">Rien en cuisine pour l’instant.</div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
+          </>
+        ) : (
         <div className={`admin-ops-split${selected ? '' : ' is-list-only'}`}>
           <div className="admin-ops-list">
             {sorted.length === 0 ? <div className="admin-ops-row" style={{ color: t.muted }}>Aucune commande dans ce filtre.</div> :
@@ -287,7 +428,8 @@ export function OrdersManager() {
             </aside>
           )}
         </div>
-        <Pagination page={page} pageSize={ORDERS_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+        )}
+        {viewMode === 'list' && <Pagination page={page} pageSize={ORDERS_PAGE} total={sorted.length} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />}
         </>
       }
     </div>

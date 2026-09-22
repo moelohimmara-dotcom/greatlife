@@ -250,7 +250,16 @@ export function AdminShell() {
         )}
         {boutonMenu('sidebar')}
       </div>
-      <nav aria-label="Navigation de la console" style={{ marginTop: compact ? 16 : 24, display: 'flex', flexDirection: 'column', gap: compact ? 12 : 18, flex: 1, overflow: 'auto', minHeight: 0 }}>
+      {!compact && (
+        <button type="button" className="admin-wf-shell-switcher" title="Restaurant">
+          <span className="admin-wf-shell-switcher-avatar" aria-hidden="true">GL</span>
+          <span className="admin-wf-shell-switcher-copy">
+            <strong>Greatlife</strong>
+            <small>Restaurant principal</small>
+          </span>
+        </button>
+      )}
+      <nav aria-label="Navigation de la console" style={{ marginTop: compact ? 16 : 16, display: 'flex', flexDirection: 'column', gap: compact ? 12 : 18, flex: 1, overflow: 'auto', minHeight: 0 }}>
         {NAV_GROUPS.map(([groupLabel, items]) => (
           <div key={groupLabel}>
             <div
@@ -314,11 +323,28 @@ export function AdminShell() {
           </div>
         ))}
       </nav>
-      <div className="admin-nav-foot" style={{ borderTop: '1px solid var(--admin-rail-line)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined }}>
+      <div className="admin-nav-foot" style={{ borderTop: '1px solid var(--admin-rail-line)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined, gap: 10 }}>
+        {!compact && (
+          <Bouton
+            etendu
+            genre="secondaire"
+            onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
+            aria-label="Voir le site public"
+            style={{
+              justifyContent: 'flex-start',
+              background: 'transparent',
+              borderColor: 'var(--admin-rail-border-soft)',
+              color: 'var(--admin-on-ink)',
+              width: '100%',
+            }}
+          >
+            Voir le site
+          </Bouton>
+        )}
         {!compact && (
           <>
             <strong style={{ fontSize: '14px', fontWeight: 600, color: 'var(--admin-on-ink)' }}>{user?.name}</strong>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-lime)', marginBottom: '12px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-lime)', marginBottom: '4px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
           </>
         )}
         <div className="admin-profile-actions" style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', gap: ESPACE, width: compact ? undefined : '100%' }}>
@@ -433,14 +459,36 @@ export function AdminShell() {
                   {dataLoading ? 'Mise à jour…' : dataSource === 'supabase' ? 'En ligne' : 'Aperçu local'}
                 </span>
               </div>
-              <Bouton
-                genre="secondaire"
-                onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-                aria-label="Voir le site public"
-                style={{ borderColor: 'var(--admin-line)', background: 'var(--admin-surface)' }}
-              >
-                Voir le site
-              </Bouton>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                <label className="admin-wf-top-search">
+                  <span aria-hidden="true">{Icon.search(14, 'currentColor')}</span>
+                  <input
+                    type="search"
+                    placeholder="Rechercher…"
+                    aria-label="Rechercher dans la console"
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return
+                      const q = (e.currentTarget.value || '').trim().toLowerCase()
+                      if (!q) return
+                      if (q.includes('commande')) go('orders')
+                      else if (q.includes('résa') || q.includes('resa') || q.includes('reservation')) go('reservations')
+                      else if (q.includes('message') || q.includes('mail')) go('messages')
+                      else if (q.includes('carte') || q.includes('plat') || q.includes('menu')) go('menu')
+                      else if (q.includes('média') || q.includes('media') || q.includes('image')) go('media')
+                      else if (q.includes('site') || q.includes('page') || q.includes('éditeur') || q.includes('editeur')) go('content')
+                      else go('dashboard')
+                    }}
+                  />
+                </label>
+                <Bouton
+                  genre="secondaire"
+                  onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
+                  aria-label="Voir le site public"
+                  style={{ borderColor: 'var(--admin-line)', background: 'var(--admin-surface)' }}
+                >
+                  Voir le site
+                </Bouton>
+              </div>
             </div>
           )}
           {roleNotice && (
