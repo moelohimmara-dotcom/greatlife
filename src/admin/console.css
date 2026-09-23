@@ -7112,3 +7112,126 @@ html:has([data-admin-shell]) #root {
     display: none;
   }
 }
+
+
+/* === Console prefs (opérateur) === */
+[data-admin-shell][data-admin-chrome="foret"] {
+  --admin-paper: #eef3ea;
+  --admin-paper-muted: #e2eadc;
+  --admin-surface: #f7faf5;
+  --admin-sage: #d0dcc8;
+  --admin-line: #c9d4c2;
+  --admin-forest: #1f5228;
+  --admin-forest-hover: #173f1e;
+}
+
+html:has([data-admin-shell][data-admin-chrome="foret"]),
+html:has([data-admin-shell][data-admin-chrome="foret"]) body,
+html:has([data-admin-shell][data-admin-chrome="foret"]) #root {
+  background: #eef3ea;
+}
+
+[data-admin-shell][data-admin-density="compacte"] .admin-main-pad {
+  padding: 12px 14px 20px;
+}
+
+[data-admin-shell][data-admin-density="compacte"] .admin-wf-panel {
+  padding: 14px 16px;
+}
+
+[data-admin-shell][data-admin-density="compacte"] .admin-page-wide {
+  gap: 12px;
+}
+
+[data-admin-shell] .admin-wf-prefs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+[data-admin-shell] .admin-wf-prefs-help {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--admin-ink) 68%, transparent);
+}
+
+[data-admin-shell] .admin-wf-prefs-help a {
+  color: var(--admin-forest);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+[data-admin-shell] .admin-wf-prefs-choices {
+  display: grid;
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-wf-prefs-choice {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  min-height: 44px;
+  border-radius: var(--admin-radius-control);
+  border: 1px solid var(--admin-line);
+  background: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-prefs-choice strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-wf-prefs-choice small {
+  font-size: 12px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
+}
+
+[data-admin-shell] .admin-wf-prefs-choice:hover {
+  border-color: color-mix(in srgb, var(--admin-forest) 45%, var(--admin-line));
+}
+
+[data-admin-shell] .admin-wf-prefs-choice:focus-visible {
+  outline: 2px solid var(--admin-forest);
+  outline-offset: 2px;
+}
+
+[data-admin-shell] .admin-wf-prefs-choice.is-active {
+  border-color: var(--admin-forest);
+  background: var(--admin-surface);
+  box-shadow: inset 0 0 0 1px var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-prefs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+[data-admin-shell] .admin-wf-prefs-status {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--admin-forest);
+}
+
+@media (max-width: 900px) {
+  [data-admin-shell] .admin-wf-prefs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-shell] .admin-wf-prefs-choice {
+    transition: none;
+  }
+}

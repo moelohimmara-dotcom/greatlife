@@ -7,8 +7,9 @@ import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageRe
 import { productPhotoSlotId } from '@/lib/productPhotoSlot'
 import { Icon } from '@/lib/icons'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { CONSOLE_TIP_KEYS } from '@/admin/console-prefs'
 
-const GUIDE_DISMISS_KEY = 'glife.medias.guide-tip.dismissed.v2'
+const GUIDE_DISMISS_KEY = CONSOLE_TIP_KEYS.mediasGuide
 
 type UploadItemStatus = 'waiting' | 'working' | 'ok' | 'err'
 

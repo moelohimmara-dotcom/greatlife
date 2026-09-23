@@ -17,6 +17,7 @@ import {
   ApparencePage,
   VisibilitePage,
   ReglagesPage,
+  PreferencesPage,
   FormulairesPage,
   UtilisateursPage,
   JournalPage,
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="apparence" element={<ApparencePage />} />
               <Route path="visibilite" element={<VisibilitePage />} />
               <Route path="reglages" element={<ReglagesPage />} />
+              <Route path="preferences" element={<PreferencesPage />} />
               <Route path="formulaires" element={<FormulairesPage />} />
               <Route path="utilisateurs" element={<UtilisateursPage />} />
               <Route path="journal" element={<JournalPage />} />

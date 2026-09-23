@@ -3,7 +3,13 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { ESPACE, HAUTEUR } from '@/admin/ui'
-import { lireNavPref, ecrireNavPref, type AdminNavPref } from '@/admin/admin-nav'
+import { lireNavPref, type AdminNavPref } from '@/admin/admin-nav'
+import {
+  appliquerConsolePrefsAuShell,
+  CONSOLE_PREFS_EVENT,
+  ecrireConsolePrefs,
+  lireConsolePrefs,
+} from '@/admin/console-prefs'
 import '@/admin/console.css'
 import { Icon } from '@/lib/icons'
 import { canAccessModule, ROLE_LABELS } from '@/data/rbac'
@@ -41,6 +47,7 @@ export function AdminShell() {
   const [plusOpen, setPlusOpen] = useState(false)
   const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
   const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
+  const shellRef = useRef<HTMLDivElement>(null)
   const menuToggleRef = useRef<HTMLButtonElement>(null)
   const drawerPanelRef = useRef<HTMLDivElement>(null)
   const focusAvantTiroir = useRef<HTMLElement | null>(null)
@@ -68,6 +75,17 @@ export function AdminShell() {
   useEffect(() => {
     if (editorFocus) setEditorRail(navPref === 'rail')
   }, [editorFocus, navPref])
+
+  useEffect(() => {
+    const apply = () => {
+      const prefs = lireConsolePrefs()
+      appliquerConsolePrefsAuShell(shellRef.current, prefs)
+      setNavPref(prefs.nav)
+    }
+    apply()
+    window.addEventListener(CONSOLE_PREFS_EVENT, apply)
+    return () => window.removeEventListener(CONSOLE_PREFS_EVENT, apply)
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
@@ -146,7 +164,7 @@ export function AdminShell() {
         const next = !open
         if (next) {
           setNavPref('rail')
-          ecrireNavPref('rail')
+          ecrireConsolePrefs({ nav: 'rail' })
         }
         return next
       })
@@ -154,7 +172,7 @@ export function AdminShell() {
     }
     setNavPref((prev) => {
       const next: AdminNavPref = prev === 'open' ? 'rail' : 'open'
-      ecrireNavPref(next)
+      ecrireConsolePrefs({ nav: next })
       return next
     })
   }, [editorFocus])
@@ -309,13 +327,13 @@ export function AdminShell() {
             etendu={!compact}
             carre={compact}
             genre="secondaire"
-            onClick={() => go('settings')}
-            title="Réglages"
-            aria-label="Ouvrir les réglages"
+            onClick={() => go('consolePrefs')}
+            title="Préférences de la console"
+            aria-label="Ouvrir les préférences de la console"
             className="admin-nav-foot-btn admin-nav-foot-settings"
           >
-            <span aria-hidden="true">{Icon.settings(16, 'var(--admin-on-ink)')}</span>
-            {!compact && <span>Réglages</span>}
+            <span aria-hidden="true">{Icon.layout(16, 'var(--admin-on-ink)')}</span>
+            {!compact && <span>Préférences</span>}
           </Bouton>
           <Bouton
             etendu={!compact}
@@ -360,6 +378,7 @@ export function AdminShell() {
 
   return (
     <div
+      ref={shellRef}
       data-admin-shell=""
       data-admin-drawer={mobileNav ? 'open' : 'closed'}
       /* Collée au viewport : fixed+inset, pas seulement 100dvh (bande blanche sous la console). */
@@ -449,9 +468,9 @@ export function AdminShell() {
                 <button
                   type="button"
                   className="admin-topbar-account"
-                  onClick={() => go('settings')}
-                  title="Compte et réglages"
-                  aria-label={`Compte ${user?.name ?? 'administrateur'}, ouvrir les réglages`}
+                  onClick={() => go('consolePrefs')}
+                  title="Compte et préférences de la console"
+                  aria-label={`Compte ${user?.name ?? 'administrateur'}, ouvrir les préférences`}
                 >
                   <span className="admin-topbar-account-avatar" aria-hidden="true">
                     {(user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()}

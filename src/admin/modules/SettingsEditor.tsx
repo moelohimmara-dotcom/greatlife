@@ -7,6 +7,8 @@ import { logAudit, saveSiteConfig } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
 import { SETTING_KEYS, fetchSetting, platDepuisRestaurant } from '@/cms/repository/settings'
 import { SaveBar } from '@/admin/shared'
+import { Link } from 'react-router-dom'
+import { pathForModule } from '@/admin/routes'
 
 export function SettingsEditor() {
   const { content, setContent, theme: t, dataSource, saveContentFields, themeId, setThemeId, fontId, setFontId, visibility, setVisibility, rbacOverrides, setRbacOverridesState, saveRbac } = useSite()
@@ -139,9 +141,16 @@ export function SettingsEditor() {
     <div className="admin-page-wide">
       <PageHeader
         title="Réglages globaux"
-        subtitle="Configurez les informations qui alimentent tout votre site."
+        subtitle="Identité, coordonnées et réseaux du restaurant — pas l’apparence de la console."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
+      <p style={{ margin: '0 0 12px', fontSize: 13, lineHeight: 1.45, color: 'var(--admin-ink)' }}>
+        Pour le menu, la densité ou le chrome de travail, ouvrez{' '}
+        <Link to={pathForModule('consolePrefs')} style={{ color: 'var(--admin-forest)', fontWeight: 600 }}>
+          Préférences de la console
+        </Link>
+        .
+      </p>
       <div className="admin-wf-site-status" role="status">
         <div>
           <span className="admin-wf-eyebrow">Votre site</span>

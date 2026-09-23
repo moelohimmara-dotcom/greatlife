@@ -29,7 +29,8 @@ composants existants (`Bouton`, `PageHeader`, `Icon`) et l’identité déjà en
 | `team` | `/admin/equipe` | Équipe & contenus | Contenu |
 | `theme` | `/admin/apparence` | Thème & ambiance | Apparence |
 | `visibility` | `/admin/visibilite` | Visibilité | Apparence |
-| `settings` | `/admin/reglages` | Réglages globaux | Système |
+| `consolePrefs` | `/admin/preferences` | Préférences de la console | Système |
+| `settings` | `/admin/reglages` | Réglages du restaurant | Système |
 | `forms` | `/admin/formulaires` | Formulaires & emails | Système |
 | `users` | `/admin/utilisateurs` | Utilisateurs & rôles | Système |
 | `audit` | `/admin/journal` | Journal d’activité | Système |

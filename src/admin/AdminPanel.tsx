@@ -18,6 +18,7 @@ import { VisibilityEditor } from '@/admin/modules/VisibilityEditor'
 import { UsersRoles } from '@/admin/modules/UsersRoles'
 import { FormsConfig } from '@/admin/modules/FormsConfig'
 import { SettingsEditor } from '@/admin/modules/SettingsEditor'
+import { ConsolePrefsEditor } from '@/admin/modules/ConsolePrefsEditor'
 import { AuditManager } from '@/admin/modules/AuditManager'
 
 function ModuleFrame({ module, children }: { module: AdminModuleKey; children: React.ReactNode }) {
@@ -113,6 +114,10 @@ export function VisibilitePage() {
 
 export function ReglagesPage() {
   return <ModuleFrame module="settings"><SettingsEditor /></ModuleFrame>
+}
+
+export function PreferencesPage() {
+  return <ModuleFrame module="consolePrefs"><ConsolePrefsEditor /></ModuleFrame>
 }
 
 export function FormulairesPage() {

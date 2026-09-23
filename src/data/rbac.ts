@@ -67,6 +67,7 @@ export const MODULE_ACCESS: Record<string, ModuleAccess> = {
   visibility: { module: 'Visibilit\u00e9', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'] } },
   users: { module: 'Utilisateurs & r\u00f4les', roles: ['owner'], actions: { create: ['owner'], update: ['owner'], delete: ['owner'] } },
   forms: { module: 'Formulaires & emails', roles: ['owner', 'manager', 'marketing'], actions: { update: ['owner', 'manager'] } },
+  consolePrefs: { module: 'Pr\u00e9f\u00e9rences de la console', roles: ROLES.map(r => r.id), actions: { update: ROLES.map(r => r.id) } },
   settings: { module: 'R\u00e9glages globaux', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'] } },
   audit: { module: "Journal d'activit\u00e9", roles: ['owner', 'manager'], actions: {} },
 }
@@ -76,7 +77,7 @@ export const ALL_MODULES = Object.keys(MODULE_ACCESS)
 export const MODULE_GROUPS: [string, string[]][] = [
   ['Opérations', ['dashboard', 'orders', 'reservations', 'messages']],
   ['Contenu', ['content', 'menu', 'blog', 'media', 'team']],
-  ['Configuration', ['theme', 'visibility', 'settings', 'forms', 'users', 'audit']],
+  ['Configuration', ['theme', 'visibility', 'consolePrefs', 'settings', 'forms', 'users', 'audit']],
 ]
 
 export type RbacOverrides = Record<string, Partial<Record<CrudAction, string[]>>>
