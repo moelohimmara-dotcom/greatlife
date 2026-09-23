@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSite } from '@/contexts/SiteContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -180,7 +181,8 @@ export function PublicNav({
       ref={attacherVue}
       data-cms-id={selectable ? CHROME_HEADER_ID : undefined}
       style={{
-        position, top: 0, zIndex: 50, width: '100%',
+        /* Ouvert : au-dessus du contenu (cartes/transform) ; fermé : sous les FAB. */
+        position, top: 0, zIndex: drawerOpen ? 200 : 50, width: '100%',
         background: fond,
         backdropFilter: flou,
         borderBottom: bord,
@@ -284,24 +286,59 @@ export function PublicNav({
   }
 
   function tiroir() {
-    return (
+    /* Portal hors du header : sinon z-index 50 du header crée un stacking context
+       et les cartes (transform) peignent par-dessus le menu (audit mobile P0). */
+    if (typeof document === 'undefined') return null
+    const fondTiroir = headerChoisi || presentation.header?.bg ? couleurs.bg : t.surface
+    const couleurTexte = headerChoisi || presentation.header?.text ? couleurs.text : t.text
+    return createPortal(
       <>
       <AnimatePresence>
         {drawerOpen && isMobile && (
-          <motion.nav initial={{ x: '100%', opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '100%', opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          <motion.div
+            key="nav-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden="true"
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 998,
+              touchAction: 'manipulation',
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {drawerOpen && isMobile && (
+          <motion.nav
+            key="nav-drawer"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             aria-label="Menu mobile"
             style={{
-              position: 'fixed', top: 0, right: 0, bottom: 0, width: '280px',
-              background: headerChoisi || presentation.header?.bg ? couleurs.bg : t.surface, boxShadow: `-8px 0 40px ${t.shadowDeep}`,
-              zIndex: 100, padding: '80px 24px 32px', display: 'flex', flexDirection: 'column', gap: '4px',
+              position: 'fixed', top: 0, right: 0, bottom: 0,
+              width: 'min(280px, 88vw)',
+              maxWidth: '100%',
+              background: fondTiroir,
+              boxShadow: `-8px 0 40px ${t.shadowDeep}`,
+              zIndex: 999,
+              padding: 'max(80px, calc(24px + env(safe-area-inset-top, 0px))) 24px calc(32px + env(safe-area-inset-bottom, 0px))',
+              display: 'flex', flexDirection: 'column', gap: '4px',
               borderLeft: `1px solid ${t.shadow}`,
-            }}>
+              overscrollBehavior: 'contain',
+              overflowY: 'auto',
+              touchAction: 'manipulation',
+            }}
+          >
             <button aria-label="Fermer" onClick={() => setDrawerOpen(false)}
-              style={{ position: 'absolute', top: '20px', right: '20px', width: '44px', height: '44px',
+              style={{ position: 'absolute', top: 'max(20px, env(safe-area-inset-top, 0px))', right: '20px', width: '44px', height: '44px',
                 borderRadius: '10px', background: t.surfaceAlt, border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.heading, fontSize: '20px' }}>
-              ✕
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.heading, fontSize: '20px',
+                touchAction: 'manipulation' }}>
+              <span aria-hidden="true">✕</span>
             </button>
             {liensMenu.map((lien, i) => {
               const id = lien.target.replace(/^#/, '')
@@ -312,11 +349,12 @@ export function PublicNav({
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 style={{
                   fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 600,
-                  color: active === id ? couleurAccent : (headerChoisi || presentation.header?.text ? couleurs.text : t.text),
+                  color: active === id ? couleurAccent : couleurTexte,
                   textDecoration: 'none', padding: '14px 16px', borderRadius: '12px',
                   background: active === id ? `${t.primary}0a` : 'transparent',
-                  transition: 'background 0.2s',
+                  transition: 'background-color 0.2s',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  minHeight: 44,
                 }}>
                 {libelle}
                 {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: couleurAccent }} />}
@@ -327,20 +365,14 @@ export function PublicNav({
               style={{ marginTop: '16px', textAlign: 'center', fontSize: '15px', fontWeight: 600,
                 color: couleurs.ctaText, background: couleurs.ctaBg, padding: '14px', borderRadius: '100px',
                 textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                boxShadow: softShadowSm(t) }}>
+                minHeight: 48, boxShadow: softShadowSm(t), touchAction: 'manipulation' }}>
               {libelleCta} {Icon.arrow(16)}
             </a>
           </motion.nav>
         )}
       </AnimatePresence>
-      <AnimatePresence>
-        {drawerOpen && isMobile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setDrawerOpen(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 90 }} />
-        )}
-      </AnimatePresence>
-      </>
+      </>,
+      document.body,
     )
   }
 }

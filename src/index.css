@@ -9,6 +9,11 @@ html, body, #root {
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
 }
 
 .cms-inline-html a {
@@ -265,6 +270,42 @@ html.admin-editor-lock body {
   }
   .admin-editor-toolbar-plus {
     display: inline-flex;
+  }
+}
+
+/* Tablette / téléphone : empiler la barre Atelier (évite Enregistré∩FR/EN).
+   Seuil 900 px — pas 375 : un viewport 375.3 px rattait max-width:375px. */
+@media (max-width: 900px) {
+  .admin-editor-toolbar {
+    flex-wrap: wrap !important;
+    row-gap: 8px;
+    align-items: flex-start;
+  }
+  .admin-editor-toolbar-start {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .admin-editor-toolbar-center {
+    flex: 0 1 auto;
+    border-left: none;
+    border-right: none;
+    padding: 0;
+  }
+  .admin-editor-toolbar-end {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .admin-editor-toolbar-primary {
+    border-left: none;
+    padding-left: 0;
+  }
+  .admin-editor-toolbar-title {
+    font-size: 16px;
+  }
+  .admin-editor-toolbar-msg {
+    max-width: 120px;
   }
 }
 
@@ -546,6 +587,10 @@ select:focus-visible,
   }
   .admin-main-editor .admin-editor-toolbar {
     padding-left: 56px !important;
+  }
+  /* Pastilles hero : ne pas déborder du viewport */
+  .hero-grid > * {
+    min-width: 0;
   }
 }
 

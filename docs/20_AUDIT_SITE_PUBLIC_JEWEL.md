@@ -248,3 +248,48 @@ Répertoire : `scripts/.work/audit-public-jewel/`
 **Preuves J6** : `npm run verify:dispositions` (nouveaux blocs + dispositions distinctes) ; `npm run build` ; composants `src/sections/{Gallery,Faq,CtaBand,TextBlock,ImageText,Spacer,RichText,VideoBlock,MenuFeatured}.tsx`.
 
 **Preuves J7** : `npm run test:page-seo` (normalisation + gel snapshot + balises) ; `npm run build` ; panneau `src/admin/editor/SeoPanel.tsx` ; conso publique `PublicSite` via `appliquerSeoDocument`.
+
+---
+
+## 11. Audit responsive mobile / tablette (2026-09-23)
+
+> **Preuves** : `scripts/.work/audit-responsive/` (CDP 375 / 768 / 1024 — public + console Clair/Nuit).  
+> Skills : **ui-ux-pro-max** (`--domain ux` mobile-first, touch, overflow) · **web-design-guidelines** (safe areas, overflow, touch-action, stacking).
+
+### Inventaire (avant correctifs)
+
+| ID | Sev | Zone | Constat | Preuve |
+|---|---|---|---|---|
+| R1 | **P0** | Nav publique | Tiroir rendu *dans* le `header` (z-index 50) → cartes/transform peignent par-dessus ; liens « flottants », CTA Réserver parasite | `pub-nav-open-375.png`, `pub-panier-375.png` |
+| R2 | **P0** | Atelier toolbar | `@media (max-width: 375px)` rate les viewports 375.3 px → barre `nowrap` : « Enregistré » ∩ FR/EN illisible | `adm-atelier-375.png` |
+| R3 | **P1** | Hero | Pastille « bio » clipée par `overflow:hidden` du cercle | `pub-home-375.png` |
+| R4 | **P1** | Console topbar | Search + « Voir le site » + compte trop denses ≤768 | `adm-dashboard-375.png` |
+| R5 | **P1** | Bottom nav | Labels 6 colonnes sans ellipsis ; risque de collision | `adm-orders-375.png` |
+| R6 | **P2** | Footer liens | Cibles texte étroites (&lt; 24 px hauteur) — non bloquant | probe `tiny-touch-target` |
+
+### Correctifs livrés
+
+- `PublicNav` : tiroir + backdrop en `createPortal(document.body)`, z-index 998/999, safe-area, fond opaque.
+- `index.css` + `console.css` : wrap toolbar Atelier ≤900/768 px (plus de seuil 375 exact) ; `overflow-x: clip` html/body.
+- `Hero` : pastilles hors du cercle `overflow:hidden`.
+- Topbar : compte compact + bouton « Voir le site » en icône œil sur mobile.
+- Bottom nav : `text-overflow: ellipsis` + `touch-action: manipulation`.
+- `useIsMobile` : état initial sync via `matchMedia` (évite flash bureau).
+
+### Revue web-design-guidelines (extraits)
+
+```text
+## src/components/nav/PublicNav.tsx
+PublicNav.tsx:183 - header z-index 50 piégeait fixed drawer → portal body (fix)
+PublicNav.tsx:295+ - overscroll-behavior: contain + safe-area-inset (fix)
+
+## src/index.css
+index.css:262+ - toolbar wrap ≤900px (fix seuil 375)
+index.css:10-16 - overflow-x: clip (anti scroll horizontal)
+
+## src/admin/console.css
+console.css:~3676 - max-width:375px → 768px toolbar Atelier (fix)
+console.css:1995 - bottom-nav labels overflow hidden + ellipsis
+```
+
+*Identifiants console : variables d’environnement d’audit uniquement — jamais versionnés.*

@@ -336,30 +336,33 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
         </motion.div>
 
         <motion.div style={{ y: yImg, opacity }} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}>
-          <div style={{
-            position: 'relative', aspectRatio: '1', borderRadius: '50%',
-            background: heroImg
-              ? `url(${heroImg}) center/cover`
-              : `radial-gradient(circle at 35% 35%, ${t.gold}30, ${t.accent}20 50%, ${t.primary}15 100%)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: softShadow(t), border: `1px solid ${t.shadow}`, overflow: 'hidden',
-          }}>
-            {heroImg && contenu.imageAlt ? <span className="cms-sr-only">{contenu.imageAlt}</span> : null}
-            {!heroImg && <div style={{ position: 'absolute', inset: '30px', borderRadius: '50%', border: `2px dashed ${t.primary}22` }} />}
-            {!heroImg && (
-              <div style={{ position: 'relative', width: '60%', height: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <BurgerIllustration theme={t} />
-              </div>
-            )}
+          {/* Wrapper sans overflow : les pastilles restent visibles hors du cercle. */}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <div style={{
+              position: 'relative', aspectRatio: '1', borderRadius: '50%',
+              background: heroImg
+                ? `url(${heroImg}) center/cover`
+                : `radial-gradient(circle at 35% 35%, ${t.gold}30, ${t.accent}20 50%, ${t.primary}15 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: softShadow(t), border: `1px solid ${t.shadow}`, overflow: 'hidden',
+            }}>
+              {heroImg && contenu.imageAlt ? <span className="cms-sr-only">{contenu.imageAlt}</span> : null}
+              {!heroImg && <div style={{ position: 'absolute', inset: '30px', borderRadius: '50%', border: `2px dashed ${t.primary}22` }} />}
+              {!heroImg && (
+                <div style={{ position: 'relative', width: '60%', height: '60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <BurgerIllustration theme={t} />
+                </div>
+              )}
+            </div>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-              style={{ position: 'absolute', bottom: '10%', right: '5%', background: t.surface, borderRadius: '16px', padding: '12px 18px', boxShadow: softShadow(t), border: `1px solid ${t.shadow}` }}>
+              style={{ position: 'absolute', bottom: '8%', right: '2%', maxWidth: 'min(200px, 55%)', background: t.surface, borderRadius: '16px', padding: '12px 18px', boxShadow: softShadow(t), border: `1px solid ${t.shadow}`, zIndex: 2 }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{badgeLabel}</div>
-              <div style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 700, color: t.heading }}>{badgeName}</div>
+              <div style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 700, color: t.heading, overflowWrap: 'anywhere' }}>{badgeName}</div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: t.accent }}>{badgeValue}</div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.7 }}
-              style={{ position: 'absolute', top: '8%', left: '3%', background: t.primary, borderRadius: '14px', padding: '10px 14px', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, boxShadow: `0 4px 16px ${t.shadowDeep}` }}>
-              {Icon.leaf(16, '#fff')} <span style={{ fontSize: '12px', fontWeight: 600 }}>{pill}</span>
+              style={{ position: 'absolute', top: '6%', left: '2%', background: t.primary, borderRadius: '14px', padding: '10px 14px', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, boxShadow: `0 4px 16px ${t.shadowDeep}`, zIndex: 2, maxWidth: 'min(180px, 50%)' }}>
+              {Icon.leaf(16, '#fff')} <span style={{ fontSize: '12px', fontWeight: 600, overflowWrap: 'anywhere' }}>{pill}</span>
             </motion.div>
           </div>
         </motion.div>

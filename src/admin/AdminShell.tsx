@@ -461,11 +461,14 @@ export function AdminShell() {
                 </label>
                 <Bouton
                   genre="secondaire"
+                  className="admin-topbar-site-btn"
                   onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
                   aria-label="Voir le site public"
+                  title="Voir le site public"
                   style={{ borderColor: 'var(--admin-line)', background: 'var(--admin-surface)' }}
                 >
-                  Voir le site
+                  <span className="admin-topbar-site-label">Voir le site</span>
+                  <span className="admin-topbar-site-short" aria-hidden="true">{Icon.eye(16, 'currentColor')}</span>
                 </Bouton>
                 <button
                   type="button"

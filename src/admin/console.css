@@ -468,6 +468,10 @@ html:has([data-admin-shell]) #root {
   }
 }
 
+[data-admin-shell] .admin-topbar-site-short {
+  display: none;
+}
+
 [data-admin-shell] .admin-topbar {
   display: flex;
   align-items: center;
@@ -1952,7 +1956,8 @@ html:has([data-admin-shell]) #root {
     z-index: 40;
     background: var(--admin-rail-bg);
     border-top: 1px solid var(--admin-rail-line);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 0;
   }
 
   [data-admin-shell] .admin-bottom-nav a,
@@ -1971,8 +1976,9 @@ html:has([data-admin-shell]) #root {
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    padding: 4px 2px;
+    padding: 4px 1px;
     position: relative;
+    touch-action: manipulation;
   }
 
   [data-admin-shell] .admin-bottom-nav a.is-active,
@@ -1996,10 +2002,11 @@ html:has([data-admin-shell]) #root {
     display: block;
     max-width: 100%;
     white-space: nowrap;
-    overflow: visible;
-    text-overflow: clip;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-align: center;
     line-height: 1.15;
+    padding-inline: 1px;
   }
 
   [data-admin-shell] .admin-bottom-nav .admin-bottom-badge {
@@ -3673,20 +3680,45 @@ html:has([data-admin-shell]) #root {
   }
 }
 
-@media (max-width: 375px) {
+@media (max-width: 768px) {
   [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
     flex-wrap: wrap;
     padding: 8px 12px 8px 56px;
     gap: 12px;
     row-gap: 8px;
+    align-items: flex-start;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-start {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 8px);
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-page small {
+    display: none;
   }
 
   [data-admin-shell] .admin-main-editor .admin-editor-toolbar-center {
-    padding: 0 8px;
+    padding: 0;
+    border-left: none;
+    border-right: none;
+    order: 3;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-end {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    gap: 8px;
   }
 
   [data-admin-shell] .admin-main-editor .admin-editor-toolbar-primary {
-    padding-left: 8px;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-title {
+    font-size: 16px;
   }
 
   [data-admin-shell] .admin-preview-toolbar {
@@ -3700,6 +3732,29 @@ html:has([data-admin-shell]) #root {
 
   [data-admin-shell] .admin-inspector-panel {
     margin-right: 0;
+  }
+
+  /* Topbar : moins de congestion (search + Voir le site + compte) */
+  [data-admin-shell] .admin-topbar-account-copy {
+    display: none;
+  }
+
+  [data-admin-shell] .admin-topbar .admin-btn {
+    padding-inline: 10px;
+  }
+
+  [data-admin-shell] .admin-wf-top-search {
+    flex: 1 1 120px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  [data-admin-shell] .admin-topbar-site-label {
+    display: none;
+  }
+
+  [data-admin-shell] .admin-topbar-site-short {
+    display: inline-flex;
   }
 }
 
