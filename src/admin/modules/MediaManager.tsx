@@ -216,6 +216,13 @@ export function MediaManager() {
   const totalBytes = dbAssets.reduce((n, m) => n + (m.size_bytes || 0), 0)
   const hasActiveFilters = folder !== 'all' || filter !== 'Tous' || query.trim().length > 0
   const libraryEmptyBecauseFilter = filtered.length === 0 && dbAssets.length > 0
+  const detailSlot = selected ? (editSlot || selected.slot) : ''
+  const detailPlace = detailSlot ? slotChoices.find((s) => s.id === detailSlot) : undefined
+  const detailUsed = detailSlot ? usageLabel(detailSlot, slotChoices) : 'Non utilisé'
+  const detailUnused = detailUsed === 'Non utilisé'
+  const detailSlotDirty = Boolean(selected && detailSlot !== selected.slot)
+  const detailKind = selected ? mediaKind(selected) : 'Fichier'
+  const detailIsImage = Boolean(selected && (selected.content_type || '').startsWith('image/'))
 
   const selectAsset = (m: MediaSlot) => {
     setSelectedId(m.id ?? null)
@@ -370,17 +377,23 @@ export function MediaManager() {
 
   const handleSaveDetail = async () => {
     if (!selected?.id) return
-    if (editSlot !== selected.slot) {
-      const res = await updateMediaSlot(selected.id, editSlot)
-      if (!res.ok) {
-        setStatus({ kind: 'err', msg: res.error || 'Échec de la mise à jour.' })
-        return
-      }
-      await refreshMedia()
+    const nextSlot = editSlot || selected.slot
+    if (nextSlot === selected.slot) {
+      setStatus({
+        kind: 'ok',
+        msg: 'Emplacement déjà à jour. La description (texte alternatif / légende) reste pour cette session uniquement.',
+      })
+      return
     }
+    const res = await updateMediaSlot(selected.id, nextSlot)
+    if (!res.ok) {
+      setStatus({ kind: 'err', msg: res.error || 'Échec de la mise à jour.' })
+      return
+    }
+    await refreshMedia()
     setStatus({
       kind: 'ok',
-      msg: 'Emplacement enregistré. Le texte alternatif n’est pas encore mémorisé — il reste pour cette session uniquement.',
+      msg: 'Emplacement enregistré. La description reste pour cette session uniquement.',
     })
   }
 
@@ -779,11 +792,28 @@ export function MediaManager() {
         <aside className="admin-wf-media-details" aria-label="Détail du média">
           {selected ? (
             <>
-              <div className="admin-wf-media-details-head">
-                <span className="admin-wf-eyebrow">Détail du média</span>
-              </div>
-              <div className="admin-wf-media-detail-preview">
-                {(selected.content_type || '').startsWith('image/') && selected.url ? (
+              <header className="admin-wf-media-details-head">
+                <div className="admin-wf-media-details-head-copy">
+                  <span className="admin-wf-eyebrow">Détail</span>
+                  <h2 className="admin-wf-media-detail-name" title={selected.filename || 'Sans nom'}>
+                    {selected.filename || 'Sans nom'}
+                  </h2>
+                  <p className="admin-wf-media-detail-meta">
+                    {detailKind}
+                    <span aria-hidden="true"> · </span>
+                    {formatSize(selected.size_bytes)}
+                  </p>
+                </div>
+                <span
+                  className={`admin-chip${detailUnused ? ' is-warn' : ' is-live'}`}
+                  title={detailUnused ? 'Pas encore placé sur le site' : `Placé : ${detailUsed}`}
+                >
+                  {detailUnused ? 'Non placé' : 'Sur le site'}
+                </span>
+              </header>
+
+              <div className="admin-wf-media-detail-preview" data-kind={detailKind.toLowerCase()}>
+                {detailIsImage && selected.url ? (
                   <img
                     src={selected.url}
                     alt={altDraft || selected.filename || ''}
@@ -792,73 +822,89 @@ export function MediaManager() {
                     decoding="async"
                   />
                 ) : (
-                  <span aria-hidden="true">{Icon.image(36, 'var(--admin-forest)')}</span>
+                  <span className="admin-wf-media-detail-preview-fallback" aria-hidden="true">
+                    {Icon.image(36, 'var(--admin-forest)')}
+                    <small>{detailKind}</small>
+                  </span>
                 )}
               </div>
-              <div className="admin-wf-media-detail-title">
-                <div>
-                  <h2 title={selected.filename || 'Sans nom'}>{selected.filename || 'Sans nom'}</h2>
-                  <small>{mediaKind(selected)} · {formatSize(selected.size_bytes)} · {selected.content_type || 'fichier'}</small>
+
+              <section className="admin-wf-media-detail-seg" aria-labelledby="media-place-heading">
+                <div className="admin-wf-media-detail-seg-head">
+                  <h3 id="media-place-heading">Emplacement sur le site</h3>
+                  <p>Choisissez où vos clients verront cette image (bannière, plat, équipe…).</p>
                 </div>
-                <span className="admin-chip" title={labelForMediaSlot(selected.slot, slotChoices)}>
-                  {labelForMediaSlot(selected.slot, slotChoices)}
-                </span>
-              </div>
+                <label className="admin-wf-media-field" htmlFor="media-place-trigger">
+                  <span>Où l’afficher</span>
+                  <Select value={detailSlot} onValueChange={setEditSlot}>
+                    <SelectTrigger
+                      id="media-place-trigger"
+                      aria-label="Où l’afficher"
+                      style={{ borderColor: 'var(--admin-line)', borderRadius: 10, background: 'var(--admin-paper-muted)', padding: '9px 12px', minHeight: 44 }}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {slotChoices.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {detailPlace?.dims ? (
+                    <small className="admin-wf-media-field-hint">Format conseillé : {detailPlace.dims}</small>
+                  ) : null}
+                </label>
+                <div className={`admin-wf-media-usage${detailUnused ? ' is-unused' : ''}`} role="status">
+                  <strong>{detailUnused ? 'Pas encore sur le site' : 'Visible ici'}</strong>
+                  <span>
+                    {Icon.check(14, detailUnused ? 'var(--admin-saffron)' : 'var(--admin-forest)')}
+                    {detailUnused ? 'Réserve — choisissez un emplacement ci-dessus' : detailUsed}
+                  </span>
+                </div>
+              </section>
 
-              <label className="admin-wf-media-field">
-                <span>Où l’afficher</span>
-                <Select value={editSlot || selected.slot} onValueChange={setEditSlot}>
-                  <SelectTrigger
-                    aria-label="Où l’afficher"
-                    style={{ borderColor: 'var(--admin-line)', borderRadius: 10, background: 'var(--admin-paper-muted)', padding: '9px 12px', minHeight: 44 }}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {slotChoices.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
+              <section className="admin-wf-media-detail-seg" aria-labelledby="media-desc-heading">
+                <div className="admin-wf-media-detail-seg-head">
+                  <h3 id="media-desc-heading">Description</h3>
+                  <p>Pour les visiteurs qui ne voient pas l’image (accessibilité).</p>
+                </div>
+                <p className="admin-wf-media-session-note" role="note">
+                  Brouillon de session uniquement — pas encore mémorisé. Utile pour préparer le texte avant la prochaine mise à jour.
+                </p>
+                <label className="admin-wf-media-field" htmlFor="media-alt">
+                  <span>Texte alternatif</span>
+                  <textarea
+                    id="media-alt"
+                    value={altDraft}
+                    onChange={(e) => setAltDraft(e.target.value)}
+                    rows={3}
+                    placeholder="Ex. : Assiette de fruits tropicaux sur la terrasse…"
+                    name="media-alt"
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="admin-wf-media-field" htmlFor="media-caption">
+                  <span>Légende <em>(optionnel)</em></span>
+                  <input
+                    id="media-caption"
+                    value={captionDraft}
+                    onChange={(e) => setCaptionDraft(e.target.value)}
+                    placeholder="Courte phrase sous la photo…"
+                    name="media-caption"
+                    autoComplete="off"
+                  />
+                </label>
+              </section>
 
-              <label className="admin-wf-media-field">
-                <span>Texte alternatif</span>
-                <textarea
-                  value={altDraft}
-                  onChange={(e) => setAltDraft(e.target.value)}
-                  rows={3}
-                  placeholder="Décrivez l’image pour les visiteurs qui ne la voient pas…"
-                  name="media-alt"
-                  autoComplete="off"
-                />
-                <small className="admin-hint-box" style={{ marginTop: 0 }}>
-                  Pas encore mémorisé en base — brouillon de session uniquement. Utile pour préparer la description.
-                </small>
-              </label>
-
-              <label className="admin-wf-media-field">
-                <span>Légende</span>
-                <input
-                  value={captionDraft}
-                  onChange={(e) => setCaptionDraft(e.target.value)}
-                  placeholder="Optionnel…"
-                  name="media-caption"
-                  autoComplete="off"
-                />
-              </label>
-
-              <div className="admin-wf-media-usage">
-                <strong>Utilisé dans</strong>
-                <span>
-                  {Icon.check(14, usageLabel(selected.slot, slotChoices) === 'Non utilisé' ? 'var(--admin-saffron)' : 'var(--admin-forest)')}
-                  {usageLabel(selected.slot, slotChoices)}
-                </span>
-              </div>
-
-              <div className="admin-wf-media-detail-actions">
-                <GhostButton color={t.primary} onClick={handleSaveDetail}>{Icon.check(14)} Enregistrer</GhostButton>
-                <GhostButton color={t.primary} disabled={!selected.url} onClick={copyLink}>{Icon.link(14)} Copier le lien</GhostButton>
+              <footer className="admin-wf-media-detail-actions">
+                <div className="admin-wf-media-detail-actions-primary">
+                  <PrimaryButton disabled={!detailSlotDirty} onClick={handleSaveDetail}>
+                    {Icon.check(14)} Enregistrer l’emplacement
+                  </PrimaryButton>
+                  <GhostButton color={t.primary} disabled={!selected.url} onClick={copyLink}>
+                    {Icon.link(14)} Copier le lien
+                  </GhostButton>
+                </div>
                 {confirmDelete ? (
                   <div className="admin-wf-media-confirm-del" role="group" aria-label="Confirmer la suppression">
                     <span>Supprimer définitivement{'\u00a0'}?</span>
@@ -880,13 +926,15 @@ export function MediaManager() {
                     {Icon.trash(14, '#dc2626')} Supprimer
                   </GhostButton>
                 )}
-              </div>
+              </footer>
             </>
           ) : (
-            <div className="admin-empty" style={{ padding: '32px 12px', border: 0, background: 'transparent' }}>
-              <div style={{ opacity: 0.45, marginBottom: 8 }} aria-hidden="true">{Icon.image(28)}</div>
-              <strong>Sélectionnez un média</strong>
-              <span style={{ display: 'block', marginTop: 6, fontSize: 13, opacity: 0.65 }}>Le détail s’affiche ici.</span>
+            <div className="admin-wf-media-detail-empty">
+              <EmptyState
+                icon={Icon.image(28, t.muted)}
+                title="Aucun média sélectionné"
+                subtitle="Cliquez une photo dans la bibliothèque pour voir l’aperçu, choisir où l’afficher, et préparer la description."
+              />
             </div>
           )}
         </aside>

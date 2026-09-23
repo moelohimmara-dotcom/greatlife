@@ -143,3 +143,21 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 - Réutilise `uploadMedia` existant (boucle séquentielle) — **pas de migration**
 
 **Hors périmètre N3** : N2 (alt/légende persistés), N4 (prévisualiser avant import), suppression groupée (N6).
+
+---
+
+## 9. Panneau « détail du média » (2026-09-23)
+
+**Objectif** : hiérarchie et vocabulaire restaurateur (TDR §4), sans casser N3 ni le guide.
+
+**Livré (front seul)** :
+- Segments clairs : identité + aperçu → **Emplacement sur le site** → **Description** → actions
+- Chip « Non placé / Sur le site » (statut) ; emplacement nommé dans le bloc « Visible ici »
+- CTA primaire « Enregistrer l’emplacement » (désactivé si inchangé) — ne prétend plus sauver l’alt
+- Note session unique pour alt/légende (N2 hors scope)
+- Empty state pédagogique ; focus champs ; format conseillé sous « Où l’afficher »
+- Métadonnées métier (Image · taille) — plus de `content_type` technique
+
+**Fichiers** : `MediaManager.tsx`, `console.css`.
+
+**Justification UX (ui-ux-pro-max)** : heading hierarchy + form labels + empty states + progressive disclosure (placement persisté vs description session) + touch spacing / focus.
