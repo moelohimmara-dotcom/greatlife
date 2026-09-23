@@ -1,11 +1,11 @@
 /**
- * Greatlife — CMS : éditeur de pages
+ * Greatlife â€” CMS : Ã©diteur de pages
  * ===================================
- * Layout 3 colonnes (TDR §10) :
- *   Structure (liste draggable) | Aperçu (renderer) | Modifier (formulaire)
+ * Layout 3 colonnes (TDR Â§10) :
+ *   Structure (liste draggable) | AperÃ§u (renderer) | Modifier (formulaire)
  *
- * Ce composant est le point d'entrée de l'éditeur. Il est intégré dans
- * AdminPanel à la place de l'écran `content` existant.
+ * Ce composant est le point d'entrÃ©e de l'Ã©diteur. Il est intÃ©grÃ© dans
+ * AdminPanel Ã  la place de l'Ã©cran `content` existant.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -33,6 +33,8 @@ import { PreviewPane } from './PreviewPane'
 import { PropertyPanel } from './PropertyPanel'
 import { ChromePanel } from './ChromePanel'
 import { PublicationPanel } from './PublicationPanel'
+import { SeoPanel } from './SeoPanel'
+import type { PageSeo } from '@/cms/model/page'
 import { SectionTypePicker } from './SectionTypePicker'
 import { GhostButton, PrimaryButton, StatusPill } from '@/admin/ui'
 import { Bouton, CIBLE, HAUTEUR } from './chrome'
@@ -56,31 +58,35 @@ import { getSectionDefinition } from '@/cms/model/sections/schemas'
 import type { CibleApercu } from './inplace-dom'
 
 interface PageEditorProps {
-  /** Titre affiché dans la barre — pas le nom de l’écran de console. */
+  /** Titre affichÃ© dans la barre â€” pas le nom de lâ€™Ã©cran de console. */
   pageLabel?: string
-  /** ID de la page à éditer. */
+  /** ID de la page Ã  Ã©diter. */
   pageId: string
-  /** Sections initiales (chargées depuis la base). */
+  /** Sections initiales (chargÃ©es depuis la base). */
   initialSections: PageSection[]
-  /** Statut de publication : c'est lui qui décide si le public voit le CMS. */
+  /** Statut de publication : c'est lui qui dÃ©cide si le public voit le CMS. */
   status: PageStatus
   layout: PageLayout
   onLayoutChange: (layout: PageLayout) => void | Promise<void>
   flushLayout?: () => void | Promise<void>
   layoutPersisting?: boolean
   layoutDirty?: boolean
+  seo: PageSeo
+  onSeoChange: (seo: PageSeo) => void
+  seoPersisting?: boolean
+  flushSeo?: () => void | Promise<void>
   publishing: boolean
   onPublish: () => void
   onUnpublish: () => void
   blockedReport?: PublicationReport | null
   actionError?: string | null
-  /** Conservé pour compat : la sortie se fait via le menu latéral (hamburger / rail). */
+  /** ConservÃ© pour compat : la sortie se fait via le menu latÃ©ral (hamburger / rail). */
   onQuitConsole?: () => void
   onOuvrirApparence?: () => void
 }
 
 export function PageEditor({
-  pageLabel = 'Page d’accueil',
+  pageLabel = 'Page dâ€™accueil',
   pageId,
   initialSections,
   status,
@@ -89,6 +95,10 @@ export function PageEditor({
   flushLayout,
   layoutPersisting = false,
   layoutDirty = false,
+  seo,
+  onSeoChange,
+  seoPersisting = false,
+  flushSeo,
   publishing,
   onPublish,
   onUnpublish,
@@ -137,10 +147,10 @@ export function PageEditor({
   }, [appliquerBrouillon, capturerBrouillon, historique])
 
   /*
-    L'APERÇU DOIT MONTRER LES VRAIES COORDONNÉES (revue du 2026-09-20, I-4).
+    L'APERÃ‡U DOIT MONTRER LES VRAIES COORDONNÃ‰ES (revue du 2026-09-20, I-4).
 
     Lecture A (`site_content.restaurant`) puis repli B (plat `site_config`)
-    une fois au chargement. Le public, lui, lit l’instantané chrome — pas
+    une fois au chargement. Le public, lui, lit lâ€™instantanÃ© chrome â€” pas
     `fetchSetting` en direct.
   */
   const [restaurant, setRestaurant] = useState<ResolvedRestaurant | undefined>(undefined)
@@ -171,6 +181,7 @@ export function PageEditor({
   }, [editor.locale, platSite.restaurantName, platSite.phone, platSite.address, platSite.emailContact])
   const [showPicker, setShowPicker] = useState(false)
   const [showPublication, setShowPublication] = useState(false)
+  const [showSeo, setShowSeo] = useState(false)
   const [plusOuvert, setPlusOuvert] = useState(false)
   const plusRef = useRef<HTMLDivElement>(null)
   const [apercuElargi, setApercuElargi] = useState(false)
@@ -336,12 +347,12 @@ export function PageEditor({
     setSlotSel((prev) => ({ ...prev, groupId: null }))
   }, [editor, noterHistorique])
 
-  // Une publication bloquée doit être EXPLIQUÉE, pas seulement refusée.
+  // Une publication bloquÃ©e doit Ãªtre EXPLIQUÃ‰E, pas seulement refusÃ©e.
   useEffect(() => {
     if (blockedReport) setShowPublication(true)
   }, [blockedReport])
 
-  // Section actuellement sélectionnée (objet, pas juste l'index)
+  // Section actuellement sÃ©lectionnÃ©e (objet, pas juste l'index)
   const selectedSection = chrome ? null : (editor.selected !== null ? editor.sections[editor.selected] : null)
 
   const appliquerRestaurant = useCallback((settings: RestaurantSettings) => {
@@ -369,7 +380,7 @@ export function PageEditor({
   const empreinteCourante = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
   const brouillonSale = empreinteCourante !== savedFp.current || layoutDirty
 
-  /** Empreinte du contenu au dernier alignement avec le site public (chargement publié ou publication réussie). */
+  /** Empreinte du contenu au dernier alignement avec le site public (chargement publiÃ© ou publication rÃ©ussie). */
   const fpPublieRef = useRef<string | null>(
     status === 'published' ? empreinteSauvegarde(initialSections) + '#' : null,
   )
@@ -412,7 +423,7 @@ export function PageEditor({
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [brouillonSale])
 
-  /* Quitter via la barre latérale démonte l'éditeur : on enregistre ce qui est encore sale
+  /* Quitter via la barre latÃ©rale dÃ©monte l'Ã©diteur : on enregistre ce qui est encore sale
      (l'ancien bouton Tableau de bord faisait ce flush ; le hamburger n'appelle plus handleQuit). */
   useEffect(() => {
     return () => {
@@ -443,16 +454,16 @@ export function PageEditor({
 
   /**
    * Publier engage ce qui est EN BASE : `publishPage` relit la page et ses
-   * sections depuis la base, pas l'état local de l'éditeur. Une modification
-   * non sauvegardée serait donc silencieusement écartée de la publication —
+   * sections depuis la base, pas l'Ã©tat local de l'Ã©diteur. Une modification
+   * non sauvegardÃ©e serait donc silencieusement Ã©cartÃ©e de la publication â€”
    * le restaurateur publierait autre chose que ce qu'il voit.
-   * On sauvegarde donc d'abord, et on s'arrête si la sauvegarde a échoué.
+   * On sauvegarde donc d'abord, et on s'arrÃªte si la sauvegarde a Ã©chouÃ©.
    */
   /**
    * Publier engage ce qui est EN BASE. On sauvegarde d'abord.
-   * Une fois le site déjà en ligne, ce même geste MET À JOUR l'instantané
-   * (mise en page comprise) — sans ça, le restaurateur n'avait plus que
-   * « Repasser en brouillon » et le public ne bougeait jamais.
+   * Une fois le site dÃ©jÃ  en ligne, ce mÃªme geste MET Ã€ JOUR l'instantanÃ©
+   * (mise en page comprise) â€” sans Ã§a, le restaurateur n'avait plus que
+   * Â« Repasser en brouillon Â» et le public ne bougeait jamais.
    */
   const [flushErreur, setFlushErreur] = useState<string | null>(null)
 
@@ -460,12 +471,13 @@ export function PageEditor({
     setFlushErreur(null)
     try {
       await Promise.resolve(flushLayout?.())
+      await Promise.resolve(flushSeo?.())
       await flushRestaurantDrafts()
     } catch (err) {
       setFlushErreur(
         err instanceof Error
           ? err.message
-          : "L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.",
+          : "Lâ€™enregistrement de lâ€™apparence nâ€™a pas abouti. RÃ©essayez avant de publier.",
       )
       return
     }
@@ -477,15 +489,16 @@ export function PageEditor({
 
 
   useEffect(() => {
-    if (!showPublication && !plusOuvert) return
+    if (!showPublication && !showSeo && !plusOuvert) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (plusOuvert) setPlusOuvert(false)
+      else if (showSeo) setShowSeo(false)
       else setShowPublication(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [plusOuvert, showPublication])
+  }, [plusOuvert, showPublication, showSeo])
 
   useEffect(() => {
     if (!plusOuvert) return
@@ -559,14 +572,28 @@ export function PageEditor({
   const basculerControle = useCallback(() => {
     setShowPublication((open) => {
       const next = !open
-      if (next) setApercuElargi(false)
+      if (next) {
+        setApercuElargi(false)
+        setShowSeo(false)
+      }
+      return next
+    })
+  }, [])
+
+  const basculerSeo = useCallback(() => {
+    setShowSeo((open) => {
+      const next = !open
+      if (next) {
+        setApercuElargi(false)
+        setShowPublication(false)
+      }
       return next
     })
   }, [])
 
   return (
     <div className="admin-page-editor">
-      {/* Quatre rôles : navigation/identité | statut | langue+historique | actions. */}
+      {/* Quatre rÃ´les : navigation/identitÃ© | statut | langue+historique | actions. */}
       <div className="admin-editor-toolbar" role="toolbar" aria-label="Atelier du site">
         <div className="admin-editor-toolbar-start" role="group" aria-label="Page">
           <div className="admin-editor-toolbar-page">
@@ -575,10 +602,10 @@ export function PageEditor({
             </h2>
             <small>{pageLabel}</small>
           </div>
-          <div className="admin-editor-toolbar-status" role="group" aria-label="État">
+          <div className="admin-editor-toolbar-status" role="group" aria-label="Ã‰tat">
             <span className={`admin-wf-cms-save-state${brouillonSale ? '' : ' is-saved'}`}>
               <i aria-hidden="true" />
-              {brouillonSale ? 'Brouillon non publié' : 'Enregistré'}
+              {brouillonSale ? 'Brouillon non publiÃ©' : 'EnregistrÃ©'}
             </span>
             <StatusPill
               label={consoleEtat.label}
@@ -591,11 +618,11 @@ export function PageEditor({
         <div className="admin-editor-toolbar-center" role="group" aria-label="Langue et historique">
           <div
             role="group"
-            aria-label="Langue de l’aperçu et des textes"
+            aria-label="Langue de lâ€™aperÃ§u et des textes"
             className="admin-editor-locale"
           >
             {([
-              { id: 'fr' as const, court: 'FR', nom: 'Français' },
+              { id: 'fr' as const, court: 'FR', nom: 'FranÃ§ais' },
               { id: 'en' as const, court: 'EN', nom: 'English' },
             ]).map((lang, i) => {
               const actif = editor.locale === lang.id
@@ -622,13 +649,13 @@ export function PageEditor({
               )
             })}
           </div>
-          <div role="group" aria-label="Annuler et rétablir" className="admin-editor-history">
+          <div role="group" aria-label="Annuler et rÃ©tablir" className="admin-editor-history">
             <Bouton
               carre
               genre="secondaire"
               disabled={!historique.canUndo}
               aria-label="Annuler"
-              title="Annuler — les blocs, pas le menu"
+              title="Annuler â€” les blocs, pas le menu"
               onClick={annuler}
             >
               <span aria-hidden="true">{Icon.undo(16, 'currentColor')}</span>
@@ -637,8 +664,8 @@ export function PageEditor({
               carre
               genre="secondaire"
               disabled={!historique.canRedo}
-              aria-label="Rétablir"
-              title="Rétablir — les blocs, pas le menu"
+              aria-label="RÃ©tablir"
+              title="RÃ©tablir â€” les blocs, pas le menu"
               onClick={retablir}
             >
               <span aria-hidden="true">{Icon.redo(16, 'currentColor')}</span>
@@ -667,7 +694,7 @@ export function PageEditor({
               {editor.avertissement}
             </span>
           )}
-          <div className="admin-editor-toolbar-secondary" role="group" aria-label="Brouillon et contrôle">
+          <div className="admin-editor-toolbar-secondary" role="group" aria-label="Brouillon et contrÃ´le">
             <GhostButton
               className="admin-editor-toolbar-wide"
               color="currentColor"
@@ -676,17 +703,27 @@ export function PageEditor({
               title="Enregistrer le brouillon sans publier"
               onClick={enregistrerBrouillon}
             >
-              {editor.saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}
+              {editor.saving ? 'Enregistrementâ€¦' : 'Enregistrer le brouillon'}
             </GhostButton>
             <GhostButton
               className="admin-editor-toolbar-wide"
               color="currentColor"
               aria-pressed={showPublication}
               aria-expanded={showPublication}
-              title="Vérifier la page avant publication et consulter les versions enregistrées."
+              title="VÃ©rifier la page avant publication et consulter les versions enregistrÃ©es."
               onClick={basculerControle}
             >
-              Contrôle
+              ContrÃ´le
+            </GhostButton>
+            <GhostButton
+              className="admin-editor-toolbar-wide"
+              color="currentColor"
+              aria-pressed={showSeo}
+              aria-expanded={showSeo}
+              title="Titre Google, texte et image de partage pour cette page."
+              onClick={basculerSeo}
+            >
+              Référencement
             </GhostButton>
           </div>
           <div className="admin-editor-toolbar-plus" ref={plusRef}>
@@ -714,19 +751,31 @@ export function PageEditor({
                   }}
                   style={{ width: '100%', justifyContent: 'flex-start' }}
                 >
-                  {editor.saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}
+                  {editor.saving ? 'Enregistrementâ€¦' : 'Enregistrer le brouillon'}
                 </GhostButton>
                 <GhostButton
                   color="currentColor"
                   aria-pressed={showPublication}
-                  title="Vérifier la page avant publication et consulter les versions enregistrées."
+                  title="VÃ©rifier la page avant publication et consulter les versions enregistrÃ©es."
                   onClick={() => {
                     setPlusOuvert(false)
                     basculerControle()
                   }}
                   style={{ width: '100%', justifyContent: 'flex-start' }}
                 >
-                  Contrôle
+                  ContrÃ´le
+                </GhostButton>
+                <GhostButton
+                  color="currentColor"
+                  aria-pressed={showSeo}
+                  title="Titre Google, texte et image de partage pour cette page."
+                  onClick={() => {
+                    setPlusOuvert(false)
+                    basculerSeo()
+                  }}
+                  style={{ width: '100%', justifyContent: 'flex-start' }}
+                >
+                  Référencement
                 </GhostButton>
                 {isPublished ? (
                   <GhostButton
@@ -734,7 +783,7 @@ export function PageEditor({
                     color="currentColor"
                     disabled={publishing || editor.saving}
                     busy={publishing || editor.saving}
-                    title="Retirer cette version : les visiteurs reverront l’ancien site."
+                    title="Retirer cette version : les visiteurs reverront lâ€™ancien site."
                     onClick={() => {
                       setPlusOuvert(false)
                       onUnpublish()
@@ -753,11 +802,11 @@ export function PageEditor({
               disabled={publishing || editor.saving}
               busy={publishing || editor.saving}
               title={isPublished
-                ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
+                ? 'Les visiteurs verront la mise en page et les textes de cet Ã©cran.'
                 : 'Publier : les visiteurs verront ce contenu.'}
               onClick={() => { void handlePublish() }}
             >
-              {publishing ? 'Publication…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
+              {publishing ? 'Publicationâ€¦' : isPublished ? 'Mettre Ã  jour le site' : 'Publier sur le site'}
             </PrimaryButton>
             {isPublished && (
               <GhostButton
@@ -765,7 +814,7 @@ export function PageEditor({
                 color="currentColor"
                 disabled={publishing || editor.saving}
                 busy={publishing || editor.saving}
-                title="Retirer cette version : les visiteurs reverront l’ancien site."
+                title="Retirer cette version : les visiteurs reverront lâ€™ancien site."
                 onClick={onUnpublish}
               >
                 Retirer
@@ -775,9 +824,9 @@ export function PageEditor({
         </div>
       </div>
 
-      {/* Layout 3 colonnes — minmax(0,1fr) : sans ça la rangée grandit
-          avec la liste des blocs, l’aperçu a un 100vh de plusieurs écrans
-          et le bas de la fenêtre n’est plus que du fond crème. */}
+      {/* Layout 3 colonnes â€” minmax(0,1fr) : sans Ã§a la rangÃ©e grandit
+          avec la liste des blocs, lâ€™aperÃ§u a un 100vh de plusieurs Ã©crans
+          et le bas de la fenÃªtre nâ€™est plus que du fond crÃ¨me. */}
       <div
         className={apercuElargi ? 'admin-editor-grid is-preview-wide' : 'admin-editor-grid'}
       >
@@ -785,14 +834,14 @@ export function PageEditor({
         <div
           className={[
             'admin-editor-structure',
-            showPublication ? 'is-locked' : '',
+            showPublication || showSeo ? 'is-locked' : '',
             apercuElargi ? 'is-hidden' : '',
           ].filter(Boolean).join(' ')}
         >
           <div className="admin-editor-col-head">
             <div className="admin-editor-col-title">Structure</div>
             <p className="admin-editor-col-sub">
-              Ordre des blocs � textes et listes � l'int�rieur
+              Ordre des blocs · textes et listes à l'intérieur
             </p>
           </div>
           <SectionList
@@ -863,7 +912,7 @@ export function PageEditor({
           />
         </div>
 
-        {/* Colonne 2+3 : aperçu + Inspecteur, ou aperçu + Contrôle */}
+        {/* Colonne 2+3 : aperÃ§u + Inspecteur, ou aperÃ§u + ContrÃ´le */}
         <div className={apercuElargi ? 'admin-editor-main is-preview-wide' : 'admin-editor-main'}>
           <div className="admin-editor-preview">
             <PreviewPane
@@ -930,7 +979,7 @@ export function PageEditor({
             className={[
               'admin-editor-inspector',
               apercuElargi ? 'is-hidden' : '',
-              aSelection || showPublication ? 'has-selection' : '',
+              aSelection || showPublication || showSeo ? 'has-selection' : '',
               showPublication ? 'is-publication' : '',
             ].filter(Boolean).join(' ')}
           >
@@ -947,6 +996,14 @@ export function PageEditor({
                   onClose={() => setShowPublication(false)}
                 />
               </div>
+            ) : showSeo ? (
+              <SeoPanel
+                seo={seo}
+                locale={editor.locale}
+                onChange={onSeoChange}
+                onClose={() => setShowSeo(false)}
+                persisting={seoPersisting}
+              />
             ) : (
               <div className="admin-inspector-scroll">
                 <div className="admin-editor-col-head">
@@ -991,10 +1048,10 @@ export function PageEditor({
                 ) : (
                   <div className="admin-inspector-empty">
                     <p className="admin-inspector-empty-title">
-                      Rien à modifier pour l’instant
+                      Rien Ã  modifier pour lâ€™instant
                     </p>
                     <p className="admin-inspector-empty-body">
-                      Cliquez En-tête ou Pied de page, ou un bloc dans Structure.
+                      Cliquez En-tÃªte ou Pied de page, ou un bloc dans Structure.
                     </p>
                   </div>
                 )}

@@ -14,7 +14,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import type { PageSection } from '@/cms/model/section'
-import type { PageStatus } from '@/cms/model/page'
+import type { PageSeo, PageStatus } from '@/cms/model/page'
+import { normaliserPageSeo } from '@/cms/model/page-seo'
 import type { PageLayout } from '@/cms/model/page-layout'
 import { DEFAULT_PAGE_LAYOUT } from '@/cms/model/page-layout'
 import type { PublicationReport } from '@/cms/model/publishing'
@@ -38,6 +39,10 @@ export function PageEditorWrapper({
   const [pageLabel, setPageLabel] = useState('Page d’accueil')
   const [status, setStatus] = useState<PageStatus>('draft')
   const [layout, setLayout] = useState<PageLayout>(DEFAULT_PAGE_LAYOUT)
+  const [seo, setSeo] = useState<PageSeo>({})
+  const [seoPersisting, setSeoPersisting] = useState(false)
+  const seoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wantedSeo = useRef<PageSeo>({})
   const [sections, setSections] = useState<PageSection[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -70,6 +75,9 @@ export function PageEditorWrapper({
       setPageLabel(page.slug ? (typeof page.title === 'string' ? page.title : (page.title.fr || page.title.en || 'Page')) : 'Page d’accueil')
       setStatus(page.status)
       setLayout(page.layout)
+      const seoInitial = normaliserPageSeo(page.seo)
+      setSeo(seoInitial)
+      wantedSeo.current = seoInitial
       wantedLayout.current = page.layout
       setLayoutPersisted(page.layout)
       setSections(sectionsResult.data)
@@ -89,6 +97,7 @@ export function PageEditorWrapper({
   useEffect(() => {
     return () => {
       if (layoutTimer.current) clearTimeout(layoutTimer.current)
+      if (seoTimer.current) clearTimeout(seoTimer.current)
     }
   }, [])
 
@@ -118,6 +127,42 @@ export function PageEditorWrapper({
     return tache
   }, [pageId])
 
+  const persistWantedSeo = useCallback(() => {
+    if (!pageId) return Promise.resolve()
+    const cible = wantedSeo.current
+    setSeoPersisting(true)
+    return updatePage(pageId, { seo: cible }).then((res) => {
+      setSeoPersisting(false)
+      if (!res.ok && wantedSeo.current === cible) {
+        setActionError(res.error)
+      } else if (res.ok) {
+        setActionError(null)
+        if (wantedSeo.current === cible) setSeo(normaliserPageSeo(res.data.seo))
+      }
+    })
+  }, [pageId])
+
+  const changeSeo = useCallback((next: PageSeo) => {
+    if (!pageId) return
+    const normalise = normaliserPageSeo(next)
+    wantedSeo.current = normalise
+    setSeo(normalise)
+    if (seoTimer.current) clearTimeout(seoTimer.current)
+    seoTimer.current = setTimeout(() => {
+      seoTimer.current = null
+      void persistWantedSeo()
+    }, 1200)
+  }, [pageId, persistWantedSeo])
+
+  const flushSeo = useCallback(() => {
+    if (seoTimer.current) {
+      clearTimeout(seoTimer.current)
+      seoTimer.current = null
+      return persistWantedSeo()
+    }
+    return Promise.resolve()
+  }, [persistWantedSeo])
+
   const changeLayout = useCallback((next: PageLayout) => {
     if (!pageId) return Promise.resolve()
     wantedLayout.current = next
@@ -145,6 +190,7 @@ export function PageEditorWrapper({
     setActionError(null)
     try {
       await flushLayout()
+      await flushSeo()
       await flushRestaurantDrafts()
     } catch (err) {
       setPublishing(false)
@@ -162,7 +208,7 @@ export function PageEditorWrapper({
     setBlockedReport(null)
     setActionError(null)
     await load()
-  }, [pageId, user?.email, load, flushLayout])
+  }, [pageId, user?.email, load, flushLayout, flushSeo])
 
   const unpublishNow = useCallback(async () => {
     if (!pageId) return
@@ -206,6 +252,10 @@ export function PageEditorWrapper({
       flushLayout={flushLayout}
       layoutPersisting={layoutPersisting}
       layoutDirty={layout !== layoutPersisted}
+      seo={seo}
+      onSeoChange={changeSeo}
+      seoPersisting={seoPersisting}
+      flushSeo={flushSeo}
       publishing={publishing}
       onPublish={publishNow}
       onUnpublish={unpublishNow}

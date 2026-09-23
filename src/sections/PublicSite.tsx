@@ -38,6 +38,7 @@ import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import type { SnapshotChrome } from '@/cms/model/publishing'
 import type { LienChrome } from '@/cms/model/sections/site-chrome'
 import { useEffect } from 'react'
+import { appliquerSeoDocument, resoudrePageSeo } from '@/cms/model/page-seo'
 
 /**
  * Ancres héritées, utilisées uniquement par le chemin legacy (avant bascule CMS).
@@ -101,6 +102,16 @@ export function PublicSite() {
   useEffect(() => {
     assurerPolicesChargees()
   }, [])
+
+  /*
+    SEO public = instantané publié uniquement (TDR §22, J7).
+    `index.html` reste le socle sans JS ; dès que le CMS pilote la page,
+    on synchronise <title> / description / OG depuis `page.seo` figé.
+  */
+  useEffect(() => {
+    if (!enabled || !page) return
+    appliquerSeoDocument(document, resoudrePageSeo(page.seo, 'fr'))
+  }, [enabled, page])
 
   const restaurantPublie = restaurantDepuisChrome(chrome)
   const typoPubliee = typoDepuisChrome(chrome)

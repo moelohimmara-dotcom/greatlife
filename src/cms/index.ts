@@ -33,6 +33,14 @@ export {
 
 export type { Page, PageSeo, PageStatus, PageWithSections } from './model/page'
 export { PAGE_STATUSES, PAGE_STATUS_LABELS, pageStatusLabel } from './model/page'
+export type { ResolvedPageSeo, DocumentSeoTag } from './model/page-seo'
+export {
+  normaliserPageSeo,
+  resoudrePageSeo,
+  ecrireSeoLocale,
+  balisesSeoDocument,
+  appliquerSeoDocument,
+} from './model/page-seo'
 export type { PageLayout } from './model/page-layout'
 export {
   PAGE_LAYOUTS,

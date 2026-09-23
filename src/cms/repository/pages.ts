@@ -99,17 +99,46 @@ export async function fetchPublishedPageSnapshot(
   if (!client.ok) return client
 
   try {
+    /*
+      Lecture publique MINIMALE (J7 / docs/10 §7.2) : on ne tire PAS
+      `title_i18n` / `seo` / `sort_order` / `layout` de la ligne vivante.
+      Ces colonnes sont de l’état de travail ; le public ne doit lire que
+      `published_snapshot` (TDR §22). Le titre et le SEO affichés viennent
+      ensuite de l’instantané dans `fetchPublicPageWithSections`.
+    */
     const { data, error } = await client.data
       .from(TABLE)
-      .select(`${COLUMNS}, published_snapshot`)
+      .select('id, slug, status, published_at, created_at, updated_at, updated_by, published_snapshot')
       .eq('slug', normalizeSlug(slug))
       .eq('status', 'published')
       .maybeSingle()
 
     if (error) return cmsErr(describeError(error))
     if (!data) return cmsOk(null)
-    const row = data as PageRow & { published_snapshot?: unknown }
-    return cmsOk({ page: mapPage(row), snapshot: row.published_snapshot ?? null })
+    const row = data as {
+      id: string
+      slug: string
+      status: string
+      published_at: string | null
+      created_at: string
+      updated_at: string
+      updated_by: string | null
+      published_snapshot?: unknown
+    }
+    const stub: Page = {
+      id: row.id,
+      slug: row.slug ?? '',
+      title: {},
+      status: (row.status as PageStatus) ?? 'published',
+      sortOrder: 0,
+      seo: {},
+      layout: normaliserPageLayout(undefined),
+      publishedAt: row.published_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      updatedBy: row.updated_by,
+    }
+    return cmsOk({ page: stub, snapshot: row.published_snapshot ?? null })
   } catch (err) {
     return cmsErr(describeError(err))
   }
