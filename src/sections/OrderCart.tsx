@@ -56,7 +56,12 @@ export function OrderCart() {
         pickup_time: form.pickup_time,
         notes: form.notes,
       })
-      if (!res.ok) { setErrMsg(res.error || 'Échec de la commande'); setResult('err'); setSubmitting(false); return }
+      if (!res.ok) {
+        setErrMsg(res.error || 'Impossible d’envoyer la commande. Vérifiez vos informations et réessayez.')
+        setResult('err')
+        setSubmitting(false)
+        return
+      }
       await invokeContactEmail({
         nom: form.nom,
         email: form.email,
@@ -138,7 +143,7 @@ export function OrderCart() {
                 {result === 'err' && (
                   <div style={{ padding: '16px', borderRadius: 14, background: `${t.accent}12`, border: `1px solid ${t.accent}33`, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 18, color: t.accent }}>✗</span>
-                    <div style={{ fontSize: '14px', color: t.accent, fontWeight: 600 }}>{errMsg || 'Échec de la commande — veuillez réessayer.'}</div>
+                    <div style={{ fontSize: '14px', color: t.accent, fontWeight: 600 }}>{errMsg || 'Impossible d’envoyer la commande. Vérifiez vos informations et réessayez.'}</div>
                   </div>
                 )}
 

@@ -38,6 +38,11 @@ function errMsg(error: unknown): string {
   return any.message || any.code || 'Erreur inconnue'
 }
 
+/** Messages d'erreur exposés au client du site public — jamais de jargon RLS/SQL. */
+function publicFormError(_error: unknown, fallback: string): string {
+  return fallback
+}
+
 interface MenuRow {
   id: string
   cat: string
@@ -653,7 +658,8 @@ export async function insertOrder(
   o: Omit<Order, 'id' | 'status' | 'created_at'>
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabase()
-  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  if (!sb) return { ok: false, error: 'Impossible d’envoyer la commande. Réessayez dans un instant.' }
+  const fallback = 'Impossible d’envoyer la commande. Vérifiez vos informations et réessayez.'
   try {
     const { error } = await sb.from(ORDERS_TABLE).insert({
       ref: o.ref,
@@ -664,11 +670,12 @@ export async function insertOrder(
       total: o.total,
       pickup_time: o.pickup_time,
       notes: o.notes,
+      status: 'pending',
     })
-    if (error) return { ok: false, error: errMsg(error) }
+    if (error) return { ok: false, error: publicFormError(error, fallback) }
     return { ok: true }
   } catch (err) {
-    return { ok: false, error: errMsg(err) }
+    return { ok: false, error: publicFormError(err, fallback) }
   }
 }
 
