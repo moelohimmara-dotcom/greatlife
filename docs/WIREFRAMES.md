@@ -215,9 +215,22 @@ Flux : BROUILLON → PRÉVISUALISATION → VALIDATION → PUBLICATION → EN LIG
 
 ## 8. Carte & prix (`menu`)
 
-Liste filtrable + formulaire. Barre dirty : « N modifications non enregistrées ».
-Plat : image, prix (nombre éditable, affichage devise), catégorie, description,
-allergènes, badges (légende, pas couleur seule), disponibilité, signature.
+```text
+[Header + Ajouter un plat]
+[Statut carte active · Publiée · Voir la carte · Enregistrer]
+[KPI ×4 : plats · signatures · prix moyen · sans photo]
+[Recherche · onglets catégories · Filtrer]
+┌ Liste plats (thumb · copy · prix · signature) ┐ ┌ Aperçu mobile / Édition ┐
+└───────────────────────────────────────────────┴──────────────────────────┘
+[Barre dirty si modifs : Annuler · Enregistrer]
+```
+
+**Alignement (2026-09-23)** : structure fidèle au `Menu` du modèle (`page.tsx`) —
+statut, résumé, toolbar, liste + aperçu mobile, formulaire d’édition, dirty bar.
+Données live `menu_items` + photos via emplacements Médias.
+Écarts restants : pas de « disponibilité temporaire » en base (le commutateur de
+liste pilote la **signature**) ; « Nouvelle section » / « Filtrer » = messages
+honnêtes (catégories dérivées des plats).
 
 ---
 
