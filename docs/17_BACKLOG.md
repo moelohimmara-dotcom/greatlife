@@ -123,3 +123,23 @@ lit dÃ©jÃ  en premier et que les contrÃ´les de publication consultent.
 - **M-4** â€” un message de commit annonce Â« 14 contrÃ´les Â» pour `verify:lot1`,
   qui en exÃ©cute 12. L'historique n'est pas rÃ©Ã©crit pour autant ; le compte
   exact vit dans `AGENTS.md` Â§15.
+
+---
+
+## B-S1. Porte de phase — `rbacOverrides` public et navigation brouillon
+
+**Constaté le** : 2026-09-23 (revues sécurité b867c4ac + code 5cb211f8).
+
+**`rbacOverrides`** : la ligne `site_content` / `site_config` est lisible
+anon (`content_public_read`). Si des surcharges RBAC y sont stockées, elles
+fuient vers le public. **Décision attendue** : sortir les overrides hors de la
+clé publique, ou les ignorer côté client public et ne les charger qu'en console
+authentifiée.
+
+**Navigation brouillon** : une partie du chrome (menu live / `site_content`)
+peut encore diverger du flux `BROUILLON ? PUBLIER` de l'instantané page.
+Tracer explicitement ce qui est figé à la publication vs live — chantier hors
+lot de durcissement 039.
+
+**Statut** : porte de phase, **non démarré**. Ne pas élargir les policies pour
+« arranger » ces sujets.

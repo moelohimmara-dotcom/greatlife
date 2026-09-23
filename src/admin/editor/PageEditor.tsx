@@ -454,9 +454,21 @@ export function PageEditor({
    * (mise en page comprise) — sans ça, le restaurateur n'avait plus que
    * « Repasser en brouillon » et le public ne bougeait jamais.
    */
+  const [flushErreur, setFlushErreur] = useState<string | null>(null)
+
   const handlePublish = async () => {
-    await Promise.resolve(flushLayout?.())
-    await flushRestaurantDrafts().catch(() => {})
+    setFlushErreur(null)
+    try {
+      await Promise.resolve(flushLayout?.())
+      await flushRestaurantDrafts()
+    } catch (err) {
+      setFlushErreur(
+        err instanceof Error
+          ? err.message
+          : "L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.",
+      )
+      return
+    }
     const saved = await editor.save()
     if (saved) savedFp.current = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
     if (!saved) return
@@ -640,12 +652,17 @@ export function PageEditor({
               {actionError}
             </span>
           )}
+          {flushErreur && (
+            <span role="alert" className="admin-editor-toolbar-msg is-danger" title={flushErreur}>
+              {flushErreur}
+            </span>
+          )}
           {editor.error && (
             <span role="alert" className="admin-editor-toolbar-msg is-danger" title={editor.error}>
               {editor.error}
             </span>
           )}
-          {editor.avertissement && !editor.error && (
+          {editor.avertissement && !editor.error && !flushErreur && (
             <span role="status" className="admin-editor-toolbar-msg is-warn" title={editor.avertissement}>
               {editor.avertissement}
             </span>

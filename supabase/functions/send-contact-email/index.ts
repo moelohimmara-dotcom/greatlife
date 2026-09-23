@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SmtpClient } from "https://deno.land/x/smtp@v0.6.0/mod.ts";
 
 // Polyfill : Deno.writeAll a été retiré du runtime Supabase Edge Functions,
@@ -22,16 +22,44 @@ if (typeof (Deno as any).writeAll !== "function") {
   };
 }
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+/** Origines autorisées pour le formulaire public (CORS). Surcharge : ALLOWED_ORIGINS=csv */
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://greatlife-conakry.pages.dev",
+  "https://greatlife-conakry.netlify.app",
+  "https://greatlife-gn.netlify.app",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+];
 
-function corsResponse(body: string, status = 200, extra: Record<string, string> = {}) {
+function allowedOrigins(): string[] {
+  const raw = Deno.env.get("ALLOWED_ORIGINS") || "";
+  const extra = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...extra])];
+}
+
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allow = allowedOrigins();
+  const matched = allow.includes(origin) ? origin : allow[0];
+  return {
+    "Access-Control-Allow-Origin": matched,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary": "Origin",
+  };
+}
+
+function corsResponse(
+  req: Request,
+  body: string,
+  status = 200,
+  extra: Record<string, string> = {},
+) {
   return new Response(body, {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...extra },
+    headers: { "Content-Type": "application/json", ...corsHeadersFor(req), ...extra },
   });
 }
 
@@ -40,28 +68,41 @@ const SMTP_PASS = Deno.env.get("SMTP_PASS");
 const SMTP_HOST = Deno.env.get("SMTP_HOST") || "smtp.gmail.com";
 const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") || 465);
 
+/** Auto-réponse publique désactivée par défaut (abus SMTP). Activer : CONTACT_AUTO_REPLY=1 */
+const CONTACT_AUTO_REPLY = ["1", "true", "yes"].includes(
+  (Deno.env.get("CONTACT_AUTO_REPLY") || "").toLowerCase(),
+);
+
+const CONTACT_RATE_LIMIT = Math.max(1, Number(Deno.env.get("CONTACT_RATE_LIMIT") || 5));
+const CONTACT_RATE_WINDOW_MIN = Math.max(1, Number(Deno.env.get("CONTACT_RATE_WINDOW_MIN") || 60));
+
 interface ContactPayload {
   action?: "contact" | "reply" | "reservation-status" | "order-status";
   nom: string;
   email: string;
   sujet: string;
   message: string;
-  // Champs utilisés pour le mode "reply" (réponse admin → client)
   to?: string;
   subject?: string;
   replyMessage?: string;
   replyFromName?: string;
   originalMessage?: string;
-  // Champs utilisés pour le mode "reservation-status" (notification client)
   status?: string;
   resaDate?: string;
   resaTime?: string;
   resaGuests?: string;
-  // Champs utilisés pour le mode "order-status" (notification commande client)
   ref?: string;
   items?: string;
   total?: string;
   pickupTime?: string;
+}
+
+function isPlausibleEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 320;
+}
+
+function clip(value: unknown, max: number): string {
+  return String(value ?? "").trim().slice(0, max);
 }
 
 async function sendMail(
@@ -90,16 +131,89 @@ async function sendMail(
   }
 }
 
-async function handleContact(body: ContactPayload): Promise<Response> {
-  const { nom, email, sujet, message } = body;
+function clientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for") || "";
+  const first = fwd.split(",")[0]?.trim();
+  return first || req.headers.get("cf-connecting-ip") || "unknown";
+}
+
+/**
+ * Quota SMTP via `contact_rate_buckets` (service_role uniquement, pas de RLS
+ * ouverte). Clés : email client + IP. Fenêtre glissante CONTACT_RATE_WINDOW_MIN.
+ */
+async function bumpRateBucket(
+  supabase: SupabaseClient,
+  bucketKey: string,
+): Promise<boolean> {
+  const windowMs = CONTACT_RATE_WINDOW_MIN * 60_000;
+  const { data, error } = await supabase
+    .from("contact_rate_buckets")
+    .select("hits, window_start")
+    .eq("bucket_key", bucketKey)
+    .maybeSingle();
+  if (error) {
+    console.error("rate-limit read error:", error);
+    return true; // fail closed
+  }
+  const now = Date.now();
+  const start = data?.window_start ? new Date(data.window_start).getTime() : 0;
+  const fresh = !data || now - start >= windowMs;
+  const hits = fresh ? 1 : (data?.hits ?? 0) + 1;
+  if (!fresh && (data?.hits ?? 0) >= CONTACT_RATE_LIMIT) {
+    return true;
+  }
+  const { error: upErr } = await supabase.from("contact_rate_buckets").upsert({
+    bucket_key: bucketKey,
+    hits,
+    window_start: fresh ? new Date(now).toISOString() : data!.window_start,
+  });
+  if (upErr) {
+    console.error("rate-limit write error:", upErr);
+    return true;
+  }
+  return false;
+}
+
+async function contactRateLimited(
+  supabase: SupabaseClient,
+  email: string,
+  ip: string,
+): Promise<boolean> {
+  const byEmail = await bumpRateBucket(supabase, `email:${email.toLowerCase()}`);
+  if (byEmail) return true;
+  if (ip && ip !== "unknown") {
+    return await bumpRateBucket(supabase, `ip:${ip}`);
+  }
+  return false;
+}
+
+async function handleContact(req: Request, body: ContactPayload): Promise<Response> {
+  const nom = clip(body.nom, 200);
+  const email = clip(body.email, 320).toLowerCase();
+  const sujet = clip(body.sujet || "contact", 80);
+  const message = clip(body.message, 5000);
 
   if (!nom || !email || !message) {
-    return corsResponse(JSON.stringify({ error: "Champs requis manquants" }), 400);
+    return corsResponse(req, JSON.stringify({ error: "Champs requis manquants" }), 400);
+  }
+  if (!isPlausibleEmail(email)) {
+    return corsResponse(req, JSON.stringify({ error: "Adresse email invalide" }), 400);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
+
+  if (await contactRateLimited(supabase, email, clientIp(req))) {
+    return corsResponse(
+      req,
+      JSON.stringify({
+        ok: false,
+        error: "Trop de messages envoyés. Réessayez un peu plus tard.",
+      }),
+      429,
+    );
+  }
 
   const { data: contentData } = await supabase
     .from("site_content")
@@ -110,39 +224,33 @@ async function handleContact(body: ContactPayload): Promise<Response> {
   const config = (contentData?.value || {}) as {
     emailContact?: string;
     emailReservation?: string;
-    autoReply?: string;
   };
   const destEmail = config.emailContact || Deno.env.get("CONTACT_EMAIL") || "";
 
-  if (!destEmail) {
+  if (!destEmail || !isPlausibleEmail(destEmail)) {
     return corsResponse(
+      req,
       JSON.stringify({
         ok: false,
-        error: "Aucun email de destination configuré (site_content.emailContact ou CONTACT_EMAIL).",
+        error: "L'envoi n'est pas disponible pour le moment. Réessayez plus tard.",
       }),
       500,
     );
   }
 
   const sujetFinal = sujet || "contact";
-  const autoReplies: Record<string, string> = {
-    reservation: "Bonjour {nom}, merci pour votre demande de reservation a Greatlife ! Nous confirmons votre table sous 24h. - L'equipe Greatlife",
-    commande: "Bonjour {nom}, merci pour votre commande chez Greatlife ! Nous vous recontactons rapidement pour confirmer les details. - L'equipe Greatlife",
-    recrutement: "Bonjour {nom}, merci pour votre interet a rejoindre Greatlife ! Nous etudions votre candidature et reviendrons vers vous. - L'equipe Greatlife",
-    contact: "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife",
-  };
-  const autoReply = (autoReplies[sujetFinal] || autoReplies.contact)
-    .replace(/{nom}/g, nom);
-
   const errors: string[] = [];
 
   if (SMTP_USER && SMTP_PASS) {
     try {
-      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+      // Un seul envoi SMTP : vers le restaurant. Jamais vers une adresse client
+      // arbitraire sur le chemin public (anti abus / usurpation).
       await sendMail(
         destEmail,
         `Nouveau message - ${sujetFinal}`,
-        `Nom: ${nom}\nEmail: ${email}\nSujet: ${sujetFinal}\n\n${message}`,
+        `Nom: ${nom}\nEmail: ${email}\nSujet: ${sujetFinal}\nIP: ${clientIp(req)}\n\n${message}`,
         `<p><strong>${esc(nom)}</strong> (${esc(email)})</p><p><em>Sujet: ${esc(sujetFinal)}</em></p><p>${esc(message)}</p>`,
       );
     } catch (err) {
@@ -151,26 +259,40 @@ async function handleContact(body: ContactPayload): Promise<Response> {
       console.error("Send to dest error:", err);
     }
 
-    try {
-      await sendMail(
-        email,
-        "Greatlife - Nous avons bien recu votre message",
-        autoReply,
-        `<p>${autoReply.replace(/\n/g, "<br>")}</p>`,
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push("autoreply:" + msg);
-      console.error("Auto-reply error:", err);
+    // Auto-réponse opt-in uniquement (CONTACT_AUTO_REPLY=1). Désactivée par défaut.
+    if (CONTACT_AUTO_REPLY && errors.length === 0) {
+      const autoReplies: Record<string, string> = {
+        reservation:
+          "Bonjour {nom}, merci pour votre demande de reservation a Greatlife ! Nous confirmons votre table sous 24h. - L'equipe Greatlife",
+        commande:
+          "Bonjour {nom}, merci pour votre commande chez Greatlife ! Nous vous recontactons rapidement pour confirmer les details. - L'equipe Greatlife",
+        recrutement:
+          "Bonjour {nom}, merci pour votre interet a rejoindre Greatlife ! Nous etudions votre candidature et reviendrons vers vous. - L'equipe Greatlife",
+        contact:
+          "Bonjour {nom}, merci pour votre message a Greatlife ! Nous revenons vers vous sous 24h. - L'equipe Greatlife",
+      };
+      const autoReply = (autoReplies[sujetFinal] || autoReplies.contact).replace(/{nom}/g, nom);
+      try {
+        await sendMail(
+          email,
+          "Greatlife - Nous avons bien recu votre message",
+          autoReply,
+          `<p>${autoReply.replace(/\n/g, "<br>")}</p>`,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push("autoreply:" + msg);
+        console.error("Auto-reply error:", err);
+      }
     }
   } else {
     errors.push("no-credentials");
   }
 
-  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+  return corsResponse(req, JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
-async function handleReply(body: ContactPayload): Promise<Response> {
+async function handleReply(req: Request, body: ContactPayload): Promise<Response> {
   const to = body.to || body.email;
   const replySubject = body.subject || `Re: ${body.sujet || "contact"}`;
   const replyText = body.replyMessage || body.message || "";
@@ -179,9 +301,13 @@ async function handleReply(body: ContactPayload): Promise<Response> {
 
   if (!to || !replyText) {
     return corsResponse(
+      req,
       JSON.stringify({ ok: false, error: "Destinataire et message requis" }),
       400,
     );
+  }
+  if (!isPlausibleEmail(to)) {
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Destinataire invalide" }), 400);
   }
 
   const errors: string[] = [];
@@ -209,10 +335,10 @@ async function handleReply(body: ContactPayload): Promise<Response> {
     errors.push("no-credentials");
   }
 
-  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+  return corsResponse(req, JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
-async function handleReservationStatus(body: ContactPayload): Promise<Response> {
+async function handleReservationStatus(req: Request, body: ContactPayload): Promise<Response> {
   const to = body.to || body.email;
   const status = body.status || "confirmed";
   const nom = body.nom || "";
@@ -221,7 +347,10 @@ async function handleReservationStatus(body: ContactPayload): Promise<Response> 
   const guests = body.resaGuests || "";
 
   if (!to) {
-    return corsResponse(JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+  }
+  if (!isPlausibleEmail(to)) {
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Destinataire invalide" }), 400);
   }
 
   const dateLabel = date && time ? ` pour le ${date} a ${time}` : "";
@@ -239,7 +368,7 @@ async function handleReservationStatus(body: ContactPayload): Promise<Response> 
     subject = "Greatlife - Reservation annulee";
     textContent = `Bonjour${nom ? " " + nom : ""}, nous vous informons que votre reservation${dateLabel}${guestsLabel} a ete annulee. Cela peut provenir d'un desistement de votre part ou d'une decision de notre equipe en raison de la situation. Pour replanifier, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
   } else {
-    return corsResponse(JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
   }
 
   const errors: string[] = [];
@@ -262,10 +391,10 @@ async function handleReservationStatus(body: ContactPayload): Promise<Response> 
     errors.push("no-credentials");
   }
 
-  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+  return corsResponse(req, JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
-async function handleOrderStatus(body: ContactPayload): Promise<Response> {
+async function handleOrderStatus(req: Request, body: ContactPayload): Promise<Response> {
   const to = body.to || body.email;
   const status = body.status || "confirmed";
   const nom = body.nom || "";
@@ -275,7 +404,10 @@ async function handleOrderStatus(body: ContactPayload): Promise<Response> {
   const pickupTime = body.pickupTime || body.resaTime || "";
 
   if (!to) {
-    return corsResponse(JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Destinataire requis" }), 400);
+  }
+  if (!isPlausibleEmail(to)) {
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Destinataire invalide" }), 400);
   }
 
   const refLabel = ref ? ` (ref ${ref})` : "";
@@ -295,7 +427,7 @@ async function handleOrderStatus(body: ContactPayload): Promise<Response> {
     subject = `Greatlife - Commande annulee${ref ? " " + ref : ""}`;
     textContent = `Bonjour${nom ? " " + nom : ""}, nous vous informons que votre commande${refLabel}${pickupLabel} a ete annulee. Cela peut provenir d'un desistement de votre part ou d'une decision de notre equipe en raison de la situation.${itemsLabel}${totalLabel}\nPour replanifier une commande, n'hesitez pas a nous recontacter. - L'equipe Greatlife`;
   } else {
-    return corsResponse(JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
+    return corsResponse(req, JSON.stringify({ ok: false, error: "Statut inconnu" }), 400);
   }
 
   const errors: string[] = [];
@@ -318,15 +450,15 @@ async function handleOrderStatus(body: ContactPayload): Promise<Response> {
     errors.push("no-credentials");
   }
 
-  return corsResponse(JSON.stringify({ ok: errors.length === 0, errors }));
+  return corsResponse(req, JSON.stringify({ ok: errors.length === 0, errors }));
 }
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeadersFor(req) });
   }
   if (req.method !== "POST") {
-    return corsResponse(JSON.stringify({ error: "Method not allowed" }), 405);
+    return corsResponse(req, JSON.stringify({ error: "Method not allowed" }), 405);
   }
 
   try {
@@ -338,6 +470,7 @@ serve(async (req: Request) => {
       const token = authHeader.replace("Bearer ", "");
       if (!token || token.length < 20) {
         return corsResponse(
+          req,
           JSON.stringify({ ok: false, error: "Authentification requise" }),
           401,
         );
@@ -348,35 +481,38 @@ serve(async (req: Request) => {
       const { data: userData, error: userErr } = await supabase.auth.getUser(token);
       if (userErr || !userData.user) {
         return corsResponse(
+          req,
           JSON.stringify({ ok: false, error: "Session admin invalide" }),
           403,
         );
       }
-      const adminEmail = userData.user.email || "";
-      const { data: adminRow } = await supabase
+      const adminEmail = (userData.user.email || "").trim();
+      // Aligné sur migration 020 : comparaison insensible à la casse.
+      const { data: adminRows } = await supabase
         .from("admin_users")
-        .select("role, active")
-        .eq("email", adminEmail)
-        .maybeSingle();
-      // `active` doit être vérifié ici aussi : cette fonction utilise la clé service
-      // et contourne donc la RLS. Un compte suspendu ne doit pas pouvoir agir.
+        .select("role, active, email")
+        .ilike("email", adminEmail);
+      const adminRow = (adminRows || []).find(
+        (r: { email?: string }) => (r.email || "").toLowerCase() === adminEmail.toLowerCase(),
+      ) || adminRows?.[0];
       if (!adminRow || !["owner", "manager"].includes(adminRow.role) || adminRow.active !== true) {
         return corsResponse(
+          req,
           JSON.stringify({ ok: false, error: "Acces non autorise" }),
           403,
         );
       }
-      if (action === "reply") return await handleReply(body);
-      if (action === "order-status") return await handleOrderStatus(body);
-      return await handleReservationStatus(body);
+      if (action === "reply") return await handleReply(req, body);
+      if (action === "order-status") return await handleOrderStatus(req, body);
+      return await handleReservationStatus(req, body);
     }
-    return await handleContact(body);
+    return await handleContact(req, body);
   } catch (err) {
     console.error("Edge function error:", err);
     return corsResponse(
+      req,
       JSON.stringify({
         error: "Erreur serveur",
-        detail: err instanceof Error ? err.message : String(err),
       }),
       500,
     );

@@ -142,8 +142,19 @@ export function PageEditorWrapper({
   const publishNow = useCallback(async () => {
     if (!pageId) return
     setPublishing(true)
-    await flushLayout().catch(() => {})
-    await flushRestaurantDrafts().catch(() => {})
+    setActionError(null)
+    try {
+      await flushLayout()
+      await flushRestaurantDrafts()
+    } catch (err) {
+      setPublishing(false)
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.",
+      )
+      return
+    }
     const res = await publishPage(pageId, user?.email ?? null)
     setPublishing(false)
     if (!res.ok) { setActionError(res.error); return }

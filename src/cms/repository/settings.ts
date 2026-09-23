@@ -123,8 +123,22 @@ export function registerRestaurantDraftFlush(vider: () => Promise<void>): () => 
   return () => { brouillonsAVider.delete(vider) }
 }
 
+/**
+ * Vide les délais Chrome / Typo avant publication.
+ * Remonte la première erreur : Publier doit s'arrêter si un flush échoue
+ * (sinon l'instantané fige un chrome périmé sans le dire).
+ */
 export async function flushRestaurantDrafts(): Promise<void> {
-  await Promise.all([...brouillonsAVider].map((vider) => vider()))
+  const resultats = await Promise.allSettled(
+    [...brouillonsAVider].map((vider) => vider()),
+  )
+  const echec = resultats.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+  if (echec) {
+    const raison = echec.reason
+    throw raison instanceof Error
+      ? raison
+      : new Error("L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.")
+  }
 }
 
 async function ecrireSetting(

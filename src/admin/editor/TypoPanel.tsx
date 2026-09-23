@@ -66,7 +66,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
     if (ticket !== ticketRef.current) return
     if (!sauve.ok) {
       setStatut('error')
-      return
+      throw new Error('L’enregistrement de la typographie n’a pas abouti. Réessayez avant de publier.')
     }
     rawRef.current = payload
     setStatut('saved')
@@ -85,7 +85,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
     if (timerRef.current) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null
-      void ecrire(typo)
+      void ecrire(typo).catch(() => {})
     }, 400)
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
@@ -102,7 +102,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
     }
     const retirer = registerRestaurantDraftFlush(vider)
     return () => {
-      void vider()
+      void vider().catch(() => {})
       retirer()
     }
   }, [ecrire])

@@ -285,7 +285,7 @@ export function useEditor(pageId: string, initialSections: PageSection[]) {
           saving: false,
           error,
           avertissement: modifieEntreTemps
-            ? "Vous avez modifié le contenu pendant l'enregistrement : ces dernières modifications ne sont pas encore enregistrées. Elles s’enregistreront toutes seules — ou réessayez dans un instant."
+            ? "Vous avez modifié le contenu pendant l'enregistrement : ces dernières modifications ne sont pas encore enregistrées. Cliquez de nouveau sur Enregistrer pour les conserver."
             : null,
         }
       })

@@ -302,7 +302,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
     if (!sauve.ok) {
       setErreur('L’enregistrement n’a pas abouti. Réessayez.')
       setStatut('idle')
-      return
+      throw new Error('L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.')
     }
     rawRef.current = { ...rawRef.current, ...payload }
     if (navDisponible) {
@@ -325,7 +325,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
             setErreur('Ce lien n’a pas pu être ajouté.')
             setNavAjoutBloque(true)
             setStatut('idle')
-            return
+            throw new Error('L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.')
           }
           const adopte: LienChrome = {
             id: cree.data.id,
@@ -348,7 +348,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
         if (!ordre.ok) {
           setErreur('L’ordre des liens n’a pas pu être enregistré.')
           setStatut('idle')
-          return
+          throw new Error('L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.')
         }
       }
       for (const lien of suivants) {
@@ -364,7 +364,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
         if (!maj.ok) {
           setErreur('Un lien du menu n’a pas pu être enregistré.')
           setStatut('idle')
-          return
+          throw new Error('L’enregistrement de l’apparence n’a pas abouti. Réessayez avant de publier.')
         }
       }
     }
@@ -382,7 +382,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
     if (timerRef.current) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null
-      void ecrire(restau, liens, presentation)
+      void ecrire(restau, liens, presentation).catch(() => {})
     }, 900)
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
@@ -401,7 +401,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
     }
     const retirer = registerRestaurantDraftFlush(vider)
     return () => {
-      void vider()
+      void vider().catch(() => {})
       retirer()
     }
   }, [ecrire])
