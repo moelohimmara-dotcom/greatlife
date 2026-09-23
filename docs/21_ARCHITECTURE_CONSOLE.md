@@ -131,9 +131,15 @@ direct par décisions maintes fois en attente depuis le début du projet.
 
 ## 6. Reste à arbitrer
 
-- « Visibilité » commande toujours le rendu historique (`PublicSite.tsx`);
-  le faire commander les sections CMS (`page_sections.visible`) est le plus
-  cohérent — mais ça touche le rendu public. Reste à trancher séparément.
+- **Visibilité ↔ CMS (interim J3, 2026-09-23)** : l’écran Visibilité ne prétend
+  plus piloter les blocs de la page publiée. Copy + guide + CTA « Enregistrer »
+  (chemin **direct**, §5) vs renvoi vers **Modifier le site** (œil +
+  « Mettre à jour le site ») pour `page_sections.visible`. Les interrupteurs
+  « Pages » restent en panneau *Secours historique* (legacy `PublicSite` seulement).
+  **Branchement technique** Visibilité → `page_sections.visible` : **non fait** —
+  touche le rendu public ; à trancher avant d’écrire du code.
+  Expositions RLS résiduelles (migration `031` §2 : `navigation_items` live) :
+  hors UX J3 — porte sécu séparée.
 - La note `docs/18` (mode Avancé du TDR §13.1) reste à implémenter par l'agent
   de sections. Sa décision (§13.1) reste fermée.
 

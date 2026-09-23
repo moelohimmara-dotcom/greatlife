@@ -298,14 +298,17 @@ couleurs en lecture seule (évite contraste hors charte).
 ## 13. Visibilité (`visibility`)
 
 ```text
-[Header + Publier les modifications]
-[Statut site · En ligne]
-┌ Pages et visibilité ┐ ┌ Programmation (honnête) ┐
-┌ Éléments contenu ───┐ ┌ Checklist publication ──┐
+[Header + Enregistrer + Comment ça marche]
+[Statut · Effet immédiat]
+[Hint : carte ici / blocs = Atelier]
+┌ Éléments contenu (carte) ┐ ┌ Avant d’enregistrer ┐
+┌ Blocs → ouvrir Atelier ──┐ ┌ Programmation (honnête) ┐
+┌ Secours historique (replié) ─────────────────────────┐
 ```
 
-**Alignement (2026-09-23)** : grille fidèle au `Visibility` du modèle.
-Données live `visibility`. Programmation = message honnête (pas encore en base).
+**Alignement J3 (2026-09-23)** : CTA **Enregistrer** (pas « Publier ») — chemin
+direct docs/21 §5. Extras carte en premier. Blocs de page → lien Atelier.
+Interrupteurs « Pages » = secours legacy, repliés, copy honnête.
 
 ---
 
