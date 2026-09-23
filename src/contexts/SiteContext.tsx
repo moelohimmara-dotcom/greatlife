@@ -11,6 +11,7 @@ import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 import { variablesCss } from '@/config/charte'
 import { fetchAllPages as fetchAllPagesCms } from '@/cms/repository/pages'
 import { compteursPilotage, compterEnAttente } from '@/cms/model/compteurs'
+import { findFirstMediaBySlots } from '@/lib/mediaAlt'
 
 export interface SiteContent {
   slogan: string
@@ -156,17 +157,21 @@ interface SiteContextValue {
 const SiteContext = createContext<SiteContextValue | null>(null)
 export const useSite = () => useContext(SiteContext)!
 
-export function useFirstMedia(slots: readonly string[]): string | undefined {
+export function useFirstMediaAsset(slots: readonly string[]): MediaSlot | undefined {
   const { media } = useContext(SiteContext)!
-  for (const slot of slots) {
-    const url = media.find(m => m.slot === slot && m.url)?.url
-    if (url) return url
-  }
-  return undefined
+  return findFirstMediaBySlots(media, slots)
+}
+
+export function useMediaAsset(slot: string): MediaSlot | undefined {
+  return useFirstMediaAsset([slot])
+}
+
+export function useFirstMedia(slots: readonly string[]): string | undefined {
+  return useFirstMediaAsset(slots)?.url
 }
 
 export function useMedia(slot: string): string | undefined {
-  return useFirstMedia([slot])
+  return useMediaAsset(slot)?.url
 }
 
 const DEFAULT_CONTENT: SiteContent = {

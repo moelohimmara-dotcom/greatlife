@@ -8,6 +8,7 @@ import type { BlogPost } from '@/lib/repository'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
+import { findMediaBySlot, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 
 const FALLBACK_POSTS: BlogPost[] = [
   { title: 'Pourquoi le corossol mérite sa place dans votre assiette', excerpt: 'Découverte d\'un superfruit guinéen aux vertus digestives reconnues.', body: '', category: 'Découverte', published: true },
@@ -36,8 +37,18 @@ export function Blog({ content: cms, data, variant, preview }: Partial<SectionCo
   // Nombre d'articles affichés. Champ vide = tout afficher.
   const limit = cmsNumber(cms, 'maxItems')
   const posts = limit !== undefined ? published.slice(0, Math.max(0, limit)) : published
-  const mediaMap = new Map(media.filter(m => m.url).map(m => [m.slot, m.url!]))
-  const postCover = (post: BlogPost) => post.cover_url || mediaMap.get(`blog-${slugify(post.title)}`)
+  const mediaBySlot = new Map(media.filter(m => m.url).map(m => [m.slot, m]))
+  const postCover = (post: BlogPost) => {
+    if (post.cover_url) return post.cover_url
+    return mediaBySlot.get(`blog-${slugify(post.title)}`)?.url
+  }
+  const postCoverAlt = (post: BlogPost, coverUrl: string | undefined) => {
+    if (!coverUrl) return ''
+    const asset =
+      findMediaByUrl(media, coverUrl) ??
+      findMediaBySlot(media, `blog-${slugify(post.title)}`)
+    return resolveMediaAlt(asset, post.title)
+  }
   const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const illusMap: Record<string, string> = {
     'corossol': 'corossol', 'sain': 'sain', 'producteurs': 'producteurs',
@@ -58,13 +69,14 @@ export function Blog({ content: cms, data, variant, preview }: Partial<SectionCo
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {posts.map((post, i) => {
             const postImg = postCover(post)
+            const postAlt = postCoverAlt(post, postImg)
             return (
               <Reveal key={i} delay={(i % 3) * 0.06}>
                 <OrganicCard hover style={{ padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'stretch' }}>
                   <div style={{
                     width: 160, minHeight: 120, flexShrink: 0,
                     background: postImg ? `url(${postImg}) center/cover` : `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`,
-                  }} />
+                  }} {...(postImg && postAlt ? { role: 'img', 'aria-label': postAlt } : {})} />
                   <div style={{ padding: '18px 22px' }}>
                     <h4 id={post.slug || slugify(post.title)} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: '17px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{post.title}</h4>
                     <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
@@ -92,10 +104,11 @@ export function Blog({ content: cms, data, variant, preview }: Partial<SectionCo
         {posts.map((post, i) => {
           const illus = getIllus(post.title, post.category)
           const postImg = postCover(post)
+          const postAlt = postCoverAlt(post, postImg)
           return (
           <Reveal key={i} delay={(i % 3) * 0.06}>
             <OrganicCard hover style={{ padding: '0', overflow: 'hidden' }}>
-              <div style={{ height: '160px', background: postImg ? `url(${postImg}) center/cover` : `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ height: '160px', background: postImg ? `url(${postImg}) center/cover` : `linear-gradient(135deg, ${t.primary}18, ${t.gold}12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }} {...(postImg && postAlt ? { role: 'img', 'aria-label': postAlt } : {})}>
                 {!postImg && illus === 'corossol' && (
                   <svg width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden="true">
                     <ellipse cx="40" cy="42" rx="28" ry="32" fill={t.primary} opacity="0.15" />

@@ -1,4 +1,4 @@
-import { useSite, useMedia } from '@/contexts/SiteContext'
+import { useSite, useMediaAsset } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
@@ -6,6 +6,7 @@ import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
+import { resolveMediaAlt } from '@/lib/mediaAlt'
 
 interface TeamMember {
   name: string
@@ -17,11 +18,12 @@ const DISPOSITIONS = ['grid', 'list'] as const
 
 export function Team({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, content: legacy } = useSite()
-  const teamImg1 = useMedia('equipe-1')
-  const teamImg2 = useMedia('equipe-2')
-  const teamImg3 = useMedia('equipe-3')
-  const teamImg4 = useMedia('equipe-4')
-  const teamImgs = [teamImg1, teamImg2, teamImg3, teamImg4]
+  const teamAssets = [
+    useMediaAsset('equipe-1'),
+    useMediaAsset('equipe-2'),
+    useMediaAsset('equipe-3'),
+    useMediaAsset('equipe-4'),
+  ]
   const palette = [t.primary, t.accent, t.gold, t.primary]
 
   // Bloc piloté par le CMS si un contenu est fourni, sinon données historiques.
@@ -42,17 +44,21 @@ export function Team({ content: cms, variant, preview }: Partial<SectionComponen
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <Reveal><SectionHead title={title} sub={sub} align="center" preview={preview} /></Reveal>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {team.map((m, i) => (
+            {team.map((m, i) => {
+              const asset = teamAssets[i]
+              const img = asset?.url
+              const alt = resolveMediaAlt(asset, m.name)
+              return (
               <Reveal key={m.name} delay={(i % 4) * 0.06}>
                 <OrganicCard hover style={{ padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'stretch' }}>
                   <div style={{
                     width: 120, minHeight: 120, flexShrink: 0, position: 'relative',
-                    background: teamImgs[i]
-                      ? `url(${teamImgs[i]}) center/cover`
+                    background: img
+                      ? `url(${img}) center/cover`
                       : `linear-gradient(160deg, ${m.color}25, ${m.color}08)`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {!teamImgs[i] && (
+                  }} {...(img && alt ? { role: 'img', 'aria-label': alt } : {})}>
+                    {!img && (
                       <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '40px', fontWeight: 700, color: m.color, opacity: 0.35 }} aria-hidden="true">{m.name.charAt(0)}</span>
                     )}
                   </div>
@@ -63,7 +69,8 @@ export function Team({ content: cms, variant, preview }: Partial<SectionComponen
                   </div>
                 </OrganicCard>
               </Reveal>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -75,17 +82,21 @@ export function Team({ content: cms, variant, preview }: Partial<SectionComponen
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <Reveal><SectionHead title={title} sub={sub} align="center" preview={preview} /></Reveal>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: '24px' }}>
-          {team.map((m, i) => (
+          {team.map((m, i) => {
+            const asset = teamAssets[i]
+            const img = asset?.url
+            const alt = resolveMediaAlt(asset, m.name)
+            return (
             <Reveal key={m.name} delay={(i % 4) * 0.06}>
               <OrganicCard hover style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{
                   height: '220px', position: 'relative',
-                  background: teamImgs[i]
-                    ? `url(${teamImgs[i]}) center/cover`
+                  background: img
+                    ? `url(${img}) center/cover`
                     : `linear-gradient(160deg, ${m.color}25, ${m.color}08)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-                }}>
-                  {!teamImgs[i] && (
+                }} {...(img && alt ? { role: 'img', 'aria-label': alt } : {})}>
+                  {!img && (
                     <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '80px', fontWeight: 700, color: m.color, opacity: 0.35, letterSpacing: '-0.04em' }} aria-hidden="true">{m.name.charAt(0)}</span>
                   )}
                   <svg viewBox="0 0 260 40" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%' }} preserveAspectRatio="none" aria-hidden="true">
@@ -99,7 +110,8 @@ export function Team({ content: cms, variant, preview }: Partial<SectionComponen
                 </div>
               </OrganicCard>
             </Reveal>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>

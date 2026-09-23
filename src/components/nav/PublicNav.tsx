@@ -26,6 +26,7 @@ import {
 } from '@/cms/model/sections/site-chrome'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import type { Locale } from '@/cms/model/i18n'
+import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 
 export interface PublicNavProps {
   overlay?: boolean
@@ -49,7 +50,7 @@ export function PublicNav({
   presentation: presentationProp,
   selectable = false,
 }: PublicNavProps) {
-  const { theme: t } = useSite()
+  const { theme: t, media } = useSite()
   const [vueApercu, setVueApercu] = useState<Window | null>(null)
   const attacherVue = useCallback((el: HTMLElement | null) => {
     setVueApercu(el?.ownerDocument.defaultView ?? null)
@@ -130,6 +131,10 @@ export function PublicNav({
   const tailleLogo = tailleNomLogoPx(presentation.header?.logoSize, compact)
   const nomRestaurant = restaurant?.name?.trim() || `${marque.avant}${marque.accent ?? ''}`
   const hauteurImg = hauteurLogoPx(presentation.header?.logoSize, compact)
+  const logoAlt = coalesceAlt(
+    resolveMediaAlt(findMediaByUrl(media, logoUrl)),
+    nomRestaurant,
+  ) || nomRestaurant
 
   const logoTexte = (
     <a href="#home" aria-label={`${nomRestaurant} — accueil`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, fontSize: `calc(${tailleLogo}px * var(--font-scale, 1))`, color: couleurLogo, textDecoration: 'none', letterSpacing: '-0.02em' }}>
@@ -141,7 +146,7 @@ export function PublicNav({
     <a href="#home" aria-label={`${nomRestaurant} — accueil`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
       <img
         src={logoUrl}
-        alt={nomRestaurant}
+        alt={logoAlt}
         onError={() => setLogoCasse(true)}
         style={{ height: hauteurImg, width: 'auto', maxWidth: compact ? 140 : 220, objectFit: 'contain', display: 'block' }}
       />

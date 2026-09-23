@@ -1,5 +1,6 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { useSite, useMedia } from '@/contexts/SiteContext'
+import { useSite, useMediaAsset } from '@/contexts/SiteContext'
+import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 import { softShadow } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 import { BurgerIllustration } from '@/lib/icons/FoodIcon'
@@ -204,9 +205,9 @@ function HeroCentre({ c, preview }: { c: HeroContent; preview?: boolean }) {
 }
 
 export function Hero({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
-  const { theme: t, content: legacy } = useSite()
-  const legacyHeroImg = useMedia('hero')
-  const legacyHeroVideo = useMedia('hero-video')
+  const { theme: t, content: legacy, media } = useSite()
+  const legacyHero = useMediaAsset('hero')
+  const legacyHeroVideo = useMediaAsset('hero-video')
   const { scrollY } = useScroll()
   const yImg = useTransform(scrollY, [0, 400], [0, 60])
   const opacity = useTransform(scrollY, [0, 300], [1, 0.7])
@@ -216,8 +217,11 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
   const title = pick(cmsText(cms, 'title'), legacy.heroTitle)
   const subtitle = pick(cmsText(cms, 'subtitle'), legacy.heroSub)
   const chipLabels = pick(cmsTextList(cms, 'chips'), LEGACY_CHIPS)
-  const heroImg = cmsText(cms, 'image') ?? legacyHeroImg
-  const imageAlt = cmsText(cms, 'imageAlt')
+  const cmsImage = cmsText(cms, 'image')
+  const heroAsset = (cmsImage ? findMediaByUrl(media, cmsImage) : undefined) ?? legacyHero
+  const heroImg = cmsImage ?? legacyHero?.url
+  // Alt section CMS → alt médiathèque → nom de fichier (pas de texte inventé).
+  const imageAlt = coalesceAlt(cmsText(cms, 'imageAlt'), resolveMediaAlt(heroAsset)) || undefined
   const pill = pick(cmsText(cms, 'pill'), 'Bio')
 
   const badge = cmsGroup(cms, 'badge')
@@ -233,7 +237,7 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
   const secondaryLabel = pick(cmsText(secondaryCta, 'label'), 'Réserver une table')
   const secondaryHref = anchorHref(pick(cmsText(secondaryCta, 'target'), LEGACY_SECONDARY_TARGET))
 
-  const videoUrl = cmsText(cms, 'video') ?? legacyHeroVideo ?? ''
+  const videoUrl = cmsText(cms, 'video') ?? legacyHeroVideo?.url ?? ''
 
   // Les icônes restent associées à la POSITION, comme dans le rendu historique :
   // seule la couleur change, jamais l'ordre.

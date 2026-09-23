@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSite, useFirstMedia } from '@/contexts/SiteContext'
+import { useSite, useFirstMediaAsset } from '@/contexts/SiteContext'
 import { productPhotoCandidates } from '@/lib/productPhotoSlot'
+import { resolveMediaAlt } from '@/lib/mediaAlt'
 import { useCart } from '@/contexts/CartContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { BadgePill } from '@/components/ui/BadgePill'
@@ -20,7 +21,9 @@ function MenuCard({ item }: { item: MenuItem }) {
   const { add } = useCart()
   const [open, setOpen] = useState(false)
   const [added, setAdded] = useState(false)
-  const prodImg = useFirstMedia(productPhotoCandidates(item))
+  const prodAsset = useFirstMediaAsset(productPhotoCandidates(item))
+  const prodImg = prodAsset?.url
+  const prodAlt = resolveMediaAlt(prodAsset, item.name)
   const handleAdd = () => {
     add(item.name, item.price)
     setAdded(true)
@@ -36,7 +39,7 @@ function MenuCard({ item }: { item: MenuItem }) {
             ? `linear-gradient(135deg, ${t.gold}25, ${t.accent}18)`
             : `linear-gradient(135deg, ${t.primary}12, ${t.primary}06)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      }} {...(prodImg && prodAlt ? { role: 'img', 'aria-label': prodAlt } : {})}>
         {!prodImg && <FoodIcon cat={item.cat} size={56} color={t.heading} />}
         {item.sig && (
           <div style={{

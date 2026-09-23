@@ -108,6 +108,7 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 |---|---|---|---|
 | Guide / tips / empty pédagogiques | ✅ | — | Ce lot |
 | Alt + légende persistés | ✅ détail Médias | `media_assets.alt_text`, `caption` (041) + `updateMediaAsset` | N2 livré 2026-09-23 |
+| Alt public (a11y visiteurs) | ✅ Hero / Carte / Équipe / Histoire / Blog / logo | lit `MediaSlot.alt_text` via `src/lib/mediaAlt.ts` | **N2-public** 2026-09-23 |
 | `created_at` pour tri fiable | brancher `MediaSlot` | déjà en table | Couloir SiteContext / repository |
 | Dossiers libres | UI | table `media_folders` + FK | Porte de phase |
 | Bulk delete | UI multi-select | delete batch Storage + rows | |
@@ -125,9 +126,10 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 
 ## 7. Next
 
-1. Brancher le site public sur `media_assets.alt_text` (Hero / Carte / Équipe) pour que l’accessibilité soit réelle côté visiteur — aujourd’hui la persistance console est faite, la consommation publique reste à câbler.  
+1. ~~Brancher le site public sur `media_assets.alt_text` (Hero / Carte / Équipe)~~ → **fait (N2-public)**.  
 2. Lot mobile : plier la zone d’import derrière « Ajouter une photo » pour remonter la bibliothèque.  
 3. N4 : remplacer / prévisualiser avant import.
+4. Quand le bloc Galerie aura un rendu public : brancher `caption` (déjà dans le schéma) + `alt_text` média.
 
 ---
 
@@ -177,8 +179,26 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 - Vocabulaire restaurateur ; plus de « brouillon de session »
 - Guide « Comment ça marche » mis à jour
 
-**Hors périmètre N2** : consommation publique de `alt_text` dans les sections (Hero/Carte/Équipe) — à câbler ensuite pour l’a11y visiteur.
+**Hors périmètre N2** : ~~consommation publique de `alt_text` dans les sections (Hero/Carte/Équipe)~~ → livré en **N2-public** (ci-dessous).
 
 **Fichiers** : `supabase/migrations/041_*`, `supabase/rollbacks/041_*`, `src/lib/repository.ts`, `src/contexts/SiteContext.tsx`, `src/admin/modules/MediaManager.tsx`, `src/admin/console.css`, ce doc.
 
 **Justification UX (ui-ux-pro-max)** : form labels + alt text + submit feedback (loading → confirmation) + honesty du CTA.
+
+---
+
+## 11. N2-public — Alt consommés sur le site (2026-09-23)
+
+**Suite naturelle de N2** : l’a11y visiteurs lit le texte alternatif persisté.
+
+**Livré** :
+- Noyau pur `src/lib/mediaAlt.ts` : `alt_text` → nom de fichier → libellé métier (plat, membre, titre…)
+- Hooks `useMediaAsset` / `useFirstMediaAsset` (URL inchangée via `useMedia` / `useFirstMedia`)
+- Sections publiques : Hero, Histoire, Carte, Équipe, Blog ; logo en-tête si URL médiathèque
+- Ordre Hero/Histoire : champ section `imageAlt` s’il est rempli, sinon médiathèque
+- Fond CSS : `role="img"` + `aria-label` (ou `cms-sr-only` là où c’était déjà le cas)
+- Tests `npm run test:media-alt`
+
+**Hors périmètre** : `caption` public (Galerie pas encore rendue côté site — à brancher avec le composant Galerie).
+
+**Fichiers** : `src/lib/mediaAlt.ts`, `src/contexts/SiteContext.tsx`, `src/sections/{Hero,Story,Carte,Team,Blog}.tsx`, `src/components/nav/PublicNav.tsx`, `scripts/test-media-alt.mjs`, `package.json`, ce doc.

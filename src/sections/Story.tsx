@@ -1,4 +1,4 @@
-import { useSite, useMedia } from '@/contexts/SiteContext'
+import { useSite, useMediaAsset } from '@/contexts/SiteContext'
 import { softShadow } from '@/components/ui/shadows'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
@@ -8,6 +8,7 @@ import { cmsText, cmsTextList, pick } from '@/cms/renderer/compat'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
+import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 
 /** Pastilles historiques, conservées par position (repli avant bascule CMS). */
 const LEGACY_CHIPS = ['Bio accessible', 'Circuit court', 'Transparence totale']
@@ -15,10 +16,12 @@ const LEGACY_CHIPS = ['Bio accessible', 'Circuit court', 'Transparence totale']
 const DISPOSITIONS = ['image_left', 'image_right'] as const
 
 export function Story({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
-  const { theme: t, content: legacy } = useSite()
-  const mediaHistoire = useMedia('histoire')
-  const storyImg = pick(cmsText(cms, 'image'), mediaHistoire)
-  const imageAlt = cmsText(cms, 'imageAlt')
+  const { theme: t, content: legacy, media } = useSite()
+  const legacyHistoire = useMediaAsset('histoire')
+  const cmsImage = cmsText(cms, 'image')
+  const storyAsset = (cmsImage ? findMediaByUrl(media, cmsImage) : undefined) ?? legacyHistoire
+  const storyImg = cmsImage ?? legacyHistoire?.url
+  const imageAlt = coalesceAlt(cmsText(cms, 'imageAlt'), resolveMediaAlt(storyAsset)) || undefined
 
   const title = pick(cmsText(cms, 'title'), legacy.storyTitle)
   const body = pick(cmsText(cms, 'body'), legacy.story)
