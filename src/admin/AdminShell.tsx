@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { formePastille, ESPACE, HAUTEUR, HAUTEUR_ETAT } from '@/admin/ui'
+import { ESPACE, HAUTEUR } from '@/admin/ui'
 import { lireNavPref, ecrireNavPref, type AdminNavPref } from '@/admin/admin-nav'
 import '@/admin/console.css'
 import { Icon } from '@/lib/icons'
@@ -304,15 +304,7 @@ export function AdminShell() {
                       {NOTIF[k] > 0 && (
                         <span
                           aria-hidden="true"
-                          className="admin-nav-badge"
-                          style={{
-                            ...formePastille(),
-                            ...(compact
-                              ? { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, padding: '0 4px', fontSize: 10 }
-                              : { minWidth: HAUTEUR_ETAT, padding: '0 6px' }),
-                            background: 'var(--admin-coral)',
-                            color: 'var(--admin-on-ink)',
-                          }}
+                          className={`admin-nav-badge${compact ? ' is-rail' : ''}`}
                         >{compact && NOTIF[k] > 9 ? '9+' : NOTIF[k]}</span>
                       )}
                     </>

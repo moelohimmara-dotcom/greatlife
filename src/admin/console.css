@@ -96,6 +96,41 @@
   color: #fff !important;
 }
 
+/* Compteurs sidebar : pastilles dédiées (pas formePastille / chips d’état).
+   Cause du bug ovale : minHeight:24 de formePastille écrasait height:16 en rail. */
+[data-admin-shell] .admin-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--admin-coral);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  max-width: none;
+  overflow: visible;
+}
+
+[data-admin-shell] .admin-nav-badge.is-rail {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+
 [data-admin-shell] .admin-rail .admin-nav-badge {
   background: var(--admin-coral) !important;
   color: #fff !important;
@@ -1645,17 +1680,23 @@
     position: absolute;
     top: -4px;
     right: -8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 16px;
     height: 16px;
+    min-height: 16px;
     padding: 0 4px;
-    border-radius: 100px;
+    border-radius: 999px;
     background: var(--admin-coral);
     color: var(--admin-on-ink);
     font-size: 10px;
     font-weight: 700;
-    line-height: 16px;
+    line-height: 1;
     text-align: center;
     box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   [data-admin-shell] .admin-bottom-nav .admin-bottom-dot {
