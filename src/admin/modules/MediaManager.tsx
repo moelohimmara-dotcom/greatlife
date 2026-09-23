@@ -87,20 +87,18 @@ function suggestedAlt(m: MediaSlot, choices: ReadonlyArray<{ id: string; label: 
   return `Image — ${slotLabel}`
 }
 
-function MediaGuide({ open, onOpenChange }: { open: boolean; onOpenChange: (next: boolean) => void }) {
+function MediaGuide({ onClose }: { onClose: () => void }) {
   return (
-    <details
-      className="admin-wf-media-guide"
-      open={open}
-      onToggle={(e) => {
-        const next = (e.currentTarget as HTMLDetailsElement).open
-        if (next !== open) onOpenChange(next)
-      }}
-    >
-      <summary>
-        <span aria-hidden="true">{Icon.eye(15)}</span>
-        Comment ça marche
-      </summary>
+    <section className="admin-wf-media-guide" aria-label="Comment ça marche">
+      <header className="admin-wf-media-guide-head">
+        <strong>
+          <span aria-hidden="true">{Icon.eye(15)}</span>
+          Comment ça marche
+        </strong>
+        <GhostButton color="var(--admin-ink)" onClick={onClose}>
+          Fermer
+        </GhostButton>
+      </header>
       <ol>
         <li>
           <strong>Choisissez où afficher</strong>
@@ -118,7 +116,7 @@ function MediaGuide({ open, onOpenChange }: { open: boolean; onOpenChange: (next
           Les <strong>dossiers</strong> (Bannière, Carte, Équipe…) regroupent automatiquement vos fichiers selon l’emplacement — ce ne sont pas des dossiers libres comme sur un ordinateur.
         </li>
       </ol>
-    </details>
+    </section>
   )
 }
 
@@ -320,9 +318,11 @@ export function MediaManager() {
         }
       />
 
-      <div id="medias-guide">
-        <MediaGuide open={guideOpen} onOpenChange={setGuideOpen} />
-      </div>
+      {guideOpen && (
+        <div id="medias-guide">
+          <MediaGuide onClose={() => setGuideOpen(false)} />
+        </div>
+      )}
 
       {tipVisible && (
         <div className="admin-wf-media-tip" role="status">
