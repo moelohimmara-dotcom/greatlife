@@ -792,7 +792,7 @@ export function PageEditor({
           <div className="admin-editor-col-head">
             <div className="admin-editor-col-title">Structure</div>
             <p className="admin-editor-col-sub">
-              Mise en page, puis blocs
+              Ordre des blocs · textes et listes à l'intérieur
             </p>
           </div>
           <SectionList

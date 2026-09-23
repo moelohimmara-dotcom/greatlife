@@ -31,8 +31,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { createPortal } from 'react-dom'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon, iconByName } from '@/lib/icons'
-import { getSectionDefinition } from '@/cms/model/sections/schemas'
-import type { PageSection } from '@/cms/model/section'
+import { defaultVariant, getSectionDefinition } from '@/cms/model/sections/schemas'
+import type { PageSection, SectionType } from '@/cms/model/section'
+import { resolveI18n, type Bilingue } from '@/cms/model/i18n'
 import {
   Bouton,
   CLASSE_CARTE,
@@ -46,7 +47,7 @@ import {
 import { PageLayoutPicker } from './PageLayoutPicker'
 import { libelleStructureBloc, rangsParType } from './structure-labels'
 import { FAMILLES_STRUCTURE, TYPE_ICONE, familleStructureDe } from './section-families'
-import { readEditorMeta, slotablesFromFields } from '@/cms/model/subblocks'
+import { readEditorMeta } from '@/cms/model/subblocks'
 import type { PageLayout } from '@/cms/model/page-layout'
 import type { Locale } from '@/cms/model/i18n'
 
@@ -554,6 +555,7 @@ function SortableItem({
             selectedGroupId={selectedGroupId}
             onSelectSlot={onSelectSlot}
             onSelectGroup={onSelectGroup}
+            locale={locale}
           />
         )}
       </div>
@@ -636,25 +638,72 @@ function SortableItem({
   )
 }
 
+/** Emplacements Structure : textes, boutons, groupes et listes (sous-éléments). */
+function champStructureVisible(
+  field: { type: string; name: string; forVariants?: readonly string[] },
+  variant: string | null,
+  type: SectionType | string,
+): boolean {
+  if (field.type !== 'text' && field.type !== 'multiline' && field.type !== 'group' && field.type !== 'list') {
+    return false
+  }
+  if (!field.forVariants || field.forVariants.length === 0) return true
+  const actuelle = variant || defaultVariant(type as SectionType) || ''
+  return field.forVariants.includes(actuelle)
+}
+
+function libelleListeStructure(
+  field: { name: string; label: string },
+  content: Record<string, unknown> | null | undefined,
+): string {
+  const raw = content?.[field.name]
+  const items = Array.isArray(raw) ? raw : []
+  if (items.length === 0) return field.label
+  return `${field.label} (${items.length})`
+}
+
+function apercuLigneListe(
+  item: unknown,
+  field: { itemType?: string; itemFields?: readonly { name: string; label: string }[] },
+  locale: Locale,
+  index: number,
+): string {
+  if (field.itemType) {
+    const texte = typeof item === 'string'
+      ? item
+      : resolveI18n(item as Bilingue, locale)
+    return texte.trim() || `Ligne ${index + 1}`
+  }
+  if (field.itemFields && typeof item === 'object' && item !== null) {
+    const obj = item as Record<string, unknown>
+    for (const sub of field.itemFields) {
+      const v = obj[sub.name]
+      const texte = typeof v === 'string' ? v : resolveI18n(v as Bilingue, locale)
+      if (texte.trim()) return texte.trim()
+    }
+  }
+  return `Élément ${index + 1}`
+}
+
 function SousEmplacements({
   section,
   selectedSlots,
   selectedGroupId,
   onSelectSlot,
   onSelectGroup,
+  locale = 'fr',
 }: {
   section: PageSection
   selectedSlots: string[]
   selectedGroupId: string | null
   onSelectSlot?: (slot: string, shift: boolean) => void
   onSelectGroup?: (groupId: string) => void
+  locale?: Locale
 }) {
   const { theme: t } = useSite()
   const def = getSectionDefinition(section.type)
   if (!def) return null
-  const champs = slotablesFromFields(def.fields).filter((f) =>
-    f.type === 'text' || f.type === 'multiline' || f.name.endsWith('Cta'),
-  )
+  const champs = def.fields.filter((f) => champStructureVisible(f, section.variant, section.type))
   const groupes = readEditorMeta(section.content).groups
   if (champs.length === 0 && groupes.length === 0) return null
   return (
@@ -682,31 +731,70 @@ function SousEmplacements({
           {g.label}
         </Bouton>
       ))}
-      {champs.map((f) => (
-        <Bouton
-          key={f.name}
-          genre="silencieux"
-          etendu
-          aria-pressed={selectedSlots.includes(f.name)}
-          aria-label={f.label}
-          title={f.label}
-          onClick={(e) => { e.stopPropagation(); onSelectSlot?.(f.name, e.shiftKey) }}
-          style={{
-            height: 'auto',
-            minHeight: 36,
-            justifyContent: 'flex-start',
-            fontSize: 12,
-            fontWeight: 500,
-            color: t.text,
-            background: selectedSlots.includes(f.name) ? `${t.primary}14` : 'transparent',
-            whiteSpace: 'normal',
-            overflow: 'visible',
-            textAlign: 'left',
-          }}
-        >
-          {f.label}
-        </Bouton>
-      ))}
+      {champs.map((f) => {
+        const libelle = f.type === 'list'
+          ? libelleListeStructure(f, section.content)
+          : f.label
+        const items = f.type === 'list' && Array.isArray(section.content?.[f.name])
+          ? (section.content![f.name] as unknown[])
+          : null
+        return (
+          <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <Bouton
+              genre="silencieux"
+              etendu
+              aria-pressed={selectedSlots.includes(f.name)}
+              aria-label={libelle}
+              title={libelle}
+              onClick={(e) => { e.stopPropagation(); onSelectSlot?.(f.name, e.shiftKey) }}
+              style={{
+                height: 'auto',
+                minHeight: 36,
+                justifyContent: 'flex-start',
+                fontSize: 12,
+                fontWeight: 500,
+                color: t.text,
+                background: selectedSlots.includes(f.name) ? `${t.primary}14` : 'transparent',
+                whiteSpace: 'normal',
+                overflow: 'visible',
+                textAlign: 'left',
+              }}
+            >
+              {f.type === 'list' ? Icon.list(14, t.text) : f.type === 'group' ? Icon.group(14, t.text) : null}
+              {libelle}
+            </Bouton>
+            {items && items.length > 0 && selectedSlots.includes(f.name) && (
+              <div
+                role="list"
+                aria-label={`Éléments de ${f.label}`}
+                style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 2 }}
+              >
+                {items.map((item, i) => {
+                  const apercu = apercuLigneListe(item, f, locale, i)
+                  return (
+                    <div
+                      key={i}
+                      role="listitem"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: t.muted,
+                        padding: '4px 8px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={apercu}
+                    >
+                      {i + 1}. {apercu}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

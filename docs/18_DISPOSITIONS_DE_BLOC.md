@@ -434,3 +434,25 @@ Pas de HTML libre dans le cadre.
 Boîte à outils texte : **Gras / Italique / Lien** sur les champs `inlineMarkup`
 (sous-titres, récits, descriptions). Le rendu n’accepte que `strong|em|a[href]`.
 
+---
+
+## 13. Ce qui est manipulable aujourd’hui (2026-09-23)
+
+Le restaurateur organise le site public **sans** arbre Gutenberg illimité
+(blocs imbriqués à profondeur libre = **porte de phase**, hors TDR §13).
+
+| Besoin | Où | État |
+|---|---|---|
+| **Organiser** l’ordre des blocs | Structure : glisser-déposer, Monter / Descendre, familles Ouverture → … | ✅ |
+| **Ajouter / masquer / dupliquer** un bloc | Structure + « Ajouter un bloc » (types `implemented` seulement) | ✅ |
+| **Subdiviser** un bloc (textes, boutons, pastilles…) | Structure : sous-lignes sous le bloc sélectionné ; listes avec aperçu des lignes | ✅ |
+| **Réordonner** les éléments d’une liste (pastilles, motifs…) | Modifier → liste : Monter / Descendre (pas de drag seul) | ✅ |
+| **Disposition** (colonnes / mise en page nommée) | Modifier → tiroir Disposition ; rendu public branché (Bannière + sections livrées) | ✅ |
+| **Grouper** des textes du même bloc | Modifier → Groupe (Ctrl+G) ; métadonnée `_editor` (ignorée du public) | ✅ |
+| **Propriétés** par bloc | Colonne Modifier (Disposition / Contenu / Options) | ✅ |
+| Arbre de blocs imbriqués type Gutenberg / Webflow libre | — | ❌ **porte** — TDR §13 |
+| Mode « Avancé » (`settings` libres §13.1) | — | ❌ N-12 — pas de champs morts |
+
+Fichiers d’ancrage : `src/cms/model/subblocks/*`, `SectionList.tsx`,
+`PropertyPanel.tsx`, `schemas.ts`, `src/cms/renderer/disposition.ts`.
+

@@ -272,7 +272,13 @@ export function PropertyPanel({
         </div>
         <div className="admin-editor-col-sub">
           {nature === 'emplacement' && champFocus
-            ? `Texte sélectionné : ${champFocus.label}`
+            ? (champFocus.type === 'list'
+              ? `Liste sélectionnée : ${champFocus.label}`
+              : champFocus.type === 'group' && /cta/i.test(champFocus.name)
+                ? `Bouton sélectionné : ${champFocus.label}`
+                : champFocus.type === 'group'
+                  ? `Élément sélectionné : ${champFocus.label}`
+                  : `Texte sélectionné : ${champFocus.label}`)
             : nature === 'groupe'
               ? 'Groupe de textes sélectionné'
               : def.description}
@@ -871,6 +877,15 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
     onChange(items.filter((_, idx) => idx !== i))
   }
 
+  /** Alternative clavier / bouton au drag (WCAG 2.2 — dragging movements). */
+  const moveItem = (from: number, to: number) => {
+    if (to < 0 || to >= items.length || from === to) return
+    const arr = [...items]
+    const [item] = arr.splice(from, 1)
+    arr.splice(to, 0, item)
+    onChange(arr)
+  }
+
   const updateItem = (i: number, val: unknown) => {
     const arr = [...items]
     arr[i] = val
@@ -897,12 +912,21 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
     })
   }
 
+  const libelleLigne = (i: number) => (
+    field.itemType ? `Ligne ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`
+  )
+
   return (
     <div style={{ marginBottom: 14 }}>
       <FieldLabel>
         {field.label}
         {field.maxItems && <span style={{ fontWeight: 400, color: t.muted }}> ({items.length}/{field.maxItems})</span>}
       </FieldLabel>
+      {items.length > 1 && (
+        <p style={{ fontSize: 12, color: t.muted, margin: '0 0 8px', lineHeight: 1.4 }}>
+          Réordonnez les éléments avec Monter / Descendre.
+        </p>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map((item, i) => (
@@ -910,13 +934,35 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
             padding: '10px 12px', borderRadius: 10,
             border: `1px solid ${t.shadow}`, background: `${t.primary}03`,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: t.heading }}>
-                {field.itemType ? `Ligne ${i + 1}` : `${field.label.replace(/s$/, '')} ${i + 1}`}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.heading, minWidth: 0 }}>
+                {libelleLigne(i)}
               </span>
-              <Bouton carre genre="danger" aria-label="Retirer cette ligne" onClick={() => removeItem(i)}>
-                {Icon.trash(16, t.accent)}
-              </Bouton>
+              <div role="group" aria-label={`Ordre — ${libelleLigne(i)}`} style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <Bouton
+                  carre
+                  genre="silencieux"
+                  disabled={i === 0}
+                  aria-label={`Monter ${libelleLigne(i)}`}
+                  title="Monter"
+                  onClick={() => moveItem(i, i - 1)}
+                >
+                  {Icon.chevronUp(16, t.muted)}
+                </Bouton>
+                <Bouton
+                  carre
+                  genre="silencieux"
+                  disabled={i === items.length - 1}
+                  aria-label={`Descendre ${libelleLigne(i)}`}
+                  title="Descendre"
+                  onClick={() => moveItem(i, i + 1)}
+                >
+                  {Icon.chevronDown(16, t.muted)}
+                </Bouton>
+                <Bouton carre genre="danger" aria-label={`Retirer ${libelleLigne(i)}`} onClick={() => removeItem(i)}>
+                  {Icon.trash(16, t.accent)}
+                </Bouton>
+              </div>
             </div>
 
             {field.itemType ? (
