@@ -230,7 +230,7 @@ export function MessagesManager() {
           <div className="admin-msg-filters" role="group" aria-label="Filtrer les messages">
             {([['all', 'Toutes'], ['unhandled', 'Non lus'], ['handled', 'Traités']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
               <button key={k} type="button" className="admin-filter-chip" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>
-                {l}
+                {l}{' '}
                 <span className="admin-msg-filter-count">
                   {k === 'all' ? messages.length : k === 'unhandled' ? messages.filter((m) => !m.handled).length : messages.filter((m) => m.handled).length}
                 </span>
