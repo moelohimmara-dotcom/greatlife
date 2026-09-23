@@ -36,8 +36,8 @@ export function TeamContentsEditor() {
   const tabs: [string, string][] = [['team', 'Équipe'], ['engagements', 'Engagements'], ['testimonials', 'Témoignages']]
 
   return (
-    <div className="admin-page" style={{ maxWidth: 820 }}>
-      <PageHeader title="Équipe & contenus" subtitle="Gérez les membres de l'équipe, les engagements et les témoignages clients."
+    <div className="admin-page-wide">
+      <PageHeader title="Équipe & contenus" subtitle="Gérez l’équipe, les engagements et les témoignages du restaurant."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div className="admin-wf-menu-summary" aria-label="Résumé des contenus">
@@ -78,20 +78,33 @@ export function TeamContentsEditor() {
       </div>
 
       {tab === 'team' && (
-        <div className="admin-content-stack">
-          {content.team.map((m, i) => (
-            <div key={i} className="admin-content-card">
-              <div className="admin-grid-2">
-                <div><FieldLabel>Nom</FieldLabel><Input value={m.name} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={inp} /></div>
-                <div><FieldLabel>Rôle</FieldLabel><Input value={m.role} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} style={inp} /></div>
-              </div>
-              <div><FieldLabel>Description</FieldLabel><Textarea rows={2} value={m.desc} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} style={inp} /></div>
-              <div className="admin-ops-actions" style={{ justifyContent: 'flex-end' }}>
-                <GhostButton color="#dc2626" onClick={() => setTeam(content.team.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
-              </div>
+        <div className="admin-wf-panel">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">Équipe</span>
+              <h2 style={{ margin: '4px 0 0' }}>Membres de l’équipe</h2>
             </div>
-          ))}
-          <button type="button" className="admin-add-dashed" onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])}>
+          </div>
+          <div className="admin-wf-table" role="table" aria-label="Membres">
+            <div className="admin-wf-table-row is-head" role="row">
+              <span role="columnheader">Nom</span>
+              <span role="columnheader">Rôle</span>
+              <span role="columnheader">Description</span>
+              <span role="columnheader">Actions</span>
+            </div>
+            {content.team.map((m, i) => (
+              <div key={i} className="admin-wf-table-row is-team" role="row">
+                <Input value={m.name} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} style={inp} aria-label={`Nom membre ${i + 1}`} />
+                <Input value={m.role} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} style={inp} aria-label={`Rôle membre ${i + 1}`} />
+                <Input value={m.desc} onChange={e => setTeam(content.team.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))} style={inp} aria-label={`Description membre ${i + 1}`} />
+                <GhostButton color="var(--admin-coral)" onClick={() => setTeam(content.team.filter((_, j) => j !== i))}>
+                  {Icon.trash(12, 'var(--admin-coral)')} Retirer
+                </GhostButton>
+              </div>
+            ))}
+          </div>
+          {content.team.length === 0 && <EmptyState title="Aucun membre" subtitle="Ajoutez les personnes présentées sur le site." />}
+          <button type="button" className="admin-add-dashed" style={{ marginTop: 12 }} onClick={() => setTeam([...content.team, { name: 'Nouveau membre', role: 'Rôle', desc: '' }])}>
             {Icon.plus(14, 'var(--admin-forest)')} Ajouter un membre
           </button>
         </div>
@@ -114,7 +127,7 @@ export function TeamContentsEditor() {
               </div>
               <div><FieldLabel>Description</FieldLabel><Textarea rows={2} value={e.desc} onChange={ev => setEngagements(content.engagements.map((x, j) => j === i ? { ...x, desc: ev.target.value } : x))} style={inp} /></div>
               <div className="admin-ops-actions" style={{ justifyContent: 'flex-end' }}>
-                <GhostButton color="#dc2626" onClick={() => setEngagements(content.engagements.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
+                <GhostButton color="var(--admin-coral)" onClick={() => setEngagements(content.engagements.filter((_, j) => j !== i))}>{Icon.trash(12, 'var(--admin-coral)')} Retirer</GhostButton>
               </div>
             </div>
           ))}
@@ -132,7 +145,7 @@ export function TeamContentsEditor() {
               <div><FieldLabel>Auteur</FieldLabel><Input value={tm.author} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, author: e.target.value } : x))} style={inp} /></div>
               <div><FieldLabel>Témoignage</FieldLabel><Textarea rows={3} value={tm.text} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} style={inp} /></div>
               <div className="admin-ops-actions" style={{ justifyContent: 'flex-end' }}>
-                <GhostButton color="#dc2626" onClick={() => setTestimonials(content.testimonials.filter((_, j) => j !== i))}>{Icon.trash(12, '#dc2626')} Retirer</GhostButton>
+                <GhostButton color="var(--admin-coral)" onClick={() => setTestimonials(content.testimonials.filter((_, j) => j !== i))}>{Icon.trash(12, 'var(--admin-coral)')} Retirer</GhostButton>
               </div>
             </div>
           ))}

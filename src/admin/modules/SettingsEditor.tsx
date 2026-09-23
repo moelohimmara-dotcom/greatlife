@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Icon } from '@/lib/icons'
@@ -100,6 +100,9 @@ export function SettingsEditor() {
     }
     if (fileRef.current) fileRef.current.value = ''
   }
+  const [section, setSection] = useState<'Général' | 'Identité' | 'Coordonnées' | 'Horaires' | 'Réseaux' | 'Notifications' | 'Sauvegarde'>('Général')
+  const tabList = ['Général', 'Identité', 'Coordonnées', 'Horaires', 'Réseaux', 'Notifications', 'Sauvegarde'] as const
+
   const essentials = [
     Boolean(content.restaurantName?.trim()),
     Boolean(content.phone?.trim()),
@@ -110,15 +113,38 @@ export function SettingsEditor() {
   ]
   const essentialDone = essentials.filter(Boolean).length
   const socialDone = [content.socialFacebook, content.socialInstagram, content.socialWhatsapp].filter(s => Boolean(s?.trim())).length
+  const identiteDone = [content.restaurantName, content.currency, content.phone].filter(s => Boolean(s?.trim())).length
+  const coordDone = [content.address, content.hours].filter(s => Boolean(s?.trim())).length
+  const notifDone = [content.emailContact, content.emailReservation].filter(s => Boolean(s?.trim())).length
+
+  const fieldCard = (
+    eyebrow: string,
+    title: string,
+    done: string,
+    children: ReactNode,
+  ) => (
+    <section className="admin-wf-panel admin-wf-settings-card">
+      <div className="admin-wf-panel-head">
+        <div>
+          <span className="admin-wf-eyebrow">{eyebrow}</span>
+          <h2 style={{ margin: '4px 0 0' }}>{title}</h2>
+        </div>
+        <span className="admin-chip is-live">{done}</span>
+      </div>
+      <div style={{ display: 'grid', gap: 14, marginTop: 8 }}>{children}</div>
+    </section>
+  )
 
   return (
-    <div className="admin-page" style={{ maxWidth: 960 }}>
-      <PageHeader title="Réglages globaux" subtitle="Les coordonnées du restaurant sont utilisées partout sur le site."
+    <div className="admin-page-wide">
+      <PageHeader
+        title="Réglages globaux"
+        subtitle="Configurez les informations qui alimentent tout votre site."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div className="admin-wf-site-status" role="status">
         <div>
-          <span className="admin-wf-eyebrow">Votre restaurant</span>
+          <span className="admin-wf-eyebrow">Votre site</span>
           <strong>{content.restaurantName || 'Sans nom'}</strong>
           <small>
             {essentialDone}/{essentials.length} informations essentielles
@@ -129,112 +155,126 @@ export function SettingsEditor() {
           Voir le site
         </a>
       </div>
-      <div className="admin-wf-menu-summary" aria-label="Complétude des réglages">
-        <div>
-          <strong>{essentialDone}/{essentials.length}</strong>
-          <span>Essentiels</span>
-          <small>identité & contact</small>
-        </div>
-        <div>
-          <strong>{socialDone}/3</strong>
-          <span>Réseaux</span>
-          <small>Facebook, Instagram, WhatsApp</small>
-        </div>
-        <div>
-          <strong>{content.currency || '—'}</strong>
-          <span>Devise</span>
-          <small>affichée sur la carte</small>
-        </div>
-        <div className="is-status">
-          <strong>●</strong>
-          <span>{dataSource === 'supabase' ? 'Synchronisé' : 'Aperçu local'}</span>
-          <small>réglages globaux</small>
-        </div>
-      </div>
-      <nav className="admin-settings-toc" aria-label="Sommaire des réglages">
-        <a href="#reglages-identite" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Identité</a>
-        <a href="#reglages-localisation" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Localisation</a>
-        <a href="#reglages-reseaux" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Réseaux</a>
-        <a href="#reglages-notifications" className="admin-filter-chip" style={{ textDecoration: 'none' }}>Notifications</a>
+
+      <nav className="admin-wf-settings-tabs" aria-label="Catégories de réglages">
+        {tabList.map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={section === item ? 'is-active' : undefined}
+            onClick={() => setSection(item)}
+          >
+            {item}
+          </button>
+        ))}
       </nav>
-      <div className="admin-wf-settings-grid">
-        <section id="reglages-identite" className="admin-wf-panel">
-          <div className="admin-wf-panel-head">
-            <div>
-              <span className="admin-wf-eyebrow">Identité</span>
-              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Présentez votre établissement</h2>
-            </div>
-            <span className="admin-chip">{[content.restaurantName, content.currency, content.phone].filter(s => Boolean(s?.trim())).length}/3</span>
-          </div>
-          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
-            <div><FieldLabel>Nom du restaurant</FieldLabel><Input value={content.restaurantName} onChange={e => set('restaurantName', e.target.value)} style={inp} /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+
+      {section === 'Général' && (
+        <div className="admin-wf-settings-grid">
+          {fieldCard('Identité du restaurant', 'Présentez votre établissement', `${identiteDone}/3`, (
+            <>
+              <div><FieldLabel>Nom commercial</FieldLabel><Input value={content.restaurantName} onChange={e => set('restaurantName', e.target.value)} style={inp} /></div>
               <div><FieldLabel>Devise</FieldLabel><Input value={content.currency} onChange={e => set('currency', e.target.value)} style={inp} placeholder="FG" /></div>
               <div><FieldLabel>Téléphone</FieldLabel><Input value={content.phone} onChange={e => set('phone', e.target.value)} style={inp} /></div>
+            </>
+          ))}
+          {fieldCard('Coordonnées', 'Facilitez le contact', `${coordDone + notifDone}/4`, (
+            <>
+              <div><FieldLabel>Adresse</FieldLabel><Input value={content.address} onChange={e => set('address', e.target.value)} style={inp} /></div>
+              <div><FieldLabel>Email contact</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} /></div>
+              <div><FieldLabel>Horaires</FieldLabel><Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><FieldLabel>Instagram</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} /></div>
+                <div><FieldLabel>Facebook</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} /></div>
+              </div>
+            </>
+          ))}
+          <section className="admin-wf-panel">
+            <div className="admin-wf-panel-head">
+              <div>
+                <span className="admin-wf-eyebrow">Sécurité d’usage</span>
+                <h2 style={{ margin: '4px 0 0' }}>Avant de publier</h2>
+              </div>
             </div>
-          </div>
-        </section>
-        <section id="reglages-localisation" className="admin-wf-panel">
-          <div className="admin-wf-panel-head">
-            <div>
-              <span className="admin-wf-eyebrow">Localisation</span>
-              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Adresse & horaires</h2>
+            <div className="admin-wf-settings-check">
+              <span aria-hidden="true">{Icon.check(18, 'var(--admin-forest)')}</span>
+              <span>
+                <strong>{essentialDone >= 4 ? 'Informations essentielles complètes' : 'Complétez les informations essentielles'}</strong>
+                <small>{essentialDone}/{essentials.length} champs — identité, contact, adresse, horaires, e-mails.</small>
+              </span>
             </div>
-            <span className="admin-chip">{[content.address, content.hours].filter(s => Boolean(s?.trim())).length}/2</span>
-          </div>
-          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
-            <div><FieldLabel>Adresse</FieldLabel><Input value={content.address} onChange={e => set('address', e.target.value)} style={inp} /></div>
-            <div><FieldLabel>Horaires d'ouverture</FieldLabel><Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} /></div>
-          </div>
-        </section>
-        <section id="reglages-reseaux" className="admin-wf-panel">
-          <div className="admin-wf-panel-head">
-            <div>
-              <span className="admin-wf-eyebrow">Réseaux</span>
-              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Présence en ligne</h2>
+            <div className={`admin-wf-settings-check${socialDone < 1 ? ' is-warn' : ''}`}>
+              <span aria-hidden="true">{socialDone >= 1 ? Icon.check(18, 'var(--admin-forest)') : Icon.eye(18, 'var(--admin-saffron)')}</span>
+              <span>
+                <strong>{socialDone >= 1 ? 'Réseaux sociaux renseignés' : 'Ajoutez au moins un réseau social'}</strong>
+                <small>Affichés dans le pied de page du site public.</small>
+              </span>
+              {socialDone < 1 && (
+                <button type="button" onClick={() => setSection('Réseaux')}>Corriger</button>
+              )}
             </div>
-            <span className="admin-chip">{socialDone}/3</span>
-          </div>
-          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
-            <div><FieldLabel>Facebook (URL)</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} placeholder="https://facebook.com/..." /></div>
-            <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
-            <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
-          </div>
-        </section>
-        <section id="reglages-notifications" className="admin-wf-panel">
-          <div className="admin-wf-panel-head">
-            <div>
-              <span className="admin-wf-eyebrow">Notifications</span>
-              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Destinataires</h2>
-            </div>
-            <span className="admin-chip">{[content.emailContact, content.emailReservation].filter(s => Boolean(s?.trim())).length}/2</span>
-          </div>
-          <div style={{ display: 'grid', gap: 14, marginTop: 14 }}>
-            <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} placeholder="contact@…" /></div>
-            <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} placeholder="reservations@…" /></div>
-            <div style={{ fontSize: '12px', color: t.muted, lineHeight: 1.5 }}>
-              Chaque message, réservation ou commande du site notifie ces adresses, et le visiteur
-              reçoit une auto-réponse (template dans « Formulaires & emails »).
-            </div>
-          </div>
-        </section>
-        <section className="admin-wf-panel" style={{ gridColumn: '1 / -1' }}>
+          </section>
+        </div>
+      )}
+
+      {section === 'Identité' && fieldCard('Identité', 'Présentez votre établissement', `${identiteDone}/3`, (
+        <>
+          <div><FieldLabel>Nom du restaurant</FieldLabel><Input value={content.restaurantName} onChange={e => set('restaurantName', e.target.value)} style={inp} /></div>
+          <div><FieldLabel>Devise</FieldLabel><Input value={content.currency} onChange={e => set('currency', e.target.value)} style={inp} placeholder="FG" /></div>
+          <div><FieldLabel>Téléphone</FieldLabel><Input value={content.phone} onChange={e => set('phone', e.target.value)} style={inp} /></div>
+        </>
+      ))}
+
+      {section === 'Coordonnées' && fieldCard('Coordonnées', 'Adresse & contact', `${[content.address, content.phone, content.emailContact].filter(s => Boolean(s?.trim())).length}/3`, (
+        <>
+          <div><FieldLabel>Adresse</FieldLabel><Input value={content.address} onChange={e => set('address', e.target.value)} style={inp} /></div>
+          <div><FieldLabel>Téléphone</FieldLabel><Input value={content.phone} onChange={e => set('phone', e.target.value)} style={inp} /></div>
+          <div><FieldLabel>Email contact</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} /></div>
+        </>
+      ))}
+
+      {section === 'Horaires' && fieldCard('Horaires', 'Ouverture du restaurant', `${content.hours?.trim() ? '1' : '0'}/1`, (
+        <div><FieldLabel>Horaires d’ouverture</FieldLabel><Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} /></div>
+      ))}
+
+      {section === 'Réseaux' && fieldCard('Réseaux', 'Présence en ligne', `${socialDone}/3`, (
+        <>
+          <div><FieldLabel>Facebook (URL)</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} placeholder="https://facebook.com/..." /></div>
+          <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
+          <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
+        </>
+      ))}
+
+      {section === 'Notifications' && fieldCard('Notifications', 'Destinataires', `${notifDone}/2`, (
+        <>
+          <div><FieldLabel>Destinataire — messages généraux</FieldLabel><Input value={content.emailContact} onChange={e => set('emailContact', e.target.value)} style={inp} placeholder="contact@…" /></div>
+          <div><FieldLabel>Destinataire — réservations</FieldLabel><Input value={content.emailReservation} onChange={e => set('emailReservation', e.target.value)} style={inp} placeholder="reservations@…" /></div>
+          <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.5, margin: 0 }}>
+            Chaque message, réservation ou commande notifie ces adresses. L’auto-réponse se configure dans Formulaires & emails.
+          </p>
+        </>
+      ))}
+
+      {section === 'Sauvegarde' && (
+        <section className="admin-wf-panel">
           <div className="admin-wf-panel-head">
             <div>
               <span className="admin-wf-eyebrow">Sauvegarde</span>
-              <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Transfert de configuration</h2>
+              <h2 style={{ margin: '4px 0 0' }}>Transfert de configuration</h2>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
             <GhostButton color={t.primary} onClick={exportConfig}>{Icon.arrow(13, t.primary)} Exporter la configuration</GhostButton>
             <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={e => handleImport(e.target.files?.[0])} />
             <GhostButton color={t.accent} onClick={() => fileRef.current?.click()} disabled={importStatus === 'busy'}>{importStatus === 'busy' ? 'Import…' : 'Importer une configuration'}</GhostButton>
             {importStatus === 'ok' && <span className="admin-status-live is-ok" role="status">Importé</span>}
             {importStatus === 'error' && <span className="admin-status-live is-error" role="status" title={importErr}>{importErr}</span>}
           </div>
-          <div style={{ fontSize: '12px', color: t.muted, marginTop: 10 }}>L'export contient le contenu, le thème, les polices et la visibilité. L'import remplace la configuration courante et l'enregistre dans votre espace en ligne.</div>
+          <p style={{ fontSize: 12, color: t.muted, marginTop: 10, lineHeight: 1.5 }}>
+            L’export contient le contenu, le thème, les polices et la visibilité. L’import remplace la configuration courante.
+          </p>
         </section>
-      </div>
+      )}
     </div>
   )
 }

@@ -236,8 +236,18 @@ honnêtes (catégories dérivées des plats).
 
 ## 9. Blog (`blog`)
 
-Header + Nouvel article. Table : Titre · Catégorie · Modification · Statut
-(Brouillon / Publié).
+```text
+[Header + Nouvel article]
+[Statut espace éditorial · Voir le blog]
+[KPI ×4 : publiés · brouillons · programmé · avec image]
+[Recherche · onglets statut · Filtrer]
+┌ Liste articles ──────────────┬─ Résumé / checklist / actions ┐
+└──────────────────────────────┴───────────────────────────────┘
+```
+
+**Alignement (2026-09-23)** : structure fidèle à `blog-workspace.tsx` (liste + détail).
+Édition = écran dédié (formulaire live). Données `blog_posts`.
+Écart restant : pas de programmation ni compteur de vues (hors schéma).
 
 ---
 
@@ -261,7 +271,10 @@ filtres, grille, panneau détail). Données live `media_assets`.
 ## 11. Équipe & contenus (`team`)
 
 Sous-onglets : Équipe · Engagements · Témoignages (compteurs).
-Table membres : Nom · Rôle · Description · Visibilité.
+Table membres : Nom · Rôle · Description · Actions (édition inline).
+
+**Alignement (2026-09-23)** : table live pour l’équipe ; cartes pour engagements
+et témoignages. Visibilité membre absente du schéma (pas de colonne dédiée).
 
 ---
 
@@ -283,21 +296,33 @@ couleurs en lecture seule (évite contraste hors charte).
 
 ## 13. Visibilité (`visibility`)
 
-Liste de bascules section par section (titre + aide). Pas de page-scroll
-sans sommaire si > ~1000 px.
+```text
+[Header + Publier les modifications]
+[Statut site · En ligne]
+┌ Pages et visibilité ┐ ┌ Programmation (honnête) ┐
+┌ Éléments contenu ───┐ ┌ Checklist publication ──┐
+```
+
+**Alignement (2026-09-23)** : grille fidèle au `Visibility` du modèle.
+Données live `visibility`. Programmation = message honnête (pas encore en base).
 
 ---
 
 ## 14. Réglages globaux (`settings`)
 
-Sous-menu / TOC sticky. Sections : Identité · Coordonnées · Horaires · Réseaux.
-Sauvegarde domaine uniquement (pas d’écriture-bloc). Barre dirty persistante.
+Onglets : Général · Identité · Coordonnées · Horaires · Réseaux · Notifications · Sauvegarde.
+Sauvegarde domaine uniquement. Checklist de complétude sur l’onglet Général.
+
+**Alignement (2026-09-23)** : onglets comme `global-settings.tsx`, champs live.
 
 ---
 
 ## 15. Formulaires & emails (`forms`)
 
-Deux colonnes : Destinataires | Réponse automatique.
+Deux colonnes : Destinataires | Réponse automatique + pipeline.
+Dirty bar si modifications en cours.
+
+**Alignement (2026-09-23)** : layout deux colonnes fidèle au `System(forms)`.
 
 ---
 

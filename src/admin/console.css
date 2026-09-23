@@ -4956,3 +4956,391 @@
     margin-bottom: 8px;
   }
 }
+
+[data-admin-shell] .admin-wf-visibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+  align-items: start;
+}
+
+[data-admin-shell] .admin-wf-page-visibility-list {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-admin-shell] .admin-wf-page-visibility-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-page-visibility-item > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+[data-admin-shell] .admin-wf-page-visibility-item strong {
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-page-visibility-item small {
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-switch {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 22px;
+}
+
+[data-admin-shell] .admin-wf-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+[data-admin-shell] .admin-wf-switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-ink) 22%, transparent);
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-switch span::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-switch input:checked + span {
+  background: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-switch input:checked + span::before {
+  transform: translateX(14px);
+}
+
+[data-admin-shell] .admin-wf-schedule-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+}
+
+[data-admin-shell] .admin-wf-schedule-card > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-admin-shell] .admin-wf-schedule-card strong {
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-schedule-card small {
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+[data-admin-shell] .admin-wf-publish-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-admin-shell] .admin-wf-publish-checks > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-publish-checks span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+[data-admin-shell] .admin-wf-publish-checks button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--admin-forest);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-settings-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 14px;
+  border-bottom: 1px solid var(--admin-line);
+  margin-bottom: 14px;
+}
+
+[data-admin-shell] .admin-wf-settings-tabs button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--admin-radius-control);
+  background: transparent;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-wf-settings-tabs button.is-active,
+[data-admin-shell] .admin-wf-settings-tabs button:hover {
+  background: var(--admin-ink);
+  color: #fff;
+}
+
+[data-admin-shell] .admin-wf-settings-check {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-settings-check span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-settings-check strong {
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-settings-check small {
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+[data-admin-shell] .admin-wf-settings-check button {
+  border: 0;
+  background: transparent;
+  color: var(--admin-forest);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-blog-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 110px 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-blog-item:hover,
+[data-admin-shell] .admin-wf-blog-item.is-selected {
+  background: color-mix(in srgb, var(--admin-sage) 45%, var(--admin-surface));
+}
+
+[data-admin-shell] .admin-wf-blog-item-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+[data-admin-shell] .admin-wf-blog-item-meta > small {
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 11px;
+}
+
+[data-admin-shell] .admin-wf-blog-badge {
+  width: max-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-sage) 70%, var(--admin-surface));
+  color: var(--admin-forest);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-wf-blog-badge.is-draft {
+  background: color-mix(in srgb, var(--admin-saffron) 22%, var(--admin-surface));
+  color: #8a5a18;
+}
+
+[data-admin-shell] .admin-wf-blog-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+[data-admin-shell] .admin-wf-blog-detail h3 {
+  margin: 0;
+  font-family: var(--admin-font-display);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+[data-admin-shell] .admin-wf-blog-cover {
+  display: grid;
+  place-items: center;
+  height: 112px;
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-paper-muted);
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+}
+
+[data-admin-shell] .admin-wf-blog-excerpt {
+  margin: 0;
+  color: color-mix(in srgb, var(--admin-ink) 58%, transparent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+[data-admin-shell] .admin-wf-blog-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-blog-detail-grid > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--admin-paper-muted);
+}
+
+[data-admin-shell] .admin-wf-blog-detail-grid span {
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 11px;
+}
+
+[data-admin-shell] .admin-wf-blog-detail-grid strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-blog-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--admin-radius-control);
+  background: color-mix(in srgb, var(--admin-sage) 35%, var(--admin-paper));
+}
+
+[data-admin-shell] .admin-wf-blog-checklist > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-blog-checklist span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+[data-admin-shell] .admin-wf-blog-checklist strong {
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-blog-checklist small {
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+  font-size: 11px;
+}
+
+[data-admin-shell] .admin-wf-table {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-table-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1.4fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--admin-line);
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-table-row.is-head {
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 700px) {
+  [data-admin-shell] .admin-wf-visibility-grid {
+    grid-template-columns: 1fr;
+  }
+
+  [data-admin-shell] .admin-wf-blog-item {
+    grid-template-columns: 36px minmax(0, 1fr) 72px;
+  }
+
+  [data-admin-shell] .admin-wf-blog-item > .admin-wf-menu-chevron {
+    display: none;
+  }
+
+  [data-admin-shell] .admin-wf-table-row,
+  [data-admin-shell] .admin-wf-table-row.is-team {
+    grid-template-columns: 1fr;
+  }
+}
