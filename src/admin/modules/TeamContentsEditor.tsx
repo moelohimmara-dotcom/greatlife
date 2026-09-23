@@ -139,7 +139,7 @@ export function TeamContentsEditor() {
 
       {tab === 'testimonials' && (
         <div className="admin-content-stack">
-          {content.testimonials.length === 0 && <EmptyState icon={Icon.mail(26, t.muted)} title="Aucun témoignage" subtitle="Ajoutez les avis de vos clients ; ils apparaîtront sur le site (si activés dans Visibilité)." />}
+          {content.testimonials.length === 0 && <EmptyState icon={Icon.mail(26, t.muted)} title="Aucun témoignage" subtitle="Ajoutez les avis de vos clients. Sur le site CMS, le bloc Avis doit être visible dans Modifier le site (œil), puis « Mettre à jour le site »." />}
           {content.testimonials.map((tm, i) => (
             <div key={i} className="admin-content-card">
               <div><FieldLabel>Auteur</FieldLabel><Input value={tm.author} onChange={e => setTestimonials(content.testimonials.map((x, j) => j === i ? { ...x, author: e.target.value } : x))} style={inp} /></div>

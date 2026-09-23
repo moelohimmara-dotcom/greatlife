@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { softShadow } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
+import { lienMapsRecherche, lienTel, lienWhatsApp } from '@/lib/contactLinks'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
@@ -35,16 +36,82 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
   const hours = restaurant?.hours || legacy.hours || ''
   const phone = restaurant?.phone || legacy.phone || ''
   const email = restaurant?.emailContact || legacy.emailContact || ''
+  const whatsapp = restaurant?.social?.whatsapp || legacy.socialWhatsapp || ''
+  const mapsHref = lienMapsRecherche(address)
+  const telHref = lienTel(phone)
+  const waHref = lienWhatsApp(whatsapp || phone)
 
-  const coordonnees: [ReactNode, string, string][] = [
-    [Icon.pin(20, t.primary), address, 'Adresse du restaurant'],
-    [Icon.clock(20, t.accent), hours, 'Service continu toute la journée'],
-    [Icon.phone(20, t.gold), phone, 'Appel & WhatsApp'],
-    [Icon.mail(20, t.primary), email, 'Réservations & commandes'],
+  type Ligne = {
+    key: string
+    icon: ReactNode
+    title: ReactNode
+    sub: string
+  }
+
+  const titreStyle: CSSProperties = { fontWeight: 600, color: t.heading, fontSize: '15px' }
+  const lienStyle: CSSProperties = { ...titreStyle, textDecoration: 'none' }
+
+  const coordonnees: Ligne[] = [
+    {
+      key: 'address',
+      icon: Icon.pin(20, t.primary),
+      title: mapsHref ? (
+        <a href={mapsHref} target="_blank" rel="noopener noreferrer" style={lienStyle}>
+          {address}
+        </a>
+      ) : address,
+      sub: mapsHref ? 'Ouvrir dans Maps' : 'Adresse du restaurant',
+    },
+    {
+      key: 'hours',
+      icon: Icon.clock(20, t.accent),
+      title: hours,
+      sub: 'Service continu toute la journée',
+    },
+    {
+      key: 'phone',
+      icon: Icon.phone(20, t.gold),
+      title: telHref ? (
+        <a href={telHref} style={lienStyle}>{phone}</a>
+      ) : phone,
+      sub: waHref ? 'Appeler' : 'Téléphone',
+    },
+    ...(waHref
+      ? [{
+          key: 'whatsapp',
+          icon: Icon.phone(20, t.primary),
+          title: (
+            <a href={waHref} target="_blank" rel="noopener noreferrer" style={lienStyle}>
+              WhatsApp
+            </a>
+          ),
+          sub: 'Écrire sur WhatsApp',
+        } satisfies Ligne]
+      : []),
+    {
+      key: 'email',
+      icon: Icon.mail(20, t.primary),
+      title: email ? (
+        <a href={`mailto:${email}`} style={lienStyle}>{email}</a>
+      ) : email,
+      sub: 'Réservations & commandes',
+    },
   ]
 
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'card')
   const large = disposition === 'wide'
+  const planStyle: CSSProperties = {
+    borderRadius: '20px',
+    overflow: 'hidden',
+    boxShadow: softShadow(t),
+    background: t.surfaceAlt,
+    position: 'relative',
+    minHeight: large ? '420px' : '300px',
+    border: `1px solid ${t.shadow}`,
+    display: 'block',
+    color: 'inherit',
+    textDecoration: 'none',
+  }
 
   return (
     <section
@@ -58,22 +125,32 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
           <OrganicCard style={{ padding: '32px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {coordonnees
-                .filter(([, valeur]) => String(valeur).trim() !== '')
-                .map(([ic, rowTitle, sub], i) => (
-                <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${t.primary}0a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{ic}</div>
+                .filter((row) => {
+                  if (row.key === 'address') return Boolean(address.trim())
+                  if (row.key === 'hours') return Boolean(hours.trim())
+                  if (row.key === 'phone') return Boolean(phone.trim())
+                  if (row.key === 'email') return Boolean(email.trim())
+                  return true
+                })
+                .map((row) => (
+                <div key={row.key} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: `${t.primary}0a`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{row.icon}</div>
                   <div>
-                    <div style={{ fontWeight: 600, color: t.heading, fontSize: '15px' }}>{rowTitle}</div>
-                    <div style={{ fontSize: '13px', color: t.muted, marginTop: '2px' }}>{sub}</div>
+                    <div style={titreStyle}>{row.title}</div>
+                    <div style={{ fontSize: '13px', color: t.muted, marginTop: '2px' }}>{row.sub}</div>
                   </div>
                 </div>
               ))}
             </div>
           </OrganicCard>
-          <div style={{
-            borderRadius: '20px', overflow: 'hidden', boxShadow: softShadow(t),
-            background: t.surfaceAlt, position: 'relative', minHeight: large ? '420px' : '300px', border: `1px solid ${t.shadow}`,
-          }}>
+          {mapsHref ? (
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Voir ${address || 'le restaurant'} sur la carte`}
+              style={planStyle}
+            >
             <svg viewBox="0 0 400 300" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
               <rect x="0" y="0" width="400" height="300" fill={isDark ? '#1a2a3a' : '#E8F0F5'} />
               {[0,1,2,3,4].map(i => (
@@ -110,7 +187,14 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
                 <text x="0" y="-16" textAnchor="middle" fontSize="6" fill={isDark ? '#8a9a88' : '#9A9080'} fontWeight="700">N</text>
               </g>
             </svg>
-          </div>
+            </a>
+          ) : (
+            <div style={planStyle} aria-hidden="true">
+              <svg viewBox="0 0 400 300" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} preserveAspectRatio="xMidYMid slice">
+                <rect x="0" y="0" width="400" height="300" fill={isDark ? '#1a2a3a' : '#E8F0F5'} />
+              </svg>
+            </div>
+          )}
         </div>
       </Reveal>
     </section>

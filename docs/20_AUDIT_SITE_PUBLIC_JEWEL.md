@@ -54,7 +54,7 @@
 | A8 | **P1** | Hero / plats souvent en `background-image` (0 `<img>` probe) | Pas de `width`/`height`/`loading` natifs → risque CLS & alt | Atelier (alt bannière existe) + code rendu `Hero`/`Carte` |
 | A9 | **P1** | Cibles − / + panier à 28×28 px | Touch targets &lt; 44 px (ui-ux-pro-max) | Code `OrderCart.tsx:166-168` |
 | A10 | **P1** | Double vérité Visibilité (écran) vs `page_sections.visible` (CMS) | Restaurateur peut « cacher » sans effet attendu | **J3 partiel** : UX clarifiée (deux rôles) ; branchement technique = porte docs/21 §6 |
-| A11 | **P1** | Localisation = carte SVG décorative, pas de lien Maps | Intention « Nous trouver » non tenue jusqu’au geste | Contenu Atelier Localisation + **porte** : champ URL carte / embed (schéma à valider) |
+| A11 | **P1** | Localisation = carte SVG décorative, pas de lien Maps | Intention « Nous trouver » non tenue jusqu’au geste | **Partiel J4** : adresse + plan cliquables (recherche Maps). **Porte** : URL / embed dédié |
 | A12 | **P2** | Hiérarchie titres : H2 puis H4 (engagements, équipe) | Guidelines · Heading hierarchy | Code `Engagements`/`Team` ou modèle titres |
 | A13 | **P2** | Créneaux retrait panier `PICKUP_TIMES` codés en dur | Horaires de service ≠ horaires de retrait | **Porte de phase** — ne pas inventer de table ; brancher sur horaires réglages ou liste éditables |
 | A14 | **P2** | Empty panier avec emoji 🛒 | ui-ux-pro-max : pas d’emoji comme icône | `OrderCart.tsx:152` |
@@ -175,7 +175,7 @@
 | **J1 — Bannière & médias** | Voile / disposition ; photos plats manquantes ; alt | Faible–moyen | Atelier + Médias | **Fait partiel** (2026-09-23) — Bannière `fullscreen` → `image_text` ; `imageAlt` renseigné ; `secondaryColor` blanc retiré (contraste crème). Photos plats manquantes (ex. Le Volcan) : **reste à uploader** en Médias (4 photos seulement en base). |
 | **J2 — a11y formulaires & panier** | labels, autocomplete, aria-live, targets 44px, reduced-motion, no emoji empty | Moyen (code) | Couloir sections | **Fait** (2026-09-23) — `Contact` / `Reservation` / `OrderCart` : `htmlFor`+`id`, `name`/`autocomplete`, `role="alert"`/`aria-live`, cibles ± **48px** (≥44), empty panier SVG (plus d’emoji), `overscroll-behavior: contain`, dialog panier ; `Reveal` + panier respectent `prefers-reduced-motion` ; `Select` propage `id`/`aria-*` + style trigger ; `transition: all` retiré (Contact, Carte Ajouter). |
 | **J3 — Alignement Visibilité ↔ CMS** | Une seule commande « visible » | Moyen | **Décision propriétaire** (docs/21) | **Fait partiel** (2026-09-23) — UX clarifiée : « Enregistrer » (effet immédiat carte) vs Atelier œil + « Mettre à jour le site » (blocs). Interrupteurs « Pages » repliés en secours historique (honnêtes). **Pas** de branchement Visibilité → `page_sections.visible` (porte docs/21 §6 — touche le public). Fuite RLS `navigation_items` (031 §2) : hors J3, porte sécu. |
-| **J4 — Preuve sociale & local** | Témoignages sur page ; lien Maps/WhatsApp | Moyen | Contenu + éventuel champ URL | À faire |
+| **J4 — Preuve sociale & local** | Témoignages sur page ; lien Maps/WhatsApp | Moyen | Contenu + éventuel champ URL | **Fait partiel** (2026-09-23) — Bloc Avis déjà présent mais masqué : isible=true (brouillon + instantané) ; 3 avis peuplés dans site_config.testimonials (chemin direct). Pied + Localisation : wa.me (WhatsApp ou téléphone) ; adresse / plan → recherche Google Maps (sans nouveau champ URL). **Porte** : URL Maps / embed dédié (décision §10.4) ; bloc map toujours implemented: false. |
 | **J5 — Commande éditables** | Créneaux retrait / message panier | Moyen | **Décision schéma** | À faire |
 | **J6 — Blocs manquants TDR** | Galerie, FAQ… seulement une fois `implemented` | Fort | docs/18 | À faire |
 | **J6b — Organisation blocs (MVP)** | Structure sous-éléments (listes/groupes) + réordre listes Monter/Descendre ; **pas** d’arbre Gutenberg | Faible | docs/18 §13 | **Fait** (2026-09-23) |
@@ -184,6 +184,10 @@
 **Hors lots UI** : finaliser / vérifier RLS commandes (agent parallèle) par un test manuel « Valider ma commande » après déploiement 037.
 
 **Preuves J0/J1** : `scripts/.work/audit-public-jewel/j0j1-home-desktop-1440.png`, `j0j1-home-mobile-375.png`, `j0j1-proof.json` — nav « Greatlife », pas « Greatlifes » ; disposition Image+texte (photo burger lisible).
+
+**Preuves J4** : témoignages visibles #temoignages ; liens wa.me pied/Localisation ; adresse → Maps search. Script contenu scripts/.work/apply-j4-content.mjs ; noyau 
+pm/
+ode --test scripts/test-contact-links.mjs.
 
 **Preuves J2** : `scripts/.work/audit-public-jewel/proof-j2.mjs`, `j2-proof.json`, `j2-contact-desktop.png`, `j2-reservation-desktop.png`, `j2-order-desktop.png` — champs `#contact-*` / `#reservation-*` / `#order-*` labellés + autocomplete ; boutons quantité ≥ 44×44.
 
@@ -230,7 +234,7 @@ Répertoire : `scripts/.work/audit-public-jewel/`
 1. **Marque officielle** : ~~Greatlife vs Greatlifes~~ → **tranché** (2026-09-23) : Greatlife (réglages + chrome publié).  
 2. **Visibilité unique** : interrupteurs Visibilité vs `visible` des blocs CMS (`docs/21` §6) — **interim J3** : copy/UX alignée (deux rôles explicites) ; branchement technique reporté.  
 3. **Anglais public** : publier EN ou retirer le basculeur Atelier côté promesse.  
-4. **Carte / WhatsApp** : autoriser un champ URL (sans inventer de schéma hors TDR).  
+4. **Carte / WhatsApp** : WhatsApp branché (numéro/lien existant + repli téléphone). Carte : recherche Maps sur l’adresse (sans nouveau champ). **Reste** : URL / embed dédié si le propriétaire le veut.  
 5. **Créneaux de retrait** : liste éditable vs réutiliser horaires texte.  
 6. **SEO administrable** : oui/non et quel écran.  
 7. **Exposer ou masquer** les types de blocs `implemented: false` dans « Ajouter un bloc ».  

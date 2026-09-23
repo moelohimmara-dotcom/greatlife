@@ -12,6 +12,7 @@ import {
   type LienChrome,
 } from '@/cms/model/sections/site-chrome'
 import type { Locale } from '@/cms/model/i18n'
+import { lienWhatsApp } from '@/lib/contactLinks'
 
 /**
  * Pied de page — global à tout le site (TDR §19).
@@ -38,10 +39,13 @@ export function Footer({
     .filter((l) => l.visible && !l.isCta)
   const coordonnees = [restaurant.address, restaurant.phone, restaurant.emailContact]
     .filter((valeur) => Boolean(valeur && valeur.trim()))
+  // WhatsApp : champ Réseaux, sinon le téléphone des réglages (étiquette
+  // « Appel & WhatsApp » côté Localisation). Normalisé en wa.me.
+  const whatsappHref = lienWhatsApp(restaurant.social.whatsapp || restaurant.phone)
   const reseaux = [
     restaurant.social.facebook ? { label: 'Facebook', href: restaurant.social.facebook } : null,
     restaurant.social.instagram ? { label: 'Instagram', href: restaurant.social.instagram } : null,
-    restaurant.social.whatsapp ? { label: 'WhatsApp', href: restaurant.social.whatsapp } : null,
+    whatsappHref ? { label: 'WhatsApp', href: whatsappHref } : null,
   ].filter((x): x is { label: string; href: string } => Boolean(x))
   const marque = morceauxMarque(restaurant.name || 'Greatlife')
   const slogan = restaurant.slogan

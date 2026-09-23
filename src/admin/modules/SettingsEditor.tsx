@@ -250,7 +250,13 @@ export function SettingsEditor() {
         <>
           <div><FieldLabel>Facebook (URL)</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} placeholder="https://facebook.com/..." /></div>
           <div><FieldLabel>Instagram (URL)</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} placeholder="https://instagram.com/..." /></div>
-          <div><FieldLabel>WhatsApp (numéro ou lien)</FieldLabel><Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." /></div>
+          <div>
+            <FieldLabel>WhatsApp (numéro ou lien)</FieldLabel>
+            <Input value={content.socialWhatsapp} onChange={e => set('socialWhatsapp', e.target.value)} style={inp} placeholder="+224 ..." />
+            <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.5, margin: '6px 0 0' }}>
+              Numéro ou lien wa.me. Si vide, le site utilise le téléphone des coordonnées pour le bouton WhatsApp.
+            </p>
+          </div>
         </>
       ))}
 
