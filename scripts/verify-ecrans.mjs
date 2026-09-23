@@ -18,20 +18,32 @@
  *
  * Usage : node scripts/verify-ecrans.mjs   (ou `npm run verify:ecrans`)
  */
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { readFileSync, readdirSync } from 'node:fs'
+import { dirname, resolve, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const FICHIER = `${ROOT}/src/admin/AdminPanel.tsx`
-const source = readFileSync(FICHIER, 'utf8')
+const ADMIN_DIR = join(ROOT, 'src', 'admin')
+const MODULES_DIR = join(ADMIN_DIR, 'modules')
+
+/** Sources console à scruter (AdminPanel + modules extraits). */
+function sourcesConsole() {
+  const files = [join(ADMIN_DIR, 'AdminPanel.tsx')]
+  for (const name of readdirSync(MODULES_DIR)) {
+    if (name.endsWith('.tsx')) files.push(join(MODULES_DIR, name))
+  }
+  return files.map((path) => ({ path, source: readFileSync(path, 'utf8') }))
+}
+
+const sources = sourcesConsole()
+const source = sources.map((s) => s.source).join('\n\n')
 
 /** Les domaines par écran — la règle, lisible par machine. */
 const DOMAINES = [
   { fonction: 'ThemeEditor', save: 'saveApparenceFields', cles: ['themeId', 'fontId'] },
   { fonction: 'VisibilityEditor', save: 'saveApparenceFields', cles: ['visibility'] },
   { fonction: 'TeamContentsEditor', save: 'saveContentFields', cles: ['team', 'engagements', 'testimonials'] },
-  { fonction: 'FormsConfig', save: 'saveContentFields', cles: ['autoReply'] },
+  { fonction: 'FormsConfig', save: 'saveContentFields', cles: ['autoReply', 'emailContact', 'emailReservation'] },
   {
     fonction: 'SettingsEditor',
     save: 'saveContentFields',
@@ -44,18 +56,22 @@ const DOMAINES = [
 ]
 
 /**
- * Corps d'une fonction top-level : de son « function X( » au suivant.
- * (Les noms sont uniques dans ce fichier : chaque module est déclaré une fois.
- * Si un jour un module est éclaté, ce filet doit être mis à jour — et le dire.)
+ * Corps d'une fonction exportée ou top-level : de son « function X( » au suivant
+ * dans LE MÊME fichier module (les écrans sont désormais sous src/admin/modules/).
  */
 export function corps(fonction) {
-  const debut = source.indexOf(`function ${fonction}(`)
+  const fichier = sources.find((s) =>
+    s.source.includes(`function ${fonction}(`) || s.source.includes(`function ${fonction} (`),
+  )
+  if (!fichier) return null
+  const src = fichier.source
+  const debut = src.search(new RegExp(`(?:export\\s+)?function ${fonction}\\s*\\(`))
   if (debut === -1) return null
-  const suivants = DOMAINES
-    .map((d) => source.indexOf(`function ${d.fonction}(`))
-    .filter((i) => i > debut)
-  const fin = suivants.length > 0 ? Math.min(...suivants) : source.length
-  return source.slice(debut, fin)
+  // Jusqu'à la prochaine fonction exportée / top-level du même fichier, ou fin.
+  const reste = src.slice(debut + 1)
+  const next = reste.search(/\n(?:export\s+)?function\s+\w+\s*\(/)
+  const fin = next === -1 ? src.length : debut + 1 + next
+  return src.slice(debut, fin)
 }
 
 /**

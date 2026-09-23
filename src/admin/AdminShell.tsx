@@ -325,23 +325,6 @@ export function AdminShell() {
       </nav>
       <div className="admin-nav-foot" style={{ borderTop: '1px solid var(--admin-rail-line)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined, gap: 10 }}>
         {!compact && (
-          <Bouton
-            etendu
-            genre="secondaire"
-            onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-            aria-label="Voir le site public"
-            style={{
-              justifyContent: 'flex-start',
-              background: 'transparent',
-              borderColor: 'var(--admin-rail-border-soft)',
-              color: 'var(--admin-on-ink)',
-              width: '100%',
-            }}
-          >
-            Voir le site
-          </Bouton>
-        )}
-        {!compact && (
           <>
             <strong style={{ fontSize: '14px', fontWeight: 600, color: 'var(--admin-on-ink)' }}>{user?.name}</strong>
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-lime)', marginBottom: '4px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>

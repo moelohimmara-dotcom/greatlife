@@ -254,13 +254,6 @@ export function Dashboard() {
             Bonjour{user?.name ? `, ${user.name}` : ''} — comprenez la situation et agissez tout de suite.
           </p>
         </div>
-        <Bouton
-          genre="secondaire"
-          onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-          aria-label="Voir le site public"
-        >
-          Voir le site
-        </Bouton>
       </header>
 
       <div className="admin-wf-toolbar">
@@ -312,7 +305,11 @@ export function Dashboard() {
           <button type="button" onClick={() => ouvrir('orders')} aria-label="Ouvrir les commandes">
             <span aria-hidden="true">{Icon.coin(20, 'var(--admin-forest)')}</span>
             <span>
-              <strong>{dataSource === 'loading' ? '—' : pendingOrdersCount} commandes</strong>
+              <strong>
+                {dataSource === 'loading'
+                  ? '—'
+                  : `${pendingOrdersCount} commande${pendingOrdersCount > 1 ? 's' : ''}`}
+              </strong>
               <small>à préparer pour le service</small>
             </span>
             <span aria-hidden="true">{Icon.chevronRight(16, 'var(--admin-ink)')}</span>
@@ -320,7 +317,11 @@ export function Dashboard() {
           <button type="button" onClick={() => ouvrir('reservations')} aria-label="Ouvrir les réservations">
             <span aria-hidden="true">{Icon.calendar(20, 'var(--admin-forest)')}</span>
             <span>
-              <strong>{dataSource === 'loading' ? '—' : pendingReservationsCount} réservations</strong>
+              <strong>
+                {dataSource === 'loading'
+                  ? '—'
+                  : `${pendingReservationsCount} réservation${pendingReservationsCount > 1 ? 's' : ''}`}
+              </strong>
               <small>à confirmer</small>
             </span>
             <span aria-hidden="true">{Icon.chevronRight(16, 'var(--admin-ink)')}</span>
@@ -328,7 +329,11 @@ export function Dashboard() {
           <button type="button" onClick={() => ouvrir('messages')} aria-label="Ouvrir les messages">
             <span aria-hidden="true">{Icon.mail(20, 'var(--admin-forest)')}</span>
             <span>
-              <strong>{dataSource === 'loading' ? '—' : unhandledMessagesCount} messages</strong>
+              <strong>
+                {dataSource === 'loading'
+                  ? '—'
+                  : `${unhandledMessagesCount} message${unhandledMessagesCount > 1 ? 's' : ''}`}
+              </strong>
               <small>sans réponse</small>
             </span>
             <span aria-hidden="true">{Icon.chevronRight(16, 'var(--admin-ink)')}</span>

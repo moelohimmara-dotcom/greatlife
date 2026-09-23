@@ -4955,6 +4955,26 @@
     padding: 4px 0 8px;
     margin-bottom: 8px;
   }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
+    min-height: 48px;
+    padding: 6px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  [data-admin-shell] .admin-editor-locale {
+    height: 40px;
+  }
+
+  [data-admin-shell] .admin-wf-top-search {
+    max-width: 160px;
+  }
 }
 
 [data-admin-shell] .admin-wf-visibility-grid {

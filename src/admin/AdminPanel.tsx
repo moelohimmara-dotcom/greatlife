@@ -27,6 +27,12 @@ function ModuleFrame({ module, children }: { module: AdminModuleKey; children: R
     return <Navigate to="/admin" replace />
   }
   const readOnly = !canWriteModule(module, role)
+  /*
+    Journal et tableau de bord sont consultatifs par conception (pas d’écriture
+    métier). On n’affiche pas « votre rôle ne permet pas… » et on ne gèle pas
+    les clics : filtres, export et navigation restent utilisables.
+  */
+  const consultatif = module === 'dashboard' || module === 'audit'
   const editeurPleinEcran = module === 'content'
   const remplissageEditeur = editeurPleinEcran
     ? {
@@ -39,11 +45,11 @@ function ModuleFrame({ module, children }: { module: AdminModuleKey; children: R
     : undefined
   return (
     <div className="admin-module-frame" style={remplissageEditeur}>
-      {readOnly && module !== 'dashboard' && <AccessBanner />}
+      {readOnly && !consultatif && <AccessBanner />}
       <div
         style={{
           position: 'relative',
-          pointerEvents: readOnly && module !== 'dashboard' ? 'none' : 'auto',
+          pointerEvents: readOnly && !consultatif ? 'none' : 'auto',
           ...remplissageEditeur,
         }}
       >
