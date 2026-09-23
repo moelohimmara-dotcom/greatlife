@@ -155,15 +155,15 @@ Les informations transverses vivent dans **`site_content.restaurant`**. Champs c
 | `address` | Adresse | bilingue |
 | `emailContact` | E-mail public | chaîne |
 
-Autres clés du même JSON (Pied, publication) : `slogan`, `hours`, `emailReservation`, `currency`, `social`.
+Autres clés du même JSON (Pied, publication) : `slogan`, `hours`, `emailReservation`, `currency`, `social`, **`pickupTimes`** (liste de créneaux de retrait pour le panier — J5 ; distincte des horaires texte).
 
 **Lecture éditeur** : A = `restaurant` ; si une clé d’identité est vide, repli **une fois** sur le plat historique `site_config` (`restaurantName` → `name`, `phone`, `address`, `emailContact`). **Pas de migration.**
 
-**Public** : nav et pied lisent l’instantané chrome figé à la publication, jamais `fetchSetting` en direct.
+**Public** : nav, pied **et créneaux panier** lisent l’instantané chrome figé à la publication, jamais `fetchSetting` en direct.
 
-**Écriture** : Chrome Pied et Coordonnées patchent les **mêmes** clés `restaurant`. L’écran Coordonnées continue d’écrire aussi le plat (`restaurantName`, …) pour ne pas casser le merge `saveSetting` / le miroir existant.
+**Écriture** : Chrome Pied et Coordonnées patchent les **mêmes** clés `restaurant`. L’écran Coordonnées / Réglages → Horaires écrit aussi le plat (`restaurantName`, `pickupTimes`, …) pour ne pas casser le merge `saveSetting` / le miroir existant.
 
-Les informations transverses — `address`, `hours`, `phone`, `emailContact`, `emailReservation`, `currency`, `social*`, `restaurantName`, `slogan` — **ne sont pas du contenu de page**.
+Les informations transverses — `address`, `hours`, `phone`, `emailContact`, `emailReservation`, `currency`, `social*`, `restaurantName`, `slogan`, `pickupTimes` — **ne sont pas du contenu de page**.
 
 ### 5.5 Ce qui n'est **pas** du contenu de page
 

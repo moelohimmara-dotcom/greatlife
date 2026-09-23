@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useSite } from '@/contexts/SiteContext'
 import { useCart } from '@/contexts/CartContext'
@@ -9,8 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { insertOrder } from '@/lib/repository'
 import { invokeContactEmail, getSupabase } from '@/lib/supabase'
-
-const PICKUP_TIMES = ['12:00', '12:30', '13:00', '13:30', '14:00', '19:00', '19:30', '20:00', '20:30', '21:00']
+import { normaliserPickupTimes } from '@/cms/repository/settings'
 
 const FIELD = {
   nom: 'order-nom',
@@ -19,6 +18,9 @@ const FIELD = {
   pickup: 'order-pickup',
   notes: 'order-notes',
 } as const
+
+const MSG_AUCUN_CRENEAU =
+  'Aucun créneau de retrait n’est proposé pour le moment. Contactez le restaurant ou réessayez plus tard.'
 
 function genRef(): string {
   return 'GL' + Date.now().toString(36).toUpperCase().slice(-6) + Math.random().toString(36).toUpperCase().slice(2, 4)
@@ -54,16 +56,30 @@ const qtyBtnStyle = (t: { shadow: string; surface: string; heading: string }): R
   padding: 0,
 })
 
-export function OrderCart() {
+export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[] }) {
   const { theme: t } = useSite()
   const { items, setQty, remove, clear, count, totalLabel } = useCart()
   const reduceMotion = useReducedMotion()
+  const slots = normaliserPickupTimes(pickupTimes)
   const [open, setOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<'idle' | 'ok' | 'err'>('idle')
   const [errMsg, setErrMsg] = useState('')
-  const [form, setForm] = useState({ nom: '', email: '', phone: '', pickup_time: PICKUP_TIMES[0], notes: '' })
+  const [form, setForm] = useState({ nom: '', email: '', phone: '', pickup_time: '', notes: '' })
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
+
+  // Si les créneaux publiés changent, coller la sélection sur une valeur valide.
+  useEffect(() => {
+    if (slots.length === 0) {
+      if (form.pickup_time) setForm((f) => ({ ...f, pickup_time: '' }))
+      return
+    }
+    if (!slots.includes(form.pickup_time)) {
+      setForm((f) => ({ ...f, pickup_time: slots[0] }))
+    }
+  // Intentionnel : réagir à la liste publiée, pas à chaque frappe du formulaire.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots.join('|')])
 
   const motionDur = reduceMotion ? 0 : undefined
 
@@ -72,6 +88,8 @@ export function OrderCart() {
     if (!form.nom.trim()) e.nom = 'Votre nom est requis'
     if (!form.email.trim()) e.email = 'Votre email est requis'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide'
+    if (slots.length === 0) e.pickup = MSG_AUCUN_CRENEAU
+    else if (!form.pickup_time || !slots.includes(form.pickup_time)) e.pickup = 'Choisissez une heure de retrait'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -79,6 +97,7 @@ export function OrderCart() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (items.length === 0) { setErrMsg('Votre panier est vide'); setResult('err'); return }
+    if (slots.length === 0) { setErrMsg(MSG_AUCUN_CRENEAU); setResult('err'); return }
     if (!validate()) return
     setSubmitting(true)
     setResult('idle')
@@ -115,7 +134,7 @@ export function OrderCart() {
     setSubmitting(false)
     setResult('ok')
     clear()
-    setForm({ nom: '', email: '', phone: '', pickup_time: PICKUP_TIMES[0], notes: '' })
+    setForm({ nom: '', email: '', phone: '', pickup_time: slots[0] ?? '', notes: '' })
     setTimeout(() => setResult('idle'), 6000)
   }
 
@@ -292,17 +311,29 @@ export function OrderCart() {
                       </div>
                       <div>
                         <Label id={`${FIELD.pickup}-label`} htmlFor={FIELD.pickup} style={labelStyle}>Heure de retrait</Label>
-                        <Select
-                          id={FIELD.pickup}
-                          aria-labelledby={`${FIELD.pickup}-label`}
-                          value={form.pickup_time}
-                          onValueChange={v => setForm({ ...form, pickup_time: v })}
-                        >
-                          <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {PICKUP_TIMES.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        {slots.length === 0 ? (
+                          <div
+                            id={FIELD.pickup}
+                            role="status"
+                            aria-live="polite"
+                            style={{ ...inputStyle, color: t.accent, fontWeight: 600, lineHeight: 1.45 }}
+                          >
+                            {MSG_AUCUN_CRENEAU}
+                          </div>
+                        ) : (
+                          <Select
+                            id={FIELD.pickup}
+                            aria-labelledby={`${FIELD.pickup}-label`}
+                            value={form.pickup_time || slots[0]}
+                            onValueChange={v => setForm({ ...form, pickup_time: v })}
+                          >
+                            <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {slots.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {errors.pickup && <div id={`${FIELD.pickup}-error`} role="alert" style={errStyle}>{errors.pickup}</div>}
                       </div>
                       <div>
                         <Label htmlFor={FIELD.notes} style={labelStyle}>Notes (optionnel)</Label>
@@ -324,10 +355,10 @@ export function OrderCart() {
                       </div>
 
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <button type="submit" disabled={submitting}
-                          style={{ flex: 1, background: submitting ? t.muted : t.primary, color: '#fff', fontWeight: 700, padding: '14px 24px', borderRadius: '100px', fontSize: '15px', border: 'none', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1, boxShadow: `0 4px 16px ${t.shadowDeep}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, touchAction: 'manipulation' }}>
-                          {submitting ? 'Envoi…' : 'Valider ma commande'}
-                          {!submitting && Icon.arrow(16)}
+                        <button type="submit" disabled={submitting || slots.length === 0}
+                          style={{ flex: 1, background: submitting || slots.length === 0 ? t.muted : t.primary, color: '#fff', fontWeight: 700, padding: '14px 24px', borderRadius: '100px', fontSize: '15px', border: 'none', cursor: submitting || slots.length === 0 ? 'not-allowed' : 'pointer', opacity: submitting || slots.length === 0 ? 0.7 : 1, boxShadow: `0 4px 16px ${t.shadowDeep}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, touchAction: 'manipulation' }}>
+                          {submitting ? 'Envoi…' : slots.length === 0 ? 'Commande indisponible' : 'Valider ma commande'}
+                          {!submitting && slots.length > 0 && Icon.arrow(16)}
                         </button>
                         <button type="button" onClick={() => { if (confirm('Vider le panier ?')) clear() }} style={{ padding: '14px 18px', borderRadius: '100px', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer', fontSize: '14px', fontWeight: 600, minHeight: 48, touchAction: 'manipulation' }}>Vider</button>
                       </div>

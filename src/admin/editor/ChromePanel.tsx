@@ -304,6 +304,8 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
       emailReservation: suivantRestau.emailReservation,
       currency: suivantRestau.currency,
       social: suivantRestau.social,
+      // J5 : ne pas laisser un enregistrement chrome effacer les créneaux (merge).
+      pickupTimes: suivantRestau.pickupTimes ?? [],
     }
     payload.chromePresentation = presentationVersReglages(suivantePres)
     if (!navDisponible) {

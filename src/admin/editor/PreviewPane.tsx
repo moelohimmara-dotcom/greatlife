@@ -206,6 +206,7 @@ const RESTAURANT_ABSENT: ResolvedRestaurant = {
   slogan: '',
   currency: 'FG',
   social: { facebook: '', whatsapp: '', instagram: '' },
+  pickupTimes: [],
 }
 
 function PreviewShell({ children, typo }: { children: ReactNode; typo?: TypoReglages | null }) {

@@ -5,7 +5,7 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { logAudit, saveSiteConfig } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
-import { SETTING_KEYS, fetchSetting, platDepuisRestaurant } from '@/cms/repository/settings'
+import { SETTING_KEYS, fetchSetting, platDepuisRestaurant, normaliserPickupTimes } from '@/cms/repository/settings'
 import { SaveBar } from '@/admin/shared'
 import { Link } from 'react-router-dom'
 import { pathForModule } from '@/admin/routes'
@@ -35,6 +35,7 @@ export function SettingsEditor() {
         emailReservation: content.emailReservation,
         slogan: content.slogan,
       })
+      const creneauxRestaurant = normaliserPickupTimes(res.data?.pickupTimes)
       setContent({
         ...content,
         restaurantName: identite.restaurantName ?? content.restaurantName,
@@ -43,6 +44,9 @@ export function SettingsEditor() {
         hours: identite.hours ?? content.hours,
         emailContact: identite.emailContact ?? content.emailContact,
         emailReservation: identite.emailReservation ?? content.emailReservation,
+        pickupTimes: creneauxRestaurant.length > 0
+          ? creneauxRestaurant
+          : normaliserPickupTimes(content.pickupTimes),
       })
     })
     return () => { actif = false }
@@ -65,6 +69,7 @@ export function SettingsEditor() {
       socialWhatsapp: content.socialWhatsapp,
       emailContact: content.emailContact,
       emailReservation: content.emailReservation,
+      pickupTimes: normaliserPickupTimes(content.pickupTimes),
     })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
@@ -103,7 +108,10 @@ export function SettingsEditor() {
     if (fileRef.current) fileRef.current.value = ''
   }
   const [section, setSection] = useState<'Général' | 'Identité' | 'Coordonnées' | 'Horaires' | 'Réseaux' | 'Notifications' | 'Sauvegarde'>('Général')
+  const [nouveauCreneau, setNouveauCreneau] = useState('')
   const tabList = ['Général', 'Identité', 'Coordonnées', 'Horaires', 'Réseaux', 'Notifications', 'Sauvegarde'] as const
+
+  const creneaux = normaliserPickupTimes(content.pickupTimes)
 
   const essentials = [
     Boolean(content.restaurantName?.trim()),
@@ -242,8 +250,77 @@ export function SettingsEditor() {
         </>
       ))}
 
-      {section === 'Horaires' && fieldCard('Horaires', 'Ouverture du restaurant', `${content.hours?.trim() ? '1' : '0'}/1`, (
-        <div><FieldLabel>Horaires d’ouverture</FieldLabel><Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} /></div>
+      {section === 'Horaires' && fieldCard('Horaires', 'Ouverture & retrait', `${(content.hours?.trim() ? 1 : 0) + (creneaux.length > 0 ? 1 : 0)}/2`, (
+        <>
+          <div>
+            <FieldLabel>Horaires d’ouverture</FieldLabel>
+            <Input value={content.hours} onChange={e => set('hours', e.target.value)} style={inp} placeholder="Tous les jours · 11h — 23h" />
+            <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.5, margin: '6px 0 0' }}>
+              Texte libre affiché sur le site (pied, localisation). Ce n’est pas la liste de retrait.
+            </p>
+          </div>
+          <div>
+            <FieldLabel>Créneaux de retrait (commande)</FieldLabel>
+            <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.5, margin: '0 0 10px' }}>
+              Heures proposées dans le panier. Si la liste est vide, le client ne peut pas valider une commande.
+              Après enregistrement, mettez à jour le site pour que le panier public les voie.
+            </p>
+            {creneaux.length === 0 ? (
+              <p role="status" style={{ fontSize: 13, color: t.accent, margin: '0 0 10px', fontWeight: 600 }}>
+                Aucun créneau — le panier affichera un message honnête et bloquera la commande.
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', margin: '0 0 12px', padding: 0, display: 'grid', gap: 8 }}>
+                {creneaux.map((heure) => (
+                  <li key={heure} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, border: `1px solid ${t.shadow}`, background: t.surfaceAlt }}>
+                    <span style={{ flex: 1, fontWeight: 600, color: t.heading }}>{heure}</span>
+                    <GhostButton
+                      color={t.accent}
+                      onClick={() => {
+                        setContent({ ...content, pickupTimes: creneaux.filter((h) => h !== heure) })
+                        setSaveStatus('idle')
+                        setSaveErr(undefined)
+                      }}
+                    >
+                      Retirer
+                    </GhostButton>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Input
+                value={nouveauCreneau}
+                onChange={(e) => setNouveauCreneau(e.target.value)}
+                style={{ ...inp, flex: 1, minWidth: 120 }}
+                placeholder="ex. 12:30"
+                aria-label="Nouveau créneau de retrait"
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  const ajoute = nouveauCreneau.trim()
+                  if (!ajoute) return
+                  setContent({ ...content, pickupTimes: normaliserPickupTimes([...creneaux, ajoute]) })
+                  setNouveauCreneau('')
+                  setSaveStatus('idle')
+                  setSaveErr(undefined)
+                }}
+              />
+              <PrimaryButton
+                onClick={() => {
+                  const ajoute = nouveauCreneau.trim()
+                  if (!ajoute) return
+                  setContent({ ...content, pickupTimes: normaliserPickupTimes([...creneaux, ajoute]) })
+                  setNouveauCreneau('')
+                  setSaveStatus('idle')
+                  setSaveErr(undefined)
+                }}
+              >
+                Ajouter
+              </PrimaryButton>
+            </div>
+          </div>
+        </>
       ))}
 
       {section === 'Réseaux' && fieldCard('Réseaux', 'Présence en ligne', `${socialDone}/3`, (

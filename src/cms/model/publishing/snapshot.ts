@@ -67,6 +67,8 @@ export interface SnapshotChromeRestaurant {
   emailReservation: string
   currency: string
   social: { facebook: string; instagram: string; whatsapp: string }
+  /** Créneaux de retrait figés à la publication (J5). */
+  pickupTimes: string[]
 }
 
 export interface SnapshotChrome {
@@ -160,6 +162,10 @@ export function freezeChrome(input: {
         instagram: str(social.instagram),
         whatsapp: str(social.whatsapp),
       },
+      pickupTimes: asList(raw.pickupTimes)
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => t.trim())
+        .filter(Boolean),
     },
     chromePresentation: presentation,
     typography: typo && Object.keys(typo).length > 0 ? typo : null,

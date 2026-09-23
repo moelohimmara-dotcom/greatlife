@@ -56,7 +56,7 @@
 | A10 | **P1** | Double vérité Visibilité (écran) vs `page_sections.visible` (CMS) | Restaurateur peut « cacher » sans effet attendu | **J3 partiel** : UX clarifiée (deux rôles) ; branchement technique = porte docs/21 §6 |
 | A11 | **P1** | Localisation = carte SVG décorative, pas de lien Maps | Intention « Nous trouver » non tenue jusqu’au geste | **Partiel J4** : adresse + plan cliquables (recherche Maps). **Porte** : URL / embed dédié |
 | A12 | **P2** | Hiérarchie titres : H2 puis H4 (engagements, équipe) | Guidelines · Heading hierarchy | Code `Engagements`/`Team` ou modèle titres |
-| A13 | **P2** | Créneaux retrait panier `PICKUP_TIMES` codés en dur | Horaires de service ≠ horaires de retrait | **Porte de phase** — ne pas inventer de table ; brancher sur horaires réglages ou liste éditables |
+| A13 | **P2** | Créneaux retrait panier `PICKUP_TIMES` codés en dur | Horaires de service ≠ horaires de retrait | **J5 fait** — liste éditable `restaurant.pickupTimes` (Réglages → Horaires) ; panier consomme le chrome publié |
 | A14 | **P2** | Empty panier avec emoji 🛒 | ui-ux-pro-max : pas d’emoji comme icône | `OrderCart.tsx:152` |
 | A15 | **P2** | Meta SEO / OG non éditables dans la console | SEO léger figé dans `index.html` | **Porte de phase** (écran Réglages SEO ou Atelier page) — TDR |
 | A16 | **P2** | i18n FR/EN dans Atelier ; site public probe en `fr` seul | Promesse bilingue partielle | Clarifier : EN publié ou masqué — **décision propriétaire** |
@@ -159,7 +159,7 @@
 | Blog articles | **Blog** | **existe** (publication article individuelle) | |
 | Thème couleurs / polices | **Thème & ambiance** + typo Atelier | **existe** | |
 | Montrer / cacher sections | **Visibilité** vs masquage bloc Atelier | **partiel / divergents** | Arbitrage docs/21 |
-| Panier / créneaux retrait | Code `OrderCart` | **à créer** (éditable) | Porte de phase |
+| Panier / créneaux retrait | **Réglages → Horaires** (`restaurant.pickupTimes`) | **existe** (J5) | Publier chrome pour le public |
 | SEO title/description/OG | `index.html` | **à créer** | Porte de phase |
 | Galerie / FAQ / Promo / Vidéo bloc | Palette Atelier (schéma) | **à créer** (rendu) | `implemented: false` — ne pas vendre au restaurateur |
 | Commandes / résas / messages | Pilotage | **existe** | Hors CMS page |
@@ -176,7 +176,7 @@
 | **J2 — a11y formulaires & panier** | labels, autocomplete, aria-live, targets 44px, reduced-motion, no emoji empty | Moyen (code) | Couloir sections | **Fait** (2026-09-23) — `Contact` / `Reservation` / `OrderCart` : `htmlFor`+`id`, `name`/`autocomplete`, `role="alert"`/`aria-live`, cibles ± **48px** (≥44), empty panier SVG (plus d’emoji), `overscroll-behavior: contain`, dialog panier ; `Reveal` + panier respectent `prefers-reduced-motion` ; `Select` propage `id`/`aria-*` + style trigger ; `transition: all` retiré (Contact, Carte Ajouter). |
 | **J3 — Alignement Visibilité ↔ CMS** | Une seule commande « visible » | Moyen | **Décision propriétaire** (docs/21) | **Fait partiel** (2026-09-23) — UX clarifiée : « Enregistrer » (effet immédiat carte) vs Atelier œil + « Mettre à jour le site » (blocs). Interrupteurs « Pages » repliés en secours historique (honnêtes). **Pas** de branchement Visibilité → `page_sections.visible` (porte docs/21 §6 — touche le public). Fuite RLS `navigation_items` (031 §2) : hors J3, porte sécu. |
 | **J4 — Preuve sociale & local** | Témoignages sur page ; lien Maps/WhatsApp | Moyen | Contenu + éventuel champ URL | **Fait partiel** (2026-09-23) — Bloc Avis déjà présent mais masqué : `visible=true` (brouillon + instantané) ; 3 avis peuplés dans `site_config.testimonials` (chemin direct). Pied + Localisation : `wa.me` (WhatsApp ou téléphone) ; adresse / plan → recherche Google Maps (sans nouveau champ URL). **Porte** : URL Maps / embed dédié (décision §10.4) ; bloc `map` toujours `implemented: false`. |
-| **J5 — Commande éditables** | Créneaux retrait / message panier | Moyen | **Décision schéma** | À faire |
+| **J5 — Commande éditables** | Créneaux retrait / message panier | Moyen | **Décision schéma** | **Fait** (2026-09-23) — Schéma : `site_content.restaurant.pickupTimes` (liste), miroir plat `site_config.pickupTimes`, gelés dans le chrome à la publication. **Pas** de nouvelle table ; distinct des horaires texte. Migration `042` déplace le seed 024 hors `email_templates`. Console : Réglages → Horaires → « Créneaux de retrait ». Panier : plus de `PICKUP_TIMES` hardcodés ; message honnête + commande bloquée si liste vide. Flux : Enregistrer puis **Mettre à jour le site**. |
 | **J6 — Blocs manquants TDR** | Galerie, FAQ… seulement une fois `implemented` | Fort | docs/18 | À faire |
 | **J6b — Organisation blocs (MVP)** | Structure sous-éléments (listes/groupes) + réordre listes Monter/Descendre ; **pas** d’arbre Gutenberg | Faible | docs/18 §13 | **Fait** (2026-09-23) |
 | **J7 — SEO CMS** | title/description/OG éditables | Moyen | Porte TDR | À faire |
@@ -190,6 +190,8 @@ pm/
 ode --test scripts/test-contact-links.mjs.
 
 **Preuves J2** : `scripts/.work/audit-public-jewel/proof-j2.mjs`, `j2-proof.json`, `j2-contact-desktop.png`, `j2-reservation-desktop.png`, `j2-order-desktop.png` — champs `#contact-*` / `#reservation-*` / `#order-*` labellés + autocomplete ; boutons quantité ≥ 44×44.
+
+**Preuves J5** : `npm run test:pickup` (normalisation + gel chrome) ; `npm run verify:ecrans` (domaine Réglages + `pickupTimes`) ; migration `042` + apply `scripts/.work/apply-j5-pickup.mjs` (backup `logs/backup-j5-*.json`).
 
 ---
 
@@ -235,7 +237,7 @@ Répertoire : `scripts/.work/audit-public-jewel/`
 2. **Visibilité unique** : interrupteurs Visibilité vs `visible` des blocs CMS (`docs/21` §6) — **interim J3** : copy/UX alignée (deux rôles explicites) ; branchement technique reporté.  
 3. **Anglais public** : publier EN ou retirer le basculeur Atelier côté promesse.  
 4. **Carte / WhatsApp** : WhatsApp branché (numéro/lien existant + repli téléphone). Carte : recherche Maps sur l’adresse (sans nouveau champ). **Reste** : URL / embed dédié si le propriétaire le veut.  
-5. **Créneaux de retrait** : liste éditable vs réutiliser horaires texte.  
+5. **Créneaux de retrait** : ~~liste éditable vs réutiliser horaires texte~~ → **tranché** (J5, 2026-09-23) : liste éditable `pickupTimes` (distincte des horaires d’ouverture texte).  
 6. **SEO administrable** : oui/non et quel écran.  
 7. **Exposer ou masquer** les types de blocs `implemented: false` dans « Ajouter un bloc ».  
 8. **Arbre de blocs imbriqués** (Gutenberg / colonnes libres illimitées) : **refusé pour l’instant** — le MVP reste dispositions + listes + Structure (`docs/18` §13).

@@ -51,6 +51,7 @@ const DOMAINES = [
       'restaurantName', 'currency', 'phone', 'address', 'hours',
       'socialFacebook', 'socialInstagram', 'socialWhatsapp',
       'emailContact', 'emailReservation',
+      'pickupTimes',
     ],
   },
 ]

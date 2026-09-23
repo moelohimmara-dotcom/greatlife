@@ -23,6 +23,7 @@
     "test:compteurs": "node --test scripts/test-compteurs.mjs",
     "test:snapshot": "node --test scripts/test-snapshot.mjs",
     "test:identite": "node --test scripts/test-identite-restaurant.mjs",
+    "test:pickup": "node --test scripts/test-pickup-times.mjs",
     "test:subblock-rules": "node --test scripts/test-subblock-rules.mjs",
     "test:preview-geometry": "node --test scripts/test-preview-geometry.mjs",
     "test:product-photo": "node --test scripts/test-product-photo-slot.mjs",

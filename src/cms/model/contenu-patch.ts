@@ -51,8 +51,11 @@ export const CLEFS_COORDONNEES = [
   'hours',
 ] as const
 
-/** Identité : le nom plat `restaurantName` rejoint `restaurant.name`. */
-export const CLEFS_MIROIR_RESTAURANT = [...CLEFS_COORDONNEES, 'restaurantName'] as const
+/**
+ * Identité + créneaux de retrait (J5) : le plat `restaurantName` → `restaurant.name` ;
+ * `pickupTimes` (liste de chaînes) est mirroir tel quel vers `restaurant.pickupTimes`.
+ */
+export const CLEFS_MIROIR_RESTAURANT = [...CLEFS_COORDONNEES, 'restaurantName', 'pickupTimes'] as const
 
 export type ClefCoordonnee = (typeof CLEFS_COORDONNEES)[number]
 export type ClefMiroirRestaurant = (typeof CLEFS_MIROIR_RESTAURANT)[number]

@@ -33,6 +33,8 @@ export interface SiteContent {
   team: TeamMember[]
   engagements: Engagement[]
   testimonials: Testimonial[]
+  /** Créneaux de retrait (panier) — miroir plat de `restaurant.pickupTimes` (J5). */
+  pickupTimes: string[]
 }
 
 /*
@@ -50,6 +52,7 @@ const CLES_SITE_CONTENT: (keyof SiteContent)[] = [
   'restaurantName', 'currency', 'phone', 'address', 'hours',
   'socialFacebook', 'socialInstagram', 'socialWhatsapp',
   'team', 'engagements', 'testimonials',
+  'pickupTimes',
 ]
 
 export interface SiteVisibility {
@@ -205,6 +208,7 @@ const DEFAULT_CONTENT: SiteContent = {
     { icon: 'leaf', title: 'Végé-friendly', desc: 'Une vraie offre végétale et vegan à chaque catégorie.' },
   ],
   testimonials: [],
+  pickupTimes: [],
   autoReply: 'Bonjour {nom}, merci pour votre message à Greatlife ! Nous revenons vers vous sous 24h. — L\'équipe Greatlife',
 }
 

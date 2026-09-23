@@ -13,7 +13,10 @@
 
 import type { Bilingue, Locale } from '../model/i18n'
 import { resolveI18n } from '../model/i18n'
-import { asArray, asObject, cmsErr, cmsOk, describeError, requireClient, type CmsResult } from './client'
+import { asObject, cmsErr, cmsOk, describeError, requireClient, type CmsResult } from './client'
+import { normaliserPickupTimes } from '../model/pickup-times'
+
+export { normaliserPickupTimes } from '../model/pickup-times'
 
 const TABLE = 'site_content'
 
@@ -53,12 +56,17 @@ export interface RestaurantSettings {
   emailReservation: string
   currency: string
   social: { facebook: string; instagram: string; whatsapp: string }
+  /**
+   * Créneaux de retrait proposés au panier (J5).
+   * Source unique : `site_content.restaurant.pickupTimes` (pas les horaires texte).
+   * Publiés via le chrome figé — jamais hardcodés dans OrderCart.
+   */
+  pickupTimes: string[]
 }
 
-/** Horaires de retrait proposés à la commande. */
+/** Gabarits d’e-mail (auto-réponse). Les créneaux de retrait vivent dans `restaurant`. */
 export interface EmailTemplates {
   contactAutoReply: Bilingue
-  pickupTimes: string[]
 }
 
 export const DEFAULT_RESTAURANT: RestaurantSettings = {
@@ -71,11 +79,11 @@ export const DEFAULT_RESTAURANT: RestaurantSettings = {
   emailReservation: '',
   currency: 'FG',
   social: { facebook: '', instagram: '', whatsapp: '' },
+  pickupTimes: [],
 }
 
 export const DEFAULT_EMAIL_TEMPLATES: EmailTemplates = {
   contactAutoReply: '',
-  pickupTimes: [],
 }
 
 /** Lit une clé de réglages. Renvoie `null` si la clé n'existe pas encore. */
@@ -194,7 +202,7 @@ function str(value: unknown): string {
 
 /** Normalise les réglages du restaurant, avec valeurs par défaut. */
 export function toRestaurantSettings(raw: Record<string, unknown> | null): RestaurantSettings {
-  if (!raw) return { ...DEFAULT_RESTAURANT }
+  if (!raw) return { ...DEFAULT_RESTAURANT, social: { ...DEFAULT_RESTAURANT.social }, pickupTimes: [] }
   const social = asObject(raw.social)
   return {
     name: (raw.name ?? '') as Bilingue,
@@ -210,6 +218,7 @@ export function toRestaurantSettings(raw: Record<string, unknown> | null): Resta
       instagram: str(social.instagram),
       whatsapp: str(social.whatsapp),
     },
+    pickupTimes: normaliserPickupTimes(raw.pickupTimes),
   }
 }
 
@@ -218,7 +227,6 @@ export function toEmailTemplates(raw: Record<string, unknown> | null): EmailTemp
   if (!raw) return { ...DEFAULT_EMAIL_TEMPLATES }
   return {
     contactAutoReply: (raw.contactAutoReply ?? '') as Bilingue,
-    pickupTimes: asArray(raw.pickupTimes).filter((t): t is string => typeof t === 'string'),
   }
 }
 
@@ -233,6 +241,7 @@ export interface ResolvedRestaurant {
   emailReservation: string
   currency: string
   social: { facebook: string; instagram: string; whatsapp: string }
+  pickupTimes: string[]
 }
 
 /** Résout les réglages du restaurant dans la langue demandée. */
@@ -250,5 +259,6 @@ export function resolveRestaurant(
     emailReservation: settings.emailReservation,
     currency: settings.currency,
     social: settings.social,
+    pickupTimes: normaliserPickupTimes(settings.pickupTimes),
   }
 }

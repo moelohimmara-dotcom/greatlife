@@ -218,6 +218,12 @@ async function ecrireCoordonneesCanoniques(
   if ('address' in champ) suivant.address = fusionBilingue(actuel.address, String(champ.address ?? ''))
   if ('hours' in champ) suivant.hours = fusionBilingue(actuel.hours, String(champ.hours ?? ''))
   if ('restaurantName' in champ) suivant.name = fusionBilingue(actuel.name, String(champ.restaurantName ?? ''))
+  if ('pickupTimes' in champ) {
+    const brut = champ.pickupTimes
+    suivant.pickupTimes = Array.isArray(brut)
+      ? brut.filter((t): t is string => typeof t === 'string').map((t) => t.trim()).filter(Boolean)
+      : []
+  }
 
   const { error } = await sb.from(CONTENT_TABLE).upsert(
     {

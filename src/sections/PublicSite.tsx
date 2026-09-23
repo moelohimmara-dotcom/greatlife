@@ -150,7 +150,7 @@ export function PublicSite() {
               />
             )}
           />
-          <OrderCart />
+          <OrderCart pickupTimes={restaurantPublie.pickupTimes} />
         </div>
       </CartProvider>
     )
@@ -171,6 +171,7 @@ export function PublicSite() {
       instagram: content.socialInstagram,
       whatsapp: content.socialWhatsapp,
     },
+    pickupTimes: content.pickupTimes ?? [],
   }
 
   return (
@@ -188,7 +189,7 @@ export function PublicSite() {
         {visibility.testimonials && <div id={ANCHORS.temoignages}><Testimonials /></div>}
         {visibility.sections.blog && <div id={ANCHORS.blog}><Blog /></div>}
         <Footer restaurant={restaurantLegacy} presentation={{}} liens={undefined} />
-        <OrderCart />
+        <OrderCart pickupTimes={restaurantLegacy.pickupTimes} />
       </div>
     </CartProvider>
   )
