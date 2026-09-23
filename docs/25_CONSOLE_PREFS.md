@@ -36,16 +36,26 @@ isole déjà les jetons sous `[data-admin-shell]`.
 
 | Clé | Valeurs | Attribut shell | Effet |
 |---|---|---|---|
-| `theme` | `clair` · `nuit` | `data-console-theme` | Mode clair (papier) ou nuit (fond sombre type rail) |
-| `chrome` | `creme` · `foret` | `data-admin-chrome` | Nuance du papier en mode clair |
-| `accent` | `foret` · `corail` · `safran` | `data-console-accent` | Couleur des actions (`--admin-forest`) |
-| `density` | `confortable` · `compacte` | `data-admin-density` | Marges des panneaux |
+| `theme` | `clair` · `nuit` | `data-console-theme` | Mode clair (papier **et sidebar** crème) ou nuit (fond + sidebar sombres) |
+| `chrome` | `creme` · `foret` | `data-admin-chrome` | Nuance du papier **et du rail** en mode clair (teinte verte si forêt) |
+| `accent` | `foret` · `corail` · `safran` | `data-console-accent` | Couleur des actions / item actif nav (`--admin-forest`) |
+| `density` | `confortable` · `compacte` | `data-admin-density` | Marges panneaux **et** padding du menu latéral |
 | `nav` | `open` · `rail` | (via `admin-nav`) | Menu déplié ou rail d’icônes |
 | `showBadges` | bool | `data-console-badges` | Pastilles compteurs menu / bas mobile |
 | `reduceMotion` | bool | `data-console-motion` | Coupe transitions / animations console |
 | guides | reset | — | Réaffiche les astuces masquées (`CONSOLE_TIP_KEYS`) |
 
 Aperçu : immédiat (événement `greatlife-console-prefs-changed` → `appliquerConsolePrefsAuShell`).
+
+### Jetons sidebar (`--admin-rail-*`)
+
+Sous `[data-admin-shell]`, le menu latéral (et la barre mobile) lit :
+
+- `--admin-rail-bg` · `--admin-rail-fg` · `--admin-rail-fg-muted` · `--admin-rail-fg-soft`
+- `--admin-rail-hover` · `--admin-rail-line` · `--admin-rail-border-soft`
+- `--admin-rail-active-fg` (texte sur item actif / accent)
+
+Ces jetons basculent avec `data-console-theme` / `data-admin-chrome`. Ils sont **distincts** de `--admin-on-ink` (texte sur bouton accent).
 
 ## Navigation
 

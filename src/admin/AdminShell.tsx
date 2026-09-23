@@ -38,7 +38,7 @@ function IconeMenu() {
 }
 
 export function AdminShell() {
-  const { theme: t, rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount, dataSource, dataLoading } = useSite()
+  const { rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount, dataSource, dataLoading } = useSite()
   const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -185,9 +185,9 @@ export function AdminShell() {
   })()
   const toggleExpanded = menuEstMobile() ? mobileNav : !editorHidesNav && !rail
   const toggleIcon = (() => {
-    if (menuEstMobile()) return mobileNav ? Icon.x(20, t.heading) : <IconeMenu />
+    if (menuEstMobile()) return mobileNav ? Icon.x(20, 'var(--admin-rail-fg)') : <IconeMenu />
     if (editorHidesNav) return <IconeMenu />
-    return rail ? Icon.chevronRight(20, t.heading) : Icon.chevronLeft(20, t.heading)
+    return rail ? Icon.chevronRight(20, 'var(--admin-rail-fg)') : Icon.chevronLeft(20, 'var(--admin-rail-fg)')
   })()
 
   const boutonMenu = (place: 'sidebar' | 'main') => (
@@ -287,13 +287,13 @@ export function AdminShell() {
                       fontWeight: 600,
                       background: isActive ? 'var(--admin-forest)' : 'transparent',
                       border: `1px solid ${isActive ? 'var(--admin-forest)' : 'transparent'}`,
-                      color: isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)',
+                      color: isActive ? 'var(--admin-rail-active-fg)' : 'var(--admin-rail-fg-muted)',
                     })}
                   >
                     {({ isActive }) => (
                       <>
                         <span aria-hidden="true" className="admin-nav-item-icon" style={{ opacity: isActive ? 1 : 0.85 }}>
-                          {Icon[icon](16, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
+                          {Icon[icon](16, isActive ? 'var(--admin-rail-active-fg)' : 'var(--admin-rail-fg-muted)')}
                         </span>
                         {!compact && <span className="admin-nav-item-label">{l}</span>}
                         {NOTIF[k] > 0 && (
@@ -332,7 +332,7 @@ export function AdminShell() {
             aria-label="Ouvrir les préférences de la console"
             className="admin-nav-foot-btn admin-nav-foot-settings"
           >
-            <span aria-hidden="true">{Icon.layout(16, 'var(--admin-on-ink)')}</span>
+            <span aria-hidden="true">{Icon.layout(16, 'var(--admin-rail-fg)')}</span>
             {!compact && <span>Préférences</span>}
           </Bouton>
           <Bouton
@@ -520,7 +520,7 @@ export function AdminShell() {
             <div className="admin-plus-sheet-head">
               <strong>Plus</strong>
               <button type="button" className="admin-plus-sheet-close" aria-label="Fermer" onClick={closePlus}>
-                <span aria-hidden="true">{Icon.x(18, 'var(--admin-on-ink)')}</span>
+                <span aria-hidden="true">{Icon.x(18, 'var(--admin-rail-fg)')}</span>
               </button>
             </div>
             <nav aria-label="Modules hors radio" className="admin-plus-sheet-list">
@@ -535,7 +535,7 @@ export function AdminShell() {
                     aria-label={label}
                     className={isActive ? 'is-active' : undefined}
                   >
-                    <span aria-hidden="true">{Icon[icon](18, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}</span>
+                    <span aria-hidden="true">{Icon[icon](18, isActive ? 'var(--admin-rail-active-fg)' : 'var(--admin-rail-fg-muted)')}</span>
                     <span>{label}</span>
                   </NavLink>
                 )
@@ -566,7 +566,7 @@ export function AdminShell() {
                 {({ isActive }) => (
                   <>
                     <span className="admin-bottom-icon" aria-hidden="true">
-                      {Icon[icon](18, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
+                      {Icon[icon](18, isActive ? 'var(--admin-forest)' : 'var(--admin-rail-fg-muted)')}
                       {count > 0 && (
                         <span className="admin-bottom-badge">{count > 9 ? '9+' : count}</span>
                       )}
@@ -587,7 +587,7 @@ export function AdminShell() {
               onClick={() => (plusOpen ? closePlus() : openPlus())}
             >
               <span className="admin-bottom-icon" aria-hidden="true">
-                {Icon.more(18, plusHighlighted || plusOpen ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
+                {Icon.more(18, plusHighlighted || plusOpen ? 'var(--admin-forest)' : 'var(--admin-rail-fg-muted)')}
                 {plusHighlighted && !plusOpen && <span className="admin-bottom-dot" />}
               </span>
               <span className="admin-bottom-label">Plus</span>
