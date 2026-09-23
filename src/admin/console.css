@@ -7243,9 +7243,30 @@ html:has([data-admin-shell][data-console-theme="nuit"]) #root {
   background: #121a14;
 }
 
+/*
+  Topbar modules : pas de fond --admin-surface en nuit.
+  Ce fond créait un bandeau artefact (couture visuelle) au-dessus du
+  PageHeader / eyebrow « Greatlife / Administration », sans chevauchement
+  géométrique (topbar static, gap ~12px) mais avec contraste écrasé.
+  Aligner sur le mode clair : transparent sur --admin-paper + filet seul.
+*/
 [data-admin-shell][data-console-theme="nuit"] .admin-topbar {
-  background: color-mix(in srgb, var(--admin-surface) 92%, transparent);
+  background: transparent;
   border-bottom-color: var(--admin-line);
+}
+
+/* Eyebrow + fil d’Ariane : ≥ ~4.5:1 sur papier nuit (ink ~72 %). */
+[data-admin-shell][data-console-theme="nuit"] .admin-wf-eyebrow,
+[data-admin-shell][data-console-theme="nuit"] .admin-topbar-crumb {
+  color: color-mix(in srgb, var(--admin-ink) 72%, transparent);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-topbar-crumb strong {
+  color: var(--admin-ink);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-topbar-account-copy small {
+  color: color-mix(in srgb, var(--admin-ink) 65%, transparent);
 }
 
 [data-admin-shell][data-console-theme="nuit"] .admin-wf-panel,
