@@ -25,7 +25,14 @@ import {
   sanitizeInlineHtml,
   type MarkupProfile,
 } from '@/cms/renderer/inline-html'
-import { Bouton, ESPACE, anneauFocus } from './chrome'
+import {
+  Bouton,
+  ESPACE,
+  anneauFocus,
+  ADMIN_CORAL,
+  ADMIN_INK,
+  ADMIN_MUTED,
+} from './chrome'
 import { ColorControl } from './ColorPicker'
 import { insertNode, wrapSelection, type CibleApercu } from './inplace-dom'
 
@@ -304,7 +311,7 @@ export function TextToolbox({
     <div style={{ marginBottom: 14 }}>
       <FieldLabel htmlFor={id}>{label}{required ? ' *' : ''}</FieldLabel>
       {localeHint && (
-        <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>{localeHint}</div>
+        <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>{localeHint}</div>
       )}
       <div
         role="toolbar"
@@ -313,28 +320,28 @@ export function TextToolbox({
         style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE, marginBottom: 6 }}
       >
         <Outil label="Gras" disabled={disabled} onClick={() => appliquerCourt('strong')}>
-          {Icon.bold(16, t.heading)}
+          {Icon.bold(16, ADMIN_INK)}
         </Outil>
         <Outil label="Italique" disabled={disabled} onClick={() => appliquerCourt('em')}>
-          {Icon.italic(16, t.heading)}
+          {Icon.italic(16, ADMIN_INK)}
         </Outil>
         {mode === 'rich' && (
           <Outil label="Souligné" disabled={disabled} onClick={() => appliquerCourt('u')}>
-            {Icon.underline(16, t.heading)}
+            {Icon.underline(16, ADMIN_INK)}
           </Outil>
         )}
         {mode === 'rich' && (
           <Outil label="Liste à puces" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperListe(h, 'ul'))}>
-            {Icon.list(16, t.heading)}
+            {Icon.list(16, ADMIN_INK)}
           </Outil>
         )}
         {mode === 'rich' && (
           <Outil label="Liste numérotée" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperListe(h, 'ol'))}>
-            {Icon.listOrdered(16, t.heading)}
+            {Icon.listOrdered(16, ADMIN_INK)}
           </Outil>
         )}
         <Outil label="Lien" actif={lienOuvert} disabled={disabled} controls={`${id}-lien-panneau`} expanded={lienOuvert} onClick={() => { setErreurLien(null); setLienOuvert((o) => !o) }}>
-          {Icon.link(16, t.heading)}
+          {Icon.link(16, ADMIN_INK)}
         </Outil>
         {(mode === 'rich' || onSlotColorChange) && (
           <Outil
@@ -345,7 +352,7 @@ export function TextToolbox({
             expanded={panneau === 'fg'}
             onClick={() => setPanneau((p) => (p === 'fg' ? null : 'fg'))}
           >
-            {Icon.palette(16, t.heading)}
+            {Icon.palette(16, ADMIN_INK)}
           </Outil>
         )}
         {mode === 'rich' && (
@@ -357,24 +364,24 @@ export function TextToolbox({
             expanded={panneau === 'hl'}
             onClick={() => setPanneau((p) => (p === 'hl' ? null : 'hl'))}
           >
-            {Icon.highlight(16, t.heading)}
+            {Icon.highlight(16, ADMIN_INK)}
           </Outil>
         )}
         {mode === 'rich' && (
           <>
             <Outil label="Aligner à gauche" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperAlignement(h, 'left'))}>
-              {Icon.alignLeft(16, t.heading)}
+              {Icon.alignLeft(16, ADMIN_INK)}
             </Outil>
             <Outil label="Aligner au centre" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperAlignement(h, 'center'))}>
-              {Icon.alignCenter(16, t.heading)}
+              {Icon.alignCenter(16, ADMIN_INK)}
             </Outil>
           </>
         )}
         <Outil label="Annuler" disabled={disabled || past.length === 0} onClick={annuler}>
-          {Icon.undo(16, t.heading)}
+          {Icon.undo(16, ADMIN_INK)}
         </Outil>
         <Outil label="Rétablir" disabled={disabled || future.length === 0} onClick={retablir}>
-          {Icon.redo(16, t.heading)}
+          {Icon.redo(16, ADMIN_INK)}
         </Outil>
         {mode === 'rich' && (
           <Bouton
@@ -404,7 +411,7 @@ export function TextToolbox({
             <Bouton genre="silencieux" onClick={() => setLienOuvert(false)}>Fermer</Bouton>
           </div>
           {erreurLien && (
-            <div role="alert" style={{ fontSize: 12, color: t.accent, marginTop: 4 }}>{erreurLien}</div>
+            <div role="alert" style={{ fontSize: 12, color: ADMIN_CORAL, marginTop: 4 }}>{erreurLien}</div>
           )}
         </div>
       )}
@@ -412,7 +419,7 @@ export function TextToolbox({
         <div id={`${id}-plus`} role="region" aria-label="Outils supplémentaires" style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: ESPACE }}>
           <div role="group" aria-label="Citation et taille" style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE }}>
             <Outil label="Citation" onClick={() => appliquerHtmlSelection(envelopperCitation)}>
-              {Icon.quote(16, t.heading)}
+              {Icon.quote(16, ADMIN_INK)}
             </Outil>
             <Outil label="Un peu plus grand" onClick={() => appliquerHtmlSelection((h) => envelopperTaille(h, 'large'))}>
               <span style={{ fontSize: 14, fontWeight: 700 }} aria-hidden="true">A+</span>
@@ -425,10 +432,10 @@ export function TextToolbox({
               onChange(retirerFormat(richRef.current?.innerHTML ?? value))
               if (richRef.current) richRef.current.innerHTML = retirerFormat(richRef.current.innerHTML)
             }}>
-              {Icon.eraser(16, t.heading)}
+              {Icon.eraser(16, ADMIN_INK)}
             </Outil>
           </div>
-          <p style={{ fontSize: 12, color: t.muted, margin: 0, lineHeight: 1.4 }}>
+          <p style={{ fontSize: 12, color: ADMIN_MUTED, margin: 0, lineHeight: 1.4 }}>
             Taille, citation et nettoyage. Couleur et surbrillance sont dans la barre du haut.
           </p>
         </div>
@@ -548,9 +555,9 @@ export function TextToolbox({
         />
       )}
       {disabled && (
-        <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>Ce texte est bloqué avec son groupe.</div>
+        <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>Ce texte est bloqué avec son groupe.</div>
       )}
-      <div style={{ fontSize: 12, color: t.muted, marginTop: 4, lineHeight: 1.4 }}>{aide}</div>
+      <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4, lineHeight: 1.4 }}>{aide}</div>
     </div>
   )
 }

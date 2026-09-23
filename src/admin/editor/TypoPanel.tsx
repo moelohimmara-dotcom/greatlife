@@ -17,7 +17,17 @@ import {
   type TypoReglages,
 } from '@/cms/model/sections/typo'
 import { SETTING_KEYS, fetchSetting, saveSetting, registerRestaurantDraftFlush } from '@/cms/repository/settings'
-import { Bouton, CLASSE_CARTE, ESPACE, HAUTEUR, RAYON } from './chrome'
+import {
+  Bouton,
+  CLASSE_CARTE,
+  ESPACE,
+  HAUTEUR,
+  RAYON,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
+  ADMIN_SURFACE,
+} from './chrome'
 
 const PHRASE_TITRE = 'Le fast-food sans complexe'
 const PHRASE_TEXTE = 'Réservez une table'
@@ -117,7 +127,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
 
   return (
     <div style={vars}>
-      <p style={{ fontSize: 13, color: t.muted, margin: `0 0 ${ESPACE * 2}px`, lineHeight: 1.45 }}>
+      <p style={{ fontSize: 13, color: ADMIN_MUTED, margin: `0 0 ${ESPACE * 2}px`, lineHeight: 1.45 }}>
         Ensemble pose les titres et les textes ensemble. À la carte, vous composez les deux.
       </p>
 
@@ -173,11 +183,11 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
                   minHeight: 44,
                   padding: '14px 14px 14px 16px',
                   textAlign: 'left',
-                  border: `1px solid ${t.shadow}`,
+                  border: `1px solid ${ADMIN_LINE}`,
                   borderRadius: RAYON,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  color: t.text,
+                  color: ADMIN_INK,
                 }}
               >
                 <div aria-hidden="true" style={{ fontFamily: lot.heading, fontSize: 28, fontWeight: 700, lineHeight: 1, color: t.heading, letterSpacing: '-0.03em' }}>
@@ -261,8 +271,8 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
           marginTop: 20,
           padding: 20,
           borderRadius: RAYON,
-          background: t.surface,
-          border: `1px solid ${t.shadow}`,
+          background: ADMIN_SURFACE,
+          border: `1px solid ${ADMIN_LINE}`,
         }}
       >
         <div
@@ -270,7 +280,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
             fontFamily: 'var(--font-heading, var(--f-heading))',
             fontWeight: 'var(--font-heading-weight, 700)' as unknown as number,
             fontSize: `calc(30px * var(--font-scale, 1))`,
-            color: t.heading,
+            color: ADMIN_INK,
             letterSpacing: '-0.03em',
             lineHeight: 1.1,
           }}
@@ -281,7 +291,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
           style={{
             fontFamily: 'var(--font-body, var(--f-body))',
             fontSize: `calc(15px * var(--font-scale, 1))`,
-            color: t.muted,
+            color: ADMIN_MUTED,
             marginTop: 8,
             lineHeight: 1.5,
           }}
@@ -290,7 +300,7 @@ export function TypoPanel({ onLotApplique }: TypoPanelProps) {
         </div>
       </div>
 
-      <p role="status" style={{ fontSize: 12, color: t.muted, margin: '10px 0 0', minHeight: 18 }}>
+      <p role="status" style={{ fontSize: 12, color: ADMIN_MUTED, margin: '10px 0 0', minHeight: 18 }}>
         {statut === 'saving' ? 'Enregistrement…' : statut === 'saved' ? 'Typo appliquée au site.' : statut === 'error' ? 'L’enregistrement n’a pas abouti. Réessayez.' : ''}
       </p>
     </div>

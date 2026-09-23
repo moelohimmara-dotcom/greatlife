@@ -29,7 +29,6 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { createPortal } from 'react-dom'
-import { useSite } from '@/contexts/SiteContext'
 import { Icon, iconByName } from '@/lib/icons'
 import { defaultVariant, getSectionDefinition } from '@/cms/model/sections/schemas'
 import type { PageSection, SectionType } from '@/cms/model/section'
@@ -43,6 +42,13 @@ import {
   styleCarteTiroir,
   styleEnteteTiroir,
   styleLibelleNature,
+  ADMIN_ACTIVE_BG,
+  ADMIN_CORAL,
+  ADMIN_FOREST,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
+  ADMIN_SURFACE,
 } from './chrome'
 import { PageLayoutPicker } from './PageLayoutPicker'
 import { libelleStructureBloc, rangsParType } from './structure-labels'
@@ -117,7 +123,6 @@ export function SectionList({
   onLayoutChange,
   layoutDisabled,
 }: SectionListProps) {
-  const { theme: t } = useSite()
   const baseId = useId()
 
   const sensors = useSensors(
@@ -204,7 +209,7 @@ export function SectionList({
 
       {/* Nature 2 — Blocs de contenu, par famille métier */}
       <div role="group" aria-label="Blocs de contenu" className="admin-block-tree-blocs">
-        <div className="admin-editor-nature-label" style={styleLibelleNature(t)}>Blocs</div>
+        <div className="admin-editor-nature-label" style={styleLibelleNature()}>Blocs</div>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={items} strategy={verticalListSortingStrategy}>
@@ -220,7 +225,7 @@ export function SectionList({
                   role="group"
                   aria-label={`${groupe.label}, ${compte}`}
                   className={`${CLASSE_CARTE} admin-block-family`}
-                  style={styleCarteTiroir(t)}
+                  style={styleCarteTiroir()}
                 >
                   <Bouton
                     etendu
@@ -241,18 +246,18 @@ export function SectionList({
                         transition: 'transform 0.15s ease',
                       }}
                     >
-                      {Icon.chevronDown(16, t.muted)}
+                      {Icon.chevronDown(16, ADMIN_MUTED)}
                     </span>
                     <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
-                      {iconeFamille(16, t.heading)}
+                      {iconeFamille(16, ADMIN_INK)}
                     </span>
                     <span aria-hidden="true" style={{
-                      flex: 1, minWidth: 0, textAlign: 'left', fontSize: 13, fontWeight: 700, color: t.heading,
+                      flex: 1, minWidth: 0, textAlign: 'left', fontSize: 13, fontWeight: 700, color: ADMIN_INK,
                       whiteSpace: 'nowrap',
                     }}>
                       {groupe.label}
                       {n > 1 && (
-                        <span style={{ fontWeight: 500, color: t.muted, marginLeft: 8 }}>{compte}</span>
+                        <span style={{ fontWeight: 500, color: ADMIN_MUTED, marginLeft: 8 }}>{compte}</span>
                       )}
                     </span>
                   </Bouton>
@@ -295,13 +300,13 @@ export function SectionList({
         </DndContext>
 
         {groupes.length === 0 && (
-          <p style={{ margin: '0 0 8px', fontSize: 13, lineHeight: 1.45, color: t.muted }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13, lineHeight: 1.45, color: ADMIN_MUTED }}>
             Aucun bloc sur cette page pour l’instant.
           </p>
         )}
 
         <Bouton etendu onClick={onAdd} className="admin-block-add" style={{ marginTop: 4, justifyContent: 'center' }}>
-          <span aria-hidden="true">{Icon.plus(16, t.primary)}</span>
+          <span aria-hidden="true">{Icon.plus(16, ADMIN_FOREST)}</span>
           Ajouter un bloc
         </Bouton>
       </div>
@@ -354,7 +359,6 @@ function SortableItem({
   onMoveUp,
   onMoveDown,
 }: SortableItemProps) {
-  const { theme: t } = useSite()
   const menuId = useId()
   const menuRef = useRef<HTMLDivElement>(null)
   const moreRef = useRef<HTMLButtonElement>(null)
@@ -383,7 +387,7 @@ function SortableItem({
   const libelle = libelleStructureBloc(section, typeLabel, locale, typeRang, typeTotal)
   const iconeNom = TYPE_ICONE[section.type] ?? 'type'
   const icone = iconByName(iconeNom) ?? Icon.type
-  const couleurIcone = isSelected ? t.primary : t.muted
+  const couleurIcone = isSelected ? ADMIN_FOREST : ADMIN_MUTED
   /* Sous-lignes (Titre, etc.) seulement si le bloc est visible — pas sous un masqué. */
   const montrerSous = isSelected && section.visible
   const labelCourt = libelle.primary
@@ -439,7 +443,7 @@ function SortableItem({
           width: '100%',
           marginTop: 4,
           borderRadius: RAYON,
-          border: `1px solid ${t.shadow}`,
+          border: `1px solid ${ADMIN_LINE}`,
           padding: 4,
         }}
       >
@@ -453,7 +457,7 @@ function SortableItem({
             {...attributes}
             {...listeners}
           >
-            {Icon.grip(16, t.muted)}
+            {Icon.grip(16, ADMIN_MUTED)}
           </Bouton>
 
           <Bouton
@@ -481,7 +485,7 @@ function SortableItem({
                   title={libelle.primary}
                   style={{
                     flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600,
-                    color: isSelected ? t.heading : t.text,
+                    color: ADMIN_INK,
                     overflow: 'hidden', textAlign: 'left', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}
                 >
@@ -491,8 +495,8 @@ function SortableItem({
                   <span
                     aria-hidden="true"
                     style={{
-                      flexShrink: 0, fontSize: 11, fontWeight: 700, color: t.muted,
-                      background: `${t.shadow}`,
+                      flexShrink: 0, fontSize: 11, fontWeight: 700, color: ADMIN_MUTED,
+                      background: `${ADMIN_LINE}`,
                       borderRadius: 6, padding: '1px 6px', lineHeight: 1.3,
                     }}
                   >
@@ -504,7 +508,7 @@ function SortableItem({
                 <span
                   aria-hidden="true"
                   style={{
-                    fontSize: 11, fontWeight: 500, color: t.muted,
+                    fontSize: 11, fontWeight: 500, color: ADMIN_MUTED,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
                   }}
                 >
@@ -526,7 +530,7 @@ function SortableItem({
             }}
             style={{ flexShrink: 0 }}
           >
-            {section.visible ? Icon.eye(16, t.muted) : Icon.eyeOff(16, t.accent)}
+            {section.visible ? Icon.eye(16, ADMIN_MUTED) : Icon.eyeOff(16, ADMIN_CORAL)}
           </Bouton>
 
           <Bouton
@@ -545,7 +549,7 @@ function SortableItem({
             }}
             style={{ flexShrink: 0 }}
           >
-            {Icon.more(16, t.muted)}
+            {Icon.more(16, ADMIN_MUTED)}
           </Bouton>
         </div>
         {montrerSous && (
@@ -577,8 +581,8 @@ function SortableItem({
             gap: 4,
             padding: 6,
             borderRadius: RAYON,
-            border: `1px solid ${t.shadow}`,
-            background: t.surface,
+            border: `1px solid ${ADMIN_LINE}`,
+            background: ADMIN_SURFACE,
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           }}
         >
@@ -609,7 +613,7 @@ function SortableItem({
             aria-label={`Dupliquer ${labelCourt}`}
             onClick={(e) => { e.stopPropagation(); onDuplicate(); fermerMenu() }}
           >
-            {Icon.copy(16, t.muted)} Dupliquer
+            {Icon.copy(16, ADMIN_MUTED)} Dupliquer
           </Bouton>
           {confirming ? (
             <>
@@ -628,7 +632,7 @@ function SortableItem({
               aria-label={`Supprimer ${labelCourt}`}
               onClick={(e) => { e.stopPropagation(); setConfirming(true) }}
             >
-              {Icon.trash(16, t.accent)} Supprimer
+              {Icon.trash(16, ADMIN_CORAL)} Supprimer
             </Bouton>
           )}
         </div>,
@@ -700,7 +704,6 @@ function SousEmplacements({
   onSelectGroup?: (groupId: string) => void
   locale?: Locale
 }) {
-  const { theme: t } = useSite()
   const def = getSectionDefinition(section.type)
   if (!def) return null
   const champs = def.fields.filter((f) => champStructureVisible(f, section.variant, section.type))
@@ -723,11 +726,11 @@ function SousEmplacements({
             justifyContent: 'flex-start',
             fontSize: 12,
             fontWeight: 600,
-            color: t.text,
-            background: selectedGroupId === g.id ? `${t.primary}14` : 'transparent',
+            color: ADMIN_INK,
+            background: selectedGroupId === g.id ? ADMIN_ACTIVE_BG : 'transparent',
           }}
         >
-          {g.lock === 'group' ? Icon.lock(14, t.text) : Icon.group(14, t.text)}
+          {g.lock === 'group' ? Icon.lock(14, ADMIN_INK) : Icon.group(14, ADMIN_INK)}
           {g.label}
         </Bouton>
       ))}
@@ -753,14 +756,14 @@ function SousEmplacements({
                 justifyContent: 'flex-start',
                 fontSize: 12,
                 fontWeight: 500,
-                color: t.text,
-                background: selectedSlots.includes(f.name) ? `${t.primary}14` : 'transparent',
+                color: ADMIN_INK,
+                background: selectedSlots.includes(f.name) ? ADMIN_ACTIVE_BG : 'transparent',
                 whiteSpace: 'normal',
                 overflow: 'visible',
                 textAlign: 'left',
               }}
             >
-              {f.type === 'list' ? Icon.list(14, t.text) : f.type === 'group' ? Icon.group(14, t.text) : null}
+              {f.type === 'list' ? Icon.list(14, ADMIN_INK) : f.type === 'group' ? Icon.group(14, ADMIN_INK) : null}
               {libelle}
             </Bouton>
             {items && items.length > 0 && selectedSlots.includes(f.name) && (
@@ -778,7 +781,7 @@ function SousEmplacements({
                       style={{
                         fontSize: 11,
                         fontWeight: 500,
-                        color: t.muted,
+                        color: ADMIN_MUTED,
                         padding: '4px 8px',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',

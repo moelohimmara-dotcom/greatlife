@@ -24,10 +24,23 @@ export const CLASSE_BOUTON = 'admin-btn'
 /** Carte / tiroir : hover crème via CSS, pas un stroke. */
 export const CLASSE_CARTE = 'admin-carte'
 
+/** Jetons chrome atelier — jamais les couleurs du thème site public. */
+export const ADMIN_INK = 'var(--admin-ink)'
+export const ADMIN_MUTED = 'var(--admin-muted)'
+export const ADMIN_SURFACE = 'var(--admin-surface)'
+export const ADMIN_PAPER_MUTED = 'var(--admin-paper-muted)'
+export const ADMIN_LINE = 'var(--admin-line)'
+export const ADMIN_FOREST = 'var(--admin-forest)'
+export const ADMIN_CORAL = 'var(--admin-coral)'
+export const ADMIN_SAFFRON = 'var(--admin-saffron)'
+/** Fond sélection / tuile active (disposition, gabarit). */
+export const ADMIN_ACTIVE_BG = 'color-mix(in srgb, var(--admin-forest) 14%, transparent)'
+export const ADMIN_ACTIVE_BG_SOFT = 'color-mix(in srgb, var(--admin-forest) 6%, transparent)'
+
 export type GenreBouton = 'primaire' | 'secondaire' | 'actif' | 'danger' | 'silencieux' | 'nav'
 
 /** Conservé pour les champs : le dessin est CSS (`.admin-focus:focus-visible`). */
-export function anneauFocus(_t: ThemePalette) {
+export function anneauFocus(_t?: ThemePalette) {
   return { className: 'admin-focus' }
 }
 
@@ -35,7 +48,7 @@ export function titreColonne(_t?: ThemePalette): CSSProperties {
   return {
     fontSize: 13,
     fontWeight: 700,
-    color: 'var(--admin-ink)',
+    color: ADMIN_INK,
     marginBottom: ESPACE,
     letterSpacing: 0,
     textTransform: 'none',
@@ -47,7 +60,7 @@ export function styleLibelleNature(_t?: ThemePalette): CSSProperties {
   return {
     fontSize: 12,
     fontWeight: 700,
-    color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)',
+    color: 'var(--admin-muted)',
     marginBottom: ESPACE,
     letterSpacing: '0.02em',
   }
@@ -112,7 +125,7 @@ export function styleBouton(t: ThemePalette, opts: {
     secondaire: 'var(--admin-ink)',
     actif: 'var(--admin-forest)',
     danger: 'var(--admin-coral)',
-    silencieux: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)',
+    silencieux: 'var(--admin-muted)',
     nav: 'var(--admin-ink)',
   }
   const bords: Record<GenreBouton, string> = {
@@ -248,11 +261,11 @@ export function TiroirInspecteur({
             transition: 'transform 0.15s ease',
           }}
         >
-          {Icon.chevronDown(16, 'var(--admin-ink-soft)')}
+          {Icon.chevronDown(16, ADMIN_MUTED)}
         </span>
         {renduIcone && (
           <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
-            {renduIcone(16, 'var(--admin-ink)')}
+            {renduIcone(16, ADMIN_INK)}
           </span>
         )}
         <span
@@ -263,7 +276,7 @@ export function TiroirInspecteur({
             textAlign: 'left',
             fontSize: 13,
             fontWeight: 700,
-            color: 'var(--admin-ink)',
+            color: ADMIN_INK,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -272,7 +285,7 @@ export function TiroirInspecteur({
           {titre}
         </span>
         {compte !== undefined && (
-          <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', flexShrink: 0 }}>
+          <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-muted)', flexShrink: 0 }}>
             {compte}
           </span>
         )}

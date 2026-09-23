@@ -31,7 +31,19 @@ import {
   type FieldDef,
 } from '@/cms/model/sections/fields'
 import { dispositionBannierePourMiseEnPage, type PageLayout } from '@/cms/model/page-layout'
-import { Bouton, ESPACE, TiroirInspecteur, anneauFocus } from './chrome'
+import {
+  Bouton,
+  ESPACE,
+  TiroirInspecteur,
+  anneauFocus,
+  ADMIN_ACTIVE_BG,
+  ADMIN_ACTIVE_BG_SOFT,
+  ADMIN_CORAL,
+  ADMIN_FOREST,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
+} from './chrome'
 import { TextToolbox } from './TextToolbox'
 import { ColorControl } from './ColorPicker'
 import { sanitiserHex } from '@/cms/model/sections/couleur'
@@ -323,7 +335,7 @@ export function PropertyPanel({
                   : 'Cliquez ici puis deux textes dans l’aperçu (Ctrl+G)'}
               onClick={appliquerGrouper}
             >
-              {Icon.group(16, t.heading)} Grouper
+              {Icon.group(16, ADMIN_INK)} Grouper
             </Bouton>
             {meta.groups.length > 0 && (
               <>
@@ -344,7 +356,7 @@ export function PropertyPanel({
                     if (selection) onSelectionChange?.({ ...selection, groupId: null })
                   }}
                 >
-                  {Icon.ungroup(16, t.heading)} Dégrouper
+                  {Icon.ungroup(16, ADMIN_INK)} Dégrouper
                 </Bouton>
                 <Bouton
                   genre="silencieux"
@@ -358,12 +370,12 @@ export function PropertyPanel({
                     onUpdate(lockGroup(content, groupeActif.id, 'group'))
                   }}
                 >
-                  {Icon.lock(16, t.heading)} Bloquer
+                  {Icon.lock(16, ADMIN_INK)} Bloquer
                 </Bouton>
               </>
             )}
           </div>
-          <p role="status" style={{ fontSize: 12, color: avisOutil ? t.accent : t.muted, margin: '0 0 8px', lineHeight: 1.4 }}>
+          <p role="status" style={{ fontSize: 12, color: avisOutil ? ADMIN_CORAL : ADMIN_MUTED, margin: '0 0 8px', lineHeight: 1.4 }}>
             {avisOutil
               ?? (groupMode
                 ? 'Cliquez deux textes dans l’aperçu.'
@@ -379,7 +391,7 @@ export function PropertyPanel({
                 style={inputStyle(t)}
                 {...anneauFocus(t)}
               />
-              <p style={{ fontSize: 12, color: t.muted, margin: '8px 0 0', lineHeight: 1.4 }}>
+              <p style={{ fontSize: 12, color: ADMIN_MUTED, margin: '8px 0 0', lineHeight: 1.4 }}>
                 {groupeActif.lock === 'group'
                   ? 'Groupe bloqué : les textes restent ensemble. Débloquez pour dégrouper.'
                   : 'Les textes de ce groupe restent ensemble dans ce bloc.'}
@@ -391,12 +403,12 @@ export function PropertyPanel({
                   aria-label="Débloquer le groupe"
                   onClick={() => onUpdate(unlock(content, groupeActif.id))}
                 >
-                  {Icon.unlock(16, t.heading)} Débloquer
+                  {Icon.unlock(16, ADMIN_INK)} Débloquer
                 </Bouton>
               )}
             </>
           ) : panneauGroupe ? (
-            <p style={{ fontSize: 13, color: t.muted, margin: 0, lineHeight: 1.4 }}>
+            <p style={{ fontSize: 13, color: ADMIN_MUTED, margin: 0, lineHeight: 1.4 }}>
               Plusieurs textes sont sélectionnés. Cliquez Grouper pour les garder ensemble.
             </p>
           ) : null}
@@ -419,11 +431,11 @@ export function PropertyPanel({
                 <GhostButton
                   key={v.id}
                   disabled={interdit}
-                  color={actif ? t.primary : t.text}
+                  color={actif ? ADMIN_FOREST : ADMIN_INK}
                   aria-pressed={actif}
                   title={interdit ? 'Cette mise en page affiche la bannière en plein écran. Pour Image + texte, choisissez Colonne unique.' : undefined}
                   onClick={() => { if (!interdit) onVariantChange(v.id) }}
-                  style={actif ? { background: `${t.primary}14`, borderColor: t.primary } : undefined}
+                  style={actif ? { background: ADMIN_ACTIVE_BG, borderColor: ADMIN_FOREST } : undefined}
                 >
                   {v.label}
                 </GhostButton>
@@ -431,7 +443,7 @@ export function PropertyPanel({
             })}
           </div>
           {banniereImposee && (
-            <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '8px 0 0' }}>
+            <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '8px 0 0' }}>
               Cette mise en page affiche la bannière en plein écran. Vous pouvez garder Vidéo. Pour Image + texte ou Centré, choisissez Colonne unique.
             </p>
           )}
@@ -605,7 +617,7 @@ function TextField({ field, value, locale, onChange, idPrefix, locked, profile, 
     return (
       <div style={{ marginBottom: 14 }}>
         <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
-        <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+        <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
           {hint}
         </div>
         <input
@@ -616,7 +628,7 @@ function TextField({ field, value, locale, onChange, idPrefix, locked, profile, 
           style={inputStyle(t)}
           {...anneauFocus(t)}
         />
-        {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+        {field.help && <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
       </div>
     )
   }
@@ -626,7 +638,7 @@ function TextField({ field, value, locale, onChange, idPrefix, locked, profile, 
     <div style={{ marginBottom: 14 }}>
       <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
       <input id={inputId} value={typeof resolved === 'string' ? resolved : ''} onChange={(e) => onChange(e.target.value)} style={inputStyle(t)} {...anneauFocus(t)} />
-      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
@@ -660,7 +672,7 @@ function MultilineField({ field, value, locale, onChange, idPrefix, locked, prof
     return (
       <div style={{ marginBottom: 14 }}>
         <FieldLabel htmlFor={inputId}>{field.label}{field.required ? ' *' : ''}</FieldLabel>
-        <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+        <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
           {hint}
         </div>
         <textarea
@@ -718,12 +730,12 @@ function NumberField({ field, value, onChange, idPrefix }: { field: FieldDef; va
       <FieldLabel htmlFor={inputId}>{field.label}</FieldLabel>
       {vide && facultatif ? (
         <div>
-          <p style={{ fontSize: 13, color: t.muted, margin: '0 0 8px', lineHeight: 1.4 }}>
+          <p style={{ fontSize: 13, color: ADMIN_MUTED, margin: '0 0 8px', lineHeight: 1.4 }}>
             {field.unit === 'plats' || field.unit === 'articles'
               ? `Tous les ${field.unit} sont affichés.`
               : 'Aucune limite : tout est affiché.'}
           </p>
-          <GhostButton color={t.primary} onClick={() => ecrire(clampFieldNumber(field, field.max ? Math.min(12, field.max) : 12))}>
+          <GhostButton color={ADMIN_FOREST} onClick={() => ecrire(clampFieldNumber(field, field.max ? Math.min(12, field.max) : 12))}>
             Limiter
           </GhostButton>
         </div>
@@ -786,21 +798,21 @@ function NumberField({ field, value, onChange, idPrefix }: { field: FieldDef; va
               style={{ ...inputStyle(t), flex: 1 }}
               {...anneauFocus(t)}
             />
-            {field.unit && <span style={{ fontSize: 13, color: t.muted, flexShrink: 0 }}>{field.unit}</span>}
+            {field.unit && <span style={{ fontSize: 13, color: ADMIN_MUTED, flexShrink: 0 }}>{field.unit}</span>}
           </div>
           {facultatif && !vide && (
-            <GhostButton color={t.muted} onClick={() => ecrire(null)} style={{ marginTop: 8 }}>
+            <GhostButton color={ADMIN_MUTED} onClick={() => ecrire(null)} style={{ marginTop: 8 }}>
               Tout afficher
             </GhostButton>
           )}
         </>
       )}
       {messageBorne && (
-        <div id={`${inputId}-erreur`} role="status" style={{ fontSize: 12, color: t.accent, marginTop: 4 }}>
+        <div id={`${inputId}-erreur`} role="status" style={{ fontSize: 12, color: ADMIN_CORAL, marginTop: 4 }}>
           {messageBorne}
         </div>
       )}
-      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
@@ -828,10 +840,10 @@ function SelectField({ field, value, onChange, idPrefix }: { field: FieldDef; va
             return (
               <GhostButton
                 key={o.value}
-                color={actif ? t.primary : t.text}
+                color={actif ? ADMIN_FOREST : ADMIN_INK}
                 aria-pressed={actif}
                 onClick={() => onChange(o.value)}
-                style={actif ? { background: `${t.primary}14`, borderColor: t.primary } : undefined}
+                style={actif ? { background: ADMIN_ACTIVE_BG, borderColor: ADMIN_FOREST } : undefined}
               >
                 {o.label}
               </GhostButton>
@@ -847,13 +859,12 @@ function SelectField({ field, value, onChange, idPrefix }: { field: FieldDef; va
           ))}
         </select>
       )}
-      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
 
 function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string }) {
-  const { theme: t } = useSite()
   const items = Array.isArray(value) ? value : []
 
   const addItem = () => {
@@ -920,10 +931,10 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
     <div style={{ marginBottom: 14 }}>
       <FieldLabel>
         {field.label}
-        {field.maxItems && <span style={{ fontWeight: 400, color: t.muted }}> ({items.length}/{field.maxItems})</span>}
+        {field.maxItems && <span style={{ fontWeight: 400, color: ADMIN_MUTED }}> ({items.length}/{field.maxItems})</span>}
       </FieldLabel>
       {items.length > 1 && (
-        <p style={{ fontSize: 12, color: t.muted, margin: '0 0 8px', lineHeight: 1.4 }}>
+        <p style={{ fontSize: 12, color: ADMIN_MUTED, margin: '0 0 8px', lineHeight: 1.4 }}>
           Réordonnez les éléments avec Monter / Descendre.
         </p>
       )}
@@ -932,10 +943,10 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
         {items.map((item, i) => (
           <div key={i} style={{
             padding: '10px 12px', borderRadius: 10,
-            border: `1px solid ${t.shadow}`, background: `${t.primary}03`,
+            border: `1px solid ${ADMIN_LINE}`, background: ADMIN_ACTIVE_BG_SOFT,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: t.heading, minWidth: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: ADMIN_INK, minWidth: 0 }}>
                 {libelleLigne(i)}
               </span>
               <div role="group" aria-label={`Ordre — ${libelleLigne(i)}`} style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -947,7 +958,7 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
                   title="Monter"
                   onClick={() => moveItem(i, i - 1)}
                 >
-                  {Icon.chevronUp(16, t.muted)}
+                  {Icon.chevronUp(16, ADMIN_MUTED)}
                 </Bouton>
                 <Bouton
                   carre
@@ -957,10 +968,10 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
                   title="Descendre"
                   onClick={() => moveItem(i, i + 1)}
                 >
-                  {Icon.chevronDown(16, t.muted)}
+                  {Icon.chevronDown(16, ADMIN_MUTED)}
                 </Bouton>
                 <Bouton carre genre="danger" aria-label={`Retirer ${libelleLigne(i)}`} onClick={() => removeItem(i)}>
-                  {Icon.trash(16, t.accent)}
+                  {Icon.trash(16, ADMIN_CORAL)}
                 </Bouton>
               </div>
             </div>
@@ -1015,19 +1026,18 @@ function ListField({ field, value, locale, onChange, idPrefix }: { field: FieldD
       </div>
 
       {(!field.maxItems || items.length < field.maxItems) && (
-        <GhostButton color={t.primary} onClick={addItem} style={{ marginTop: 8 }}>
-          {Icon.plus(16, t.primary)} Ajouter
+        <GhostButton color={ADMIN_FOREST} onClick={addItem} style={{ marginTop: 8 }}>
+          {Icon.plus(16, ADMIN_FOREST)} Ajouter
         </GhostButton>
       )}
       {/* L'aide n'est répétée dans aucun élément : elle ne s'affiche ici que si
           la liste est vide, sinon elle apparaîtrait une fois par élément. */}
-      {field.help && items.length === 0 && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && items.length === 0 && <div style={{ fontSize: 11, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
 
 function GroupField({ field, value, locale, onChange, idPrefix, locked }: { field: FieldDef; value: unknown; locale: Locale; onChange: (v: unknown) => void; idPrefix?: string; locked?: boolean }) {
-  const { theme: t } = useSite()
   const obj = (typeof value === 'object' && value !== null && !Array.isArray(value)) ? value as Record<string, unknown> : {}
 
   const updateSubField = (name: string, val: unknown) => {
@@ -1035,7 +1045,7 @@ function GroupField({ field, value, locale, onChange, idPrefix, locked }: { fiel
   }
 
   return (
-    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: `1px solid ${t.shadow}`, background: `${t.primary}03` }}>
+    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: `1px solid ${ADMIN_LINE}`, background: ADMIN_ACTIVE_BG_SOFT }}>
       <FieldLabel>{field.label}</FieldLabel>
       {field.itemFields?.filter((sub) => !champEstAltImage(sub, field.itemFields ?? [])).map((sub) => (
         <FieldEditor
@@ -1050,7 +1060,7 @@ function GroupField({ field, value, locale, onChange, idPrefix, locked }: { fiel
           onAltChange={sub.type === 'image' ? (v) => updateSubField(nomChampAltImage(sub.name), v) : undefined}
         />
       ))}
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && <div style={{ fontSize: 11, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
@@ -1087,7 +1097,7 @@ function VideoField({ field, value, onChange, idPrefix }: { field: FieldDef; val
         placeholder="https://… ou fichier déjà téléversé"
         {...anneauFocus(t)}
       />
-      {field.help && <div style={{ fontSize: 11, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && <div style={{ fontSize: 11, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
     </div>
   )
 }
@@ -1166,7 +1176,7 @@ function ImageField({ field, value, locale, onChange, idPrefix, altValue, onAltC
         placeholder="Ou coller l’adresse d’une photo…"
         {...anneauFocus(t)}
       />
-      {field.help && <div style={{ fontSize: 12, color: t.muted, marginTop: 4 }}>{field.help}</div>}
+      {field.help && <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
       {onAltChange && (
         <div style={{ marginTop: 10 }}>
           <FieldLabel htmlFor={altId}>Texte alternatif</FieldLabel>
@@ -1179,7 +1189,7 @@ function ImageField({ field, value, locale, onChange, idPrefix, altValue, onAltC
             placeholder="Décrivez la photo pour les non-voyants"
             {...anneauFocus(t)}
           />
-          <div id={`${altId}-aide`} role={photoSansAlt ? 'status' : undefined} style={{ fontSize: 12, color: photoSansAlt ? t.accent : t.muted, marginTop: 4, lineHeight: 1.4 }}>
+          <div id={`${altId}-aide`} role={photoSansAlt ? 'status' : undefined} style={{ fontSize: 12, color: photoSansAlt ? ADMIN_CORAL : ADMIN_MUTED, marginTop: 4, lineHeight: 1.4 }}>
             Décrivez la photo pour les non-voyants
           </div>
         </div>

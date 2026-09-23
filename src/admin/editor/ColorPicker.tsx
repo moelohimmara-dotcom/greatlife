@@ -12,7 +12,23 @@ import {
   pastillesDepuisTheme,
   sanitiserHex,
 } from '@/cms/model/sections/couleur'
-import { Bouton, CIBLE, CLASSE_BOUTON, ESPACE, HAUTEUR, HAUTEUR_ETAT, RAYON, anneauFocus } from './chrome'
+import {
+  Bouton,
+  CIBLE,
+  CLASSE_BOUTON,
+  ESPACE,
+  HAUTEUR,
+  HAUTEUR_ETAT,
+  RAYON,
+  anneauFocus,
+  ADMIN_CORAL,
+  ADMIN_FOREST,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
+  ADMIN_PAPER_MUTED,
+  ADMIN_SURFACE,
+} from './chrome'
 
 export interface ColorPickerProps {
   id?: string
@@ -111,8 +127,8 @@ function Pastille({
       <span aria-hidden="true" style={disqueStyle({
         fill,
         encre,
-        bord: dashed ? t.primary : t.shadow,
-        surface: t.surface,
+        bord: dashed ? ADMIN_FOREST : ADMIN_LINE,
+        surface: ADMIN_SURFACE,
         selected,
         dashed,
       })}>
@@ -123,7 +139,6 @@ function Pastille({
 }
 
 function AlerteContraste({ id, visible }: { id: string; visible: boolean }) {
-  const { theme: t } = useSite()
   if (!visible) return null
   return (
     <p
@@ -132,7 +147,7 @@ function AlerteContraste({ id, visible }: { id: string; visible: boolean }) {
       style={{
         fontSize: 12,
         fontWeight: 600,
-        color: t.accent,
+        color: ADMIN_CORAL,
         margin: 0,
         lineHeight: 1.4,
         display: 'flex',
@@ -146,7 +161,7 @@ function AlerteContraste({ id, visible }: { id: string; visible: boolean }) {
           width: 8,
           height: 8,
           borderRadius: 99,
-          background: t.accent,
+          background: ADMIN_CORAL,
           marginTop: 4,
           flexShrink: 0,
         }}
@@ -208,12 +223,12 @@ function SaisiePerso({
       style={{
         flex: 1,
         minHeight: CIBLE,
-        background: t.surfaceAlt,
-        border: `1px solid ${alerte ? t.accent : t.shadow}`,
+        background: ADMIN_PAPER_MUTED,
+        border: `1px solid ${alerte ? ADMIN_CORAL : ADMIN_LINE}`,
         borderRadius: RAYON,
         padding: '0 12px',
         fontSize: 14,
-        color: t.text,
+        color: ADMIN_INK,
         fontFamily: 'inherit',
         boxSizing: 'border-box',
         letterSpacing: '0.04em',
@@ -285,8 +300,8 @@ function NuancierPerso({
           ...disqueStyle({
             fill: actuel,
             encre,
-            bord: t.shadow,
-            surface: t.surface,
+            bord: ADMIN_LINE,
+            surface: ADMIN_SURFACE,
             selected,
           }),
           background: `conic-gradient(from 180deg, ${t.primary}, ${t.accent}, ${t.gold}, ${t.primary})`,
@@ -340,11 +355,11 @@ export function ColorPicker({ id, label, value, onChange, against, help, sansLib
               borderRadius: 99,
               flexShrink: 0,
               background: actuel,
-              border: `1px solid ${t.shadow}`,
-              boxShadow: `inset 0 0 0 1px ${t.surface}`,
+              border: `1px solid ${ADMIN_LINE}`,
+              boxShadow: `inset 0 0 0 1px ${ADMIN_SURFACE}`,
             }}
           />
-          <span style={{ fontSize: 13, fontWeight: 600, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: ADMIN_INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={label}>
             {label}
           </span>
         </div>
@@ -365,7 +380,7 @@ export function ColorPicker({ id, label, value, onChange, against, help, sansLib
             borderRadius: 99,
             flexShrink: 0,
             background: actuel,
-            border: `1px solid ${t.shadow}`,
+            border: `1px solid ${ADMIN_LINE}`,
           }}
         />
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
@@ -411,7 +426,7 @@ export function ColorPicker({ id, label, value, onChange, against, help, sansLib
         </div>
       )}
 
-      {help && <p style={{ fontSize: 12, color: t.muted, margin: 0, lineHeight: 1.4 }}>{help}</p>}
+      {help && <p style={{ fontSize: 12, color: ADMIN_MUTED, margin: 0, lineHeight: 1.4 }}>{help}</p>}
       <AlerteContraste id={alerteId} visible={alerte} />
     </div>
   )
@@ -525,7 +540,7 @@ export function ColorControl({ label, value, inherited, onChange, against, help,
                 borderRadius: 99,
                 flexShrink: 0,
                 background: modePerso ? affiche : fillTheme,
-                border: modePerso ? `1px solid ${t.shadow}` : `2px dashed ${t.primary}`,
+                border: modePerso ? `1px solid ${ADMIN_LINE}` : `2px dashed ${ADMIN_FOREST}`,
                 boxSizing: 'border-box',
               }}
             />
@@ -536,7 +551,7 @@ export function ColorControl({ label, value, inherited, onChange, against, help,
           {ouvert && nuancier}
         </>
       )}
-      {help && <p style={{ fontSize: 12, color: t.muted, margin: '0 0 6px', lineHeight: 1.4 }}>{help}</p>}
+      {help && <p style={{ fontSize: 12, color: ADMIN_MUTED, margin: '0 0 6px', lineHeight: 1.4 }}>{help}</p>}
       <AlerteContraste id={alerteId} visible={alerte} />
     </div>
   )

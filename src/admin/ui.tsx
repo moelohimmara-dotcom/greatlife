@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
-import { Bouton, CIBLE, CLASSE_BOUTON, CLASSE_CARTE, ESPACE, HAUTEUR, HAUTEUR_ETAT, RAYON } from '@/admin/editor/chrome'
+import { ADMIN_FOREST, ADMIN_INK, ADMIN_MUTED, Bouton, CIBLE, CLASSE_BOUTON, CLASSE_CARTE, ESPACE, HAUTEUR, HAUTEUR_ETAT, RAYON } from '@/admin/editor/chrome'
 
 /** Forme unique des boutons console (rectangle arrondi, pas une pilule). */
 export { CIBLE, CLASSE_BOUTON, CLASSE_CARTE, ESPACE, HAUTEUR, HAUTEUR_ETAT, RAYON }
@@ -117,14 +117,14 @@ export function EmptyState({ icon, title, subtitle }: { icon?: React.ReactNode; 
     <div className="admin-empty" style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 16 }}>
       {icon && <div style={{ opacity: 0.5, marginBottom: 12 }}>{icon}</div>}
       <div style={{ fontWeight: 600, color: 'var(--admin-ink)', fontSize: 16, marginBottom: subtitle ? 4 : 0 }}>{title}</div>
-      {subtitle && <div style={{ color: 'color-mix(in srgb, var(--admin-ink) 58%, transparent)', fontSize: 13 }}>{subtitle}</div>}
+      {subtitle && <div style={{ color: 'var(--admin-muted)', fontSize: 13 }}>{subtitle}</div>}
     </div>
   )
 }
 
 export function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} style={{ fontSize: '12px', fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 62%, transparent)', marginBottom: 6, display: 'block', letterSpacing: '0.01em' }}>
+    <label htmlFor={htmlFor} style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-muted)', marginBottom: 6, display: 'block', letterSpacing: '0.01em' }}>
       {children}
     </label>
   )
@@ -187,8 +187,7 @@ export function PrimaryButton({ onClick, children, disabled, style, color, title
   busy?: boolean
   type?: 'button' | 'submit' | 'reset'
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'color' | 'style' | 'onClick' | 'disabled' | 'title' | 'type'>) {
-  const { theme: t } = useSite()
-  const c = color ?? t.primary
+  const c = color ?? ADMIN_FOREST
   return (
     <Bouton
       type={type}
@@ -212,7 +211,6 @@ export function PrimaryButton({ onClick, children, disabled, style, color, title
 }
 
 export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
-  const { theme: t } = useSite()
   const pages = Math.max(1, Math.ceil(total / pageSize))
   if (total <= pageSize) return null
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1
@@ -223,12 +221,12 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
     </Bouton>
   )
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, marginTop: 18, flexWrap: 'wrap', fontSize: 12, color: t.muted }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, marginTop: 18, flexWrap: 'wrap', fontSize: 12, color: ADMIN_MUTED }}>
       <span>{start}–{end} sur {total}</span>
       <div style={{ display: 'inline-flex', gap: ESPACE, alignItems: 'center' }}>
-        {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronLeft(13, page === 1 ? t.muted : t.primary)}</span>, page === 1, () => onPage(Math.max(1, page - 1)), 'Page précédente')}
-        <span style={{ fontSize: 12, fontWeight: 600, color: t.heading, padding: '0 6px' }}>{page} / {pages}</span>
-        {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronRight(13, page === pages ? t.muted : t.primary)}</span>, page === pages, () => onPage(Math.min(pages, page + 1)), 'Page suivante')}
+        {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronLeft(13, page === 1 ? ADMIN_MUTED : ADMIN_FOREST)}</span>, page === 1, () => onPage(Math.max(1, page - 1)), 'Page précédente')}
+        <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_INK, padding: '0 6px' }}>{page} / {pages}</span>
+        {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronRight(13, page === pages ? ADMIN_MUTED : ADMIN_FOREST)}</span>, page === pages, () => onPage(Math.min(pages, page + 1)), 'Page suivante')}
       </div>
     </div>
   )

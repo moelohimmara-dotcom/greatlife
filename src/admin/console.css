@@ -49,6 +49,8 @@
   --admin-saffron: #d89a2b;
   --admin-sage: #dce6d7;
   --admin-line: #ded8cb;
+  /* Texte secondaire chrome (labels, aides) — ≥ ~4.5:1 vs surface en Clair/Nuit. */
+  --admin-muted: color-mix(in srgb, var(--admin-ink) 72%, transparent);
   --admin-lime: #b5d334;
   --admin-tangerine: #f08a3c;
   --admin-aqua: #6cc9b2;
@@ -83,6 +85,11 @@ html:has([data-admin-shell]) #root {
   height: 100%;
   overflow: hidden;
   background: #fbf8f1;
+}
+
+[data-admin-shell] input::placeholder,
+[data-admin-shell] textarea::placeholder {
+  color: var(--admin-muted);
 }
 
 [data-admin-shell] .admin-skip-link {
@@ -765,7 +772,7 @@ html:has([data-admin-shell]) #root {
   font-family: var(--admin-font-mono);
   font-size: 11px;
   font-weight: 600;
-  color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
+  color: var(--admin-muted);
   margin-left: auto;
 }
 

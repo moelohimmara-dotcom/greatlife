@@ -77,6 +77,7 @@ Sous `[data-admin-shell]` :
 | Famille | Rôle |
 |---|---|
 | `--admin-ink` / `--admin-ink-soft` | Texte sur papier / surface |
+| `--admin-muted` | Texte secondaire (labels, aides) — dérivé de `--admin-ink` |
 | `--admin-paper` / `--admin-paper-muted` / `--admin-surface` / `--admin-line` | Fonds et bordures modules |
 | `--admin-bar-bg` / `--admin-bar-fg*` / `--admin-bar-border` | Chrome inversé (toolbar atelier, onglets actifs, panneau Publication) — **reste sombre en nuit** |
 | `--admin-rail-*` | Sidebar / bottom-nav |

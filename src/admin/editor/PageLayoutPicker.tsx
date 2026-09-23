@@ -15,8 +15,12 @@ import {
   RAYON,
   styleCarteTiroir,
   styleEnteteTiroir,
+  ADMIN_ACTIVE_BG,
+  ADMIN_FOREST,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
 } from './chrome'
-import { useSite } from '@/contexts/SiteContext'
 
 interface PageLayoutPickerProps {
   value?: PageLayout
@@ -33,7 +37,6 @@ export function PageLayoutPicker({
   chrome,
   onSelectChrome,
 }: PageLayoutPickerProps) {
-  const { theme: t } = useSite()
   const baseId = useId()
   const panelId = `${baseId}-mise`
   const gabaritId = `${baseId}-gabarit`
@@ -56,7 +59,7 @@ export function PageLayoutPicker({
       aria-label="Mise en page"
       className={`${CLASSE_CARTE} admin-layout-drawer`}
       style={{
-        ...styleCarteTiroir(t),
+        ...styleCarteTiroir(),
         ...(disabled ? { opacity: 0.55, pointerEvents: 'none' as const } : {}),
       }}
       aria-disabled={disabled || undefined}
@@ -71,12 +74,12 @@ export function PageLayoutPicker({
         onClick={() => setOuvert((o) => !o)}
         style={styleEnteteTiroir()}
       >
-        <ChevronOuvert ouvert={ouvert} couleur={t.muted} />
+        <ChevronOuvert ouvert={ouvert} couleur={ADMIN_MUTED} />
         <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
-          {Icon.layout(16, t.heading)}
+          {Icon.layout(16, ADMIN_INK)}
         </span>
         <span style={{
-          flex: 1, minWidth: 0, textAlign: 'left', fontSize: 13, fontWeight: 700, color: t.heading,
+          flex: 1, minWidth: 0, textAlign: 'left', fontSize: 13, fontWeight: 700, color: ADMIN_INK,
         }}>
           Mise en page
         </span>
@@ -100,7 +103,7 @@ export function PageLayoutPicker({
               className={CLASSE_CARTE}
               style={{
                 borderRadius: RAYON,
-                border: `1px solid ${t.shadow}`,
+                border: `1px solid ${ADMIN_LINE}`,
                 overflow: 'hidden',
               }}
             >
@@ -117,12 +120,12 @@ export function PageLayoutPicker({
                   borderRadius: 0,
                 }}
               >
-                <ChevronOuvert ouvert={gabaritOuvert} couleur={t.muted} />
+                <ChevronOuvert ouvert={gabaritOuvert} couleur={ADMIN_MUTED} />
                 <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
-                  {Icon.columns(16, t.muted)}
+                  {Icon.columns(16, ADMIN_MUTED)}
                 </span>
                 <span style={{
-                  flexShrink: 0, textAlign: 'left', fontSize: 13, fontWeight: 600, color: t.heading,
+                  flexShrink: 0, textAlign: 'left', fontSize: 13, fontWeight: 600, color: ADMIN_INK,
                 }}>
                   Gabarit
                 </span>
@@ -130,7 +133,7 @@ export function PageLayoutPicker({
                   title={libelleGabarit}
                   style={{
                     flex: 1, minWidth: 0, textAlign: 'right', fontSize: 12, fontWeight: 600,
-                    color: t.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    color: ADMIN_MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}
                 >
                   {libelleGabarit}
@@ -169,24 +172,24 @@ export function PageLayoutPicker({
                           flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start',
                           height: 'auto', minHeight: HAUTEUR, padding: '8px 12px',
                           whiteSpace: 'normal', overflow: 'hidden', textAlign: 'left',
-                          background: actif ? `${t.primary}14` : 'transparent',
+                          background: actif ? ADMIN_ACTIVE_BG : 'transparent',
                           border: 'none',
                           borderRadius: RAYON,
                         }}
                       >
-                        <span style={{ flex: 1, minWidth: 0, whiteSpace: 'normal', lineHeight: 1.3, color: t.heading }}>
+                        <span style={{ flex: 1, minWidth: 0, whiteSpace: 'normal', lineHeight: 1.3, color: ADMIN_INK }}>
                           {item.label}
                         </span>
                         {actif && (
                           <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
-                            {Icon.check(16, t.primary)}
+                            {Icon.check(16, ADMIN_FOREST)}
                           </span>
                         )}
                       </Bouton>
                     )
                   })}
                   <p style={{
-                    fontSize: 12, color: t.muted, lineHeight: 1.45, margin: 0,
+                    fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.45, margin: 0,
                     padding: '0 4px', overflow: 'visible', whiteSpace: 'normal',
                   }}>
                     L’aperçu change tout de suite. Le site public, seulement après « Mettre à jour le site ».
@@ -241,7 +244,6 @@ function RangChrome({
   selected: boolean
   onSelect: () => void
 }) {
-  const { theme: t } = useSite()
   const dessin = iconByName(icone) ?? Icon.layout
   return (
     <div
@@ -249,7 +251,7 @@ function RangChrome({
       className={selected ? `${CLASSE_CARTE} is-selected` : CLASSE_CARTE}
       style={{
         borderRadius: RAYON,
-        border: `1px solid ${t.shadow}`,
+        border: `1px solid ${ADMIN_LINE}`,
       }}
     >
       <Bouton
@@ -270,11 +272,11 @@ function RangChrome({
         }}
       >
         <span style={{ display: 'flex', flexShrink: 0 }} aria-hidden="true">
-          {dessin(16, selected ? t.primary : t.muted)}
+          {dessin(16, selected ? ADMIN_FOREST : ADMIN_MUTED)}
         </span>
         <span style={{
           flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600,
-          color: selected ? t.heading : t.text,
+          color: selected ? ADMIN_INK : ADMIN_INK,
           textAlign: 'left',
         }}>
           {label}

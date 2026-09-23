@@ -53,7 +53,21 @@ import {
   completerRestaurantDepuisPlat,
   type RestaurantSettings,
 } from '@/cms/repository/settings'
-import { Bouton, CLASSE_CARTE, CIBLE, RAYON, TiroirInspecteur, anneauFocus, titreColonne } from './chrome'
+import {
+  Bouton,
+  CLASSE_CARTE,
+  CIBLE,
+  RAYON,
+  TiroirInspecteur,
+  anneauFocus,
+  titreColonne,
+  ADMIN_CORAL,
+  ADMIN_FOREST,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
+  ADMIN_PAPER_MUTED,
+} from './chrome'
 import { ColorControl } from './ColorPicker'
 import { Switch } from '@/components/ui/switch'
 import { Icon } from '@/lib/icons'
@@ -116,38 +130,37 @@ function CarteLien({
   onDescendre: () => void
   onRetirer: () => void
 }) {
-  const { theme: t } = useSite()
   const [confirme, setConfirme] = useState(false)
   const actuel = typeof lien.label === 'string' ? { fr: lien.label, en: '' } : { fr: '', en: '', ...lien.label }
   return (
     <div
       className={CLASSE_CARTE}
-      style={{ padding: 10, borderRadius: RAYON, border: `1px solid ${t.shadow}`, marginBottom: 8 }}
+      style={{ padding: 10, borderRadius: RAYON, border: `1px solid ${ADMIN_LINE}`, marginBottom: 8 }}
     >
       <FieldLabel htmlFor={`lien-lib-${lien.id}`}>Lien</FieldLabel>
-      <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+      <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
         {locale === 'fr' ? 'Texte en français' : 'Text in English'}
       </div>
       <input
         id={`lien-lib-${lien.id}`}
         value={actuel[locale] ?? ''}
         onChange={(e) => onPatch({ label: { ...actuel, [locale]: e.target.value } })}
-        style={{ ...inputStyle(t), marginBottom: 8 }}
-        {...anneauFocus(t)}
+        style={{ ...inputStyle(), marginBottom: 8 }}
+        {...anneauFocus()}
       />
       <FieldLabel htmlFor={`lien-cib-${lien.id}`}>Page du site</FieldLabel>
       <select
         id={`lien-cib-${lien.id}`}
         value={normaliserCibleLien(lien.target)}
         onChange={(e) => onPatch({ target: e.target.value })}
-        style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 10 }}
-        {...anneauFocus(t)}
+        style={{ ...inputStyle(), cursor: 'pointer', marginBottom: 10 }}
+        {...anneauFocus()}
       >
         {optionsCible(lien.target).map((item) => (
           <option key={item.id} value={item.id}>{item.label}</option>
         ))}
       </select>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: t.text, minHeight: CIBLE, marginBottom: 8 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: ADMIN_INK, minHeight: CIBLE, marginBottom: 8 }}>
         <Switch
           id={`lien-vis-${lien.id}`}
           checked={lien.visible}
@@ -189,7 +202,7 @@ function CarteLien({
 }
 
 export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentationChange, onLiensChange, onOuvrirApparence }: ChromePanelProps) {
-  const { theme: t, content: platSite } = useSite()
+  const { content: platSite } = useSite()
   const platRef = useRef(platSite)
   platRef.current = platSite
   const [chargement, setChargement] = useState(true)
@@ -483,29 +496,29 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
   if (chargement || !restau) {
     return (
       <div style={{ padding: '0 12px 12px' }}>
-        <div style={titreColonne(t)}>{titre}</div>
-        <p style={{ fontSize: 14, color: t.muted }}>Chargement…</p>
+        <div style={titreColonne()}>{titre}</div>
+        <p style={{ fontSize: 14, color: ADMIN_MUTED }}>Chargement…</p>
       </div>
     )
   }
 
   const blocLiens = (
     <>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
         {chrome === 'header'
           ? 'Chaque ligne a un nom et une page du site. Le bouton Réserver reste à part.'
           : 'Liens affichés dans le pied de page.'}
       </p>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 10px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 10px' }}>
         {liensMenu.length}/{PLAFOND_LIENS_CHROME} liens
       </p>
       {liensMenu.length === 0 && (
-        <p style={{ fontSize: 13, color: t.muted, lineHeight: 1.45, margin: '0 0 10px' }}>
+        <p style={{ fontSize: 13, color: ADMIN_MUTED, lineHeight: 1.45, margin: '0 0 10px' }}>
           Aucun lien — Ajouter un lien
         </p>
       )}
       {navAjoutBloque && (
-        <p role="status" style={{ fontSize: 13, color: t.accent, margin: '0 0 10px' }}>
+        <p role="status" style={{ fontSize: 13, color: ADMIN_CORAL, margin: '0 0 10px' }}>
           L’ajout de liens n’est pas disponible pour ce menu.
         </p>
       )}
@@ -524,20 +537,20 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
       ))}
       {!navAjoutBloque && liensMenu.length < PLAFOND_LIENS_CHROME && (
         <Bouton etendu genre="secondaire" onClick={ajouterLien} style={{ marginTop: 4 }}>
-          {Icon.plus(16, t.primary)} Ajouter un lien
+          {Icon.plus(16, ADMIN_FOREST)} Ajouter un lien
         </Bouton>
       )}
     </>
   )
 
   const blocCta = chrome === 'header' && lienCta ? (
-    <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${t.shadow}` }}>
-      <p style={{ fontSize: 13, fontWeight: 700, color: t.heading, margin: '0 0 8px' }}>Bouton Réserver</p>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+    <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${ADMIN_LINE}` }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: ADMIN_INK, margin: '0 0 8px' }}>Bouton Réserver</p>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
         Ce bouton reste à droite du menu. Ce n’est pas un lien de plus dans la liste.
       </p>
       <FieldLabel htmlFor={`lien-lib-${lienCta.id}`}>Nom du bouton</FieldLabel>
-      <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+      <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
         {locale === 'fr' ? 'Texte en français' : 'Text in English'}
       </div>
       <input
@@ -547,16 +560,16 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
           const actuel = typeof lienCta.label === 'string' ? { fr: lienCta.label, en: '' } : { fr: '', en: '', ...lienCta.label }
           patchLien(lienCta.id, { label: { ...actuel, [locale]: e.target.value } })
         }}
-        style={{ ...inputStyle(t), marginBottom: 8 }}
-        {...anneauFocus(t)}
+        style={{ ...inputStyle(), marginBottom: 8 }}
+        {...anneauFocus()}
       />
       <FieldLabel htmlFor={`lien-cib-${lienCta.id}`}>Page du site</FieldLabel>
       <select
         id={`lien-cib-${lienCta.id}`}
         value={normaliserCibleLien(lienCta.target)}
         onChange={(e) => patchLien(lienCta.id, { target: e.target.value })}
-        style={{ ...inputStyle(t), cursor: 'pointer' }}
-        {...anneauFocus(t)}
+        style={{ ...inputStyle(), cursor: 'pointer' }}
+        {...anneauFocus()}
       >
         {optionsCible(lienCta.target).map((item) => (
           <option key={item.id} value={item.id}>{item.label}</option>
@@ -568,25 +581,25 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
   return (
     <div style={{ padding: '0 12px 12px' }}>
       <div style={{ marginBottom: 12 }}>
-        <div style={titreColonne(t)}>{titre}</div>
-        <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>{description}</div>
+        <div style={titreColonne()}>{titre}</div>
+        <div style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.5 }}>{description}</div>
         {onOuvrirApparence ? (
           <Bouton
             genre="silencieux"
             onClick={onOuvrirApparence}
-            style={{ marginTop: 8, padding: 0, height: 'auto', minHeight: 44, justifyContent: 'flex-start', color: t.primary }}
+            style={{ marginTop: 8, padding: 0, height: 'auto', minHeight: 44, justifyContent: 'flex-start', color: ADMIN_FOREST }}
           >
             Polices : Thème & ambiance
           </Bouton>
         ) : (
-          <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.45, margin: '8px 0 0' }}>
+          <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.45, margin: '8px 0 0' }}>
             Polices : Thème & ambiance
           </p>
         )}
-        <div role="status" style={{ fontSize: 12, color: t.muted, marginTop: 8 }}>
+        <div role="status" style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 8 }}>
           {statut === 'saving' ? 'Enregistrement…' : statut === 'saved' ? 'Enregistré' : ''}
         </div>
-        {erreur && <p role="alert" style={{ fontSize: 13, color: t.accent }}>{erreur}</p>}
+        {erreur && <p role="alert" style={{ fontSize: 13, color: ADMIN_CORAL }}>{erreur}</p>}
       </div>
 
       {chrome === 'header' ? (
@@ -594,23 +607,23 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
           <PresentationEntete presentation={presentation} onPatch={patchPres} />
           <TiroirInspecteur id="contenu-entete" titre="Contenu" icone="write" ouvertParDefaut>
             <FieldLabel htmlFor={`chrome-nom-${chrome}`}>Nom du restaurant</FieldLabel>
-            <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
               {locale === 'fr' ? 'Texte en français' : 'Text in English'}
             </div>
             <input
               id={`chrome-nom-${chrome}`}
               value={texteLocale(restau.name, locale)}
               onChange={(e) => setRestau({ ...restau, name: bilingue(restau.name, locale, e.target.value) })}
-              style={{ ...inputStyle(t), marginBottom: 14 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 14 }}
+              {...anneauFocus()}
             />
             <ChampLogo
               presentation={presentation}
               nom={texteLocale(restau.name, locale) || 'Greatlife'}
               onPatch={patchPres}
             />
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${t.shadow}` }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: t.heading, margin: '0 0 8px' }}>Liens du menu</p>
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${ADMIN_LINE}` }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: ADMIN_INK, margin: '0 0 8px' }}>Liens du menu</p>
               {blocLiens}
             </div>
             {blocCta}
@@ -618,7 +631,7 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
           <CouleursEntete presentation={presentation} onPatch={patchPres} />
           <TiroirInspecteur id="effets-entete" titre="Effets" icone="eye" ouvertParDefaut={false}>
             <EffetsEntete presentation={presentation} onPatch={patchPres} />
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${t.shadow}` }}>
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${ADMIN_LINE}` }}>
               <BarreAnnonce presentation={presentation} locale={locale} onPatch={patchPres} />
             </div>
           </TiroirInspecteur>
@@ -628,15 +641,15 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
           <PresentationPied presentation={presentation} onPatch={patchPres} />
           <TiroirInspecteur id="contenu-pied" titre="Contenu" icone="write" ouvertParDefaut>
             <FieldLabel htmlFor={`chrome-nom-${chrome}`}>Nom du restaurant</FieldLabel>
-            <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
               {locale === 'fr' ? 'Texte en français' : 'Text in English'}
             </div>
             <input
               id={`chrome-nom-${chrome}`}
               value={texteLocale(restau.name, locale)}
               onChange={(e) => setRestau({ ...restau, name: bilingue(restau.name, locale, e.target.value) })}
-              style={{ ...inputStyle(t), marginBottom: 14 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 14 }}
+              {...anneauFocus()}
             />
             <FieldLabel htmlFor="chrome-slogan">Phrase d’accroche</FieldLabel>
             <textarea
@@ -644,16 +657,16 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
               value={texteLocale(restau.slogan, locale)}
               onChange={(e) => setRestau({ ...restau, slogan: bilingue(restau.slogan, locale, e.target.value) })}
               rows={3}
-              style={{ ...inputStyle(t), resize: 'vertical', minHeight: 72, marginBottom: 14, fontSize: 13 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), resize: 'vertical', minHeight: 72, marginBottom: 14, fontSize: 13 }}
+              {...anneauFocus()}
             />
-            <div style={{ marginTop: 8, paddingTop: 12, borderTop: `1px solid ${t.shadow}` }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: t.heading, margin: '0 0 8px' }}>Liens</p>
+            <div style={{ marginTop: 8, paddingTop: 12, borderTop: `1px solid ${ADMIN_LINE}` }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: ADMIN_INK, margin: '0 0 8px' }}>Liens</p>
               {blocLiens}
             </div>
           </TiroirInspecteur>
           <TiroirInspecteur id="coordonnees-pied" titre="Coordonnées" icone="pin" ouvertParDefaut={false}>
-            <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+            <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
               Les mêmes que partout ailleurs sur le site.
             </p>
             <FieldLabel htmlFor="chrome-adresse">Adresse</FieldLabel>
@@ -661,57 +674,57 @@ export function ChromePanel({ chrome, locale, onRestaurantResolved, onPresentati
               id="chrome-adresse"
               value={texteLocale(restau.address, locale)}
               onChange={(e) => setRestau({ ...restau, address: bilingue(restau.address, locale, e.target.value) })}
-              style={{ ...inputStyle(t), marginBottom: 10 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 10 }}
+              {...anneauFocus()}
             />
             <FieldLabel htmlFor="chrome-horaires">Horaires</FieldLabel>
             <input
               id="chrome-horaires"
               value={texteLocale(restau.hours, locale)}
               onChange={(e) => setRestau({ ...restau, hours: bilingue(restau.hours, locale, e.target.value) })}
-              style={{ ...inputStyle(t), marginBottom: 10 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 10 }}
+              {...anneauFocus()}
             />
             <FieldLabel htmlFor="chrome-tel">Téléphone</FieldLabel>
             <input
               id="chrome-tel"
               value={restau.phone}
               onChange={(e) => setRestau({ ...restau, phone: e.target.value })}
-              style={{ ...inputStyle(t), marginBottom: 10 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 10 }}
+              {...anneauFocus()}
             />
             <FieldLabel htmlFor="chrome-mail">E-mail</FieldLabel>
             <input
               id="chrome-mail"
               value={restau.emailContact}
               onChange={(e) => setRestau({ ...restau, emailContact: e.target.value })}
-              style={{ ...inputStyle(t), marginBottom: 14 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 14 }}
+              {...anneauFocus()}
             />
-            <p style={{ fontSize: 13, fontWeight: 700, color: t.heading, margin: '0 0 8px' }}>Réseaux</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: ADMIN_INK, margin: '0 0 8px' }}>Réseaux</p>
             <FieldLabel htmlFor="chrome-fb">Facebook</FieldLabel>
             <input
               id="chrome-fb"
               value={restau.social.facebook}
               onChange={(e) => setRestau({ ...restau, social: { ...restau.social, facebook: e.target.value } })}
-              style={{ ...inputStyle(t), marginBottom: 10 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 10 }}
+              {...anneauFocus()}
             />
             <FieldLabel htmlFor="chrome-ig">Instagram</FieldLabel>
             <input
               id="chrome-ig"
               value={restau.social.instagram}
               onChange={(e) => setRestau({ ...restau, social: { ...restau.social, instagram: e.target.value } })}
-              style={{ ...inputStyle(t), marginBottom: 10 }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle(), marginBottom: 10 }}
+              {...anneauFocus()}
             />
             <FieldLabel htmlFor="chrome-wa">WhatsApp</FieldLabel>
             <input
               id="chrome-wa"
               value={restau.social.whatsapp}
               onChange={(e) => setRestau({ ...restau, social: { ...restau.social, whatsapp: e.target.value } })}
-              style={{ ...inputStyle(t) }}
-              {...anneauFocus(t)}
+              style={{ ...inputStyle() }}
+              {...anneauFocus()}
             />
           </TiroirInspecteur>
           <CouleursPied presentation={presentation} onPatch={patchPres} />
@@ -731,13 +744,12 @@ function PresentationEntete({
   presentation: ChromePresentation
   onPatch: (patch: ChromePresentation) => void
 }) {
-  const { theme: t } = useSite()
   const layout = presentation.header?.layout ?? 'logoLeft'
   const overlay = presentation.header?.overlay
 
   return (
     <TiroirInspecteur id="modele-entete" titre="Modèle" icone="columns" ouvertParDefaut>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
         Choisissez comment le nom et le menu se placent.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
@@ -754,12 +766,12 @@ function PresentationEntete({
             <MiniEntete modele={item.id} actif={layout === item.id} />
             <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
               <span>{item.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 500, color: t.muted }}>{item.help}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: ADMIN_MUTED }}>{item.help}</span>
             </span>
           </Bouton>
         ))}
       </div>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '12px 0 8px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '12px 0 8px' }}>
         Placement par rapport à la bannière. Sans choix, l’en-tête suit la mise en page de la page.
       </p>
       <div role="group" aria-label="Placement" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -794,7 +806,7 @@ function CouleursEntete({
 
   return (
     <TiroirInspecteur id="couleurs-entete" titre="Couleurs" icone="palette" ouvertParDefaut={false}>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
         Jeux tirés de l’apparence du site. Seuls les couples assez contrastés sont proposés.
       </p>
       <div role="listbox" aria-label="Couleurs de l’en-tête" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -869,12 +881,11 @@ function PresentationPied({
   presentation: ChromePresentation
   onPatch: (patch: ChromePresentation) => void
 }) {
-  const { theme: t } = useSite()
   const layout = presentation.footer?.layout ?? 'columns'
 
   return (
     <TiroirInspecteur id="modele-pied" titre="Modèle" icone="columns" ouvertParDefaut>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
         Colonnes, centré, ou un gros bandeau avec les réseaux.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -973,7 +984,7 @@ function LeviersCouleurEntete({
   const h = presentation.header
   return (
     <>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 10px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 10px' }}>
         Chaque élément peut suivre l’apparence, ou prendre une couleur à part.
       </p>
       <ColorControl
@@ -1027,7 +1038,7 @@ function LeviersCouleurPied({
   const f = presentation.footer
   return (
     <>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 10px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 10px' }}>
         Chaque élément peut suivre l’apparence, ou prendre une couleur à part.
       </p>
       <ColorControl
@@ -1070,12 +1081,11 @@ function LeviersCouleurPied({
 }
 
 function MiniEntete({ modele, actif }: { modele: 'logoLeft' | 'logoCenter' | 'compact'; actif: boolean }) {
-  const { theme: t } = useSite()
-  const barre = actif ? t.primary : t.muted
+  const barre = actif ? ADMIN_FOREST : ADMIN_MUTED
   return (
     <span aria-hidden="true" style={{
       width: 44, height: 28, borderRadius: 6, flexShrink: 0,
-      border: `1px solid ${t.shadow}`, background: t.surfaceAlt,
+      border: `1px solid ${ADMIN_LINE}`, background: ADMIN_PAPER_MUTED,
       display: 'flex', flexDirection: 'column', justifyContent: modele === 'logoCenter' ? 'space-between' : 'center',
       padding: modele === 'compact' ? '4px 5px' : '5px',
       boxSizing: 'border-box',
@@ -1104,14 +1114,14 @@ function ChampLogo({
   nom: string
   onPatch: (patch: ChromePresentation) => void
 }) {
-  const { theme: t, media } = useSite()
+  const { media } = useSite()
   const actuel = presentation.header?.logoUrl?.trim() ?? ''
   const taille = presentation.header?.logoSize ?? 'normal'
   const photos = media.filter((m) => m.url && (m.content_type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|svg)(\?|$)/i.test(m.url)))
   return (
     <>
       <FieldLabel htmlFor={photos.length > 0 ? 'chrome-logo-photo' : 'chrome-logo-url'}>Image du logo</FieldLabel>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>
         Sans image, le nom du restaurant s’affiche.
       </p>
       {photos.length > 0 && (
@@ -1119,8 +1129,8 @@ function ChampLogo({
           id="chrome-logo-photo"
           value={photos.some((m) => m.url === actuel) ? actuel : ''}
           onChange={(e) => { if (e.target.value) onPatch({ header: { logoUrl: e.target.value } }) }}
-          style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 8 }}
-          {...anneauFocus(t)}
+          style={{ ...inputStyle(), cursor: 'pointer', marginBottom: 8 }}
+          {...anneauFocus()}
         >
           <option value="">Choisir une photo déjà téléversée</option>
           {photos.map((m) => (
@@ -1133,9 +1143,9 @@ function ChampLogo({
           id="chrome-logo-url"
           value={actuel}
           onChange={(e) => onPatch({ header: { logoUrl: e.target.value } })}
-          style={{ ...inputStyle(t), marginBottom: 0, flex: 1 }}
+          style={{ ...inputStyle(), marginBottom: 0, flex: 1 }}
           placeholder="Ou coller l’adresse d’une image…"
-          {...anneauFocus(t)}
+          {...anneauFocus()}
         />
         {actuel ? (
           <Bouton
@@ -1145,7 +1155,7 @@ function ChampLogo({
             title="Retirer le logo"
             onClick={() => onPatch({ header: { logoUrl: '' } })}
           >
-            {Icon.trash(16, t.accent)}
+            {Icon.trash(16, ADMIN_CORAL)}
           </Bouton>
         ) : null}
       </div>
@@ -1156,7 +1166,7 @@ function ChampLogo({
           style={{ height: 40, width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block', marginBottom: 12 }}
         />
       ) : null}
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 8px' }}>Taille</p>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 8px' }}>Taille</p>
       <div role="group" aria-label="Taille du logo" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {LOGO_TAILLES.map((item) => (
           <Bouton
@@ -1189,35 +1199,35 @@ function BarreAnnonce({
   const teintes = couleursAnnonce(t, presentation)
   return (
     <>
-      <p style={{ fontSize: 13, fontWeight: 700, color: t.heading, margin: '0 0 8px' }}>Barre d’annonce</p>
-      <p style={{ fontSize: 12, color: t.muted, lineHeight: 1.4, margin: '0 0 10px' }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: ADMIN_INK, margin: '0 0 8px' }}>Barre d’annonce</p>
+      <p style={{ fontSize: 12, color: ADMIN_MUTED, lineHeight: 1.4, margin: '0 0 10px' }}>
         Bandeau optionnel au-dessus du menu. Un texte court, un lien vers une page du site.
       </p>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: t.text, marginBottom: 14, minHeight: CIBLE }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: ADMIN_INK, marginBottom: 14, minHeight: CIBLE }}>
         <Switch id="chrome-annonce-visible" checked={visible} onCheckedChange={(v) => onPatch({ header: { announcement: { visible: v } } })} aria-label="Afficher la barre" />
         Afficher la barre
       </label>
       {visible && (
         <>
           <FieldLabel htmlFor="chrome-annonce-texte">Texte</FieldLabel>
-          <div style={{ fontSize: 12, color: t.muted, marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: ADMIN_MUTED, marginBottom: 4 }}>
             {locale === 'fr' ? 'Texte en français' : 'Text in English'}
           </div>
           <input
             id="chrome-annonce-texte"
             value={message}
             onChange={(e) => onPatch({ header: { announcement: { message: bilingue(a?.message ?? { fr: '', en: '' }, locale, e.target.value) } } })}
-            style={{ ...inputStyle(t), marginBottom: 14 }}
+            style={{ ...inputStyle(), marginBottom: 14 }}
             placeholder="Ex. Livraison offerte ce week-end"
-            {...anneauFocus(t)}
+            {...anneauFocus()}
           />
           <FieldLabel htmlFor="chrome-annonce-lien">Lien</FieldLabel>
           <select
             id="chrome-annonce-lien"
             value={a?.link ?? ''}
             onChange={(e) => onPatch({ header: { announcement: { link: e.target.value as typeof ANNONCE_CIBLES[number]['id'] } } })}
-            style={{ ...inputStyle(t), cursor: 'pointer', marginBottom: 14 }}
-            {...anneauFocus(t)}
+            style={{ ...inputStyle(), cursor: 'pointer', marginBottom: 14 }}
+            {...anneauFocus()}
           >
             {ANNONCE_CIBLES.map((item) => (
               <option key={item.id || 'aucun'} value={item.id}>{item.label}</option>

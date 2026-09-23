@@ -6,11 +6,18 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { useSite } from '@/contexts/SiteContext'
 import { Icon, iconByName } from '@/lib/icons'
 import { SECTION_TYPES } from '@/cms/model/sections/schemas'
 import type { SectionType } from '@/cms/model/section'
-import { Bouton, ESPACE } from './chrome'
+import {
+  Bouton,
+  ESPACE,
+  ADMIN_FOREST,
+  ADMIN_INK,
+  ADMIN_LINE,
+  ADMIN_MUTED,
+  ADMIN_SURFACE,
+} from './chrome'
 import { GROUPES_PICKER, TYPE_ICONE } from './section-families'
 
 interface SectionTypePickerProps {
@@ -27,7 +34,6 @@ function normaliser(s: string): string {
 }
 
 export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps) {
-  const { theme: t } = useSite()
   const baseId = useId()
   const titreId = `${baseId}-titre`
   const descId = `${baseId}-desc`
@@ -112,17 +118,17 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
         aria-describedby={descId}
         className="admin-block-picker"
         style={{
-          background: t.surface,
-          boxShadow: `0 20px 60px ${t.shadowDeep}`,
-          color: t.text,
+          background: ADMIN_SURFACE,
+          boxShadow: `0 20px 60px ${'var(--admin-shadow)'}`,
+          color: ADMIN_INK,
         }}
       >
         <div className="admin-block-picker-head">
           <div className="admin-block-picker-titles">
-            <h3 id={titreId} style={{ fontFamily: 'var(--f-heading)', color: t.heading }}>
+            <h3 id={titreId} style={{ fontFamily: 'var(--f-heading)', color: ADMIN_INK }}>
               Ajouter un bloc
             </h3>
-            <p id={descId} style={{ color: t.muted }}>
+            <p id={descId} style={{ color: ADMIN_MUTED }}>
               Choisissez ce que vous voulez ajouter à la page. Vous pourrez le déplacer ensuite dans Structure.
             </p>
           </div>
@@ -130,8 +136,8 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
         </div>
 
         <label className="admin-block-picker-search" htmlFor={searchId}>
-          <span className="admin-block-picker-search-icon" aria-hidden="true" style={{ color: t.muted }}>
-            {Icon.search(16, t.muted)}
+          <span className="admin-block-picker-search-icon" aria-hidden="true" style={{ color: ADMIN_MUTED }}>
+            {Icon.search(16, ADMIN_MUTED)}
           </span>
           <input
             ref={searchRef}
@@ -141,13 +147,13 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
             onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher un bloc…"
             autoComplete="off"
-            style={{ color: t.text, borderColor: t.shadow }}
+            style={{ color: ADMIN_INK, borderColor: ADMIN_LINE }}
           />
         </label>
 
         <div className="admin-block-picker-body">
           {groupesVisibles.length === 0 ? (
-            <p className="admin-block-picker-empty" style={{ color: t.muted }} role="status">
+            <p className="admin-block-picker-empty" style={{ color: ADMIN_MUTED }} role="status">
               Aucun bloc ne correspond à « {q.trim()} ». Essayez « carte », « avis » ou « réservation ».
             </p>
           ) : (
@@ -160,8 +166,8 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
                   aria-labelledby={gid}
                 >
                   <header className="admin-block-picker-group-head">
-                    <h4 id={gid} style={{ color: t.heading }}>{groupe.label}</h4>
-                    <p style={{ color: t.muted }}>{groupe.hint}</p>
+                    <h4 id={gid} style={{ color: ADMIN_INK }}>{groupe.label}</h4>
+                    <p style={{ color: ADMIN_MUTED }}>{groupe.hint}</p>
                   </header>
                   <div className="admin-block-picker-grid">
                     {groupe.items.map((def) => {
@@ -185,14 +191,14 @@ export function SectionTypePicker({ onSelect, onClose }: SectionTypePickerProps)
                           }}
                         >
                           <span className="admin-block-picker-tile-title">
-                            <span aria-hidden="true" style={{ display: 'flex', color: t.primary }}>
-                              {render(16, t.primary)}
+                            <span aria-hidden="true" style={{ display: 'flex', color: ADMIN_FOREST }}>
+                              {render(16, ADMIN_FOREST)}
                             </span>
-                            <span style={{ color: t.heading }}>{def.label}</span>
+                            <span style={{ color: ADMIN_INK }}>{def.label}</span>
                           </span>
                           <span
                             className="admin-block-picker-tile-desc"
-                            style={{ color: t.muted }}
+                            style={{ color: ADMIN_MUTED }}
                           >
                             {def.description}
                           </span>
