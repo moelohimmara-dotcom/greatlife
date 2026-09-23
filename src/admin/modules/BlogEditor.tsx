@@ -109,7 +109,7 @@ export function BlogEditor() {
       />
       <div className="admin-wf-site-status" role="status">
         <div>
-          <span className="admin-wf-eyebrow">ESPACE ÉDITORIAL</span>
+          <span className="admin-wf-eyebrow">Espace éditorial</span>
           <strong>{publishedCount > 0 ? 'Blog en ligne' : 'Aucun article publié'}</strong>
           <small>
             {lastPublished

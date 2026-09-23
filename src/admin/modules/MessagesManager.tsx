@@ -218,8 +218,13 @@ export function MessagesManager() {
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" aria-label="Rechercher un message" style={{ ...inp, paddingLeft: 32, fontSize: 13, minHeight: 44 }} />
             <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} aria-hidden="true">{Icon.search(14, t.muted)}</span>
           </div>
-          {([['all', 'Toutes'], ['unhandled', 'Non traitées'], ['handled', 'Traitées']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
-            <button key={k} type="button" className="admin-filter-chip" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>{l}</button>
+          {([['all', 'Toutes'], ['unhandled', 'Non lus'], ['handled', 'Traités']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
+            <button key={k} type="button" className="admin-filter-chip" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>
+              {l}{' '}
+              <span style={{ opacity: 0.7 }}>
+                {k === 'all' ? messages.length : k === 'unhandled' ? messages.filter((m) => !m.handled).length : messages.filter((m) => m.handled).length}
+              </span>
+            </button>
           ))}
         </div>
         {selectedIds.size > 0 && (

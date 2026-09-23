@@ -113,12 +113,12 @@ export function SettingsEditor() {
 
   return (
     <div className="admin-page" style={{ maxWidth: 960 }}>
-      <PageHeader title="Réglages du restaurant" subtitle="Configurez les informations qui alimentent tout votre site."
+      <PageHeader title="Réglages globaux" subtitle="Les coordonnées du restaurant sont utilisées partout sur le site."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div className="admin-wf-site-status" role="status">
         <div>
-          <span className="admin-wf-eyebrow">VOTRE RESTAURANT</span>
+          <span className="admin-wf-eyebrow">Votre restaurant</span>
           <strong>{content.restaurantName || 'Sans nom'}</strong>
           <small>
             {essentialDone}/{essentials.length} informations essentielles
@@ -161,7 +161,7 @@ export function SettingsEditor() {
         <section id="reglages-identite" className="admin-wf-panel">
           <div className="admin-wf-panel-head">
             <div>
-              <span className="admin-wf-eyebrow">IDENTITÉ</span>
+              <span className="admin-wf-eyebrow">Identité</span>
               <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Présentez votre établissement</h2>
             </div>
             <span className="admin-chip">{[content.restaurantName, content.currency, content.phone].filter(s => Boolean(s?.trim())).length}/3</span>
@@ -177,7 +177,7 @@ export function SettingsEditor() {
         <section id="reglages-localisation" className="admin-wf-panel">
           <div className="admin-wf-panel-head">
             <div>
-              <span className="admin-wf-eyebrow">LOCALISATION</span>
+              <span className="admin-wf-eyebrow">Localisation</span>
               <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Adresse & horaires</h2>
             </div>
             <span className="admin-chip">{[content.address, content.hours].filter(s => Boolean(s?.trim())).length}/2</span>
@@ -190,7 +190,7 @@ export function SettingsEditor() {
         <section id="reglages-reseaux" className="admin-wf-panel">
           <div className="admin-wf-panel-head">
             <div>
-              <span className="admin-wf-eyebrow">RÉSEAUX</span>
+              <span className="admin-wf-eyebrow">Réseaux</span>
               <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Présence en ligne</h2>
             </div>
             <span className="admin-chip">{socialDone}/3</span>
@@ -204,7 +204,7 @@ export function SettingsEditor() {
         <section id="reglages-notifications" className="admin-wf-panel">
           <div className="admin-wf-panel-head">
             <div>
-              <span className="admin-wf-eyebrow">NOTIFICATIONS</span>
+              <span className="admin-wf-eyebrow">Notifications</span>
               <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Destinataires</h2>
             </div>
             <span className="admin-chip">{[content.emailContact, content.emailReservation].filter(s => Boolean(s?.trim())).length}/2</span>
@@ -221,7 +221,7 @@ export function SettingsEditor() {
         <section className="admin-wf-panel" style={{ gridColumn: '1 / -1' }}>
           <div className="admin-wf-panel-head">
             <div>
-              <span className="admin-wf-eyebrow">SAUVEGARDE</span>
+              <span className="admin-wf-eyebrow">Sauvegarde</span>
               <h2 className="admin-editor-col-title" style={{ margin: '4px 0 0' }}>Transfert de configuration</h2>
             </div>
           </div>

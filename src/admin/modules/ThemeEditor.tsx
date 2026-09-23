@@ -22,13 +22,13 @@ export function ThemeEditor() {
   return (
     <div className="admin-page" style={{ maxWidth: 960 }}>
       <PageHeader
-        title="Apparence"
-        subtitle="Couleurs et polices du site public. Les changements s’appliquent tout de suite à l’aperçu."
+        title="Thème & ambiance"
+        subtitle="Choisissez l’univers visuel et la typographie de votre site."
         actions={<><SaveBar status={saveStatus} error={saveErr} /><PrimaryButton onClick={save}>Enregistrer</PrimaryButton></>}
       />
       <div className="admin-wf-site-status" role="status">
         <div>
-          <span className="admin-wf-eyebrow">APPARENCE ACTIVE</span>
+          <span className="admin-wf-eyebrow">Apparence active</span>
           <strong>{activeTheme?.label ?? 'Palette'}</strong>
           <small>Polices : {activeLot.label} · {dataSource === 'supabase' ? 'Synchronisé' : 'Aperçu local'}</small>
         </div>

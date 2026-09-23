@@ -248,7 +248,7 @@ export function Dashboard() {
 
       <header className="admin-wf-header">
         <div>
-          <p className="admin-wf-eyebrow">GREATLIFE / ADMINISTRATION</p>
+          <p className="admin-wf-eyebrow">Greatlife / Administration</p>
           <h1 className="admin-page-title">Tableau de bord</h1>
           <p className="admin-page-sub">
             Bonjour{user?.name ? `, ${user.name}` : ''} — comprenez la situation et agissez tout de suite.

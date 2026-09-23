@@ -717,8 +717,8 @@
   color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 [data-admin-shell] .admin-wf-toolbar {
@@ -798,11 +798,11 @@
 
 [data-admin-shell] .admin-wf-attention-label {
   display: block;
-  color: var(--admin-coral);
+  color: var(--admin-saffron);
   font-size: 11px;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 [data-admin-shell] .admin-wf-attention h2 {
@@ -3681,5 +3681,60 @@
 
   [data-admin-shell] .admin-wf-resa-detail {
     order: -1;
+  }
+}
+
+/* Viewport de revue WIREFRAMES : 960×457 — densité élevée, pas de scroll X */
+@media (max-width: 960px) and (max-height: 520px) {
+  [data-admin-shell] .admin-main-pad:not(.admin-main-editor) {
+    padding: 12px 16px 20px;
+  }
+
+  [data-admin-shell] .admin-page-title {
+    font-size: 22px;
+  }
+
+  [data-admin-shell] .admin-wf-header {
+    margin-bottom: 10px;
+    gap: 10px;
+  }
+
+  [data-admin-shell] .admin-wf-attention {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  [data-admin-shell] .admin-wf-attention h2 {
+    font-size: 18px;
+  }
+
+  [data-admin-shell] .admin-wf-stats,
+  [data-admin-shell] .admin-wf-kpis,
+  [data-admin-shell] .admin-wf-resa-summary,
+  [data-admin-shell] .admin-wf-menu-summary {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  [data-admin-shell] .admin-wf-stat,
+  [data-admin-shell] .admin-wf-kpis > div,
+  [data-admin-shell] .admin-wf-resa-summary > div {
+    padding: 10px 12px;
+  }
+
+  [data-admin-shell] .admin-wf-grid {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  [data-admin-shell] .admin-wf-panel {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  [data-admin-shell] .admin-topbar {
+    min-height: 40px;
+    padding: 4px 0 8px;
+    margin-bottom: 8px;
   }
 }

@@ -164,7 +164,7 @@ export function AuditManager() {
           <aside className="admin-wf-resa-detail" aria-label="Détail de l’action">
             {selected ? (
               <>
-                <p className="admin-wf-eyebrow">DÉTAIL DE L’ACTION</p>
+                <p className="admin-wf-eyebrow">Détail de l’action</p>
                 <h2>{selected.action}</h2>
                 <span className="admin-chip is-live">{selected.target || '—'}</span>
                 <div className="admin-ops-meta" style={{ marginTop: 8 }}>
@@ -181,7 +181,7 @@ export function AuditManager() {
               </>
             ) : (
               <>
-                <p className="admin-wf-eyebrow">DÉTAIL DE L’ACTION</p>
+                <p className="admin-wf-eyebrow">Détail de l’action</p>
                 <h2>Sélectionnez une entrée</h2>
                 <p className="admin-page-sub" style={{ color: t.muted, margin: 0 }}>Cliquez une ligne du journal pour voir le détail.</p>
               </>

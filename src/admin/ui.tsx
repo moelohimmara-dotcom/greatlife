@@ -70,7 +70,7 @@ export function PageHeader({
   return (
     <div className="admin-wf-header">
       <div>
-        <p className="admin-wf-eyebrow">GREATLIFE / ADMINISTRATION</p>
+        <p className="admin-wf-eyebrow">Greatlife / Administration</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>
           <h1 className="admin-page-title" style={{ margin: 0, color: t.heading }}>
             {title}
