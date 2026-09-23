@@ -4405,11 +4405,134 @@
   width: 100%;
   min-width: 0;
   border: 0;
-  outline: 0;
+  outline: none;
   background: transparent;
   color: var(--admin-ink);
   font: inherit;
   font-size: 14px;
+}
+
+[data-admin-shell] .admin-wf-media-search:focus-within {
+  border-color: var(--admin-forest);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-forest) 22%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-guide {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-media-guide > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--admin-ink);
+  touch-action: manipulation;
+}
+
+[data-admin-shell] .admin-wf-media-guide > summary::-webkit-details-marker {
+  display: none;
+}
+
+[data-admin-shell] .admin-wf-media-guide > summary:focus-visible {
+  outline: 2px solid var(--admin-forest);
+  outline-offset: 2px;
+}
+
+[data-admin-shell] .admin-wf-media-guide[open] > summary {
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-media-guide ol {
+  margin: 0;
+  padding: 12px 18px 14px 32px;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--admin-ink) 72%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-guide ol strong {
+  color: var(--admin-ink);
+  font-weight: 650;
+}
+
+[data-admin-shell] .admin-wf-media-tip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--admin-radius-control);
+  border: 1px solid color-mix(in srgb, var(--admin-forest) 28%, var(--admin-line));
+  background: color-mix(in srgb, var(--admin-sage) 40%, var(--admin-paper));
+}
+
+[data-admin-shell] .admin-wf-media-tip strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--admin-forest);
+  margin-bottom: 4px;
+}
+
+[data-admin-shell] .admin-wf-media-tip p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--admin-ink) 75%, transparent);
+  max-width: 52ch;
+}
+
+[data-admin-shell] .admin-wf-media-tip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+[data-admin-shell] .admin-wf-media-empty {
+  padding: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-empty-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-confirm-del {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #dc2626 35%, var(--admin-line));
+  background: color-mix(in srgb, #dc2626 8%, var(--admin-paper));
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-media-drop.is-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 [data-admin-shell] .admin-wf-media-toolbar-actions {
@@ -4437,6 +4560,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-sizing: border-box;
+  min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--admin-line);
   border-radius: var(--admin-radius-control);
@@ -4446,6 +4571,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 
@@ -4480,7 +4606,9 @@
 }
 
 [data-admin-shell] .admin-wf-media-filters button {
-  padding: 7px 12px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--admin-line);
   border-radius: 99px;
   background: var(--admin-surface);
@@ -4489,6 +4617,15 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+[data-admin-shell] .admin-wf-media-filters button:focus-visible,
+[data-admin-shell] .admin-wf-media-folders > button:focus-visible,
+[data-admin-shell] .admin-wf-media-item:focus-visible,
+[data-admin-shell] .admin-wf-media-drop:focus-visible {
+  outline: 2px solid var(--admin-forest);
+  outline-offset: 2px;
 }
 
 [data-admin-shell] .admin-wf-media-filters button.is-active {
@@ -4702,6 +4839,16 @@
   font-weight: 600;
   color: var(--admin-ink);
   word-break: break-word;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+[data-admin-shell] .admin-wf-media-detail-title .admin-chip {
+  max-width: 42%;
+  flex-shrink: 0;
 }
 
 [data-admin-shell] .admin-wf-media-detail-title small {

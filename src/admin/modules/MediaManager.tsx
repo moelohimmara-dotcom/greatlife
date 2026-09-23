@@ -1,30 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
-import { PageHeader, PrimaryButton, GhostButton, inputStyle } from '@/admin/ui'
+import { PageHeader, PrimaryButton, GhostButton, inputStyle, EmptyState } from '@/admin/ui'
 import type { MenuItem } from '@/data/menu'
 import { uploadMedia, deleteMedia, updateMediaSlot } from '@/lib/repository'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { productPhotoSlotId } from '@/lib/productPhotoSlot'
 import { Icon } from '@/lib/icons'
-import { Bouton } from '@/admin/editor/chrome'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
+const GUIDE_DISMISS_KEY = 'glife.medias.guide-tip.dismissed'
+
 const SITE_MEDIA_SLOTS: ReadonlyArray<{ id: string; label: string; dims: string; folder: string }> = [
-  { id: 'hero', label: 'Hero principal', dims: '1920×1080', folder: 'hero' },
+  { id: 'hero', label: 'Bannière principale', dims: 'grande photo', folder: 'hero' },
   { id: 'hero-video', label: 'Vidéo de la bannière', dims: 'vidéo', folder: 'hero' },
-  { id: 'logo', label: 'Logo / favicon', dims: '512×512', folder: 'logo' },
-  { id: 'histoire', label: 'Fond section histoire', dims: '1600×900', folder: 'galerie' },
-  { id: 'equipe-1', label: 'Équipe — Membre 1', dims: '600×600', folder: 'equipe' },
-  { id: 'equipe-2', label: 'Équipe — Membre 2', dims: '600×600', folder: 'equipe' },
-  { id: 'equipe-3', label: 'Équipe — Membre 3', dims: '600×600', folder: 'equipe' },
-  { id: 'equipe-4', label: 'Équipe — Membre 4', dims: '600×600', folder: 'equipe' },
-  { id: 'general', label: 'Général / divers', dims: 'libre', folder: 'galerie' },
+  { id: 'logo', label: 'Logo', dims: 'carré', folder: 'logo' },
+  { id: 'histoire', label: 'Fond « Notre histoire »', dims: 'large', folder: 'galerie' },
+  { id: 'equipe-1', label: 'Équipe — Membre 1', dims: 'portrait', folder: 'equipe' },
+  { id: 'equipe-2', label: 'Équipe — Membre 2', dims: 'portrait', folder: 'equipe' },
+  { id: 'equipe-3', label: 'Équipe — Membre 3', dims: 'portrait', folder: 'equipe' },
+  { id: 'equipe-4', label: 'Équipe — Membre 4', dims: 'portrait', folder: 'equipe' },
+  { id: 'general', label: 'Réserve (pas encore placé)', dims: 'libre', folder: 'galerie' },
 ]
 
 const FOLDERS: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'all', label: 'Tous les médias' },
   { id: 'logo', label: 'Logo & identité' },
-  { id: 'hero', label: 'Hero' },
+  { id: 'hero', label: 'Bannière' },
   { id: 'carte', label: 'Carte du restaurant' },
   { id: 'galerie', label: 'Galerie' },
   { id: 'equipe', label: 'Équipe' },
@@ -39,7 +40,7 @@ export function mediaSlotChoices(menu: MenuItem[], existingSlots: string[]): Rea
     .map((item) => ({
       id: productPhotoSlotId(item.id),
       label: `Plat — ${item.name}`,
-      dims: '800×600',
+      dims: 'photo plat',
     }))
   const known = new Set([...SITE_MEDIA_SLOTS.map((s) => s.id), ...plats.map((s) => s.id)])
   const leftovers = [...new Set(existingSlots.filter((slot) => slot && !known.has(slot)))]
@@ -74,9 +75,9 @@ function usageLabel(slot: string, choices: ReadonlyArray<{ id: string; label: st
 
 function formatSize(n: number | null | undefined): string {
   if (!n) return '—'
-  if (n < 1024) return `${n} o`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} Ko`
-  return `${(n / (1024 * 1024)).toFixed(1)} Mo`
+  if (n < 1024) return `${n}\u00a0o`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)}\u00a0Ko`
+  return `${(n / (1024 * 1024)).toFixed(1)}\u00a0Mo`
 }
 
 function suggestedAlt(m: MediaSlot, choices: ReadonlyArray<{ id: string; label: string }>): string {
@@ -84,6 +85,41 @@ function suggestedAlt(m: MediaSlot, choices: ReadonlyArray<{ id: string; label: 
   if (m.slot === 'logo') return 'Logo Greatlife'
   if (m.slot === 'hero' || m.slot === 'hero-video') return 'Bannière du restaurant Greatlife'
   return `Image — ${slotLabel}`
+}
+
+function MediaGuide({ open, onOpenChange }: { open: boolean; onOpenChange: (next: boolean) => void }) {
+  return (
+    <details
+      className="admin-wf-media-guide"
+      open={open}
+      onToggle={(e) => {
+        const next = (e.currentTarget as HTMLDetailsElement).open
+        if (next !== open) onOpenChange(next)
+      }}
+    >
+      <summary>
+        <span aria-hidden="true">{Icon.eye(15)}</span>
+        Comment ça marche
+      </summary>
+      <ol>
+        <li>
+          <strong>Choisissez où afficher</strong>
+          {' '}l’image (bannière, plat, équipe…). C’est l’emplacement sur votre site.
+        </li>
+        <li>
+          <strong>Importez</strong>
+          {' '}en glissant un fichier ou via «{'\u00a0'}Importer des médias{'\u00a0'}».
+        </li>
+        <li>
+          <strong>Vérifiez le détail</strong>
+          {' '}à droite{'\u00a0'}: emplacement, puis Enregistrer si vous changez où ça apparaît.
+        </li>
+        <li>
+          Les <strong>dossiers</strong> (Bannière, Carte, Équipe…) regroupent automatiquement vos fichiers selon l’emplacement — ce ne sont pas des dossiers libres comme sur un ordinateur.
+        </li>
+      </ol>
+    </details>
+  )
 }
 
 export function MediaManager() {
@@ -94,6 +130,7 @@ export function MediaManager() {
   const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [query, setQuery] = useState('')
   const [folder, setFolder] = useState('all')
@@ -104,6 +141,14 @@ export function MediaManager() {
   const [editSlot, setEditSlot] = useState('')
   const [altDraft, setAltDraft] = useState('')
   const [captionDraft, setCaptionDraft] = useState('')
+  const [guideOpen, setGuideOpen] = useState(false)
+  const [tipVisible, setTipVisible] = useState(() => {
+    try {
+      return localStorage.getItem(GUIDE_DISMISS_KEY) !== '1'
+    } catch {
+      return true
+    }
+  })
   const fileRef = useRef<HTMLInputElement>(null)
 
   const isSupabase = dataSource === 'supabase'
@@ -134,6 +179,7 @@ export function MediaManager() {
       const hay = `${m.filename || ''} ${m.slot} ${labelForMediaSlot(m.slot, slotChoices)}`.toLowerCase()
       return hay.includes(q)
     })
+    /* « recent » conserve l’ordre fourni par le dépôt (déjà trié du plus récent). */
     rows = [...rows].sort((a, b) => {
       if (sortKey === 'name') return (a.filename || '').localeCompare(b.filename || '', 'fr')
       if (sortKey === 'size') return (b.size_bytes || 0) - (a.size_bytes || 0)
@@ -144,12 +190,15 @@ export function MediaManager() {
 
   const selected = (selectedId ? filtered.find((m) => m.id === selectedId) : null) ?? filtered[0] ?? null
   const totalBytes = dbAssets.reduce((n, m) => n + (m.size_bytes || 0), 0)
+  const hasActiveFilters = folder !== 'all' || filter !== 'Tous' || query.trim().length > 0
+  const libraryEmptyBecauseFilter = filtered.length === 0 && dbAssets.length > 0
 
   const selectAsset = (m: MediaSlot) => {
     setSelectedId(m.id ?? null)
     setEditSlot(m.slot || 'general')
     setAltDraft(suggestedAlt(m, slotChoices))
     setCaptionDraft('')
+    setConfirmDelete(false)
   }
 
   useEffect(() => {
@@ -157,7 +206,22 @@ export function MediaManager() {
     if (selectedId !== selected.id) setSelectedId(selected.id ?? null)
     setEditSlot(selected.slot || 'general')
     setAltDraft((prev) => (prev ? prev : suggestedAlt(selected, slotChoices)))
+    setConfirmDelete(false)
   }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dismissTip = () => {
+    setTipVisible(false)
+    try {
+      localStorage.setItem(GUIDE_DISMISS_KEY, '1')
+    } catch { /* ignore */ }
+  }
+
+  const resetFilters = () => {
+    setFolder('all')
+    setFilter('Tous')
+    setQuery('')
+    setSelectedId(null)
+  }
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return
@@ -197,6 +261,7 @@ export function MediaManager() {
     setRemovingId(m.id)
     const res = await deleteMedia(m.id, '')
     setRemovingId(null)
+    setConfirmDelete(false)
     if (res.ok) {
       setStatus({ kind: 'ok', msg: `${m.filename || 'Fichier'} supprimé.` })
       if (selectedId === m.id) setSelectedId(null)
@@ -218,7 +283,7 @@ export function MediaManager() {
     }
     setStatus({
       kind: 'ok',
-      msg: 'Emplacement enregistré. Le texte alternatif n’est pas encore stocké en base — il restera local à cette session.',
+      msg: 'Emplacement enregistré. Le texte alternatif n’est pas encore mémorisé — il reste pour cette session uniquement.',
     })
   }
 
@@ -236,16 +301,50 @@ export function MediaManager() {
     <div className="admin-page-wide">
       <PageHeader
         title="Médias"
-        subtitle="Organisez vos images, vidéos et documents au même endroit."
+        subtitle="Vos photos et vidéos, prêtes à placer sur le site."
         badge={<span className="admin-chip is-live">{dbAssets.length} fichier{dbAssets.length > 1 ? 's' : ''}</span>}
         actions={
-          <PrimaryButton disabled={!isSupabase || uploading} onClick={() => fileRef.current?.click()}>
-            {Icon.image(16)} Importer des médias
-          </PrimaryButton>
+          <>
+            <GhostButton
+              color={t.primary}
+              aria-expanded={guideOpen}
+              aria-controls="medias-guide"
+              onClick={() => setGuideOpen((v) => !v)}
+            >
+              {Icon.eye(15)} Comment ça marche
+            </GhostButton>
+            <PrimaryButton disabled={!isSupabase || uploading} onClick={() => fileRef.current?.click()}>
+              {Icon.image(16)} Importer des médias
+            </PrimaryButton>
+          </>
         }
       />
 
-      <div className={`admin-status-live${status.kind === 'err' ? ' is-error' : ''}`} role="status" aria-live="polite">
+      <div id="medias-guide">
+        <MediaGuide open={guideOpen} onOpenChange={setGuideOpen} />
+      </div>
+
+      {tipVisible && (
+        <div className="admin-wf-media-tip" role="status">
+          <div>
+            <strong>Astuce</strong>
+            <p>
+              Importez d’abord, puis choisissez où ça apparaît (bannière, plat, équipe).
+              Les dossiers du bas suivent automatiquement cet emplacement.
+            </p>
+          </div>
+          <div className="admin-wf-media-tip-actions">
+            <GhostButton color={t.primary} onClick={() => { setGuideOpen(true); dismissTip() }}>
+              Voir le guide
+            </GhostButton>
+            <GhostButton color={t.muted} onClick={dismissTip}>
+              Compris
+            </GhostButton>
+          </div>
+        </div>
+      )}
+
+      <div className={`admin-status-live${status.kind === 'err' ? ' is-error' : status.kind === 'ok' ? ' is-ok' : ''}`} role="status" aria-live="polite">
         {uploading ? 'Téléversement en cours…' : status.kind !== 'idle' ? status.msg : ''}
       </div>
 
@@ -266,17 +365,30 @@ export function MediaManager() {
             onChange={(e) => { setQuery(e.target.value); setSelectedId(null) }}
             placeholder="Rechercher un média, un emplacement…"
             aria-label="Rechercher un média"
+            autoComplete="off"
+            name="media-search"
+            spellCheck={false}
           />
         </label>
         <div className="admin-wf-media-toolbar-actions">
           <GhostButton
             color={t.muted}
-            title="Les dossiers correspondent aux emplacements du site (Hero, Logo, plats…)."
-            onClick={() => setStatus({ kind: 'ok', msg: 'Les dossiers suivent les emplacements existants — pas de dossier libre pour l’instant.' })}
+            title="Les dossiers suivent l’emplacement sur le site (bannière, plats…). Pas de dossier libre pour l’instant."
+            onClick={() => {
+              setGuideOpen(true)
+              setStatus({
+                kind: 'ok',
+                msg: 'Les dossiers suivent l’emplacement sur le site — pas de dossier libre pour l’instant.',
+              })
+            }}
           >
-            Nouveau dossier
+            À propos des dossiers
           </GhostButton>
-          <GhostButton color={t.primary} onClick={() => setView(view === 'grid' ? 'list' : 'grid')}>
+          <GhostButton
+            color={t.primary}
+            aria-pressed={view === 'list'}
+            onClick={() => setView(view === 'grid' ? 'list' : 'grid')}
+          >
             {view === 'grid' ? Icon.list(15) : Icon.grid(15)} {view === 'grid' ? 'Liste' : 'Grille'}
           </GhostButton>
         </div>
@@ -284,9 +396,12 @@ export function MediaManager() {
 
       <div className="admin-wf-media-upload-row">
         <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-          <span className="admin-wf-eyebrow">Emplacement cible</span>
+          <span className="admin-wf-eyebrow" id="media-slot-label">Où l’afficher</span>
           <Select value={slot} onValueChange={setSlot}>
-            <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-surface)', padding: '10px 12px', minHeight: 44 }}>
+            <SelectTrigger
+              aria-labelledby="media-slot-label"
+              style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-surface)', padding: '10px 12px', minHeight: 44 }}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -297,9 +412,12 @@ export function MediaManager() {
           </Select>
         </div>
         <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-          <span className="admin-wf-eyebrow">Redimensionnement</span>
+          <span className="admin-wf-eyebrow" id="media-resize-label">Taille à l’import</span>
           <Select value={resizePreset} onValueChange={setResizePreset}>
-            <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-surface)', padding: '10px 12px', minHeight: 44 }}>
+            <SelectTrigger
+              aria-labelledby="media-resize-label"
+              style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-surface)', padding: '10px 12px', minHeight: 44 }}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -316,11 +434,13 @@ export function MediaManager() {
         type="file"
         accept="image/*,video/*"
         style={{ display: 'none' }}
+        aria-hidden="true"
+        tabIndex={-1}
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
 
       <div
-        className={`admin-wf-media-drop${dragOver ? ' is-drag' : ''}`}
+        className={`admin-wf-media-drop${dragOver ? ' is-drag' : ''}${!isSupabase || uploading ? ' is-disabled' : ''}`}
         onClick={() => !uploading && isSupabase && fileRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); if (isSupabase) setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
@@ -330,15 +450,15 @@ export function MediaManager() {
           if (isSupabase && !uploading) handleFile(e.dataTransfer.files?.[0])
         }}
         role="button"
-        tabIndex={0}
-        aria-label="Zone de dépôt d’images"
+        tabIndex={isSupabase && !uploading ? 0 : -1}
+        aria-disabled={!isSupabase || uploading}
+        aria-label="Zone de dépôt d’images — glisser un fichier ou activer pour parcourir"
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
             if (!uploading && isSupabase) fileRef.current?.click()
           }
         }}
-        style={{ cursor: isSupabase && !uploading ? 'pointer' : 'default' }}
       >
         {Icon.image(28, 'var(--admin-forest)')}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -384,6 +504,7 @@ export function MediaManager() {
               key={item}
               type="button"
               className={filter === item ? 'is-active' : undefined}
+              aria-pressed={filter === item}
               onClick={() => { setFilter(item); setSelectedId(null) }}
             >
               {item}
@@ -405,7 +526,7 @@ export function MediaManager() {
                 aria-label="Trier les médias"
                 value={sortKey}
                 onChange={(e) => setSortKey(e.target.value as SortKey)}
-                style={{ ...inp, minHeight: 36, width: 'auto', padding: '6px 10px', fontSize: 12 }}
+                style={{ ...inp, minHeight: 44, width: 'auto', padding: '6px 10px', fontSize: 12 }}
               >
                 <option value="recent">Plus récents</option>
                 <option value="name">Nom A-Z</option>
@@ -415,12 +536,36 @@ export function MediaManager() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="admin-empty" style={{ margin: 12, padding: '28px 16px' }}>
-              <div style={{ opacity: 0.5, marginBottom: 8 }}>{Icon.image(28, t.muted)}</div>
-              <strong style={{ display: 'block', marginBottom: 4 }}>Aucun média</strong>
-              <span style={{ fontSize: 13, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)' }}>
-                Importez une image ou élargissez les filtres.
-              </span>
+            <div className="admin-wf-media-empty">
+              {libraryEmptyBecauseFilter ? (
+                <EmptyState
+                  icon={Icon.search(28, t.muted)}
+                  title="Aucun résultat avec ces filtres"
+                  subtitle={
+                    filter === 'Non utilisé'
+                      ? 'Tous vos fichiers ont déjà un emplacement sur le site. Élisez « Tous » pour les revoir.'
+                      : 'Élargissez la recherche ou les dossiers pour retrouver vos fichiers.'
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={Icon.image(28, t.muted)}
+                  title="Aucune photo pour l’instant"
+                  subtitle="Ajoutez la photo de la bannière ou d’un plat — elle apparaîtra ici, prête à placer sur le site."
+                />
+              )}
+              <div className="admin-wf-media-empty-actions">
+                {libraryEmptyBecauseFilter && hasActiveFilters && (
+                  <GhostButton color={t.primary} onClick={resetFilters}>
+                    Afficher tous les médias
+                  </GhostButton>
+                )}
+                {!libraryEmptyBecauseFilter && (
+                  <PrimaryButton disabled={!isSupabase || uploading} onClick={() => fileRef.current?.click()}>
+                    {Icon.image(16)} Importer une photo
+                  </PrimaryButton>
+                )}
+              </div>
             </div>
           ) : (
             <div className="admin-wf-media-grid">
@@ -428,6 +573,7 @@ export function MediaManager() {
                 const kind = mediaKind(m)
                 const active = selected?.id === m.id
                 const isImg = (m.content_type || '').startsWith('image/')
+                const used = usageLabel(m.slot, slotChoices)
                 return (
                   <button
                     key={m.id}
@@ -438,19 +584,29 @@ export function MediaManager() {
                   >
                     <span className="admin-wf-media-thumb">
                       {isImg && m.url ? (
-                        <img src={m.url} alt="" />
+                        <img
+                          src={m.url}
+                          alt=""
+                          width={320}
+                          height={200}
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
-                        Icon.image(22, 'var(--admin-forest)')
+                        <span aria-hidden="true">{Icon.image(22, 'var(--admin-forest)')}</span>
                       )}
                       {kind === 'Vidéo' && <b>Vidéo</b>}
                     </span>
                     <span className="admin-wf-media-item-copy">
-                      <strong>{m.filename || 'Sans nom'}</strong>
-                      <small>{labelForMediaSlot(m.slot, slotChoices)} · {formatSize(m.size_bytes)}</small>
+                      <strong title={m.filename || 'Sans nom'}>{m.filename || 'Sans nom'}</strong>
+                      <small title={labelForMediaSlot(m.slot, slotChoices)}>
+                        {labelForMediaSlot(m.slot, slotChoices)} · {formatSize(m.size_bytes)}
+                      </small>
                     </span>
                     <i
-                      className={usageLabel(m.slot, slotChoices) === 'Non utilisé' ? 'is-unused' : undefined}
-                      aria-label={usageLabel(m.slot, slotChoices) === 'Non utilisé' ? 'Média non utilisé' : 'Média utilisé'}
+                      className={used === 'Non utilisé' ? 'is-unused' : undefined}
+                      aria-label={used === 'Non utilisé' ? 'Média non utilisé' : 'Média utilisé'}
+                      title={used === 'Non utilisé' ? 'Non utilisé sur le site' : `Utilisé : ${used}`}
                     />
                   </button>
                 )
@@ -464,29 +620,37 @@ export function MediaManager() {
             <>
               <div className="admin-wf-media-details-head">
                 <span className="admin-wf-eyebrow">Détail du média</span>
-                <Bouton genre="silencieux" aria-label="Options" title="Options">
-                  {Icon.more(16)}
-                </Bouton>
               </div>
               <div className="admin-wf-media-detail-preview">
                 {(selected.content_type || '').startsWith('image/') && selected.url ? (
-                  <img src={selected.url} alt={altDraft || selected.filename || ''} />
+                  <img
+                    src={selected.url}
+                    alt={altDraft || selected.filename || ''}
+                    width={640}
+                    height={400}
+                    decoding="async"
+                  />
                 ) : (
-                  Icon.image(36, 'var(--admin-forest)')
+                  <span aria-hidden="true">{Icon.image(36, 'var(--admin-forest)')}</span>
                 )}
               </div>
               <div className="admin-wf-media-detail-title">
                 <div>
-                  <h2>{selected.filename || 'Sans nom'}</h2>
+                  <h2 title={selected.filename || 'Sans nom'}>{selected.filename || 'Sans nom'}</h2>
                   <small>{mediaKind(selected)} · {formatSize(selected.size_bytes)} · {selected.content_type || 'fichier'}</small>
                 </div>
-                <span className="admin-chip">{labelForMediaSlot(selected.slot, slotChoices)}</span>
+                <span className="admin-chip" title={labelForMediaSlot(selected.slot, slotChoices)}>
+                  {labelForMediaSlot(selected.slot, slotChoices)}
+                </span>
               </div>
 
               <label className="admin-wf-media-field">
-                <span>Emplacement</span>
+                <span>Où l’afficher</span>
                 <Select value={editSlot || selected.slot} onValueChange={setEditSlot}>
-                  <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 10, background: 'var(--admin-paper-muted)', padding: '9px 12px' }}>
+                  <SelectTrigger
+                    aria-label="Où l’afficher"
+                    style={{ borderColor: 'var(--admin-line)', borderRadius: 10, background: 'var(--admin-paper-muted)', padding: '9px 12px', minHeight: 44 }}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -503,9 +667,13 @@ export function MediaManager() {
                   value={altDraft}
                   onChange={(e) => setAltDraft(e.target.value)}
                   rows={3}
-                  placeholder="Décrivez l’image pour l’accessibilité"
+                  placeholder="Décrivez l’image pour les visiteurs qui ne la voient pas…"
+                  name="media-alt"
+                  autoComplete="off"
                 />
-                <small>Pas encore enregistré en base — brouillon de session uniquement.</small>
+                <small className="admin-hint-box" style={{ marginTop: 0 }}>
+                  Pas encore mémorisé en base — brouillon de session uniquement. Utile pour préparer la description.
+                </small>
               </label>
 
               <label className="admin-wf-media-field">
@@ -513,7 +681,9 @@ export function MediaManager() {
                 <input
                   value={captionDraft}
                   onChange={(e) => setCaptionDraft(e.target.value)}
-                  placeholder="Optionnel"
+                  placeholder="Optionnel…"
+                  name="media-caption"
+                  autoComplete="off"
                 />
               </label>
 
@@ -528,18 +698,32 @@ export function MediaManager() {
               <div className="admin-wf-media-detail-actions">
                 <GhostButton color={t.primary} onClick={handleSaveDetail}>{Icon.check(14)} Enregistrer</GhostButton>
                 <GhostButton color={t.primary} disabled={!selected.url} onClick={copyLink}>{Icon.link(14)} Copier le lien</GhostButton>
-                <GhostButton
-                  color="#dc2626"
-                  disabled={removingId === selected.id}
-                  onClick={() => handleDelete(selected)}
-                >
-                  {Icon.trash(14, '#dc2626')} {removingId === selected.id ? '…' : 'Supprimer'}
-                </GhostButton>
+                {confirmDelete ? (
+                  <div className="admin-wf-media-confirm-del" role="group" aria-label="Confirmer la suppression">
+                    <span>Supprimer définitivement{'\u00a0'}?</span>
+                    <GhostButton
+                      color="#dc2626"
+                      disabled={removingId === selected.id}
+                      onClick={() => handleDelete(selected)}
+                    >
+                      {removingId === selected.id ? 'Suppression…' : 'Confirmer'}
+                    </GhostButton>
+                    <GhostButton color={t.muted} onClick={() => setConfirmDelete(false)}>Annuler</GhostButton>
+                  </div>
+                ) : (
+                  <GhostButton
+                    color="#dc2626"
+                    disabled={removingId === selected.id}
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    {Icon.trash(14, '#dc2626')} Supprimer
+                  </GhostButton>
+                )}
               </div>
             </>
           ) : (
             <div className="admin-empty" style={{ padding: '32px 12px', border: 0, background: 'transparent' }}>
-              <div style={{ opacity: 0.45, marginBottom: 8 }}>{Icon.image(28)}</div>
+              <div style={{ opacity: 0.45, marginBottom: 8 }} aria-hidden="true">{Icon.image(28)}</div>
               <strong>Sélectionnez un média</strong>
               <span style={{ display: 'block', marginTop: 6, fontSize: 13, opacity: 0.65 }}>Le détail s’affiche ici.</span>
             </div>
