@@ -392,7 +392,20 @@ export function AdminShell() {
     <div
       data-admin-shell=""
       data-admin-drawer={mobileNav ? 'open' : 'closed'}
-      style={{ ...rootStyle, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', height: '100dvh', overflow: 'hidden', background: 'var(--admin-paper)', fontFamily: 'var(--admin-font-ui)' }}
+      /* Collée au viewport : fixed+inset, pas seulement 100dvh (bande blanche sous la console). */
+      style={{
+        ...rootStyle,
+        position: 'fixed',
+        inset: 0,
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        gridTemplateRows: 'minmax(0, 1fr)',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        background: 'var(--admin-paper)',
+        fontFamily: 'var(--admin-font-ui)',
+      }}
     >
       <a href="#contenu-console" className="admin-skip-link">Aller au contenu</a>
       <div
@@ -412,7 +425,7 @@ export function AdminShell() {
           overflow: active === 'content' ? 'hidden' : 'auto',
           position: 'relative',
           minHeight: 0,
-          height: active === 'content' ? '100%' : undefined,
+          height: '100%',
           display: active === 'content' ? 'flex' : undefined,
           flexDirection: 'column',
         }}

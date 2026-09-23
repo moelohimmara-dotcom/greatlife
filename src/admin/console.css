@@ -41,7 +41,20 @@
   color: var(--admin-ink);
   font-family: var(--admin-font-ui);
   overflow-x: hidden;
-  max-width: 100vw;
+  /* 100vw inclut la barre de défilement et peut créer une bande morte ; 100% suit le viewport. */
+  max-width: 100%;
+}
+
+/*
+  Fond du canvas navigateur aligné sur le papier admin : si un sous-pixel ou un
+  parent laisse voir html/body, ce n’est plus le blanc Tailwind (#fff).
+*/
+html:has([data-admin-shell]),
+html:has([data-admin-shell]) body,
+html:has([data-admin-shell]) #root {
+  height: 100%;
+  overflow: hidden;
+  background: #fbf8f1;
 }
 
 [data-admin-shell] .admin-skip-link {
@@ -5112,11 +5125,11 @@
   margin: 0;
 }
 
-/* Thème workspace */
+/* Thème workspace — scoped; do not touch shell height / coquille */
 
 [data-admin-shell] .admin-wf-theme-workspace {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -5128,34 +5141,36 @@
   min-width: 0;
 }
 
-[data-admin-shell] .admin-wf-theme-tabs {
+[data-admin-shell] .admin-wf-theme-tabs.admin-segment {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin: 0;
 }
 
-[data-admin-shell] .admin-wf-theme-tabs button {
-  padding: 8px 12px;
-  border: 1px solid var(--admin-line);
-  border-radius: 99px;
-  background: var(--admin-surface);
-  color: var(--admin-ink);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+[data-admin-shell] .admin-wf-theme-tabs .admin-segment-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 12.5px;
 }
 
-[data-admin-shell] .admin-wf-theme-tabs button.is-active {
-  border-color: var(--admin-forest);
-  background: color-mix(in srgb, var(--admin-forest) 12%, var(--admin-surface));
-  color: var(--admin-forest);
+[data-admin-shell] .admin-wf-theme-panel-head {
+  margin-bottom: 4px;
+}
+
+[data-admin-shell] .admin-wf-theme-panel-blurb {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
+  max-inline-size: 42ch;
 }
 
 [data-admin-shell] .admin-wf-theme-presets {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 12px;
 }
 
 [data-admin-shell] .admin-wf-theme-preset {
@@ -5163,6 +5178,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-height: 56px;
   padding: 10px 12px;
   border: 1px solid var(--admin-line);
   border-radius: var(--admin-radius-control);
@@ -5171,7 +5187,18 @@
   text-align: left;
   font: inherit;
   cursor: pointer;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  touch-action: manipulation;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-shell] .admin-wf-theme-preset {
+    transition: none;
+  }
+}
+
+[data-admin-shell] .admin-wf-theme-preset:hover {
+  background: color-mix(in srgb, var(--admin-sage) 28%, var(--admin-surface));
 }
 
 [data-admin-shell] .admin-wf-theme-preset.is-selected {
@@ -5180,10 +5207,15 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-forest) 16%, transparent);
 }
 
+[data-admin-shell] .admin-wf-theme-preset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-paper), 0 0 0 4px var(--admin-forest);
+}
+
 [data-admin-shell] .admin-wf-theme-preset-swatch {
   display: flex;
   flex: 0 0 auto;
-  width: 52px;
+  width: 56px;
   height: 40px;
   overflow: hidden;
   border-radius: 10px;
@@ -5194,6 +5226,11 @@
   flex: 1;
 }
 
+[data-admin-shell] .admin-wf-theme-preset-copy {
+  flex: 1;
+  min-width: 0;
+}
+
 [data-admin-shell] .admin-wf-theme-preset strong,
 [data-admin-shell] .admin-wf-theme-preset small {
   display: block;
@@ -5201,36 +5238,96 @@
 
 [data-admin-shell] .admin-wf-theme-preset strong {
   font-size: 14px;
+  font-weight: 650;
 }
 
 [data-admin-shell] .admin-wf-theme-preset small {
   margin-top: 2px;
   font-size: 12px;
+  line-height: 1.4;
   color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
 }
 
-[data-admin-shell] .admin-wf-theme-controls {
+[data-admin-shell] .admin-wf-theme-preset-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-forest) 12%, var(--admin-surface));
+}
+
+[data-admin-shell] .admin-wf-theme-controls,
+[data-admin-shell] .admin-wf-theme-typo {
   display: grid;
   gap: 12px;
+  margin-top: 12px;
 }
 
-[data-admin-shell] .admin-wf-theme-controls label {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
-}
-
-[data-admin-shell] .admin-wf-theme-controls input {
-  padding: 10px 12px;
-  border: 1px solid var(--admin-line);
-  border-radius: 10px;
-  background: var(--admin-paper-muted);
-  color: var(--admin-ink);
-  font: inherit;
+[data-admin-shell] .admin-wf-theme-inline-help {
+  margin: 0;
   font-size: 13px;
-  font-weight: 500;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--admin-ink) 64%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-color-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-theme-color-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-theme-color-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--admin-ink) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-color-meta strong,
+[data-admin-shell] .admin-wf-theme-color-meta small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-theme-color-meta strong {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-theme-color-meta small {
+  margin-top: 2px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-color-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--admin-ink) 58%, transparent);
+  background: var(--admin-paper-muted);
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  padding: 4px 7px;
 }
 
 [data-admin-shell] .admin-wf-theme-contrast {
@@ -5252,7 +5349,50 @@
   margin-top: 2px;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1.4;
   color: color-mix(in srgb, var(--admin-ink) 58%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-coming {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 16px 14px;
+  border: 1px dashed var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-paper-muted);
+}
+
+[data-admin-shell] .admin-wf-theme-coming-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--admin-sage) 55%, var(--admin-surface));
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-theme-coming h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-theme-coming p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--admin-ink) 64%, transparent);
+  max-inline-size: 46ch;
+}
+
+[data-admin-shell] .admin-wf-theme-coming-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 [data-admin-shell] .admin-wf-theme-preview-canvas {
@@ -5276,6 +5416,45 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-theme-canvas-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-theme-preview-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-theme-size-segment {
+  margin: 0;
+}
+
+[data-admin-shell] .admin-wf-theme-size-segment .admin-segment-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-theme-preview-frame {
+  width: 100%;
+  margin-inline: auto;
+  transition: max-width 180ms ease;
+}
+
+[data-admin-shell] .admin-wf-theme-preview-frame.is-telephone {
+  max-width: 390px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-shell] .admin-wf-theme-preview-frame {
+    transition: none;
+  }
 }
 
 [data-admin-shell] .admin-wf-live-theme {
@@ -5303,6 +5482,28 @@
   font-size: 12px;
 }
 
+[data-admin-shell] .admin-wf-theme-preview-frame.is-telephone .admin-wf-live-header nav {
+  display: none;
+}
+
+[data-admin-shell] .admin-wf-live-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-wf-live-cta.is-hero {
+  padding: 9px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 [data-admin-shell] .admin-wf-live-hero {
   padding: 28px 20px 24px;
 }
@@ -5323,11 +5524,14 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
+  text-wrap: balance;
+  max-inline-size: 22ch;
 }
 
 [data-admin-shell] .admin-wf-live-hero p {
   margin: 10px 0 16px;
   font-size: 14px;
+  line-height: 1.5;
   opacity: 0.78;
   max-width: 42ch;
 }
@@ -5337,6 +5541,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 0 16px 16px;
+}
+
+[data-admin-shell] .admin-wf-theme-preview-frame.is-telephone .admin-wf-live-cards {
+  grid-template-columns: 1fr;
 }
 
 [data-admin-shell] .admin-wf-live-cards article {
@@ -5358,6 +5566,7 @@
 
 [data-admin-shell] .admin-wf-live-cards span {
   font-size: 12px;
+  line-height: 1.4;
   opacity: 0.7;
 }
 
@@ -5387,6 +5596,7 @@
   border: 1px dashed var(--admin-line);
   background: var(--admin-paper-muted);
   font-size: 12px;
+  line-height: 1.45;
   color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
 }
 

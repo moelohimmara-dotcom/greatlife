@@ -20,7 +20,8 @@
  * et c'est le document qui défile en emportant la barre.
  *
  * CE QU'IL PROUVE
- *   - la coquille est bornée à la fenêtre (`100dvh`) et ne défile pas ;
+ *   - la coquille est collée au viewport (`position: fixed` + `inset: 0`) et
+ *     ne défile pas ;
  *   - les deux grilles ont des lignes bornées (`minmax(0, 1fr)`) — sans quoi le
  *     contenu serait ROGNÉ au lieu de défiler ;
  *   - `main`, la barre, son enveloppe et son `nav` portent tous `minHeight: 0` ;
@@ -42,7 +43,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const FICHIER = `${ROOT}/src/admin/AdminPanel.tsx`
+/* Shell extrait de AdminPanel.tsx → AdminShell.tsx (routes /admin/*). */
+const FICHIER = `${ROOT}/src/admin/AdminShell.tsx`
 const source = readFileSync(FICHIER, 'utf8')
 
 /*
@@ -73,17 +75,22 @@ const code = sansCommentaires(source)
 const CONTRAINTES = [
   {
     id: 'bornage-fenetre',
-    quoi: 'la coquille est bornée à la fenêtre et ne défile pas',
+    quoi: 'la coquille est collée au viewport (fixed + inset) et ne défile pas',
     defaut: "la coquille grandit avec son contenu, donc le document défile et emporte la barre",
-    casse: (s) => s.replace(/height: '100dvh', overflow: 'hidden'/, "height: '100%', minHeight: '100%'"),
-    tient: (s) => s.split('\n').some((l) =>
-      l.includes('...rootStyle') && l.includes("height: '100dvh'") && l.includes("overflow: 'hidden'")),
+    casse: (s) => s.replace(/position: 'fixed',\s*inset: 0,/, "position: 'relative',"),
+    tient: (s) => {
+      // Style multi-lignes après spread rootStyle
+      const i = s.indexOf('...rootStyle')
+      if (i < 0) return false
+      const bloc = s.slice(i, i + 500)
+      return bloc.includes("position: 'fixed'") && bloc.includes('inset: 0') && bloc.includes("overflow: 'hidden'")
+    },
   },
   {
     id: 'lignes-bornees',
     quoi: 'les deux grilles bornent leur ligne (minmax(0, 1fr))',
     defaut: 'la ligne reste `auto` : le contenu est ROGNÉ au lieu de défiler',
-    casse: (s) => s.replaceAll("gridTemplateRows: 'minmax(0, 1fr)', ", ''),
+    casse: (s) => s.replaceAll("gridTemplateRows: 'minmax(0, 1fr)'", "gridTemplateRows: 'auto'"),
     tient: (s) => (s.match(/gridTemplateRows: 'minmax\(0, 1fr\)'/g) || []).length >= 2,
   },
   {
@@ -111,14 +118,17 @@ const CONTRAINTES = [
     id: 'nav-defile',
     quoi: 'le `nav` défile dans sa propre colonne',
     defaut: 'sans `overflow: auto` sur le nav, les entrées basses deviennent inatteignables',
-    casse: (s) => s.replace("flex: 1, minHeight: 0, overflow: 'auto' }}>", "flex: 1, minHeight: 0 }}>"),
+    casse: (s) => s.replace("flex: 1, overflow: 'auto', minHeight: 0 }}>", "flex: 1, minHeight: 0 }}>"),
     tient: (s) => /<nav[\s\S]{0,300}?overflow: 'auto'/.test(s),
   },
   {
     id: 'enveloppe-bornee',
     quoi: "l'enveloppe de la barre est bornée",
     defaut: "l'enveloppe (item de grille) grandit à la taille de la barre et annule le bornage",
-    casse: (s) => s.replace('style={{ height: \'100%\', minHeight: 0, overflow: \'hidden\' }}>{Sidebar}', '>{Sidebar}'),
+    casse: (s) => s.replace(
+      'className="admin-sidebar-desktop" style={{ height: \'100%\', minHeight: 0, overflow: \'hidden\' }}',
+      'className="admin-sidebar-desktop" style={{ height: \'100%\', overflow: \'hidden\' }}',
+    ),
     tient: (s) => /admin-sidebar-desktop" style=\{\{[\s\S]{0,120}?minHeight: 0/.test(s),
   },
 ]
