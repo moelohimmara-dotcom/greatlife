@@ -3615,6 +3615,11 @@
   color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
 }
 
+[data-admin-shell] .admin-wf-media-drop.is-drag {
+  border-color: var(--admin-forest);
+  background: color-mix(in srgb, var(--admin-forest) 10%, var(--admin-paper-muted));
+}
+
 [data-admin-shell] .admin-wf-media-drop strong {
   display: block;
   font-size: 14px;
@@ -3627,12 +3632,779 @@
   font-size: 12px;
 }
 
+[data-admin-shell] .admin-wf-media-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-media-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+[data-admin-shell] .admin-wf-media-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-media-upload-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+[data-admin-shell] .admin-wf-media-folders {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+[data-admin-shell] .admin-wf-media-folders > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-media-folders > button small {
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--admin-paper-muted);
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--admin-ink) 60%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-folders > button.is-active {
+  border-color: var(--admin-forest);
+  background: color-mix(in srgb, var(--admin-sage) 45%, var(--admin-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-forest) 25%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-filters > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-admin-shell] .admin-wf-media-filters button {
+  padding: 7px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: 99px;
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-media-filters button.is-active {
+  border-color: var(--admin-forest);
+  background: color-mix(in srgb, var(--admin-forest) 12%, var(--admin-surface));
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-media-filters > span {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
 [data-admin-shell] .admin-wf-media-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
   gap: 14px;
   align-items: start;
   min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-media-library {
+  min-width: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-wf-media-library-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-media-library-head strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-media-library-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-library.is-list .admin-wf-media-grid {
+  grid-template-columns: 1fr;
+}
+
+[data-admin-shell] .admin-wf-media-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-media-library.is-list .admin-wf-media-item {
+  flex-direction: row;
+  align-items: center;
+}
+
+[data-admin-shell] .admin-wf-media-item:hover,
+[data-admin-shell] .admin-wf-media-item.is-selected {
+  border-color: var(--admin-forest);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-forest) 16%, transparent);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-media-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--admin-sage) 40%, var(--admin-paper));
+}
+
+[data-admin-shell] .admin-wf-media-library.is-list .admin-wf-media-thumb {
+  width: 72px;
+  flex: 0 0 72px;
+  aspect-ratio: 1;
+}
+
+[data-admin-shell] .admin-wf-media-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-admin-shell] .admin-wf-media-thumb b {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-wf-media-item-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+[data-admin-shell] .admin-wf-media-item-copy strong,
+[data-admin-shell] .admin-wf-media-item-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-wf-media-item-copy strong {
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-media-item-copy small {
+  margin-top: 2px;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-item > i {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-media-item > i.is-unused {
+  background: var(--admin-saffron);
+}
+
+[data-admin-shell] .admin-wf-media-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-wf-media-details-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-media-detail-preview {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--admin-sage) 35%, var(--admin-paper));
+}
+
+[data-admin-shell] .admin-wf-media-detail-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-admin-shell] .admin-wf-media-detail-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-wf-media-detail-title h2 {
+  margin: 0;
+  font-family: var(--admin-font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--admin-ink);
+  word-break: break-word;
+}
+
+[data-admin-shell] .admin-wf-media-detail-title small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-media-field > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-field textarea,
+[data-admin-shell] .admin-wf-media-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  background: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+[data-admin-shell] .admin-wf-media-field small {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--admin-ink) 50%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--admin-paper-muted);
+  border: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-media-usage strong {
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-usage span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-media-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-media-layout > * {
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-menu-layout > * {
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-menu-layout .admin-wf-panel {
+  margin: 0;
+}
+
+/* Thème workspace */
+
+[data-admin-shell] .admin-wf-theme-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+[data-admin-shell] .admin-wf-theme-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-theme-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-admin-shell] .admin-wf-theme-tabs button {
+  padding: 8px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: 99px;
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-theme-tabs button.is-active {
+  border-color: var(--admin-forest);
+  background: color-mix(in srgb, var(--admin-forest) 12%, var(--admin-surface));
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-theme-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-wf-theme-preset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-control);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-theme-preset.is-selected {
+  border: 2px solid var(--admin-forest);
+  padding: 9px 11px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-forest) 16%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-preset-swatch {
+  display: flex;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-theme-preset-swatch > span {
+  flex: 1;
+}
+
+[data-admin-shell] .admin-wf-theme-preset strong,
+[data-admin-shell] .admin-wf-theme-preset small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-theme-preset strong {
+  font-size: 14px;
+}
+
+[data-admin-shell] .admin-wf-theme-preset small {
+  margin-top: 2px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-controls {
+  display: grid;
+  gap: 12px;
+}
+
+[data-admin-shell] .admin-wf-theme-controls label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-controls input {
+  padding: 10px 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: 10px;
+  background: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+[data-admin-shell] .admin-wf-theme-contrast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line);
+  background: color-mix(in srgb, var(--admin-sage) 40%, var(--admin-surface));
+}
+
+[data-admin-shell] .admin-wf-theme-contrast strong,
+[data-admin-shell] .admin-wf-theme-contrast small {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-theme-contrast small {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--admin-ink) 58%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-preview-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-paper-muted);
+  box-shadow: var(--admin-shadow);
+}
+
+[data-admin-shell] .admin-wf-theme-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-live-theme {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-live-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-ink) 8%, transparent);
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-live-header nav {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-live-hero {
+  padding: 28px 20px 24px;
+}
+
+[data-admin-shell] .admin-wf-live-hero small {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+[data-admin-shell] .admin-wf-live-hero h1 {
+  margin: 0;
+  font-family: var(--admin-font-display);
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+[data-admin-shell] .admin-wf-live-hero p {
+  margin: 10px 0 16px;
+  font-size: 14px;
+  opacity: 0.78;
+  max-width: 42ch;
+}
+
+[data-admin-shell] .admin-wf-live-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+[data-admin-shell] .admin-wf-live-cards article {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--admin-ink) 10%, transparent);
+  background: color-mix(in srgb, #fff 55%, transparent);
+}
+
+[data-admin-shell] .admin-wf-live-cards strong,
+[data-admin-shell] .admin-wf-live-cards span {
+  display: block;
+}
+
+[data-admin-shell] .admin-wf-live-cards strong {
+  margin: 6px 0 4px;
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-live-cards span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+[data-admin-shell] .admin-wf-theme-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 60%, transparent);
+}
+
+[data-admin-shell] .admin-wf-theme-status .admin-wf-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-theme-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--admin-line);
+  background: var(--admin-paper-muted);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
+}
+
+/* Réservations — cartes planning */
+
+[data-admin-shell] .admin-wf-resa-datebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+[data-admin-shell] .admin-wf-resa-date-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+[data-admin-shell] .admin-wf-resa-views {
+  display: inline-flex;
+  gap: 6px;
+}
+
+[data-admin-shell] .admin-wf-resa-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--admin-forest) 16%, var(--admin-paper));
+  color: var(--admin-forest);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+[data-admin-shell] .admin-wf-resa-avatar.is-large {
+  width: 48px;
+  height: 48px;
+  font-size: 14px;
+}
+
+[data-admin-shell] .admin-wf-resa-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-wf-resa-detail-grid > div {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--admin-paper-muted);
+  border: 1px solid var(--admin-line);
+}
+
+[data-admin-shell] .admin-wf-resa-detail-grid span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
+}
+
+[data-admin-shell] .admin-wf-resa-detail-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-resa-tables-disabled {
+  padding: 28px 18px;
+  text-align: center;
+  border: 1px dashed var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-paper-muted);
+  color: color-mix(in srgb, var(--admin-ink) 65%, transparent);
+  font-size: 13px;
+}
+
+[data-admin-shell] .admin-wf-resa-client {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  [data-admin-shell] .admin-wf-theme-workspace,
+  [data-admin-shell] .admin-wf-media-upload-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-admin-shell] .admin-wf-live-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {

@@ -167,11 +167,16 @@ irréversible ou notifie le client. Mobile : cartes compactes.
 
 ```text
 [Header + Nouvelle réservation]
-[Bandeau calendrier / jours]
-[Table : Heure · Client · Personnes · Téléphone · Statut]
+[Résumé live · date nav · Planning|Liste|Tables]
+[Filtres statut + recherche]
+┌ Cartes heure/avatar/client ┐ ┌ Détail (confirmer / contacter) ┐
+└────────────────────────────┴──────────────────────────────────┘
 ```
 
-Statuts ops : En attente → Confirmée → … → Annulée.
+Statuts ops : En attente → Confirmée → Annulée.
+**Alignement (2026-09-23)** : layout fidèle au modèle `reservations.tsx`.
+Vue **Tables** désactivée honnêtement (pas de tables en base). Données live Supabase.
+Écart restant : pas de plan de salle ni “Arrivée” tant que le schéma ne les porte pas.
 
 ---
 
@@ -225,8 +230,18 @@ Header + Nouvel article. Table : Titre · Catégorie · Modification · Statut
 
 ## 10. Médias (`media`)
 
-Dropzone : formats, tailles, ratio, compression avant validation.
-Grille + recherche + filtres + panneau détail (alt, crédit, usages).
+```text
+[Header + Importer]
+[Recherche · dossiers/emplacements · filtres type]
+[Dropzone]
+┌ Grille / liste ────────────┬─ Détail (emplacement, alt, usages) ┐
+└────────────────────────────┴────────────────────────────────────┘
+```
+
+**Alignement (2026-09-23)** : structure fidèle à `media-library.tsx` (dropzone, dossiers,
+filtres, grille, panneau détail). Données live `media_assets`.
+Écarts restants : texte alternatif / légende = brouillon de session (pas de colonnes en base) ;
+« Nouveau dossier » = message honnête (dossiers = emplacements, pas de dossiers libres).
 
 ---
 
@@ -239,8 +254,17 @@ Table membres : Nom · Rôle · Description · Visibilité.
 
 ## 12. Thème & ambiance (`theme`)
 
-Grille de thèmes (sélection bordure 2 px forêt). Typographie séparée.
-Enregistrer = action principale.
+```text
+[Header + Enregistrer]
+[Statut palette active]
+┌ Onglets Presets|Couleurs|Typo|… ┐ ┌ Aperçu live (header/hero/cartes) ┐
+└─────────────────────────────────┴────────────────────────────────────┘
+```
+
+**Alignement (2026-09-23)** : workspace onglets + aperçu live comme Appearance du modèle ;
+presets = `THEMES` existants ; typo = `TypoPanel`.
+Écarts restants : Atmosphère / Composants = notes honnêtes (pas d’options fictives) ;
+couleurs en lecture seule (évite contraste hors charte).
 
 ---
 
@@ -339,3 +363,15 @@ Aucun scroll horizontal global. `overscroll-behavior: contain` sur drawers.
 5. a11y §20.
 6. Desktop + mobile + **960×457** sans scroll X.
 7. Capture navigateur avant de passer à l’écran suivant.
+
+### Suivi d’alignement fidèle (rebuild vs modèle)
+
+| Écran | Aligné | Notes |
+|---|---|---|
+| `media` | ✅ structure | alt/légende non persistés ; dossiers = emplacements |
+| `theme` | ✅ structure | Atmosphère/Composants honnêtement non éditables |
+| `reservations` | ✅ structure | Tables désactivées (pas en base) |
+| `menu` | ⏳ session suivante | liste + aperçu mobile + dirty bar |
+| `visibility` / `settings` / `blog` / `team` / `forms` / `users` / `audit` | ⏳ | —
+| Shell / Dashboard / Commandes / Messages | ⏳ revue écarts | —
+| `content` (PageEditor) | ⏳ polish chrome | ne pas remplacer par mock SiteEditor |
