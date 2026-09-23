@@ -221,12 +221,12 @@ export function OrdersManager() {
           <>
             <div className="admin-wf-kanban" aria-label="Kanban des commandes">
               {([
-                ['pending', 'Nouvelles'],
-                ['confirmed', 'Confirmées'],
-                ['preparing', 'En préparation'],
-                ['ready', 'Prêtes'],
-                ['delivered', 'Terminées'],
-              ] as const).map(([status, label]) => {
+                ['pending', 'Nouvelles', 'coin', 'Aucune nouvelle commande', 'Les commandes à confirmer apparaîtront ici.'],
+                ['confirmed', 'Confirmées', 'check', 'Rien à confirmer pour l’instant', 'Dès qu’une commande est acceptée, elle passe ici.'],
+                ['preparing', 'En préparation', 'fire', 'Cuisine au calme', 'Les plats en cours de préparation s’affichent ici.'],
+                ['ready', 'Prêtes', 'clock', 'Rien à retirer', 'Les commandes prêtes au retrait apparaîtront ici.'],
+                ['delivered', 'Terminées', 'check', 'Aucune commande terminée', 'Les commandes déjà récupérées s’affichent ici.'],
+              ] as const).map(([status, label, iconName, emptyTitle, emptyHint]) => {
                 const col = sorted.filter((o) => o.status === status)
                 return (
                   <section key={status} className="admin-wf-kanban-col" aria-labelledby={`kanban-${status}`}>
@@ -235,7 +235,13 @@ export function OrdersManager() {
                       <b>{col.length}</b>
                     </div>
                     {col.length === 0 ? (
-                      <div className="admin-empty admin-empty-compact">Vide</div>
+                      <div className="admin-wf-kanban-empty" role="status">
+                        <span className="admin-wf-kanban-empty-icon" aria-hidden="true">
+                          {Icon[iconName](22, 'var(--admin-forest)')}
+                        </span>
+                        <strong>{emptyTitle}</strong>
+                        <small>{emptyHint}</small>
+                      </div>
                     ) : col.map((o) => {
                       const qty = o.items.reduce((n, it) => n + it.qty, 0)
                       const cta = status === 'pending' ? 'Confirmer' : status === 'preparing' ? 'Continuer' : status === 'ready' ? 'Marquer terminée' : 'Voir détail'

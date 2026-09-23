@@ -3376,6 +3376,46 @@
   background: var(--admin-paper-muted);
 }
 
+/* Colonne sans commande : guide le restaurateur (ui-ux-pro-max Empty States). */
+[data-admin-shell] .admin-wf-kanban-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 120px;
+  padding: 20px 12px;
+  text-align: center;
+  color: color-mix(in srgb, var(--admin-ink) 58%, transparent);
+}
+
+[data-admin-shell] .admin-wf-kanban-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-sage) 45%, var(--admin-surface));
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-kanban-empty strong {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-kanban-empty small {
+  max-width: 18ch;
+  font-size: 12px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--admin-ink) 52%, transparent);
+}
+
 [data-admin-shell] .admin-wf-kanban-head {
   display: flex;
   align-items: center;
