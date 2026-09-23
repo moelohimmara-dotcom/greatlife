@@ -30,6 +30,7 @@ import {
   ESPACE,
   anneauFocus,
   ADMIN_CORAL,
+  ADMIN_FOREST,
   ADMIN_INK,
   ADMIN_MUTED,
 } from './chrome'
@@ -86,6 +87,7 @@ function Outil({
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
+      style={{ color: actif ? ADMIN_FOREST : ADMIN_INK }}
     >
       {children}
     </Bouton>
@@ -320,28 +322,28 @@ export function TextToolbox({
         style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE, marginBottom: 6 }}
       >
         <Outil label="Gras" disabled={disabled} onClick={() => appliquerCourt('strong')}>
-          {Icon.bold(16, ADMIN_INK)}
+          {Icon.bold(16, 'currentColor')}
         </Outil>
         <Outil label="Italique" disabled={disabled} onClick={() => appliquerCourt('em')}>
-          {Icon.italic(16, ADMIN_INK)}
+          {Icon.italic(16, 'currentColor')}
         </Outil>
         {mode === 'rich' && (
           <Outil label="Souligné" disabled={disabled} onClick={() => appliquerCourt('u')}>
-            {Icon.underline(16, ADMIN_INK)}
+            {Icon.underline(16, 'currentColor')}
           </Outil>
         )}
         {mode === 'rich' && (
           <Outil label="Liste à puces" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperListe(h, 'ul'))}>
-            {Icon.list(16, ADMIN_INK)}
+            {Icon.list(16, 'currentColor')}
           </Outil>
         )}
         {mode === 'rich' && (
           <Outil label="Liste numérotée" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperListe(h, 'ol'))}>
-            {Icon.listOrdered(16, ADMIN_INK)}
+            {Icon.listOrdered(16, 'currentColor')}
           </Outil>
         )}
         <Outil label="Lien" actif={lienOuvert} disabled={disabled} controls={`${id}-lien-panneau`} expanded={lienOuvert} onClick={() => { setErreurLien(null); setLienOuvert((o) => !o) }}>
-          {Icon.link(16, ADMIN_INK)}
+          {Icon.link(16, 'currentColor')}
         </Outil>
         {(mode === 'rich' || onSlotColorChange) && (
           <Outil
@@ -352,7 +354,7 @@ export function TextToolbox({
             expanded={panneau === 'fg'}
             onClick={() => setPanneau((p) => (p === 'fg' ? null : 'fg'))}
           >
-            {Icon.palette(16, ADMIN_INK)}
+            {Icon.palette(16, 'currentColor')}
           </Outil>
         )}
         {mode === 'rich' && (
@@ -364,24 +366,24 @@ export function TextToolbox({
             expanded={panneau === 'hl'}
             onClick={() => setPanneau((p) => (p === 'hl' ? null : 'hl'))}
           >
-            {Icon.highlight(16, ADMIN_INK)}
+            {Icon.highlight(16, 'currentColor')}
           </Outil>
         )}
         {mode === 'rich' && (
           <>
             <Outil label="Aligner à gauche" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperAlignement(h, 'left'))}>
-              {Icon.alignLeft(16, ADMIN_INK)}
+              {Icon.alignLeft(16, 'currentColor')}
             </Outil>
             <Outil label="Aligner au centre" disabled={disabled} onClick={() => appliquerHtmlSelection((h) => envelopperAlignement(h, 'center'))}>
-              {Icon.alignCenter(16, ADMIN_INK)}
+              {Icon.alignCenter(16, 'currentColor')}
             </Outil>
           </>
         )}
         <Outil label="Annuler" disabled={disabled || past.length === 0} onClick={annuler}>
-          {Icon.undo(16, ADMIN_INK)}
+          {Icon.undo(16, 'currentColor')}
         </Outil>
         <Outil label="Rétablir" disabled={disabled || future.length === 0} onClick={retablir}>
-          {Icon.redo(16, ADMIN_INK)}
+          {Icon.redo(16, 'currentColor')}
         </Outil>
         {mode === 'rich' && (
           <Bouton
@@ -419,7 +421,7 @@ export function TextToolbox({
         <div id={`${id}-plus`} role="region" aria-label="Outils supplémentaires" style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: ESPACE }}>
           <div role="group" aria-label="Citation et taille" style={{ display: 'flex', flexWrap: 'wrap', gap: ESPACE }}>
             <Outil label="Citation" onClick={() => appliquerHtmlSelection(envelopperCitation)}>
-              {Icon.quote(16, ADMIN_INK)}
+              {Icon.quote(16, 'currentColor')}
             </Outil>
             <Outil label="Un peu plus grand" onClick={() => appliquerHtmlSelection((h) => envelopperTaille(h, 'large'))}>
               <span style={{ fontSize: 14, fontWeight: 700 }} aria-hidden="true">A+</span>
@@ -432,7 +434,7 @@ export function TextToolbox({
               onChange(retirerFormat(richRef.current?.innerHTML ?? value))
               if (richRef.current) richRef.current.innerHTML = retirerFormat(richRef.current.innerHTML)
             }}>
-              {Icon.eraser(16, ADMIN_INK)}
+              {Icon.eraser(16, 'currentColor')}
             </Outil>
           </div>
           <p style={{ fontSize: 12, color: ADMIN_MUTED, margin: 0, lineHeight: 1.4 }}>
