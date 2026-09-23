@@ -444,7 +444,7 @@ Le restaurateur organise le site public **sans** arbre Gutenberg illimité
 | Besoin | Où | État |
 |---|---|---|
 | **Organiser** l’ordre des blocs | Structure : glisser-déposer, Monter / Descendre, familles Ouverture → … | ✅ |
-| **Ajouter / masquer / dupliquer** un bloc | Structure + « Ajouter un bloc » (types `implemented` seulement) | ✅ |
+| **Ajouter / masquer / dupliquer** un bloc | Structure + « Ajouter un bloc » (types `implemented` seulement — J6 étend le catalogue rendu) | ✅ |
 | **Subdiviser** un bloc (textes, boutons, pastilles…) | Structure : sous-lignes sous le bloc sélectionné ; listes avec aperçu des lignes | ✅ |
 | **Réordonner** les éléments d’une liste (pastilles, motifs…) | Modifier → liste : Monter / Descendre (pas de drag seul) | ✅ |
 | **Disposition** (colonnes / mise en page nommée) | Modifier → tiroir Disposition ; rendu public branché (Bannière + sections livrées) | ✅ |

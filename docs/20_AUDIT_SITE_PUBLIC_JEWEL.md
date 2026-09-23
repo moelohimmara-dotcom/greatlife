@@ -18,7 +18,7 @@
 6. Formulaire contact / réservation présents et utilisables ; lacunes a11y techniques (labels non liés, pas d’`autocomplete`) — code + éventuellement **Formulaires**.  
 7. Console **complète** (Pilotage / Contenu / Apparence / Système) : Atelier avec brouillon → « Mettre à jour le site », Carte & prix, Médias, Équipe, Thème, Visibilité, Réglages, Formulaires.  
 8. **Visibilité** (interrupteurs) et **visibilité des blocs CMS** coexistent — risque de confusion (déjà noté dans `docs/21`).  
-9. Blocs TDR encore **non implémentés** (Galerie, FAQ, Vidéo standalone, etc.) : les proposer dans l’Atelier crée une fausse promesse — porte de phase.  
+9. Blocs TDR **branchés en J6** (Galerie, FAQ, CTA, Texte, Image+texte, Plats à la une, Vidéo, Espacement, Contenu libre) ; **Plan** (`map`) et arbre Gutenberg restent portes de phase.  
 10. Roadmap recommandée : données & confiance (P0) → bannière & médias → a11y formulaires → enrichissements (témoignages, carte réelle, créneaux commande éditables).
 
 ---
@@ -71,7 +71,7 @@
 | N2 | P1 | Légende des badges régime (omni, gluten…) | Compréhension carte | Visibilité `badges` existe ; légende absente | Micro-bloc sous Carte ou aide dans Carte & prix |
 | N3 | P1 | Lien WhatsApp clicable (CTA) | Conversion Conakry | Réglages réseaux (WhatsApp) partiel | Pied / Localisation : lien `wa.me` dès que l’URL est saisie |
 | N4 | P2 | Pages article blog (URL dédiée) | SEO + lecture | Blog liste OK ; deep-link article limité | Route publique article — **porte** architecture |
-| N5 | P2 | Blocs Galerie / FAQ / Promo | Richesse page | Schéma `implemented: false` | Ne pas exposer tant que non rendus ; lot modèle d’édition |
+| N5 | P2 | Blocs Galerie / FAQ / Promo | Richesse page | **J6** : rendus branchés (`gallery`, `faq`, `cta`, …) | Atelier → Ajouter un bloc |
 | N6 | P2 | Mode **Avancé** (TDR §13.1) | Puissance à la demande | Non livré (`docs/18`, N-12) | Lot dispositions — pas ce document |
 | N7 | P2 | Skip link public + `touch-action: manipulation` | a11y / mobile | Absent public | Code chrome public |
 | N8 | P2 | Horaires structurés (ouverture / cuisine / retrait) | Confiance + commande | Horaires texte libre seulement | **Décision propriétaire** avant schéma |
@@ -161,7 +161,7 @@
 | Montrer / cacher sections | **Visibilité** vs masquage bloc Atelier | **partiel / divergents** | Arbitrage docs/21 |
 | Panier / créneaux retrait | **Réglages → Horaires** (`restaurant.pickupTimes`) | **existe** (J5) | Publier chrome pour le public |
 | SEO title/description/OG | `index.html` | **à créer** | Porte de phase |
-| Galerie / FAQ / Promo / Vidéo bloc | Palette Atelier (schéma) | **à créer** (rendu) | `implemented: false` — ne pas vendre au restaurateur |
+| Galerie / FAQ / Promo / Vidéo bloc | Palette Atelier (schéma) | **existe** (J6) | Ajouter un bloc → types branchés ; `map` toujours porte |
 | Commandes / résas / messages | Pilotage | **existe** | Hors CMS page |
 | i18n EN public | Atelier FR/EN | **partiel** | Décision : publier EN ? |
 
@@ -177,7 +177,7 @@
 | **J3 — Alignement Visibilité ↔ CMS** | Une seule commande « visible » | Moyen | **Décision propriétaire** (docs/21) | **Fait partiel** (2026-09-23) — UX clarifiée : « Enregistrer » (effet immédiat carte) vs Atelier œil + « Mettre à jour le site » (blocs). Interrupteurs « Pages » repliés en secours historique (honnêtes). **Pas** de branchement Visibilité → `page_sections.visible` (porte docs/21 §6 — touche le public). Fuite RLS `navigation_items` (031 §2) : hors J3, porte sécu. |
 | **J4 — Preuve sociale & local** | Témoignages sur page ; lien Maps/WhatsApp | Moyen | Contenu + éventuel champ URL | **Fait partiel** (2026-09-23) — Bloc Avis déjà présent mais masqué : `visible=true` (brouillon + instantané) ; 3 avis peuplés dans `site_config.testimonials` (chemin direct). Pied + Localisation : `wa.me` (WhatsApp ou téléphone) ; adresse / plan → recherche Google Maps (sans nouveau champ URL). **Porte** : URL Maps / embed dédié (décision §10.4) ; bloc `map` toujours `implemented: false`. |
 | **J5 — Commande éditables** | Créneaux retrait / message panier | Moyen | **Décision schéma** | **Fait** (2026-09-23) — Schéma : `site_content.restaurant.pickupTimes` (liste), miroir plat `site_config.pickupTimes`, gelés dans le chrome à la publication. **Pas** de nouvelle table ; distinct des horaires texte. Migration `042` déplace le seed 024 hors `email_templates`. Console : Réglages → Horaires → « Créneaux de retrait ». Panier : plus de `PICKUP_TIMES` hardcodés ; message honnête + commande bloquée si liste vide. Flux : Enregistrer puis **Mettre à jour le site**. |
-| **J6 — Blocs manquants TDR** | Galerie, FAQ… seulement une fois `implemented` | Fort | docs/18 | À faire |
+| **J6 — Blocs manquants TDR** | Galerie, FAQ… seulement une fois `implemented` | Fort | docs/18 | **Fait** (2026-09-23) — Composants + registre pour : Galerie, FAQ, CTA, Texte, Image+texte, Plats à la une, Vidéo, Espacement, Contenu libre (`implemented: true` + enregistrement renderer). Picker « Ajouter un bloc » ne propose que ces types branchés (filtre J6b). **Porte** : bloc `map` (URL/embed Maps — §10.4 / J4) ; arbre Gutenberg (§10.8) ; mode Avancé N-12. |
 | **J6b — Organisation blocs (MVP)** | Structure sous-éléments (listes/groupes) + réordre listes Monter/Descendre ; **pas** d’arbre Gutenberg | Faible | docs/18 §13 | **Fait** (2026-09-23) |
 | **J7 — SEO CMS** | title/description/OG éditables | Moyen | Porte TDR | À faire |
 
@@ -239,8 +239,10 @@ Répertoire : `scripts/.work/audit-public-jewel/`
 4. **Carte / WhatsApp** : WhatsApp branché (numéro/lien existant + repli téléphone). Carte : recherche Maps sur l’adresse (sans nouveau champ). **Reste** : URL / embed dédié si le propriétaire le veut.  
 5. **Créneaux de retrait** : ~~liste éditable vs réutiliser horaires texte~~ → **tranché** (J5, 2026-09-23) : liste éditable `pickupTimes` (distincte des horaires d’ouverture texte).  
 6. **SEO administrable** : oui/non et quel écran.  
-7. **Exposer ou masquer** les types de blocs `implemented: false` dans « Ajouter un bloc ».  
+7. **Exposer ou masquer** les types de blocs `implemented: false` dans « Ajouter un bloc ». → **tranché** (J6b + J6) : seuls les types branchés apparaissent ; `map` reste masqué tant que non rendu.  
 8. **Arbre de blocs imbriqués** (Gutenberg / colonnes libres illimitées) : **refusé pour l’instant** — le MVP reste dispositions + listes + Structure (`docs/18` §13).
 ---
 
 *Document d’audit uniquement — aucun refactor UI massif dans ce lot. Identifiants admin utilisés en session pour cartographie ; **jamais** consignés ici ni dans les JSON de preuve.*
+
+**Preuves J6** : `npm run verify:dispositions` (nouveaux blocs + dispositions distinctes) ; `npm run build` ; composants `src/sections/{Gallery,Faq,CtaBand,TextBlock,ImageText,Spacer,RichText,VideoBlock,MenuFeatured}.tsx`.

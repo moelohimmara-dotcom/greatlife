@@ -152,7 +152,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'two_columns', label: 'Deux colonnes' },
     ],
     fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Texte', type: 'multiline', inlineMarkup: true }]),
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'image_text',
@@ -163,7 +163,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'image_right', label: 'Image à droite' },
     ],
     fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Texte', type: 'multiline', inlineMarkup: true }, IMAGE_FIELD]),
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'menu',
@@ -213,7 +213,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       },
     ]),
     providesFrom: 'menu',
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'gallery',
@@ -237,7 +237,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         ],
       },
     ]),
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'testimonials',
@@ -470,7 +470,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
         ],
       },
     ]),
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'cta',
@@ -481,7 +481,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { id: 'card', label: 'Encart' },
     ],
     fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Texte', type: 'multiline', inlineMarkup: true }, CTA]),
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'video',
@@ -493,7 +493,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       { name: 'url', label: 'Adresse de la vidéo', type: 'text', translatable: false, required: true },
       { name: 'poster', label: 'Image de prévisualisation', type: 'image', translatable: false },
     ]),
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'spacer',
@@ -519,7 +519,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
       BLOCK_SPACING,
       VISIBLE_ON,
     ],
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'rich_text',
@@ -527,7 +527,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
     description: 'Un bloc de contenu librement rédigé.',
     variants: [],
     fields: avecCouleursBloc([TITLE, { name: 'body', label: 'Contenu', type: 'multiline', required: true, inlineMarkup: true }]),
-    implemented: false,
+    implemented: true,
   },
 ]
 

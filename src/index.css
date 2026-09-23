@@ -520,6 +520,7 @@ select:focus-visible,
   .mobile-nav-toggle { display: flex !important; }
   .hero-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
   .story-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .image-text-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
   .loca-grid { grid-template-columns: 1fr !important; }
   .contact-grid { grid-template-columns: 1fr !important; }
   .reservation-grid { grid-template-columns: 1fr !important; }

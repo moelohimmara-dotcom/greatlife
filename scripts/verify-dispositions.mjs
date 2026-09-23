@@ -50,6 +50,13 @@ import { Contact } from '@/sections/Contact'
 import { Reservation } from '@/sections/Reservation'
 import { Blog } from '@/sections/Blog'
 import { Testimonials } from '@/sections/Testimonials'
+import { Gallery } from '@/sections/Gallery'
+import { Faq } from '@/sections/Faq'
+import { CtaBand } from '@/sections/CtaBand'
+import { TextBlock } from '@/sections/TextBlock'
+import { ImageText } from '@/sections/ImageText'
+import { Spacer } from '@/sections/Spacer'
+import { MenuFeatured } from '@/sections/MenuFeatured'
 
 const BLOCS = {
   hero: Hero,
@@ -62,6 +69,13 @@ const BLOCS = {
   reservation: Reservation,
   blog: Blog,
   testimonials: Testimonials,
+  gallery: Gallery,
+  faq: Faq,
+  cta: CtaBand,
+  text: TextBlock,
+  image_text: ImageText,
+  spacer: Spacer,
+  menu_featured: MenuFeatured,
 }
 
 function wrap(C, props) {
@@ -74,12 +88,26 @@ export function rendre(variant, content, preview) {
   return wrap(Hero, { variant, content, preview })
 }
 
-export function rendreBloc(type, variant) {
+export function rendreBloc(type, variant, content) {
   const C = BLOCS[type]
-  const content = type === 'testimonials'
-    ? { items: [{ name: 'Aïcha', text: 'On revient.' }, { name: 'Ibrahim', text: 'La carte est claire.' }] }
-    : undefined
-  try { return wrap(C, { variant, content }) } catch (e) { return 'ERROR: ' + e.message }
+  const base =
+    content ??
+    (type === 'testimonials'
+      ? { items: [{ name: 'Aïcha', text: 'On revient.' }, { name: 'Ibrahim', text: 'La carte est claire.' }] }
+      : type === 'gallery'
+        ? { items: [{ media: 'https://exemple.invalid/a.jpg', caption: 'A' }, { media: 'https://exemple.invalid/b.jpg', caption: 'B' }] }
+        : type === 'faq'
+          ? { items: [{ question: 'Horaires ?', answer: 'Ouvert tous les jours.' }, { question: 'Livraison ?', answer: 'Retrait uniquement.' }] }
+          : type === 'cta'
+            ? { title: 'Commander', body: 'Retrait sur place.', primaryCta: { label: 'Voir la carte', target: 'carte' } }
+            : type === 'text' || type === 'image_text'
+              ? { title: 'Titre', body: 'Un paragraphe pour le bloc.' + (type === 'image_text' ? '' : ''), image: type === 'image_text' ? 'https://exemple.invalid/x.jpg' : undefined }
+              : type === 'spacer'
+                ? { size: variant }
+                : type === 'menu_featured'
+                  ? { items: [{ ref: 'Le Greatlife' }, { ref: 'Le Tropical' }] }
+                  : undefined)
+  try { return wrap(C, { variant, content: base }) } catch (e) { return 'ERROR: ' + e.message }
 }
 `,
   'utf8',
@@ -210,6 +238,13 @@ const BLOCS = {
   reservation: { ids: ['card', 'wide'], defaut: 'card' },
   blog: { ids: ['grid', 'list'], defaut: 'grid' },
   testimonials: { ids: ['cards', 'quotes'], defaut: 'cards' },
+  gallery: { ids: ['grid', 'mosaic', 'carousel'], defaut: 'grid' },
+  faq: { ids: ['accordion', 'list'], defaut: 'accordion' },
+  cta: { ids: ['banner', 'card'], defaut: 'banner' },
+  text: { ids: ['one_column', 'two_columns'], defaut: 'one_column' },
+  image_text: { ids: ['image_left', 'image_right'], defaut: 'image_left' },
+  spacer: { ids: ['sm', 'md', 'lg'], defaut: 'md' },
+  menu_featured: { ids: ['grid', 'carousel'], defaut: 'grid' },
 }
 
 for (const [type, spec] of Object.entries(BLOCS)) {
