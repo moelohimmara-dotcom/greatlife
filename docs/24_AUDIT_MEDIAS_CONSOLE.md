@@ -94,7 +94,7 @@ console.css — blocs .admin-wf-media-guide / -tip / -empty / -confirm-del ajout
 
 ## 4. Guide MVP (implémenté)
 
-Pattern réutilisé : `admin-hint-box` (déjà Menu / Visibilité) + nouveau panneau `admin-wf-media-guide` (`<details>`) et tip dismissible (`localStorage` clé `glife.medias.guide-tip.dismissed`).
+Pattern réutilisé : `admin-hint-box` (déjà Menu / Visibilité) + panneau `admin-wf-media-guide` (ouvert à la demande via le bouton d’en-tête ou « Voir le guide ») et tip dismissible (`localStorage` clé `glife.medias.guide-tip.dismissed`).
 
 Vocabulaire : Importer, Où l’afficher, Dossiers, Bannière, Plat, Équipe — **pas** bucket, slot, RLS, JSON.
 
