@@ -83,8 +83,8 @@ export const NAV_GROUPS: [string, [AdminModuleKey, string, string][]][] = [
     ['visibility', 'Visibilité', 'eye'],
   ]],
   ['Système', [
-    ['settings', 'Réglages globaux', 'settings'],
-    ['forms', 'Formulaires & emails', 'settings'],
+    ['settings', 'Réglages du restaurant', 'settings'],
+    ['forms', 'Formulaires & notifications', 'settings'],
     ['users', 'Utilisateurs & rôles', 'users'],
     ['audit', "Journal d'activité", 'eye'],
   ]],

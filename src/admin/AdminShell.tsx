@@ -189,140 +189,122 @@ export function AdminShell() {
     </Bouton>
   )
 
+  const pendingTotal = (NOTIF.orders || 0) + (NOTIF.reservations || 0) + (NOTIF.messages || 0)
+  const accountInitials = (user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()
+  const roleLabel = ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role
+
   const renderNav = (compact: boolean, navId: string) => (
-    <aside id={navId} className={compact ? 'admin-nav-rail admin-rail' : 'admin-rail'} style={{
-        background: 'var(--admin-ink)', borderRight: '1px solid var(--admin-rail-line)',
-        padding: compact ? '16px 8px' : '22px 14px',
-        display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div
-        className="admin-nav-brand"
-        style={{
-          display: 'flex',
-          flexDirection: compact ? 'column' : 'row',
-          alignItems: 'center',
-          justifyContent: compact ? 'center' : 'space-between',
-          gap: ESPACE,
-          minHeight: 40,
-        }}
-      >
-        {compact ? (
-          <Link
-            to="/"
-            title="Voir le site"
-            aria-label="Greatlife, voir le site"
-            style={{
-              fontFamily: 'var(--admin-font-display)',
-              fontWeight: 700,
-              fontSize: '20px',
-              color: 'var(--admin-on-ink)',
-              textDecoration: 'none',
-              letterSpacing: '-0.02em',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              flexShrink: 0,
-            }}
-          >
-            G<span aria-hidden="true" style={{ color: 'var(--admin-lime)', fontSize: 11, marginLeft: 1 }}>.</span>
-          </Link>
-        ) : (
-          <Link
-            to="/"
-            title="Voir le site"
-            aria-label="Greatlife, voir le site"
-            style={{
-              fontFamily: 'var(--admin-font-display)',
-              fontWeight: 700,
-              fontSize: '20px',
-              color: 'var(--admin-on-ink)',
-              textDecoration: 'none',
-              letterSpacing: '-0.02em',
-              display: 'inline-flex',
-              alignItems: 'baseline',
-              minWidth: 0,
-            }}
-          >
-            GREATLIFE
-          </Link>
-        )}
-        {boutonMenu('sidebar')}
-      </div>
-      {!compact && (
-        <button type="button" className="admin-wf-shell-switcher" title="Restaurant">
-          <span className="admin-wf-shell-switcher-avatar" aria-hidden="true">GL</span>
-          <span className="admin-wf-shell-switcher-copy">
-            <strong>Greatlife</strong>
-            <small>Restaurant principal</small>
-          </span>
-        </button>
-      )}
-      <nav aria-label="Navigation de la console" style={{ marginTop: compact ? 16 : 16, display: 'flex', flexDirection: 'column', gap: compact ? 12 : 18, flex: 1, overflow: 'auto', minHeight: 0 }}>
-        {NAV_GROUPS.map(([groupLabel, items]) => (
-          <div key={groupLabel}>
-            <div
-              className="admin-nav-group"
-              style={{ fontSize: '11px', fontWeight: 700, color: 'var(--admin-on-ink-soft)', marginBottom: 8, paddingLeft: 4 }}
-            >{groupLabel}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: ESPACE, alignItems: compact ? 'center' : undefined }}>
-              {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => (
-                <NavLink
-                  key={k}
-                  to={pathForModule(k)}
-                  end={k === 'dashboard'}
-                  title={l}
-                  onClick={() => setMobileNav(false)}
-                  aria-label={NOTIF[k] > 0 ? `${l}, ${NOTIF[k]} en attente` : l}
-                  className={({ isActive }) => `admin-nav-item${isActive ? ' is-active' : ''}${compact ? ' is-compact' : ''}`}
-                  style={({ isActive }) => ({
-                    position: 'relative',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: compact ? 'center' : 'flex-start',
-                    gap: ESPACE,
-                    boxSizing: 'border-box',
-                    width: compact ? HAUTEUR : '100%',
-                    minHeight: HAUTEUR,
-                    padding: compact ? 0 : '0 12px',
-                    borderRadius: 12,
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: isActive ? 'var(--admin-forest)' : 'transparent',
-                    border: `1px solid ${isActive ? 'var(--admin-forest)' : 'transparent'}`,
-                    color: isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)',
-                  })}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span aria-hidden="true" style={{ display: 'inline-flex', opacity: isActive ? 1 : 0.85 }}>
-                        {Icon[icon](16, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
-                      </span>
-                      {!compact && <span style={{ flex: 1, textAlign: 'left' }}>{l}</span>}
-                      {NOTIF[k] > 0 && (
-                        <span
-                          aria-hidden="true"
-                          className={`admin-nav-badge${compact ? ' is-rail' : ''}`}
-                        >{compact && NOTIF[k] > 9 ? '9+' : NOTIF[k]}</span>
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+    <aside
+      id={navId}
+      className={`admin-rail${compact ? ' admin-nav-rail' : ''}`}
+      data-nav-mode={compact ? 'rail' : 'open'}
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
+    >
+      <div className={`admin-nav-head${compact ? ' is-compact' : ''}`}>
+        <div className="admin-nav-brand">
+          {compact ? (
+            <Link to="/" title="Voir le site" aria-label="Greatlife, voir le site" className="admin-nav-brand-mark">
+              G<span aria-hidden="true" className="admin-nav-brand-dot">.</span>
+            </Link>
+          ) : (
+            <Link to="/" title="Voir le site" aria-label="Greatlife, voir le site" className="admin-nav-brand-word">
+              GREATLIFE
+            </Link>
+          )}
+          {boutonMenu('sidebar')}
+        </div>
+        {!compact && (
+          <div className="admin-nav-org" role="group" aria-label="Établissement actuel">
+            <div className="admin-wf-shell-switcher" title="Restaurant actuel">
+              <span className="admin-wf-shell-switcher-avatar" aria-hidden="true">GL</span>
+              <span className="admin-wf-shell-switcher-copy">
+                <strong>Greatlife</strong>
+                <small>Restaurant principal</small>
+              </span>
             </div>
           </div>
-        ))}
-      </nav>
-      <div className="admin-nav-foot" style={{ borderTop: '1px solid var(--admin-rail-line)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: compact ? 'center' : undefined, gap: 10 }}>
-        {!compact && (
-          <>
-            <strong style={{ fontSize: '14px', fontWeight: 600, color: 'var(--admin-on-ink)' }}>{user?.name}</strong>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--admin-lime)', marginBottom: '4px' }}>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</div>
-          </>
         )}
-        <div className="admin-profile-actions" style={{ display: 'flex', flexDirection: compact ? 'column' : 'row', gap: ESPACE, width: compact ? undefined : '100%' }}>
+      </div>
+
+      <nav
+        className={`admin-nav-scroll${compact ? ' is-compact' : ''}`}
+        aria-label="Navigation de la console"
+        style={{ flex: 1, overflow: 'auto', minHeight: 0 }}
+      >
+        {pendingTotal > 0 && (
+          <span className="admin-live-status" role="status" aria-atomic="true">
+            {pendingTotal} élément{pendingTotal > 1 ? 's' : ''} en attente au total
+          </span>
+        )}
+        {NAV_GROUPS.map(([groupLabel, items], groupIndex) => {
+          const visible = items.filter(([k]) => canAccessModule(k, user?.role ?? ''))
+          if (visible.length === 0) return null
+          const groupId = `${navId}-group-${groupIndex}`
+          return (
+            <div key={groupLabel} className="admin-nav-section" role="group" aria-labelledby={groupId}>
+              <div id={groupId} className="admin-nav-group">{groupLabel}</div>
+              <div className={`admin-nav-section-items${compact ? ' is-compact' : ''}`}>
+                {visible.map(([k, l, icon]) => (
+                  <NavLink
+                    key={k}
+                    to={pathForModule(k)}
+                    end={k === 'dashboard'}
+                    title={l}
+                    onClick={() => setMobileNav(false)}
+                    aria-label={NOTIF[k] > 0 ? `${l}, ${NOTIF[k]} en attente` : l}
+                    className={({ isActive }) => `admin-nav-item${isActive ? ' is-active' : ''}${compact ? ' is-compact' : ''}`}
+                    style={({ isActive }) => ({
+                      position: 'relative',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: compact ? 'center' : 'flex-start',
+                      gap: ESPACE,
+                      boxSizing: 'border-box',
+                      width: compact ? HAUTEUR : '100%',
+                      minHeight: HAUTEUR,
+                      padding: compact ? 0 : '0 12px',
+                      borderRadius: 12,
+                      textDecoration: 'none',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: isActive ? 'var(--admin-forest)' : 'transparent',
+                      border: `1px solid ${isActive ? 'var(--admin-forest)' : 'transparent'}`,
+                      color: isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)',
+                    })}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span aria-hidden="true" className="admin-nav-item-icon" style={{ opacity: isActive ? 1 : 0.85 }}>
+                          {Icon[icon](16, isActive ? 'var(--admin-on-ink)' : 'var(--admin-on-ink-muted)')}
+                        </span>
+                        {!compact && <span className="admin-nav-item-label">{l}</span>}
+                        {NOTIF[k] > 0 && (
+                          <span
+                            aria-hidden="true"
+                            className={`admin-nav-badge${compact ? ' is-rail' : ''}`}
+                          >{compact && NOTIF[k] > 9 ? '9+' : NOTIF[k]}</span>
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </nav>
+
+      <div className={`admin-nav-foot${compact ? ' is-compact' : ''}`}>
+        {!compact && (
+          <div className="admin-nav-account">
+            <span className="admin-nav-account-avatar" aria-hidden="true">{accountInitials}</span>
+            <span className="admin-nav-account-copy">
+              <strong>{user?.name || 'Compte'}</strong>
+              <small>{roleLabel}</small>
+            </span>
+          </div>
+        )}
+        <div className={`admin-profile-actions${compact ? ' is-compact' : ''}`}>
           <Bouton
             etendu={!compact}
             carre={compact}
@@ -330,16 +312,10 @@ export function AdminShell() {
             onClick={() => go('settings')}
             title="Réglages"
             aria-label="Ouvrir les réglages"
-            style={{
-              justifyContent: compact ? 'center' : undefined,
-              background: 'transparent',
-              borderColor: 'var(--admin-rail-border-soft)',
-              color: 'var(--admin-on-ink)',
-              flex: compact ? undefined : 1,
-            }}
+            className="admin-nav-foot-btn admin-nav-foot-settings"
           >
-            {!compact && 'Réglages'}
-            {compact && <span aria-hidden="true">{Icon.settings(16, 'var(--admin-on-ink)')}</span>}
+            <span aria-hidden="true">{Icon.settings(16, 'var(--admin-on-ink)')}</span>
+            {!compact && <span>Réglages</span>}
           </Bouton>
           <Bouton
             etendu={!compact}
@@ -348,16 +324,10 @@ export function AdminShell() {
             onClick={handleLogout}
             title="Déconnexion"
             aria-label="Se déconnecter"
-            style={{
-              justifyContent: compact ? 'center' : undefined,
-              background: 'transparent',
-              borderColor: 'var(--admin-coral)',
-              color: 'var(--admin-coral)',
-              flex: compact ? undefined : 1,
-            }}
+            className="admin-nav-foot-btn admin-nav-foot-logout"
           >
             <span aria-hidden="true">{Icon.logout(16, 'var(--admin-coral)')}</span>
-            {!compact && ' Déconnexion'}
+            {!compact && <span>Déconnexion</span>}
           </Bouton>
         </div>
       </div>

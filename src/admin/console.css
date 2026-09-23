@@ -84,11 +84,146 @@ html:has([data-admin-shell]) #root {
   border-right: 1px solid color-mix(in srgb, #fff 8%, transparent) !important;
   color: color-mix(in srgb, #fff 78%, transparent);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 18px 14px 16px;
+}
+
+[data-admin-shell] .admin-rail.admin-nav-rail,
+[data-admin-shell] .admin-rail[data-nav-mode='rail'] {
+  padding: 14px 8px 12px;
+  align-items: stretch;
 }
 
 [data-admin-shell] .admin-rail .admin-nav-brand,
 [data-admin-shell] .admin-rail .admin-nav-brand a {
   color: #fff !important;
+}
+
+[data-admin-shell] .admin-nav-head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+[data-admin-shell] .admin-nav-head.is-compact {
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+[data-admin-shell] .admin-nav-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+}
+
+[data-admin-shell] .admin-nav-head.is-compact .admin-nav-brand {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+[data-admin-shell] .admin-nav-brand-word,
+[data-admin-shell] .admin-nav-brand-mark {
+  font-family: var(--admin-font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--admin-on-ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  display: inline-flex;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-nav-brand-word {
+  align-items: baseline;
+}
+
+[data-admin-shell] .admin-nav-brand-mark {
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-nav-brand-dot {
+  color: var(--admin-lime);
+  font-size: 11px;
+  margin-left: 1px;
+}
+
+[data-admin-shell] .admin-nav-org {
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-nav-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-right: 2px;
+  margin-right: -2px;
+  scroll-padding-bottom: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, #fff 22%, transparent) transparent;
+}
+
+[data-admin-shell] .admin-nav-scroll.is-compact {
+  gap: 10px;
+  align-items: center;
+}
+
+[data-admin-shell] .admin-nav-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+[data-admin-shell] .admin-nav-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, #fff 22%, transparent);
+  border-radius: 999px;
+}
+
+[data-admin-shell] .admin-nav-section {
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-nav-scroll.is-compact .admin-nav-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, #fff 10%, transparent);
+}
+
+[data-admin-shell] .admin-nav-scroll.is-compact .admin-nav-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+[data-admin-shell] .admin-nav-section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-nav-section-items.is-compact {
+  align-items: center;
 }
 
 [data-admin-shell] .admin-rail .admin-nav-group {
@@ -97,16 +232,42 @@ html:has([data-admin-shell]) #root {
   font-weight: 700 !important;
   letter-spacing: 0.04em;
   text-transform: none;
+  margin: 0 0 8px;
+  padding-left: 4px;
+  line-height: 1.2;
 }
 
 [data-admin-shell] .admin-rail .admin-nav-item {
   color: color-mix(in srgb, #fff 82%, transparent);
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  touch-action: manipulation;
 }
 
+[data-admin-shell] .admin-rail .admin-nav-item:hover:not(.is-active) {
+  background: color-mix(in srgb, #fff 7%, transparent) !important;
+  border-color: color-mix(in srgb, #fff 10%, transparent) !important;
+  color: var(--admin-on-ink) !important;
+}
+
+[data-admin-shell] .admin-rail .admin-nav-item.is-active,
 [data-admin-shell] .admin-rail .admin-nav-item[aria-current='page'] {
   background: var(--admin-forest) !important;
   border-color: var(--admin-forest) !important;
   color: #fff !important;
+}
+
+[data-admin-shell] .admin-nav-item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+[data-admin-shell] .admin-nav-item-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Compteurs sidebar : pastilles dédiées (pas formePastille / chips d’état).
@@ -149,13 +310,126 @@ html:has([data-admin-shell]) #root {
   color: #fff !important;
 }
 
-[data-admin-shell] .admin-rail .admin-nav-foot {
-  border-top-color: color-mix(in srgb, #fff 12%, transparent) !important;
+[data-admin-shell] .admin-nav-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, #fff 12%, transparent);
   color: color-mix(in srgb, #fff 70%, transparent);
+}
+
+[data-admin-shell] .admin-nav-foot.is-compact {
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
 }
 
 [data-admin-shell] .admin-rail .admin-nav-foot strong {
   color: #fff;
+}
+
+[data-admin-shell] .admin-nav-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 2px 2px 0;
+}
+
+[data-admin-shell] .admin-nav-account-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #fff 10%, var(--admin-ink));
+  border: 1px solid var(--admin-rail-border-soft);
+  color: var(--admin-on-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+[data-admin-shell] .admin-nav-account-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+[data-admin-shell] .admin-nav-account-copy strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--admin-on-ink);
+  line-height: 1.25;
+}
+
+[data-admin-shell] .admin-nav-account-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-lime);
+  line-height: 1.2;
+}
+
+[data-admin-shell] .admin-profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+[data-admin-shell] .admin-profile-actions.is-compact {
+  width: auto;
+  align-items: center;
+}
+
+[data-admin-shell] .admin-rail .admin-nav-foot-btn {
+  justify-content: flex-start !important;
+  width: 100%;
+  background: transparent !important;
+  color: var(--admin-on-ink) !important;
+  border-color: var(--admin-rail-border-soft) !important;
+  gap: 8px;
+}
+
+[data-admin-shell] .admin-rail .admin-nav-foot-btn.admin-nav-foot-logout {
+  color: var(--admin-coral) !important;
+  border-color: color-mix(in srgb, var(--admin-coral) 55%, transparent) !important;
+}
+
+[data-admin-shell] .admin-rail .admin-nav-foot-btn:hover {
+  background: color-mix(in srgb, #fff 8%, transparent) !important;
+}
+
+[data-admin-shell] .admin-nav-rail .admin-nav-foot-btn,
+[data-admin-shell] .admin-rail[data-nav-mode='rail'] .admin-nav-foot-btn {
+  width: 40px !important;
+  justify-content: center !important;
+}
+
+[data-admin-shell] .admin-rail a:focus-visible,
+[data-admin-shell] .admin-rail button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-ink), 0 0 0 4px var(--admin-lime);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-shell] .admin-rail .admin-nav-item {
+    transition: none;
+  }
 }
 
 [data-admin-shell] .admin-topbar {
@@ -3770,7 +4044,7 @@ html:has([data-admin-shell]) #root {
   font-size: 18px;
 }
 
-/* Sidebar — sélecteur d'établissement */
+/* Sidebar — établissement courant (affichage, pas un sélecteur multi-site) */
 
 [data-admin-shell] .admin-wf-shell-switcher {
   display: flex;
@@ -3784,13 +4058,7 @@ html:has([data-admin-shell]) #root {
   color: var(--admin-on-ink);
   text-align: left;
   font: inherit;
-  cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
-}
-
-[data-admin-shell] .admin-wf-shell-switcher:hover {
-  background: color-mix(in srgb, #fff 10%, var(--admin-ink));
-  border-color: color-mix(in srgb, #fff 28%, transparent);
+  cursor: default;
 }
 
 [data-admin-shell] .admin-wf-shell-switcher strong,
