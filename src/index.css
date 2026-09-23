@@ -160,7 +160,8 @@ html.admin-editor-lock body {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  /* Entre clusters : 16px (> 8px touch spacing) pour séparer les rôles. */
+  gap: 16px;
   min-width: 0;
   overflow: visible;
   position: relative;
@@ -168,28 +169,51 @@ html.admin-editor-lock body {
 
 .admin-editor-toolbar-start,
 .admin-editor-toolbar-center,
-.admin-editor-toolbar-end {
+.admin-editor-toolbar-end,
+.admin-editor-toolbar-status,
+.admin-editor-toolbar-secondary,
+.admin-editor-toolbar-primary {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  /* Dans un cluster : ≥ 8px (ui-ux-pro-max touch spacing). */
   gap: 8px;
   min-width: 0;
 }
 
-/* L’identité absorbe l’espace ; FR/EN+undo et publication restent collés (pas de trou). */
+/* Identité à gauche ; outils et actions restent compactes à droite, séparées. */
 .admin-editor-toolbar-start {
   flex: 1 1 0;
   justify-content: flex-start;
+  gap: 12px;
+}
+
+.admin-editor-toolbar-status {
+  flex: 0 0 auto;
 }
 
 .admin-editor-toolbar-center {
   flex: 0 0 auto;
   justify-content: center;
+  padding: 0 12px;
+  border-left: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-right: 1px solid color-mix(in srgb, currentColor 22%, transparent);
 }
 
 .admin-editor-toolbar-end {
   flex: 0 0 auto;
   justify-content: flex-end;
+  gap: 12px;
+}
+
+.admin-editor-toolbar-secondary {
+  flex: 0 0 auto;
+}
+
+.admin-editor-toolbar-primary {
+  flex: 0 0 auto;
+  padding-left: 12px;
+  border-left: 1px solid color-mix(in srgb, currentColor 22%, transparent);
 }
 
 .admin-editor-toolbar-title {

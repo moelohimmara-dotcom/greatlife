@@ -536,29 +536,47 @@ export function PageEditor({
       ? 'outdated'
       : 'live'
 
+  const enregistrerBrouillon = useCallback(() => {
+    void (async () => {
+      await Promise.resolve(flushLayout?.())
+      const saved = await editor.save()
+      if (saved) savedFp.current = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
+    })()
+  }, [editor, flushLayout])
+
+  const basculerControle = useCallback(() => {
+    setShowPublication((open) => {
+      const next = !open
+      if (next) setApercuElargi(false)
+      return next
+    })
+  }, [])
+
   return (
     <div className="admin-page-editor">
-      {/* Trois clusters : console d’édition | langue+historique | publication collée. */}
-      <div className="admin-editor-toolbar">
-        <div className="admin-editor-toolbar-start">
+      {/* Quatre rôles : navigation/identité | statut | langue+historique | actions. */}
+      <div className="admin-editor-toolbar" role="toolbar" aria-label="Atelier du site">
+        <div className="admin-editor-toolbar-start" role="group" aria-label="Page">
           <div className="admin-editor-toolbar-page">
             <h2 className="admin-editor-toolbar-title" title={pageLabel}>
               Modifier le site
             </h2>
             <small>{pageLabel}</small>
           </div>
-          <span className={`admin-wf-cms-save-state${brouillonSale ? '' : ' is-saved'}`}>
-            <i aria-hidden="true" />
-            {brouillonSale ? 'Brouillon non publié' : 'Enregistré'}
-          </span>
-          <StatusPill
-            label={consoleEtat.label}
-            color={couleurEtat}
-            title={consoleEtat.title}
-          />
+          <div className="admin-editor-toolbar-status" role="group" aria-label="État">
+            <span className={`admin-wf-cms-save-state${brouillonSale ? '' : ' is-saved'}`}>
+              <i aria-hidden="true" />
+              {brouillonSale ? 'Brouillon non publié' : 'Enregistré'}
+            </span>
+            <StatusPill
+              label={consoleEtat.label}
+              color={couleurEtat}
+              title={consoleEtat.title}
+            />
+          </div>
         </div>
 
-        <div className="admin-editor-toolbar-center">
+        <div className="admin-editor-toolbar-center" role="group" aria-label="Langue et historique">
           <div
             role="group"
             aria-label="Langue de l’aperçu et des textes"
@@ -616,7 +634,7 @@ export function PageEditor({
           </div>
         </div>
 
-        <div className="admin-editor-toolbar-end">
+        <div className="admin-editor-toolbar-end" role="group" aria-label="Publication">
           {actionError && (
             <span role="alert" className="admin-editor-toolbar-msg is-danger" title={actionError}>
               {actionError}
@@ -632,36 +650,28 @@ export function PageEditor({
               {editor.avertissement}
             </span>
           )}
-          <GhostButton
-            className="admin-editor-toolbar-wide"
-            color="currentColor"
-            disabled={editor.saving || !brouillonSale}
-            busy={editor.saving}
-            title="Enregistrer le brouillon sans publier"
-            onClick={() => {
-              void (async () => {
-                await Promise.resolve(flushLayout?.())
-                const saved = await editor.save()
-                if (saved) savedFp.current = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
-              })()
-            }}
-          >
-            {editor.saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}
-          </GhostButton>
-          <GhostButton
-            className="admin-editor-toolbar-wide"
-            color="currentColor"
-            aria-pressed={showPublication}
-            aria-expanded={showPublication}
-            title="Vérifier la page avant publication et consulter les versions enregistrées."
-            onClick={() => setShowPublication((open) => {
-              const next = !open
-              if (next) setApercuElargi(false)
-              return next
-            })}
-          >
-            Contrôle
-          </GhostButton>
+          <div className="admin-editor-toolbar-secondary" role="group" aria-label="Brouillon et contrôle">
+            <GhostButton
+              className="admin-editor-toolbar-wide"
+              color="currentColor"
+              disabled={editor.saving || !brouillonSale}
+              busy={editor.saving}
+              title="Enregistrer le brouillon sans publier"
+              onClick={enregistrerBrouillon}
+            >
+              {editor.saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}
+            </GhostButton>
+            <GhostButton
+              className="admin-editor-toolbar-wide"
+              color="currentColor"
+              aria-pressed={showPublication}
+              aria-expanded={showPublication}
+              title="Vérifier la page avant publication et consulter les versions enregistrées."
+              onClick={basculerControle}
+            >
+              Contrôle
+            </GhostButton>
+          </div>
           <div className="admin-editor-toolbar-plus" ref={plusRef}>
             <Bouton
               carre
@@ -678,46 +688,73 @@ export function PageEditor({
               <div role="menu" className="admin-editor-toolbar-plus-menu">
                 <GhostButton
                   color="currentColor"
+                  disabled={editor.saving || !brouillonSale}
+                  busy={editor.saving}
+                  title="Enregistrer le brouillon sans publier"
+                  onClick={() => {
+                    setPlusOuvert(false)
+                    enregistrerBrouillon()
+                  }}
+                  style={{ width: '100%', justifyContent: 'flex-start' }}
+                >
+                  {editor.saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}
+                </GhostButton>
+                <GhostButton
+                  color="currentColor"
                   aria-pressed={showPublication}
                   title="Vérifier la page avant publication et consulter les versions enregistrées."
                   onClick={() => {
                     setPlusOuvert(false)
-                    setShowPublication((open) => {
-                      const next = !open
-                      if (next) setApercuElargi(false)
-                      return next
-                    })
+                    basculerControle()
                   }}
                   style={{ width: '100%', justifyContent: 'flex-start' }}
                 >
                   Contrôle
                 </GhostButton>
+                {isPublished ? (
+                  <GhostButton
+                    className="admin-editor-unpublish"
+                    color="currentColor"
+                    disabled={publishing || editor.saving}
+                    busy={publishing || editor.saving}
+                    title="Retirer cette version : les visiteurs reverront l’ancien site."
+                    onClick={() => {
+                      setPlusOuvert(false)
+                      onUnpublish()
+                    }}
+                    style={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    Retirer
+                  </GhostButton>
+                ) : null}
               </div>
             ) : null}
           </div>
-          <PrimaryButton
-            className="admin-editor-publish"
-            disabled={publishing || editor.saving}
-            busy={publishing || editor.saving}
-            title={isPublished
-              ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
-              : 'Publier : les visiteurs verront ce contenu.'}
-            onClick={() => { void handlePublish() }}
-          >
-            {publishing ? 'Publication…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
-          </PrimaryButton>
-          {isPublished && (
-            <GhostButton
-              className="admin-editor-unpublish"
-              color="currentColor"
+          <div className="admin-editor-toolbar-primary" role="group" aria-label="Mise en ligne">
+            <PrimaryButton
+              className="admin-editor-publish"
               disabled={publishing || editor.saving}
               busy={publishing || editor.saving}
-              title="Retirer cette version : les visiteurs reverront l’ancien site."
-              onClick={onUnpublish}
+              title={isPublished
+                ? 'Les visiteurs verront la mise en page et les textes de cet écran.'
+                : 'Publier : les visiteurs verront ce contenu.'}
+              onClick={() => { void handlePublish() }}
             >
-              Retirer
-            </GhostButton>
-          )}
+              {publishing ? 'Publication…' : isPublished ? 'Mettre à jour le site' : 'Publier sur le site'}
+            </PrimaryButton>
+            {isPublished && (
+              <GhostButton
+                className="admin-editor-unpublish admin-editor-toolbar-wide"
+                color="currentColor"
+                disabled={publishing || editor.saving}
+                busy={publishing || editor.saving}
+                title="Retirer cette version : les visiteurs reverront l’ancien site."
+                onClick={onUnpublish}
+              >
+                Retirer
+              </GhostButton>
+            )}
+          </div>
         </div>
       </div>
 

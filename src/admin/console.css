@@ -2712,9 +2712,41 @@
   background: var(--admin-ink);
   color: var(--admin-on-ink);
   border-bottom: 3px solid var(--admin-lime);
-  padding: 8px 12px;
-  gap: 10px;
-  min-height: 56px;
+  padding: 8px 16px;
+  gap: 16px;
+  min-height: 60px;
+  box-sizing: border-box;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-status .admin-wf-cms-save-state {
+  color: var(--admin-on-ink-soft);
+  white-space: nowrap;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-status .admin-wf-cms-save-state.is-saved {
+  color: var(--admin-lime);
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-status .admin-wf-cms-save-state i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-center {
+  border-left-color: var(--admin-rail-border-soft);
+  border-right-color: var(--admin-rail-border-soft);
+}
+
+[data-admin-shell] .admin-main-editor .admin-editor-toolbar-primary {
+  border-left-color: var(--admin-rail-border-soft);
+}
+
+[data-admin-shell] .admin-main-editor .admin-nav-toggle-main.admin-mobile-menu {
+  top: 8px;
+  left: 12px;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar-title {
@@ -3145,7 +3177,17 @@
 @media (max-width: 375px) {
   [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
     flex-wrap: wrap;
-    padding: 8px;
+    padding: 8px 12px 8px 56px;
+    gap: 12px;
+    row-gap: 8px;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-center {
+    padding: 0 8px;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-primary {
+    padding-left: 8px;
   }
 
   [data-admin-shell] .admin-preview-toolbar {
@@ -5050,10 +5092,22 @@
   }
 
   [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
-    min-height: 48px;
-    padding: 6px 10px;
-    gap: 8px;
+    min-height: 52px;
+    padding: 6px 12px 6px 56px;
+    gap: 12px;
+    row-gap: 8px;
     flex-wrap: wrap;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-center {
+    border-left: none;
+    border-right: none;
+    padding: 0;
+  }
+
+  [data-admin-shell] .admin-main-editor .admin-editor-toolbar-primary {
+    border-left: none;
+    padding-left: 0;
   }
 
   [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn {
@@ -5879,16 +5933,23 @@
 [data-admin-shell] .admin-editor-toolbar-page {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 2px;
   min-width: 0;
+  min-height: 44px;
 }
 
 [data-admin-shell] .admin-editor-toolbar-page small {
   font-size: 11px;
+  line-height: 1.2;
   color: var(--admin-on-ink-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+[data-admin-shell] .admin-editor-toolbar-status {
+  flex-shrink: 0;
 }
 
 @media (max-width: 900px) {
