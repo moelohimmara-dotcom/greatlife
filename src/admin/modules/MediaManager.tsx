@@ -8,7 +8,32 @@ import { productPhotoSlotId } from '@/lib/productPhotoSlot'
 import { Icon } from '@/lib/icons'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
-const GUIDE_DISMISS_KEY = 'glife.medias.guide-tip.dismissed'
+const GUIDE_DISMISS_KEY = 'glife.medias.guide-tip.dismissed.v2'
+
+type UploadItemStatus = 'waiting' | 'working' | 'ok' | 'err'
+
+type UploadQueueItem = {
+  id: string
+  name: string
+  status: UploadItemStatus
+  detail?: string
+}
+
+function friendlyUploadError(raw?: string): string {
+  if (!raw) return 'Impossible d’importer ce fichier.'
+  if (raw === 'not-configured' || /not.?config/i.test(raw)) return 'Connexion requise pour importer.'
+  if (/too large|payload|size|maximum/i.test(raw)) return 'Fichier trop volumineux.'
+  if (/mime|content.?type|invalid type|not allowed/i.test(raw)) return 'Format non pris en charge.'
+  if (/network|fetch|Failed to fetch/i.test(raw)) return 'Réseau indisponible. Réessayez dans un instant.'
+  return 'Impossible d’importer ce fichier. Réessayez ou choisissez un autre fichier.'
+}
+
+function uploadStatusLabel(status: UploadItemStatus): string {
+  if (status === 'waiting') return 'En attente'
+  if (status === 'working') return 'En cours…'
+  if (status === 'ok') return 'Importé'
+  return 'Échec'
+}
 
 const SITE_MEDIA_SLOTS: ReadonlyArray<{ id: string; label: string; dims: string; folder: string }> = [
   { id: 'hero', label: 'Bannière principale', dims: 'grande photo', folder: 'hero' },
@@ -105,12 +130,12 @@ function MediaGuide({ onClose }: { onClose: () => void }) {
           {' '}l’image (bannière, plat, équipe…). C’est l’emplacement sur votre site.
         </li>
         <li>
-          <strong>Importez</strong>
-          {' '}en glissant un fichier ou via «{'\u00a0'}Importer des médias{'\u00a0'}».
+          <strong>Importez une ou plusieurs photos</strong>
+          {' '}en les glissant ici, ou via «{'\u00a0'}Importer des médias{'\u00a0'}». Vous pouvez sélectionner plusieurs fichiers d’un coup.
         </li>
         <li>
-          <strong>Vérifiez le détail</strong>
-          {' '}à droite{'\u00a0'}: emplacement, puis Enregistrer si vous changez où ça apparaît.
+          <strong>Suivez la file d’attente</strong>
+          {' '}(succès / échecs), puis vérifiez le détail à droite{'\u00a0'}: emplacement, puis Enregistrer si vous changez où ça apparaît.
         </li>
         <li>
           Les <strong>dossiers</strong> (Bannière, Carte, Équipe…) regroupent automatiquement vos fichiers selon l’emplacement — ce ne sont pas des dossiers libres comme sur un ordinateur.
@@ -127,6 +152,7 @@ export function MediaManager() {
   const [resizePreset, setResizePreset] = useState('original')
   const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([])
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -221,37 +247,110 @@ export function MediaManager() {
     setSelectedId(null)
   }
 
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return
+  const handleFiles = async (fileList: FileList | File[] | null | undefined) => {
+    const files = Array.from(fileList ?? []).filter((f): f is File => Boolean(f))
+    if (files.length === 0) return
     if (!isSupabase) {
-      setStatus({ kind: 'err', msg: 'Connexion requise pour téléverser.' })
+      setStatus({ kind: 'err', msg: 'Connexion requise pour importer.' })
       return
     }
+    if (uploading) return
+
+    const total = files.length
+    const queue: UploadQueueItem[] = files.map((file, index) => ({
+      id: `${Date.now()}-${index}-${file.name}`,
+      name: file.name,
+      status: 'waiting',
+    }))
+    setUploadQueue(queue)
     setUploading(true)
-    setStatus({ kind: 'busy', msg: `Préparation de ${file.name}…` })
-    let finalFile = file
-    let dims = ''
-    try {
-      if (resizeMax > 0 && isResizableImage(file)) {
-        const r = await resizeImageFile(file, resizeMax)
-        finalFile = r.file
-        dims = ` (${r.width}×${r.height})`
+
+    let okCount = 0
+    let failCount = 0
+    let lastOkId: string | null = null
+    let lastOkSlot = slot
+    const targetLabel = labelForMediaSlot(slot, slotChoices)
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const itemId = queue[i].id
+      setUploadQueue((prev) => prev.map((q) => (q.id === itemId ? { ...q, status: 'working', detail: undefined } : q)))
+      setStatus({
+        kind: 'busy',
+        msg: total === 1
+          ? `Préparation de ${file.name}…`
+          : `Import ${i + 1} sur ${total} — préparation de ${file.name}…`,
+      })
+
+      let finalFile = file
+      let dims = ''
+      try {
+        if (resizeMax > 0 && isResizableImage(file)) {
+          const r = await resizeImageFile(file, resizeMax)
+          finalFile = r.file
+          dims = ` (${r.width}×${r.height})`
+        }
+      } catch {
+        /* garder l’original */
       }
-    } catch {
-      /* garder l’original */
+
+      setStatus({
+        kind: 'busy',
+        msg: total === 1
+          ? `Import de ${finalFile.name}${dims}…`
+          : `Import ${i + 1} sur ${total} — ${finalFile.name}${dims}…`,
+      })
+
+      const res = await uploadMedia(finalFile, slot)
+      if (res.data) {
+        okCount += 1
+        lastOkId = res.data.id
+        lastOkSlot = res.data.slot
+        setUploadQueue((prev) => prev.map((q) => (
+          q.id === itemId
+            ? { ...q, status: 'ok', detail: `Dans « ${labelForMediaSlot(res.data!.slot, slotChoices)} »` }
+            : q
+        )))
+      } else {
+        failCount += 1
+        const detail = friendlyUploadError(res.error)
+        setUploadQueue((prev) => prev.map((q) => (
+          q.id === itemId ? { ...q, status: 'err', detail } : q
+        )))
+      }
     }
-    setStatus({ kind: 'busy', msg: `Téléversement de ${finalFile.name}${dims}…` })
-    const res = await uploadMedia(finalFile, slot)
+
     setUploading(false)
-    if (res.data) {
-      setStatus({ kind: 'ok', msg: `${res.data.filename} téléversé dans « ${labelForMediaSlot(res.data.slot, slotChoices)} »${dims}.` })
-      await refreshMedia()
-      setSelectedId(res.data.id)
-      setEditSlot(res.data.slot)
-    } else {
-      setStatus({ kind: 'err', msg: res.error || 'Échec du téléversement.' })
-    }
     if (fileRef.current) fileRef.current.value = ''
+
+    if (okCount > 0) {
+      await refreshMedia()
+      if (lastOkId) {
+        setSelectedId(lastOkId)
+        setEditSlot(lastOkSlot)
+      }
+    }
+
+    if (failCount === 0) {
+      setStatus({
+        kind: 'ok',
+        msg: okCount === 1
+          ? `1 fichier importé dans « ${targetLabel} ».`
+          : `${okCount} fichiers importés dans « ${targetLabel} ».`,
+      })
+    } else if (okCount === 0) {
+      setStatus({
+        kind: 'err',
+        msg: total === 1
+          ? 'Import impossible. Vérifiez le fichier et réessayez.'
+          : `Aucun fichier importé (${failCount} échec${failCount > 1 ? 's' : ''}).`,
+      })
+    } else {
+      setStatus({
+        kind: 'err',
+        msg: `${okCount} importé${okCount > 1 ? 's' : ''}, ${failCount} échec${failCount > 1 ? 's' : ''} — voyez la liste ci-dessous.`,
+      })
+    }
   }
 
   const handleDelete = async (m: MediaSlot) => {
@@ -295,6 +394,11 @@ export function MediaManager() {
     }
   }
 
+  const queueDone = uploadQueue.filter((q) => q.status === 'ok' || q.status === 'err').length
+  const queueOk = uploadQueue.filter((q) => q.status === 'ok').length
+  const queueErr = uploadQueue.filter((q) => q.status === 'err').length
+  const queueCurrent = Math.min(queueDone + (uploading ? 1 : 0), uploadQueue.length || 0)
+
   return (
     <div className="admin-page-wide">
       <PageHeader
@@ -329,8 +433,8 @@ export function MediaManager() {
           <div>
             <strong>Astuce</strong>
             <p>
-              Importez d’abord, puis choisissez où ça apparaît (bannière, plat, équipe).
-              Les dossiers du bas suivent automatiquement cet emplacement.
+              Vous pouvez importer plusieurs photos d’un coup. Choisissez ensuite où chacune apparaît
+              (bannière, plat, équipe). Les dossiers du bas suivent automatiquement cet emplacement.
             </p>
           </div>
           <div className="admin-wf-media-tip-actions">
@@ -345,7 +449,11 @@ export function MediaManager() {
       )}
 
       <div className={`admin-status-live${status.kind === 'err' ? ' is-error' : status.kind === 'ok' ? ' is-ok' : ''}`} role="status" aria-live="polite">
-        {uploading ? 'Téléversement en cours…' : status.kind !== 'idle' ? status.msg : ''}
+        {uploading
+          ? (uploadQueue.length > 1
+            ? `Import en cours (${queueCurrent} sur ${uploadQueue.length})…`
+            : 'Import en cours…')
+          : status.kind !== 'idle' ? status.msg : ''}
       </div>
 
       {!isSupabase && (
@@ -433,10 +541,11 @@ export function MediaManager() {
         ref={fileRef}
         type="file"
         accept="image/*,video/*"
+        multiple
         style={{ display: 'none' }}
         aria-hidden="true"
         tabIndex={-1}
-        onChange={(e) => handleFile(e.target.files?.[0])}
+        onChange={(e) => handleFiles(e.target.files)}
       />
 
       <div
@@ -447,12 +556,12 @@ export function MediaManager() {
         onDrop={(e) => {
           e.preventDefault()
           setDragOver(false)
-          if (isSupabase && !uploading) handleFile(e.dataTransfer.files?.[0])
+          if (isSupabase && !uploading) handleFiles(e.dataTransfer.files)
         }}
         role="button"
         tabIndex={isSupabase && !uploading ? 0 : -1}
         aria-disabled={!isSupabase || uploading}
-        aria-label="Zone de dépôt d’images — glisser un fichier ou activer pour parcourir"
+        aria-label="Zone de dépôt — glisser une ou plusieurs photos, ou activer pour parcourir"
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
@@ -462,8 +571,8 @@ export function MediaManager() {
       >
         {Icon.image(28, 'var(--admin-forest)')}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <strong>{uploading ? 'Téléversement en cours…' : 'Glissez vos fichiers ici'}</strong>
-          <span>ou cliquez pour parcourir · JPG, PNG, SVG, MP4 · {RESIZE_PRESETS.find((p) => p.id === resizePreset)?.label}</span>
+          <strong>{uploading ? 'Import en cours…' : 'Glissez vos fichiers ici'}</strong>
+          <span>plusieurs fichiers acceptés · JPG, PNG, SVG, MP4 · {RESIZE_PRESETS.find((p) => p.id === resizePreset)?.label}</span>
         </div>
         <span
           onClick={(e) => e.stopPropagation()}
@@ -479,6 +588,58 @@ export function MediaManager() {
           </GhostButton>
         </span>
       </div>
+
+      {uploadQueue.length > 0 && (
+        <section
+          className={`admin-wf-media-queue${uploading ? ' is-busy' : ''}`}
+          aria-label="File d’import"
+        >
+          <header className="admin-wf-media-queue-head">
+            <div>
+              <strong>
+                {uploading
+                  ? `Import ${queueCurrent} sur ${uploadQueue.length}`
+                  : queueErr === 0
+                    ? `Import terminé — ${queueOk} fichier${queueOk > 1 ? 's' : ''} prêt${queueOk > 1 ? 's' : ''}`
+                    : `Import terminé — ${queueOk} réussi${queueOk > 1 ? 's' : ''}, ${queueErr} échec${queueErr > 1 ? 's' : ''}`}
+              </strong>
+              {!uploading && queueErr > 0 && (
+                <p>Corrigez les fichiers en échec, puis réessayez l’import.</p>
+              )}
+            </div>
+            {!uploading && (
+              <GhostButton color={t.muted} onClick={() => setUploadQueue([])}>
+                Masquer
+              </GhostButton>
+            )}
+          </header>
+          <ul className="admin-wf-media-queue-list">
+            {uploadQueue.map((item) => (
+              <li key={item.id} className={`is-${item.status}`}>
+                <span className="admin-wf-media-queue-name" title={item.name}>{item.name}</span>
+                <span className="admin-wf-media-queue-state">
+                  {uploadStatusLabel(item.status)}
+                  {item.detail ? ` · ${item.detail}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div
+            className="admin-wf-media-queue-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={uploadQueue.length}
+            aria-valuenow={queueDone}
+            aria-label="Progression de l’import"
+          >
+            <i
+              style={{
+                width: `${Math.round((queueDone / Math.max(uploadQueue.length, 1)) * 100)}%`,
+              }}
+            />
+          </div>
+        </section>
+      )}
 
       <div className="admin-wf-media-folders" role="tablist" aria-label="Dossiers">
         <span className="admin-wf-eyebrow">Dossiers</span>
@@ -562,7 +723,7 @@ export function MediaManager() {
                 )}
                 {!libraryEmptyBecauseFilter && (
                   <PrimaryButton disabled={!isSupabase || uploading} onClick={() => fileRef.current?.click()}>
-                    {Icon.image(16)} Importer une photo
+                    {Icon.image(16)} Importer des photos
                   </PrimaryButton>
                 )}
               </div>

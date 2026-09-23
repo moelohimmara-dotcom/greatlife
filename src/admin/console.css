@@ -4522,6 +4522,105 @@
   font-size: 13px;
 }
 
+[data-admin-shell] .admin-wf-media-queue {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-panel);
+  background: var(--admin-surface);
+}
+
+[data-admin-shell] .admin-wf-media-queue.is-busy {
+  border-color: color-mix(in srgb, var(--admin-forest) 35%, var(--admin-line));
+}
+
+[data-admin-shell] .admin-wf-media-queue-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+[data-admin-shell] .admin-wf-media-queue-head strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-media-queue-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--admin-ink) 68%, transparent);
+}
+
+[data-admin-shell] .admin-wf-media-queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+[data-admin-shell] .admin-wf-media-queue-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--admin-paper-muted);
+  font-size: 12px;
+}
+
+[data-admin-shell] .admin-wf-media-queue-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--admin-ink);
+  font-weight: 550;
+}
+
+[data-admin-shell] .admin-wf-media-queue-state {
+  color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
+  text-align: right;
+  max-width: 42ch;
+}
+
+[data-admin-shell] .admin-wf-media-queue-list li.is-ok .admin-wf-media-queue-state {
+  color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-media-queue-list li.is-err .admin-wf-media-queue-state {
+  color: #b91c1c;
+}
+
+[data-admin-shell] .admin-wf-media-queue-list li.is-working {
+  background: color-mix(in srgb, var(--admin-sage) 45%, var(--admin-paper));
+}
+
+[data-admin-shell] .admin-wf-media-queue-bar {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-line) 80%, transparent);
+  overflow: hidden;
+}
+
+[data-admin-shell] .admin-wf-media-queue-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--admin-forest);
+  transition: width 0.25s ease;
+}
+
 [data-admin-shell] .admin-wf-media-drop.is-disabled {
   opacity: 0.65;
   cursor: not-allowed;

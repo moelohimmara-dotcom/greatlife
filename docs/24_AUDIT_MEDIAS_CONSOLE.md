@@ -55,7 +55,7 @@ Correctifs P0/P1 + **MVP de guidance** livrés dans le même lot (tip dismissibl
 |---|---|---|---|---|
 | N1 | P0 | Guide in-app (« Comment ça marche » + tip dismissible) | Onboarding restaurateur sans IA | **Non** — livré MVP |
 | N2 | P1 | Persistance texte alternatif + légende | Accessibilité publique réelle | **Oui** — colonnes `media_assets` |
-| N3 | P1 | Multi-import (plusieurs fichiers) | Gain de temps | **Partiel** (input `multiple` + boucle) — pas ce lot |
+| N3 | P1 | Multi-import (plusieurs fichiers) | Gain de temps | **Livré** — `input multiple` + dropzone multi + file d’attente / progression |
 | N4 | P1 | Remplacer / prévisualiser avant import | Moins d’erreurs | Front + éventuellement Storage |
 | N5 | P2 | Dossiers libres utilisateur | Organisation perso | **Oui** — schéma dossiers |
 | N6 | P2 | Sélection multiple + suppression groupée | Ménage | Front + API delete batch |
@@ -111,7 +111,7 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 | `created_at` pour tri fiable | brancher `MediaSlot` | déjà en table | Couloir SiteContext / repository |
 | Dossiers libres | UI | table `media_folders` + FK | Porte de phase |
 | Bulk delete | UI multi-select | delete batch Storage + rows | |
-| Multi-upload | `input multiple` | idem upload actuel | |
+| Multi-upload | ✅ `multiple` + file d’attente | idem upload actuel | N3 livré 2026-09-23 |
 
 ---
 
@@ -125,6 +125,21 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 
 ## 7. Next
 
-1. Après merge `main` : redéployer Pages et rejouer `run.mjs` (vérifier tip + guide + empty Non utilisé).  
-2. Décision propriétaire : prioriser **alt persisté** (N2) vs multi-import (N3).  
+1. Après merge `main` : redéployer Pages et vérifier multi-import (2–3 images) + tip/guide mis à jour.  
+2. Décision propriétaire : prioriser **alt persisté** (N2) vs remplacer/prévisualiser (N4).  
 3. Lot mobile : plier la zone d’import derrière « Ajouter une photo » pour remonter la bibliothèque.
+
+---
+
+## 8. N3 — Multi-import (2026-09-23)
+
+**Choix propriétaire** : N3 avant N2.
+
+**Livré** :
+- `input` `multiple` + dropzone multi-fichiers
+- File d’attente visible (N sur M, barre de progression, succès/échecs par fichier)
+- Messages métier (`friendlyUploadError`) — pas de jargon Storage/RLS
+- Guide « Comment ça marche » + tip dismissible (`glife.medias.guide-tip.dismissed.v2`) mis à jour
+- Réutilise `uploadMedia` existant (boucle séquentielle) — **pas de migration**
+
+**Hors périmètre N3** : N2 (alt/légende persistés), N4 (prévisualiser avant import), suppression groupée (N6).
