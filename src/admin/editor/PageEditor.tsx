@@ -541,9 +541,12 @@ export function PageEditor({
       {/* Trois clusters : console d’édition | langue+historique | publication collée. */}
       <div className="admin-editor-toolbar">
         <div className="admin-editor-toolbar-start">
-          <h2 className="admin-editor-toolbar-title" title={pageLabel}>
-            Modifier le site
-          </h2>
+          <div className="admin-editor-toolbar-page">
+            <h2 className="admin-editor-toolbar-title" title={pageLabel}>
+              Modifier le site
+            </h2>
+            <small>{pageLabel}</small>
+          </div>
           <span className={`admin-wf-cms-save-state${brouillonSale ? '' : ' is-saved'}`}>
             <i aria-hidden="true" />
             {brouillonSale ? 'Brouillon non publié' : 'Enregistré'}
@@ -629,6 +632,22 @@ export function PageEditor({
               {editor.avertissement}
             </span>
           )}
+          <GhostButton
+            className="admin-editor-toolbar-wide"
+            color="currentColor"
+            disabled={editor.saving || !brouillonSale}
+            busy={editor.saving}
+            title="Enregistrer le brouillon sans publier"
+            onClick={() => {
+              void (async () => {
+                await Promise.resolve(flushLayout?.())
+                const saved = await editor.save()
+                if (saved) savedFp.current = empreinteSauvegarde(editor.sections) + '#' + editor.removedIds.join(',')
+              })()
+            }}
+          >
+            {editor.saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}
+          </GhostButton>
           <GhostButton
             className="admin-editor-toolbar-wide"
             color="currentColor"

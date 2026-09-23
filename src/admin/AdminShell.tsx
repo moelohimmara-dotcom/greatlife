@@ -264,7 +264,7 @@ export function AdminShell() {
           <div key={groupLabel}>
             <div
               className="admin-nav-group"
-              style={{ fontSize: '12px', fontWeight: 700, color: 'var(--admin-on-ink-soft)', marginBottom: 8, paddingLeft: 4 }}
+              style={{ fontSize: '11px', fontWeight: 700, color: 'var(--admin-on-ink-soft)', marginBottom: 8, paddingLeft: 4 }}
             >{groupLabel}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: ESPACE, alignItems: compact ? 'center' : undefined }}>
               {items.filter(([k]) => canAccessModule(k, user?.role ?? '')).map(([k, l, icon]) => (
@@ -488,6 +488,21 @@ export function AdminShell() {
                 >
                   Voir le site
                 </Bouton>
+                <button
+                  type="button"
+                  className="admin-topbar-account"
+                  onClick={() => go('settings')}
+                  title="Compte et réglages"
+                  aria-label={`Compte ${user?.name ?? 'administrateur'}, ouvrir les réglages`}
+                >
+                  <span className="admin-topbar-account-avatar" aria-hidden="true">
+                    {(user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="admin-topbar-account-copy">
+                    <strong>{user?.name || 'Compte'}</strong>
+                    <small>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</small>
+                  </span>
+                </button>
               </div>
             </div>
           )}

@@ -330,11 +330,19 @@ Dirty bar si modifications en cours.
 
 Table utilisateurs + matrice des accès. Inviter = action principale.
 
+**Alignement (2026-09-23)** : table Nom · Email · Rôle · Invitation/ajout · Actions
+(fidèle à `System(users)` du modèle) + panneau « Matrice des accès » live (RBAC).
+Écart : pas de « dernière connexion » en base — on affiche invitation / date d’ajout.
+
 ---
 
 ## 17. Journal d’activité (`audit`)
 
 Table : Action · Utilisateur · Module · Date. Export optionnel.
+
+**Alignement (2026-09-23)** : layout fidèle à `activity-log.tsx` (KPI, filtres type,
+timeline + détail). Données live `audit_log`. Pas de % « réussites » fictif ;
+statut affiché = « Enregistré » (le journal ne porte pas d’état d’échec).
 
 ---
 
@@ -409,7 +417,10 @@ Aucun scroll horizontal global. `overscroll-behavior: contain` sur drawers.
 | `media` | ✅ structure | alt/légende non persistés ; dossiers = emplacements |
 | `theme` | ✅ structure | Atmosphère/Composants honnêtement non éditables |
 | `reservations` | ✅ structure | Tables désactivées (pas en base) |
-| `menu` | ⏳ session suivante | liste + aperçu mobile + dirty bar |
-| `visibility` / `settings` / `blog` / `team` / `forms` / `users` / `audit` | ⏳ | —
-| Shell / Dashboard / Commandes / Messages | ⏳ revue écarts | —
-| `content` (PageEditor) | ⏳ polish chrome | ne pas remplacer par mock SiteEditor |
+| `menu` | ✅ structure | signature ≠ dispo temporaire ; sections/filtres honnêtes |
+| `visibility` / `settings` / `blog` / `team` / `forms` | ✅ structure | voir notes §9–15 |
+| `users` | ✅ structure | pas de dernière connexion en base |
+| `audit` | ✅ structure | pas de % réussite ; statut = enregistré |
+| Shell | ✅ structure | compte topbar ; groupes 11 px ; recherche = raccourcis |
+| Dashboard / Commandes / Messages | ✅ structure | Messages : temps de réponse non mesuré ; Commandes : retard = >45 min |
+| `content` (PageEditor) | ✅ polish chrome | Enregistrer brouillon + libellé page ; pas de mock SiteEditor |

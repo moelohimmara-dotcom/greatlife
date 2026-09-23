@@ -1,11 +1,81 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Icon } from '@/lib/icons'
-import { PageHeader, EmptyState, inputStyle, GhostButton } from '@/admin/ui'
+import { PageHeader, EmptyState, GhostButton } from '@/admin/ui'
 import { fetchAuditLog, type AuditEntry } from '@/lib/repository'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { dateFr, heureCourte } from '@/admin/shared'
+
+type ActivityFilter = 'all' | 'publish' | 'edit' | 'media' | 'security' | 'team'
+
+function classifyAction(action: string): ActivityFilter {
+  const a = action.toLowerCase()
+  if (a.includes('publish') || a.includes('unpublish') || a.includes('publication')) return 'publish'
+  if (a.includes('media') || a.includes('image') || a.includes('upload')) return 'media'
+  if (a.includes('login') || a.includes('logout') || a.includes('auth') || a.includes('rbac') || a.includes('suspend') || a.includes('activate')) return 'security'
+  if (a.includes('user') || a.includes('invite') || a.includes('role')) return 'team'
+  return 'edit'
+}
+
+function moduleLabel(action: string, target: string): string {
+  const a = action.toLowerCase()
+  if (a.includes('order')) return 'Commandes'
+  if (a.includes('reservation') || a.includes('resa')) return 'Réservations'
+  if (a.includes('message')) return 'Messages'
+  if (a.includes('menu') || a.includes('plat')) return 'Carte & prix'
+  if (a.includes('blog')) return 'Blog'
+  if (a.includes('media')) return 'Médias'
+  if (a.includes('user') || a.includes('invite') || a.includes('rbac')) return 'Utilisateurs'
+  if (a.includes('publish') || a.includes('page') || a.includes('section')) return 'Modifier le site'
+  if (a.includes('visibility')) return 'Visibilité'
+  if (a.includes('theme') || a.includes('apparence')) return 'Thème & ambiance'
+  if (target) return target.split('/')[0]?.trim() || 'Console'
+  return 'Console'
+}
+
+function dayLabel(iso?: string): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return '—'
+  const today = new Date()
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const startThat = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const diff = Math.round((startToday.getTime() - startThat.getTime()) / 86400000)
+  if (diff === 0) return 'Aujourd’hui'
+  if (diff === 1) return 'Hier'
+  return dateFr(iso)
+}
+
+function initials(actor: string): string {
+  const base = (actor || 'SY').split('@')[0] || 'SY'
+  const parts = base.replace(/[._-]+/g, ' ').trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return base.slice(0, 2).toUpperCase()
+}
+
+function toneFor(kind: ActivityFilter): string {
+  if (kind === 'publish') return 'success'
+  if (kind === 'security') return 'security'
+  if (kind === 'team') return 'warning'
+  return 'info'
+}
+
+function iconFor(kind: ActivityFilter) {
+  if (kind === 'publish') return Icon.check
+  if (kind === 'media') return Icon.image
+  if (kind === 'security') return Icon.settings
+  if (kind === 'team') return Icon.users
+  return Icon.write
+}
+
+const FILTERS: { id: ActivityFilter; label: string }[] = [
+  { id: 'all', label: 'Toutes' },
+  { id: 'publish', label: 'Publications' },
+  { id: 'edit', label: 'Modifications' },
+  { id: 'media', label: 'Médias' },
+  { id: 'security', label: 'Sécurité' },
+  { id: 'team', label: 'Équipe' },
+]
 
 export function AuditManager() {
   const { theme: t, dataSource } = useSite()
@@ -13,55 +83,68 @@ export function AuditManager() {
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<string>('all')
-  const [actorFilter, setActorFilter] = useState<string>('all')
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
+  const [filter, setFilter] = useState<ActivityFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const inp = inputStyle(t)
+
   useEffect(() => {
     if (dataSource !== 'supabase') { setLoading(false); return }
     let active = true
     const refresh = async () => {
       const res = await fetchAuditLog()
       if (!active || !res.fromDb) return
-      setEntries(res.data); setLoading(false)
+      setEntries(res.data)
+      setLoading(false)
     }
     refresh()
     const timer = setInterval(refresh, 30000)
     return () => { active = false; clearInterval(timer) }
   }, [dataSource])
-  const actions = Array.from(new Set(entries.map(e => e.action))).sort()
-  const actors = Array.from(new Set(entries.map(e => e.actor || 'système'))).sort()
-  const q = query.trim().toLowerCase()
-  const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null
-  const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : null
-  const filtered = entries.filter(e => {
-    if (filter !== 'all' && e.action !== filter) return false
-    if (actorFilter !== 'all' && (e.actor || 'système') !== actorFilter) return false
-    if (fromTs !== null || toTs !== null) {
-      const ts = e.created_at ? new Date(e.created_at).getTime() : NaN
-      if (!Number.isFinite(ts)) return false
-      if (fromTs !== null && ts < fromTs) return false
-      if (toTs !== null && ts > toTs) return false
+
+  const enriched = useMemo(() => entries.map((e) => {
+    const kind = classifyAction(e.action)
+    return {
+      ...e,
+      kind,
+      tone: toneFor(kind),
+      module: moduleLabel(e.action, e.target),
+      day: dayLabel(e.created_at),
+      time: heureCourte(e.created_at) || '—',
+      actorLabel: e.actor || 'système',
     }
-    if (q && !e.actor.toLowerCase().includes(q) && !e.target.toLowerCase().includes(q) && !e.detail.toLowerCase().includes(q)) return false
-    return true
+  }), [entries])
+
+  const q = query.trim().toLowerCase()
+  const filtered = enriched.filter((e) => {
+    if (filter !== 'all' && e.kind !== filter) return false
+    if (!q) return true
+    const hay = `${e.action} ${e.actor} ${e.target} ${e.detail} ${e.module}`.toLowerCase()
+    return hay.includes(q)
   })
-  const hasFilters = filter !== 'all' || actorFilter !== 'all' || dateFrom !== '' || dateTo !== '' || q !== ''
-  const resetFilters = () => { setFilter('all'); setActorFilter('all'); setDateFrom(''); setDateTo(''); setQuery('') }
-  const actorName = (a: string) => a || 'système'
-  const dayAgo = Date.now() - 24 * 60 * 60 * 1000
-  const last24h = entries.filter(e => e.created_at && new Date(e.created_at).getTime() >= dayAgo).length
-  const uniqueActors = new Set(entries.map(e => actorName(e.actor))).size
-  const selected = selectedId ? filtered.find(e => e.id === selectedId) ?? entries.find(e => e.id === selectedId) ?? null : null
+
+  const selected = selectedId
+    ? filtered.find((e) => e.id === selectedId) ?? enriched.find((e) => e.id === selectedId) ?? null
+    : filtered[0] ?? null
+
   useEffect(() => {
-    if (selectedId && !filtered.some(e => e.id === selectedId)) setSelectedId(null)
+    if (!selectedId && filtered[0]?.id) setSelectedId(String(filtered[0].id))
   }, [filtered, selectedId])
+
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000
+  const last24h = entries.filter((e) => e.created_at && new Date(e.created_at).getTime() >= dayAgo).length
+  const uniqueActors = new Set(entries.map((e) => e.actor || 'système')).size
+  const pendingTeam = enriched.filter((e) => e.kind === 'team' && /invite/i.test(e.action)).length
+
   const exportCsv = () => {
-    const rows = [['Date', 'Acteur', 'Action', 'Cible', 'Détail'].join(';')]
-    filtered.forEach(e => {
-      rows.push([e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : '', actorName(e.actor), e.action, (e.target || '').replace(/[\n\r]+/g, ' '), (e.detail || '').replace(/[\n\r]+/g, ' ')].map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    const rows = [['Date', 'Acteur', 'Action', 'Module', 'Cible', 'Détail'].join(';')]
+    filtered.forEach((e) => {
+      rows.push([
+        e.created_at ? new Date(e.created_at).toLocaleString('fr-FR') : '',
+        e.actorLabel,
+        e.action,
+        e.module,
+        (e.target || '').replace(/[\n\r]+/g, ' '),
+        (e.detail || '').replace(/[\n\r]+/g, ' '),
+      ].map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';'))
     })
     const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -71,6 +154,9 @@ export function AuditManager() {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  const resetFilters = () => { setFilter('all'); setQuery('') }
+
   if (dataSource !== 'supabase') {
     return (
       <div className="admin-page">
@@ -81,14 +167,16 @@ export function AuditManager() {
       </div>
     )
   }
+
   return (
-    <div className="admin-page" style={{ maxWidth: 1120 }}>
+    <div className="admin-page-wide">
       <PageHeader
         title="Journal d'activité"
         subtitle="Comprenez qui a fait quoi, quand et avec quel résultat."
-        actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter CSV</GhostButton>}
+        actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter le journal</GhostButton>}
       />
-      <div className="admin-wf-kpis" aria-label="Résumé du journal">
+
+      <div className="admin-wf-kpis admin-wf-activity-kpis" aria-label="Résumé du journal">
         <div>
           <strong>{entries.length}</strong>
           <span>Actions enregistrées</span>
@@ -100,84 +188,126 @@ export function AuditManager() {
           <small>dans le journal</small>
         </div>
         <div>
+          <strong>{pendingTeam}</strong>
+          <span>Actions équipe</span>
+          <small>invitations / rôles</small>
+        </div>
+        <div>
           <strong>{last24h}</strong>
           <span>Dernières 24 h</span>
           <small>actions récentes</small>
         </div>
-        <div>
-          <strong>{actions.length}</strong>
-          <span>Types d’action</span>
-          <small>{hasFilters ? 'filtre actif' : 'tous types'}</small>
-        </div>
       </div>
+
       <div className="admin-status-live" role="status" aria-live="polite">{loading ? 'Chargement du journal…' : ''}</div>
-      <div className="admin-toolbar">
-        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher (acteur, cible, détail)…" aria-label="Rechercher dans le journal" style={{ ...inp, paddingLeft: 32, fontSize: 13, minHeight: 44 }} />
-          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} aria-hidden="true">{Icon.search(14, t.muted)}</span>
+
+      <div className="admin-wf-activity-toolbar">
+        <label className="admin-wf-activity-search">
+          <span aria-hidden="true">{Icon.search(14, 'currentColor')}</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher une action, un utilisateur…"
+            aria-label="Rechercher dans le journal"
+          />
+        </label>
+        <div className="admin-wf-activity-filter-list" role="group" aria-label="Filtrer par type">
+          {FILTERS.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              className={filter === item.id ? 'is-active' : undefined}
+              aria-pressed={filter === item.id}
+              onClick={() => setFilter(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger style={{ ...inp, width: 180, minHeight: 44 }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toutes les actions</SelectItem>
-            {actions.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={actorFilter} onValueChange={setActorFilter}>
-          <SelectTrigger style={{ ...inp, width: 180, minHeight: 44 }}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les utilisateurs</SelectItem>
-            {actors.map(a => <SelectItem key={a} value={a}>{a === 'système' ? 'système' : a.split('@')[0]}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <GhostButton color={t.muted} onClick={resetFilters}>Réinitialiser</GhostButton>
       </div>
-      <div className="admin-toolbar">
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>Du <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inp, width: 150, fontSize: 13, minHeight: 44 }} /></label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>Au <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inp, width: 150, fontSize: 13, minHeight: 44 }} /></label>
-        {hasFilters && <GhostButton color={t.muted} onClick={resetFilters}>Réinitialiser les filtres</GhostButton>}
-      </div>
-      {loading ? <div className="admin-loading">Chargement…</div> :
-        filtered.length === 0 ? <EmptyState icon={Icon.eye(26, t.muted)} title="Aucune entrée" subtitle="Les actions sensibles du panneau seront tracées ici." /> :
-        <div className="admin-wf-resa-layout">
-          <div className="admin-wf-panel" style={{ padding: 0 }}>
-            <div className="admin-audit-list">
-              {filtered.map(e => (
-                <button
-                  type="button"
-                  key={e.id}
-                  className={`admin-audit-row admin-wf-activity-row${selectedId === e.id ? ' is-selected' : ''}`}
-                  onClick={() => setSelectedId(e.id ?? null)}
-                >
-                  <span className="admin-mono" style={{ opacity: 0.65 }}>{e.created_at ? dateFr(e.created_at) : ''}</span>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span className="admin-chip is-live">{e.action}</span>
-                      <strong>{e.target || '—'}</strong>
-                    </div>
-                    {e.detail && <div className="admin-ops-meta" style={{ marginTop: 4 }}>{e.detail}</div>}
-                    <div className="admin-ops-meta" style={{ marginTop: 4 }}>par {actorName(e.actor)}{e.actor === (user?.email ?? '') ? ' (vous)' : ''}</div>
-                  </div>
-                </button>
-              ))}
+
+      {loading ? (
+        <div className="admin-loading">Chargement…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Icon.eye(26, t.muted)} title="Aucun événement trouvé" subtitle="Essayez une autre recherche ou réinitialisez les filtres." />
+      ) : (
+        <div className="admin-wf-activity-layout">
+          <section className="admin-wf-activity-timeline" aria-label="Activités récentes">
+            <div className="admin-wf-activity-section-head">
+              <div>
+                <p className="admin-wf-eyebrow">Activités récentes</p>
+                <h2>{filtered.length} événement{filtered.length > 1 ? 's' : ''}</h2>
+              </div>
             </div>
-          </div>
-          <aside className="admin-wf-resa-detail" aria-label="Détail de l’action">
+            <div className="admin-wf-activity-list">
+              {filtered.map((e) => {
+                const id = String(e.id)
+                const active = selected?.id === e.id
+                const IconFn = iconFor(e.kind)
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    className={`admin-wf-activity-event${active ? ' is-selected' : ''}`}
+                    onClick={() => setSelectedId(id)}
+                    aria-pressed={active}
+                  >
+                    <time dateTime={e.created_at || undefined}>
+                      <strong>{e.time}</strong>
+                      <small>{e.day}</small>
+                    </time>
+                    <span className={`admin-wf-activity-icon is-${e.tone}`} aria-hidden="true">
+                      {IconFn(14, 'currentColor')}
+                    </span>
+                    <span className="admin-wf-activity-event-copy">
+                      <strong>{e.action.replace(/_/g, ' ')}</strong>
+                      <small>{e.actorLabel} · {e.module}</small>
+                    </span>
+                    <em className={`admin-wf-activity-badge is-${e.tone}`}>Enregistré</em>
+                    <span aria-hidden="true" className="admin-wf-activity-chevron">{Icon.chevronRight(16, 'currentColor')}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <aside className="admin-wf-activity-detail" aria-label="Détail de l’action">
             {selected ? (
               <>
                 <p className="admin-wf-eyebrow">Détail de l’action</p>
-                <h2>{selected.action}</h2>
-                <span className="admin-chip is-live">{selected.target || '—'}</span>
-                <div className="admin-ops-meta" style={{ marginTop: 8 }}>
-                  {selected.created_at ? `${dateFr(selected.created_at)}${heureCourte(selected.created_at) ? ` · ${heureCourte(selected.created_at)}` : ''}` : 'Date inconnue'}
+                <div className="admin-wf-activity-detail-user">
+                  <span aria-hidden="true">{initials(selected.actorLabel)}</span>
+                  <div>
+                    <strong>{selected.actorLabel}{selected.actor === (user?.email ?? '') ? ' (vous)' : ''}</strong>
+                    <small>{selected.day} · {selected.time}</small>
+                  </div>
                 </div>
-                <div className="admin-ops-meta">par {actorName(selected.actor)}{selected.actor === (user?.email ?? '') ? ' (vous)' : ''}</div>
+                <div className={`admin-wf-activity-detail-status is-${selected.tone}`}>
+                  <span aria-hidden="true">{Icon.check(18, 'currentColor')}</span>
+                  <span>
+                    <strong>Enregistré</strong>
+                    <small>Action tracée dans le journal</small>
+                  </span>
+                </div>
+                <div className="admin-wf-activity-detail-row">
+                  <span>Action</span>
+                  <strong>{selected.action.replace(/_/g, ' ')}</strong>
+                </div>
+                <div className="admin-wf-activity-detail-row">
+                  <span>Section</span>
+                  <strong>{selected.module}</strong>
+                </div>
+                <div className="admin-wf-activity-detail-row">
+                  <span>Cible</span>
+                  <strong>{selected.target || '—'}</strong>
+                </div>
                 {selected.detail && (
-                  <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, opacity: 0.6 }}>Description</div>
-                    <p style={{ margin: 0, fontSize: 14, whiteSpace: 'pre-wrap' }}>{selected.detail}</p>
+                  <div className="admin-wf-activity-detail-row">
+                    <span>Description</span>
+                    <strong>{selected.detail}</strong>
                   </div>
                 )}
-                <GhostButton color={t.muted} onClick={() => setSelectedId(null)} style={{ marginTop: 12 }}>Fermer</GhostButton>
               </>
             ) : (
               <>
@@ -188,7 +318,7 @@ export function AuditManager() {
             )}
           </aside>
         </div>
-      }
+      )}
     </div>
   )
 }

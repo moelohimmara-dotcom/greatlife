@@ -139,23 +139,37 @@ export function OrdersManager() {
           <div className="admin-wf-kpis" aria-label="Indicateurs commandes">
             <div>
               <strong>{counts.pending}</strong>
-              <span>À traiter maintenant</span>
-              <small>en attente de confirmation</small>
+              <span>À traiter</span>
+              <small>en attente</small>
             </div>
             <div>
-              <strong>{counts.preparing}</strong>
-              <span>En préparation</span>
-              <small>cuisine en cours</small>
+              <strong>{(() => {
+                const pending = orders.filter((o) => o.status === 'pending' && o.created_at)
+                if (pending.length === 0) return '—'
+                const ages = pending.map((o) => (Date.now() - new Date(o.created_at!).getTime()) / 60000)
+                const avg = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length)
+                return avg < 60 ? `${avg} min` : `${Math.round(avg / 60)} h`
+              })()}</strong>
+              <span>Délai moyen</span>
+              <small>file en attente</small>
             </div>
             <div>
-              <strong>{counts.all}</strong>
-              <span>Commandes au total</span>
-              <small>{counts.ready} prêtes</small>
+              <strong>{orders.filter((o) => {
+                if (!o.created_at) return false
+                const d = new Date(o.created_at)
+                const n = new Date()
+                return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate()
+              }).length}</strong>
+              <span>Aujourd’hui</span>
+              <small>commandes reçues</small>
             </div>
             <div>
-              <strong>{counts.pending + counts.confirmed}</strong>
-              <span>File active</span>
-              <small>attente + confirmées</small>
+              <strong>{orders.filter((o) => {
+                if (o.status !== 'pending' || !o.created_at) return false
+                return Date.now() - new Date(o.created_at).getTime() > 45 * 60 * 1000
+              }).length}</strong>
+              <span>En retard</span>
+              <small>&gt; 45 min en attente</small>
             </div>
           </div>
           {counts.pending > 0 && (
@@ -189,7 +203,7 @@ export function OrdersManager() {
           </Select>
           <div role="group" aria-label="Mode d’affichage" style={{ display: 'inline-flex', gap: 6 }}>
             <Bouton genre={viewMode === 'kanban' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'kanban'} onClick={() => setViewMode('kanban')}>Kanban</Bouton>
-            <Bouton genre={viewMode === 'list' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>Liste</Bouton>
+            <Bouton genre={viewMode === 'list' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>Tableau</Bouton>
           </div>
         </div>
         <div className="admin-filter-row" role="group" aria-label="Filtrer par statut">

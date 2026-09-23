@@ -15,7 +15,6 @@ export function MessagesManager() {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
   const [sending, setSending] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [live, setLive] = useState(false)
   const [newCount, setNewCount] = useState(0)
   const [handling, setHandling] = useState(false)
   const [query, setQuery] = useState('')
@@ -118,10 +117,8 @@ export function MessagesManager() {
         })
         .subscribe((status: string) => {
           if (status === 'SUBSCRIBED') {
-            setLive(true)
             pollTimer = setInterval(refresh, 30000)
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            setLive(false)
             pollTimer = setInterval(refresh, 10000)
           }
         })
@@ -186,12 +183,19 @@ export function MessagesManager() {
   }
 
   return (
-    <div className={`admin-page-wide admin-msg-split${selected ? '' : ' is-list-only'}`} style={{ gridTemplateColumns: selected ? undefined : '1fr' }}>
+    <div className="admin-page-wide admin-msg-split">
       <div>
         <PageHeader
           title="Messages"
           subtitle="Centralisez les demandes et répondez sans perdre le fil."
-          actions={<GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter</GhostButton>}
+          actions={(
+            <>
+              <GhostButton color={t.primary} onClick={() => { setNewCount(0); void fetchMessages().then((res) => { if (res.fromDb) setMessages(res.data) }) }}>
+                Actualiser
+              </GhostButton>
+              <GhostButton color={t.primary} onClick={exportCsv} disabled={filtered.length === 0}>Exporter</GhostButton>
+            </>
+          )}
         />
         <div className="admin-status-live" role="status" aria-live="polite">
           {newCount > 0 ? `${newCount} nouveau${newCount > 1 ? 'x' : ''} message${newCount > 1 ? 's' : ''}` : sending === 'sending' ? 'Envoi de la réponse…' : sending === 'sent' ? 'Réponse envoyée' : sending === 'error' ? 'Échec de l\'envoi' : bulkErr || delErr || handledErr || ''}
@@ -200,17 +204,22 @@ export function MessagesManager() {
           <div>
             <strong>{messages.filter((m) => !m.handled).length}</strong>
             <span>Non lus</span>
-            <small>à traiter aujourd’hui</small>
+            <small>à traiter</small>
           </div>
           <div>
-            <strong>{messages.length}</strong>
-            <span>Messages au total</span>
-            <small>{live ? 'temps réel' : 'actualisation périodique'}</small>
+            <strong>{messages.filter((m) => {
+              const d = m.date ? new Date(m.date) : null
+              if (!d || !Number.isFinite(d.getTime())) return false
+              const now = new Date()
+              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+            }).length}</strong>
+            <span>Ce mois</span>
+            <small>reçus</small>
           </div>
           <div>
-            <strong>{messages.filter((m) => m.handled).length}</strong>
-            <span>Traités</span>
-            <small>déjà répondus</small>
+            <strong>—</strong>
+            <span>Temps de réponse</span>
+            <small>non mesuré en base</small>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -273,7 +282,7 @@ export function MessagesManager() {
           </>
         )}
       </div>
-      {selected && (
+      {selected ? (
         <div className="admin-conversation">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
             <div>
@@ -337,6 +346,11 @@ export function MessagesManager() {
             <div className="admin-ops-meta" style={{ marginTop: 10 }}>L&apos;email sera envoyé vers {selected.email}</div>
           </div>
         </div>
+      ) : (
+        <aside className="admin-msg-empty-pane" aria-label="Conversation">
+          <strong style={{ color: 'var(--admin-ink)', fontSize: 16 }}>Sélectionnez un message</strong>
+          <span>La conversation s’ouvre ici — point corail et libellé « Non traité » pour les non lus.</span>
+        </aside>
       )}
     </div>
   )

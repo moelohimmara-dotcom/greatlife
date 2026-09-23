@@ -356,14 +356,26 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
 
   const currentEmail = currentUser?.email?.toLowerCase()
 
+  const whenLabel = (u: { invited_at?: string | null; created_at?: string }) => {
+    if (u.invited_at) return dateFr(u.invited_at)
+    if (u.created_at) return dateFr(u.created_at)
+    return '—'
+  }
+
   const activeUsers = adminUsers.filter(u => u.active !== false).length
   const pendingInvites = adminUsers.filter(u => !u.invited_at && u.role !== 'owner').length
   const ownerCount = adminUsers.filter(u => u.role === 'owner').length
 
   return (
-    <div className="admin-page" style={{ maxWidth: 920 }}>
-      <PageHeader title="Utilisateurs & rôles" subtitle="Gérez qui peut consulter et modifier chaque partie de la console."
-        actions={<PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>{Icon.plus(14, '#fff')} Ajouter nouveau</PrimaryButton>}
+    <div className="admin-page-wide">
+      <PageHeader
+        title="Utilisateurs & rôles"
+        subtitle="Contrôlez qui peut consulter ou modifier chaque espace."
+        actions={(
+          <PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>
+            {Icon.plus(14, '#fff')} Inviter un utilisateur
+          </PrimaryButton>
+        )}
       />
 
       {!isSupabase && (
@@ -395,13 +407,18 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         </div>
       </div>
 
-      <div className="admin-settings-section" style={{ marginTop: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <h3 className="admin-editor-col-title" style={{ margin: 0 }}>Équipe</h3>
-          <span className="admin-chip">{adminUsers.length}</span>
-          {isSupabase && isOwner && adminUsers.some(u => !u.invited_at && u.role !== 'owner') && (
-            <GhostButton color={t.primary} onClick={inviteAllPending} disabled={status.kind === 'busy'}>Inviter tous les non-invités</GhostButton>
-          )}
+      <section className="admin-wf-panel" style={{ marginTop: 16 }}>
+        <div className="admin-wf-panel-head">
+          <div>
+            <span className="admin-wf-eyebrow">Équipe</span>
+            <h2>Utilisateurs</h2>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="admin-chip">{adminUsers.length}</span>
+            {isSupabase && isOwner && pendingInvites > 0 && (
+              <GhostButton color={t.primary} onClick={inviteAllPending} disabled={status.kind === 'busy'}>Inviter tous les non-invités</GhostButton>
+            )}
+          </div>
         </div>
 
         {status.kind !== 'idle' && (
@@ -442,53 +459,46 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         )}
 
         {adminUsers.length === 0 ? (
-          <p className="admin-loading">Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Ajouter ».' : ''}</p>
+          <p className="admin-loading">Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Inviter un utilisateur ».' : ''}</p>
         ) : (
-          <div className="admin-ops-list">
+          <div className="admin-wf-table admin-wf-users-table" role="table" aria-label="Liste des utilisateurs">
+            <div className="admin-wf-table-row is-head admin-wf-users-row" role="row">
+              <span role="columnheader">Nom</span>
+              <span role="columnheader">Email</span>
+              <span role="columnheader">Rôle</span>
+              <span role="columnheader">Invitation / ajout</span>
+              <span role="columnheader">Actions</span>
+            </div>
             {adminUsers.map(u => {
               const role = ROLES.find(r => r.id === u.role) || ROLES.find(r => r.id === 'guest')!
               const isSelf = u.email.toLowerCase() === currentEmail
               return (
                 <React.Fragment key={u.id}>
-                  <div className={`admin-ops-row${expandedId === u.id ? ' is-selected' : ''}`}>
-                    <div className="admin-ops-main">
-                      <div className="admin-ops-title">
-                        {u.name}{' '}
-                        <span style={{ fontWeight: 400, opacity: 0.65 }}>· {u.email}{isSelf ? ' (vous)' : ''}</span>
-                      </div>
-                      {ROLE_DESCRIPTIONS[role.id] && (
-                        <div className="admin-ops-meta">{ROLE_DESCRIPTIONS[role.id]}</div>
+                  <div className={`admin-wf-table-row admin-wf-users-row${expandedId === u.id ? ' is-selected' : ''}`} role="row">
+                    <strong role="cell">
+                      {u.name}{isSelf ? ' (vous)' : ''}
+                      {u.active === false && <span className="admin-chip is-danger" style={{ marginLeft: 8 }}>Suspendu</span>}
+                      {u.active !== false && isSupabase && !u.invited_at && u.role !== 'owner' && (
+                        <span className="admin-chip is-warn" style={{ marginLeft: 8 }}>À inviter</span>
                       )}
-                      {(() => { const s = roleSummary(u.role); return (
-                        <div className="admin-ops-meta">
-                          {s.modulesWrite} module{s.modulesWrite > 1 ? 's' : ''} en écriture · {s.modulesRead} en lecture · {s.actionsGranted}/{s.actionsTotal} actions
-                        </div>
-                      ) })()}
-                    </div>
-                    <div className="admin-ops-aside">
-                      <span className="admin-chip is-live">{role.name}</span>
-                      {u.active === false ? (
-                        <span className="admin-chip is-danger">Suspendu</span>
-                      ) : isSupabase && !u.invited_at ? (
-                        <span className="admin-chip is-warn">Invité</span>
-                      ) : (
-                        <span className="admin-chip is-live">Actif</span>
+                    </strong>
+                    <span role="cell" className="admin-ops-meta">{u.email}</span>
+                    <span role="cell"><span className="admin-chip is-live">{role.name}</span></span>
+                    <span role="cell" className="admin-mono" style={{ fontSize: 12, opacity: 0.7 }}>{whenLabel(u)}</span>
+                    <span role="cell" className="admin-ops-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      {isSupabase && u.active !== false && !u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                        <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Inviter</GhostButton>
                       )}
-                      <div className="admin-ops-actions">
-                        {isSupabase && u.active !== false && !u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
-                          <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Inviter</GhostButton>
-                        )}
-                        {isSupabase && u.active !== false && u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
-                          <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Renvoyer</GhostButton>
-                        )}
-                        {isSupabase && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
-                          <GhostButton color={u.active === false ? '#16a34a' : '#b8860b'} disabled={busyId === u.id} onClick={() => toggleActive(u)}>{u.active === false ? 'Réactiver' : 'Suspendre'}</GhostButton>
-                        )}
-                        <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
-                        <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
-                        <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>
-                      </div>
-                    </div>
+                      {isSupabase && u.active !== false && u.invited_at && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                        <GhostButton color={t.primary} disabled={busyId === u.id} onClick={() => resendInvite(u)}>Renvoyer</GhostButton>
+                      )}
+                      {isSupabase && u.role !== 'owner' && canDo('users', 'update', currentUser?.role ?? '') && (
+                        <GhostButton color={u.active === false ? '#16a34a' : '#b8860b'} disabled={busyId === u.id} onClick={() => toggleActive(u)}>{u.active === false ? 'Réactiver' : 'Suspendre'}</GhostButton>
+                      )}
+                      <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
+                      <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
+                      <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>
+                    </span>
                   </div>
                   {expandedId === u.id && (
                     <div className="admin-user-detail">
@@ -547,12 +557,15 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
             })}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="admin-settings-section">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <h3 className="admin-editor-col-title" style={{ margin: 0 }}>Matrice des permissions</h3>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <section className="admin-wf-panel" style={{ marginTop: 16 }}>
+      <div className="admin-wf-panel-head">
+        <div>
+          <span className="admin-wf-eyebrow">Accès</span>
+          <h2>Matrice des accès</h2>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {rbacStatus.kind !== 'idle' && (
             <span className={`admin-status-live${rbacStatus.kind === 'err' ? ' is-error' : ' is-ok'}`}>{rbacStatus.msg}</span>
           )}
@@ -655,7 +668,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
           )
         )}
       </div>
-      </div>
+      </section>
     </div>
   )
 }
