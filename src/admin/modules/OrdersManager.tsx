@@ -201,7 +201,7 @@ export function OrdersManager() {
               <SelectItem value="amount_asc">Montant ↑</SelectItem>
             </SelectContent>
           </Select>
-          <div role="group" aria-label="Mode d’affichage" style={{ display: 'inline-flex', gap: 6 }}>
+          <div role="group" aria-label="Mode d’affichage" style={{ display: 'inline-flex', gap: 8 }}>
             <Bouton genre={viewMode === 'kanban' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'kanban'} onClick={() => setViewMode('kanban')}>Kanban</Bouton>
             <Bouton genre={viewMode === 'list' ? 'actif' : 'secondaire'} aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>Tableau</Bouton>
           </div>

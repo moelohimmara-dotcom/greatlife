@@ -1271,12 +1271,13 @@
 [data-admin-shell] .admin-wf-alert {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
   border: 1px solid color-mix(in srgb, var(--admin-coral) 35%, var(--admin-line));
   border-radius: var(--admin-radius-panel);
   background: #fcefea;
+  line-height: 1.45;
 }
 
 [data-admin-shell] .admin-wf-alert > span {
@@ -1292,12 +1293,14 @@
 [data-admin-shell] .admin-wf-alert strong {
   font-size: 14px;
   color: var(--admin-ink);
+  line-height: 1.4;
 }
 
 [data-admin-shell] .admin-wf-alert small {
-  margin-top: 3px;
+  margin-top: 6px;
   color: color-mix(in srgb, var(--admin-ink) 55%, transparent);
   font-size: 12px;
+  line-height: 1.45;
 }
 
 [data-admin-shell] .admin-topbar-crumb {
@@ -1799,16 +1802,20 @@
 /* ——— Ops : lignes, filtres, toolbar ——— */
 [data-admin-shell] .admin-toolbar {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  row-gap: 12px;
   margin-top: 16px;
+  padding-block: 4px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 [data-admin-shell] .admin-filter-row {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 12px;
+  row-gap: 10px;
+  margin-top: 14px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 
@@ -3316,24 +3323,27 @@
 [data-admin-shell] .admin-wf-alert {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  margin-bottom: 12px;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
   border: 1px solid color-mix(in srgb, var(--admin-saffron) 45%, var(--admin-line));
-  border-radius: var(--admin-radius-control);
+  border-radius: var(--admin-radius-panel);
   background: color-mix(in srgb, var(--admin-saffron) 12%, var(--admin-paper));
   color: var(--admin-ink);
+  line-height: 1.45;
 }
 
 [data-admin-shell] .admin-wf-alert strong {
   display: block;
   font-size: 14px;
+  line-height: 1.4;
 }
 
 [data-admin-shell] .admin-wf-alert small {
   display: block;
-  margin-top: 2px;
+  margin-top: 6px;
   font-size: 12px;
+  line-height: 1.45;
   color: color-mix(in srgb, var(--admin-ink) 60%, transparent);
 }
 
@@ -3349,6 +3359,8 @@
   grid-template-columns: repeat(5, minmax(150px, 1fr));
   gap: 10px;
   overflow: auto;
+  margin-top: 2px;
+  padding-top: 2px;
   padding-bottom: 4px;
 }
 
