@@ -49,8 +49,8 @@ function avecCouleursBloc(fields: readonly FieldDef[], opts?: { fond?: boolean; 
 export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'hero',
-    label: 'Bannière d’accueil',
-    description: 'Le grand bloc d’ouverture : titre, accroche, image, boutons.',
+    label: 'Bannière',
+    description: 'Grande ouverture de page : titre, accroche, image et boutons.',
     /*
       L'ORDRE COMPTE : `defaultVariant()` renvoie `variants[0].id`, donc la
       première entrée est la disposition par défaut d'une nouvelle section.
@@ -168,8 +168,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'menu',
     label: 'Carte',
-    description:
-      'Affiche les plats. Les plats sont gérés dans le module Menu : ils ne sont jamais recopiés ici.',
+    description: 'Affiche vos plats. Les prix se gèrent dans Carte & prix.',
     variants: [
       { id: 'full', label: 'Carte complète' },
       { id: 'by_category', label: 'Par catégorie' },
@@ -242,8 +241,8 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   },
   {
     type: 'testimonials',
-    label: 'Avis clients',
-    description: 'Ce que disent vos clients.',
+    label: 'Avis',
+    description: 'Ce que disent vos clients, en cartes ou citations.',
     variants: [
       { id: 'cards', label: 'Cartes' },
       { id: 'quotes', label: 'Citations' },
@@ -270,7 +269,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'team',
     label: 'Équipe',
-    description: 'Les membres de l’équipe, avec leur rôle et leur présentation.',
+    description: 'Présentez les personnes de la maison (nom, rôle, texte).',
     variants: [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
@@ -297,7 +296,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'story',
     label: 'Notre histoire',
-    description: 'Le récit de la maison, avec une signature.',
+    description: 'Le récit de la maison, photo et signature.',
     variants: [
       { id: 'image_left', label: 'Image à gauche' },
       { id: 'image_right', label: 'Image à droite' },
@@ -315,7 +314,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'engagements',
     label: 'Engagements',
-    description: 'Ce que vous vous engagez à faire (bio, circuit court, etc.).',
+    description: 'Vos promesses : bio, local, qualité…',
     variants: [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },
@@ -358,8 +357,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'location',
     label: 'Nous trouver',
-    description:
-      'Adresse et horaires. Ces informations viennent des réglages du restaurant, elles ne sont saisies qu’une fois.',
+    description: 'Adresse et horaires (pris dans Réglages, saisis une seule fois).',
     variants: [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
@@ -393,7 +391,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'reservation',
     label: 'Réservation',
-    description: 'Le formulaire de réservation de table.',
+    description: 'Formulaire pour réserver une table.',
     variants: [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
@@ -404,7 +402,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'contact',
     label: 'Contact',
-    description: 'Le formulaire de contact.',
+    description: 'Formulaire pour vous écrire (motifs au choix).',
     variants: [
       { id: 'card', label: 'Encart' },
       { id: 'wide', label: 'Pleine largeur' },
@@ -428,8 +426,7 @@ export const SECTION_TYPES: readonly SectionTypeDefinition[] = [
   {
     type: 'blog',
     label: 'Journal',
-    description:
-      'Vos articles. Ils sont gérés dans le module Blog : ils ne sont jamais recopiés ici.',
+    description: 'Vos articles du Blog, affichés sur la page.',
     variants: [
       { id: 'grid', label: 'Grille' },
       { id: 'list', label: 'Liste' },

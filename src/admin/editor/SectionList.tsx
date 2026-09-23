@@ -32,7 +32,7 @@ import { createPortal } from 'react-dom'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon, iconByName } from '@/lib/icons'
 import { getSectionDefinition } from '@/cms/model/sections/schemas'
-import type { PageSection, SectionType } from '@/cms/model/section'
+import type { PageSection } from '@/cms/model/section'
 import {
   Bouton,
   CLASSE_CARTE,
@@ -45,6 +45,7 @@ import {
 } from './chrome'
 import { PageLayoutPicker } from './PageLayoutPicker'
 import { libelleStructureBloc, rangsParType } from './structure-labels'
+import { FAMILLES_STRUCTURE, TYPE_ICONE, familleStructureDe } from './section-families'
 import { readEditorMeta, slotablesFromFields } from '@/cms/model/subblocks'
 import type { PageLayout } from '@/cms/model/page-layout'
 import type { Locale } from '@/cms/model/i18n'
@@ -70,52 +71,11 @@ interface SectionListProps {
   layoutDisabled?: boolean
 }
 
-/**
- * Appartenance métier d’un type de bloc → tiroir Structure.
- * Tout type hors liste nommée tombe dans « Autres » (filet, pas un mélange volontaire).
- */
-const FAMILLES: {
-  id: string
-  label: string
-  icone: string
-  types: readonly SectionType[]
-}[] = [
-  { id: 'ouverture', label: 'Ouverture', icone: 'arrow', types: ['hero', 'cta'] },
-  { id: 'carte', label: 'Carte & offre', icone: 'leaf', types: ['menu', 'menu_featured', 'gallery'] },
-  { id: 'maison', label: 'Maison', icone: 'house', types: ['story', 'engagements', 'team', 'testimonials'] },
-  { id: 'venir', label: 'Venir', icone: 'pin', types: ['location', 'map', 'contact', 'reservation'] },
-  { id: 'autres', label: 'Autres', icone: 'more', types: [] },
-]
-
-const TYPE_ICONE: Partial<Record<SectionType, string>> = {
-  hero: 'image',
-  text: 'type',
-  image_text: 'image',
-  menu: 'leaf',
-  menu_featured: 'star',
-  gallery: 'image',
-  testimonials: 'users',
-  team: 'users',
-  story: 'type',
-  engagements: 'leaf',
-  location: 'pin',
-  map: 'pin',
-  reservation: 'calendar',
-  contact: 'mail',
-  blog: 'type',
-  faq: 'type',
-  cta: 'arrow',
-  video: 'image',
-  spacer: 'columns',
-  rich_text: 'type',
-}
+/** Alias local — familles partagées avec le picker (`section-families.ts`). */
+const FAMILLES = FAMILLES_STRUCTURE
 
 function familleDe(type: string): string {
-  for (const famille of FAMILLES) {
-    if (famille.id === 'autres') continue
-    if ((famille.types as readonly string[]).includes(type)) return famille.id
-  }
-  return 'autres'
+  return familleStructureDe(type)
 }
 
 /** Index sélectionné après un déplacement dans la liste à plat. */
