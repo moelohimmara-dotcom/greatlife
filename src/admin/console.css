@@ -7114,21 +7114,111 @@ html:has([data-admin-shell]) #root {
 }
 
 
-/* === Console prefs (opérateur) === */
-[data-admin-shell][data-admin-chrome="foret"] {
+/* === Console prefs (opérateur) — indépendant du thème public === */
+
+/* Mode clair + ambiance forêt (nuance du papier) */
+[data-admin-shell][data-console-theme="clair"][data-admin-chrome="foret"],
+[data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"] {
   --admin-paper: #eef3ea;
   --admin-paper-muted: #e2eadc;
   --admin-surface: #f7faf5;
   --admin-sage: #d0dcc8;
   --admin-line: #c9d4c2;
+}
+
+[data-admin-shell][data-console-theme="clair"][data-admin-chrome="foret"][data-console-accent="foret"],
+[data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]:not([data-console-accent]),
+[data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"][data-console-accent="foret"] {
   --admin-forest: #1f5228;
   --admin-forest-hover: #173f1e;
 }
 
-html:has([data-admin-shell][data-admin-chrome="foret"]),
-html:has([data-admin-shell][data-admin-chrome="foret"]) body,
-html:has([data-admin-shell][data-admin-chrome="foret"]) #root {
+html:has([data-admin-shell][data-console-theme="clair"][data-admin-chrome="foret"]),
+html:has([data-admin-shell][data-console-theme="clair"][data-admin-chrome="foret"]) body,
+html:has([data-admin-shell][data-console-theme="clair"][data-admin-chrome="foret"]) #root,
+html:has([data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]),
+html:has([data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]) body,
+html:has([data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]) #root {
   background: #eef3ea;
+}
+
+/*
+  Mode nuit — chrome sombre type sidebar forêt.
+  Ne touche pas aux variables --c-* du site public (rootStyle).
+*/
+[data-admin-shell][data-console-theme="nuit"] {
+  --admin-ink: #e6efe4;
+  --admin-ink-soft: #c9d6c6;
+  --admin-paper: #121a14;
+  --admin-paper-muted: #1a241c;
+  --admin-surface: #1e2a21;
+  --admin-sage: #243028;
+  --admin-line: #2f3d32;
+  --admin-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+  --admin-forest: #6bbf6a;
+  --admin-forest-hover: #82d07f;
+  --admin-forest-mid: #4f9a4e;
+  --admin-coral: #e56a5a;
+  --admin-saffron: #e0b045;
+  color-scheme: dark;
+}
+
+html:has([data-admin-shell][data-console-theme="nuit"]),
+html:has([data-admin-shell][data-console-theme="nuit"]) body,
+html:has([data-admin-shell][data-console-theme="nuit"]) #root {
+  background: #121a14;
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-topbar {
+  background: color-mix(in srgb, var(--admin-surface) 92%, transparent);
+  border-bottom-color: var(--admin-line);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-wf-panel,
+[data-admin-shell][data-console-theme="nuit"] .admin-wf-settings-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-line);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-chip {
+  background: var(--admin-paper-muted);
+  border-color: var(--admin-line);
+  color: var(--admin-ink-soft);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-wf-top-search {
+  background: var(--admin-paper-muted);
+  border-color: var(--admin-line);
+  color: var(--admin-ink);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-wf-top-search input {
+  color: var(--admin-ink);
+}
+
+/* Accent des actions (réutilise --admin-forest comme couleur primaire UI) */
+[data-admin-shell][data-console-accent="corail"] {
+  --admin-forest: #d34a3a;
+  --admin-forest-hover: #b83d30;
+  --admin-forest-mid: #e06a5c;
+}
+
+[data-admin-shell][data-console-theme="nuit"][data-console-accent="corail"] {
+  --admin-forest: #e56a5a;
+  --admin-forest-hover: #f08072;
+  --admin-forest-mid: #c94a3c;
+}
+
+[data-admin-shell][data-console-accent="safran"] {
+  --admin-forest: #c88820;
+  --admin-forest-hover: #a87018;
+  --admin-forest-mid: #d9a03a;
+}
+
+[data-admin-shell][data-console-theme="nuit"][data-console-accent="safran"] {
+  --admin-forest: #e0b045;
+  --admin-forest-hover: #ecc05c;
+  --admin-forest-mid: #c89830;
 }
 
 [data-admin-shell][data-admin-density="compacte"] .admin-main-pad {
@@ -7143,11 +7233,31 @@ html:has([data-admin-shell][data-admin-chrome="foret"]) #root {
   gap: 12px;
 }
 
+/* Masquer pastilles compteurs (aria-label du lien conserve le nombre) */
+[data-admin-shell][data-console-badges="off"] .admin-nav-badge,
+[data-admin-shell][data-console-badges="off"] .admin-bottom-badge {
+  display: none !important;
+}
+
+/* Réduire animations (préférence opérateur + OS) */
+[data-admin-shell][data-console-motion="reduce"] *,
+[data-admin-shell][data-console-motion="reduce"] *::before,
+[data-admin-shell][data-console-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 [data-admin-shell] .admin-wf-prefs-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 8px;
+}
+
+[data-admin-shell] .admin-wf-prefs-span {
+  grid-column: 1 / -1;
 }
 
 [data-admin-shell] .admin-wf-prefs-help {
@@ -7167,6 +7277,7 @@ html:has([data-admin-shell][data-admin-chrome="foret"]) #root {
 [data-admin-shell] .admin-wf-prefs-choices {
   display: grid;
   gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 [data-admin-shell] .admin-wf-prefs-choice {
@@ -7210,6 +7321,84 @@ html:has([data-admin-shell][data-admin-chrome="foret"]) #root {
   box-shadow: inset 0 0 0 1px var(--admin-forest);
 }
 
+[data-admin-shell] .admin-wf-prefs-toggles {
+  display: grid;
+  gap: 10px;
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border-radius: var(--admin-radius-control);
+  border: 1px solid var(--admin-line);
+  background: var(--admin-paper-muted);
+  cursor: pointer;
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle-copy strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--admin-ink);
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle-copy small {
+  font-size: 12px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox'] {
+  width: 44px;
+  height: 26px;
+  flex: 0 0 auto;
+  appearance: none;
+  position: relative;
+  border-radius: 999px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-surface);
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--admin-ink);
+  opacity: 0.35;
+  transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox']:checked {
+  background: var(--admin-forest);
+  border-color: var(--admin-forest);
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox']:checked::after {
+  transform: translateX(18px);
+  background: #fff;
+  opacity: 1;
+}
+
+[data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--admin-forest);
+  outline-offset: 2px;
+}
+
 [data-admin-shell] .admin-wf-prefs-actions {
   display: flex;
   flex-wrap: wrap;
@@ -7228,10 +7417,16 @@ html:has([data-admin-shell][data-admin-chrome="foret"]) #root {
   [data-admin-shell] .admin-wf-prefs-grid {
     grid-template-columns: 1fr;
   }
+
+  [data-admin-shell] .admin-wf-prefs-span {
+    grid-column: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-admin-shell] .admin-wf-prefs-choice {
+  [data-admin-shell] .admin-wf-prefs-choice,
+  [data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox'],
+  [data-admin-shell] .admin-wf-prefs-toggle input[type='checkbox']::after {
     transition: none;
   }
 }

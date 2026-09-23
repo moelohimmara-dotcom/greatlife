@@ -8,15 +8,28 @@ import {
   ecrireConsolePrefs,
   lireConsolePrefs,
   reinitialiserGuidesConsole,
+  type ConsoleAccent,
   type ConsoleChrome,
   type ConsoleDensity,
   type ConsolePrefs,
+  type ConsoleTheme,
 } from '@/admin/console-prefs'
 import type { AdminNavPref } from '@/admin/admin-nav'
 
+const THEME_OPTIONS: ReadonlyArray<{ id: ConsoleTheme; title: string; blurb: string }> = [
+  { id: 'clair', title: 'Mode clair', blurb: 'Papier crème — lecture de jour.' },
+  { id: 'nuit', title: 'Mode nuit', blurb: 'Fond sombre type rail — confort le soir.' },
+]
+
 const CHROME_OPTIONS: ReadonlyArray<{ id: ConsoleChrome; title: string; blurb: string }> = [
-  { id: 'creme', title: 'Crème', blurb: 'Papier ivoire et rail sombre — charte actuelle.' },
-  { id: 'foret', title: 'Forêt', blurb: 'Fond plus vert, accents forêt renforcés.' },
+  { id: 'creme', title: 'Crème', blurb: 'Ivoire doux — charte actuelle.' },
+  { id: 'foret', title: 'Forêt', blurb: 'Teinte verte un peu plus marquée.' },
+]
+
+const ACCENT_OPTIONS: ReadonlyArray<{ id: ConsoleAccent; title: string; blurb: string }> = [
+  { id: 'foret', title: 'Forêt', blurb: 'Vert — actions et liens.' },
+  { id: 'corail', title: 'Corail', blurb: 'Rouge chaud — plus visible.' },
+  { id: 'safran', title: 'Safran', blurb: 'Ambre — accent plus doux.' },
 ]
 
 const DENSITY_OPTIONS: ReadonlyArray<{ id: ConsoleDensity; title: string; blurb: string }> = [
@@ -62,6 +75,37 @@ function ChoiceCard<T extends string>({
   )
 }
 
+function ToggleRow({
+  id,
+  title,
+  blurb,
+  checked,
+  onChange,
+}: {
+  id: string
+  title: string
+  blurb: string
+  checked: boolean
+  onChange: (next: boolean) => void
+}) {
+  return (
+    <label className="admin-wf-prefs-toggle" htmlFor={id}>
+      <span className="admin-wf-prefs-toggle-copy">
+        <strong>{title}</strong>
+        <small>{blurb}</small>
+      </span>
+      <input
+        id={id}
+        type="checkbox"
+        role="switch"
+        aria-checked={checked}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
+  )
+}
+
 export function ConsolePrefsEditor() {
   const [prefs, setPrefs] = useState<ConsolePrefs>(() => lireConsolePrefs())
   const [guideMsg, setGuideMsg] = useState<string | null>(null)
@@ -72,9 +116,7 @@ export function ConsolePrefsEditor() {
     return () => window.removeEventListener(CONSOLE_PREFS_EVENT, onChange)
   }, [])
 
-  const setChrome = (chrome: ConsoleChrome) => setPrefs(ecrireConsolePrefs({ chrome }))
-  const setDensity = (density: ConsoleDensity) => setPrefs(ecrireConsolePrefs({ density }))
-  const setNav = (nav: AdminNavPref) => setPrefs(ecrireConsolePrefs({ nav }))
+  const patch = (p: Partial<ConsolePrefs>) => setPrefs(ecrireConsolePrefs(p))
 
   const resetGuides = () => {
     const n = reinitialiserGuidesConsole()
@@ -108,22 +150,56 @@ export function ConsolePrefsEditor() {
       </div>
 
       <div className="admin-wf-prefs-grid">
+        <section className="admin-wf-panel admin-wf-settings-card admin-wf-prefs-span">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">Affichage</span>
+              <h2 style={{ margin: '4px 0 0' }}>Mode clair ou nuit</h2>
+            </div>
+          </div>
+          <p className="admin-wf-prefs-help">
+            S’applique tout de suite au menu et aux pages de la console. Le site public garde son
+            propre thème (<Link to={pathForModule('theme')}>Thème &amp; ambiance</Link>).
+          </p>
+          <ChoiceCard
+            name="Mode clair ou nuit"
+            options={THEME_OPTIONS}
+            value={prefs.theme}
+            onChange={(theme) => patch({ theme })}
+          />
+        </section>
+
         <section className="admin-wf-panel admin-wf-settings-card">
           <div className="admin-wf-panel-head">
             <div>
               <span className="admin-wf-eyebrow">Chrome</span>
-              <h2 style={{ margin: '4px 0 0' }}>Ambiance de la console</h2>
+              <h2 style={{ margin: '4px 0 0' }}>Ambiance (mode clair)</h2>
             </div>
           </div>
           <p className="admin-wf-prefs-help">
-            Couleurs du menu et du fond de travail uniquement. Pour le site public, ouvrez{' '}
-            <Link to={pathForModule('theme')}>Thème &amp; ambiance</Link>.
+            Nuance du fond de travail en mode clair. En mode nuit, le fond reste sombre.
           </p>
           <ChoiceCard
             name="Ambiance de la console"
             options={CHROME_OPTIONS}
             value={prefs.chrome}
-            onChange={setChrome}
+            onChange={(chrome) => patch({ chrome })}
+          />
+        </section>
+
+        <section className="admin-wf-panel admin-wf-settings-card">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">Couleur</span>
+              <h2 style={{ margin: '4px 0 0' }}>Accent des actions</h2>
+            </div>
+          </div>
+          <p className="admin-wf-prefs-help">Boutons actifs, liens et pastilles de la console.</p>
+          <ChoiceCard
+            name="Accent des actions"
+            options={ACCENT_OPTIONS}
+            value={prefs.accent}
+            onChange={(accent) => patch({ accent })}
           />
         </section>
 
@@ -139,7 +215,7 @@ export function ConsolePrefsEditor() {
             name="Densité d’affichage"
             options={DENSITY_OPTIONS}
             value={prefs.density}
-            onChange={setDensity}
+            onChange={(density) => patch({ density })}
           />
         </section>
 
@@ -151,14 +227,43 @@ export function ConsolePrefsEditor() {
             </div>
           </div>
           <p className="admin-wf-prefs-help">
-            Même réglage que le bouton « Replier / Déplier le menu » — centralisé ici.
+            Même réglage que « Replier / Déplier le menu ». Astuce : le rail d’icônes laisse plus
+            de place pour éditer les pages.
           </p>
           <ChoiceCard
             name="Menu latéral"
             options={NAV_OPTIONS}
             value={prefs.nav}
-            onChange={setNav}
+            onChange={(nav) => patch({ nav })}
           />
+        </section>
+
+        <section className="admin-wf-panel admin-wf-settings-card">
+          <div className="admin-wf-panel-head">
+            <div>
+              <span className="admin-wf-eyebrow">Confort</span>
+              <h2 style={{ margin: '4px 0 0' }}>Compteurs et mouvement</h2>
+            </div>
+          </div>
+          <p className="admin-wf-prefs-help">
+            Affinez l’interface sans changer le contenu du restaurant.
+          </p>
+          <div className="admin-wf-prefs-toggles">
+            <ToggleRow
+              id="prefs-show-badges"
+              title="Pastilles compteurs"
+              blurb="Nombres sur Messages, Commandes et Réservations dans le menu."
+              checked={prefs.showBadges}
+              onChange={(showBadges) => patch({ showBadges })}
+            />
+            <ToggleRow
+              id="prefs-reduce-motion"
+              title="Réduire les animations"
+              blurb="Moins de transitions — utile si le mouvement fatigue."
+              checked={prefs.reduceMotion}
+              onChange={(reduceMotion) => patch({ reduceMotion })}
+            />
+          </div>
         </section>
 
         <section className="admin-wf-panel admin-wf-settings-card">
