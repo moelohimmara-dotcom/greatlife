@@ -75,7 +75,8 @@ function MenuCard({ item }: { item: MenuItem }) {
                 padding: '7px 14px', borderRadius: '100px', cursor: 'pointer',
                 border: `1px solid ${t.primary}55`,
                 background: added ? t.primary : 'transparent',
-                color: added ? '#fff' : t.primary, transition: 'all 0.2s',
+                color: added ? '#fff' : t.primary, transition: 'background-color 0.2s, color 0.2s, border-color 0.2s',
+                minHeight: 44, touchAction: 'manipulation',
               }}>
               {added ? Icon.check(14, '#fff') : Icon.plus(14, t.primary)} {added ? 'Ajouté' : 'Ajouter'}
             </button>

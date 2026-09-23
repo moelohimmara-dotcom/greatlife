@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { estNoeudDansIframe } from '@/admin/editor/preview-geometry'
 
 export function Reveal({ children, delay = 0, y = 28 }: { children: React.ReactNode; delay?: number; y?: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     const el = ref.current
@@ -21,12 +22,20 @@ export function Reveal({ children, delay = 0, y = 28 }: { children: React.ReactN
       setShown(true)
       return
     }
+    if (reduceMotion) {
+      setShown(true)
+      return
+    }
     const obs = new IntersectionObserver((entries) => {
       entries.forEach(e => { if (e.isIntersecting) { setShown(true); obs.disconnect() } })
     }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [])
+  }, [reduceMotion])
+
+  if (reduceMotion) {
+    return <div ref={ref}>{children}</div>
+  }
 
   return (
     <div ref={ref} style={{ overflow: shown ? undefined : 'hidden' }}>

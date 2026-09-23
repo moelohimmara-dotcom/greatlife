@@ -18,6 +18,16 @@ import { normaliserDisposition } from '@/cms/renderer/disposition'
 
 const DISPOSITIONS = ['card', 'wide'] as const
 
+const FIELD = {
+  nom: 'reservation-nom',
+  phone: 'reservation-phone',
+  email: 'reservation-email',
+  date: 'reservation-date',
+  time: 'reservation-time',
+  guests: 'reservation-guests',
+  message: 'reservation-message',
+} as const
+
 export function Reservation({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t } = useSite()
 
@@ -69,8 +79,9 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
     setForm({ nom: '', email: '', phone: '', date: '', time: '12:00', guests: '2', message: '' })
     setTimeout(() => setSent(false), 5000)
   }
-  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border 0.2s' }
+  const inputStyle: React.CSSProperties = { background: t.surfaceAlt, border: `1px solid ${errors.nom ? t.accent : t.shadow}`, borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: t.text, width: '100%', transition: 'border-color 0.2s' }
   const errStyle: React.CSSProperties = { fontSize: '12px', color: t.accent, marginTop: '4px', fontWeight: 500 }
+  const labelStyle: React.CSSProperties = { fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px', display: 'block' }
   const today = new Date().toISOString().split('T')[0]
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'card')
   const large = disposition === 'wide'
@@ -80,37 +91,98 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
         <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
         <Reveal delay={0.1}>
           <OrganicCard style={{ padding: large ? '48px' : '32px' }}>
-            <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }}>
+            <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }} noValidate>
               <div className="reservation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Nom</Label>
-                  <Input value={form.nom} onChange={e => { setForm({ ...form, nom: e.target.value }); setErrors({ ...errors, nom: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.nom ? t.accent : t.shadow}` }} required />
-                  {errors.nom && <div style={errStyle}>{errors.nom}</div>}
+                  <Label htmlFor={FIELD.nom} style={labelStyle}>Nom</Label>
+                  <Input
+                    id={FIELD.nom}
+                    name="name"
+                    autoComplete="name"
+                    value={form.nom}
+                    onChange={e => { setForm({ ...form, nom: e.target.value }); setErrors({ ...errors, nom: undefined }) }}
+                    style={{ ...inputStyle, border: `1px solid ${errors.nom ? t.accent : t.shadow}` }}
+                    required
+                    aria-invalid={!!errors.nom}
+                    aria-describedby={errors.nom ? `${FIELD.nom}-error` : undefined}
+                  />
+                  {errors.nom && <div id={`${FIELD.nom}-error`} role="alert" style={errStyle}>{errors.nom}</div>}
                 </div>
                 <div>
-                  <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Téléphone</Label>
-                  <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+224 ..." style={inputStyle} />
+                  <Label htmlFor={FIELD.phone} style={labelStyle}>Téléphone</Label>
+                  <Input
+                    id={FIELD.phone}
+                    name="tel"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={form.phone}
+                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                    placeholder="+224 ..."
+                    style={inputStyle}
+                  />
                 </div>
               </div>
               <div>
-                <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Email</Label>
-                <Input type="email" value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.email ? t.accent : t.shadow}` }} required />
-                {errors.email && <div style={errStyle}>{errors.email}</div>}
+                <Label htmlFor={FIELD.email} style={labelStyle}>Email</Label>
+                <Input
+                  id={FIELD.email}
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  inputMode="email"
+                  value={form.email}
+                  onChange={e => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: undefined }) }}
+                  style={{ ...inputStyle, border: `1px solid ${errors.email ? t.accent : t.shadow}` }}
+                  required
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? `${FIELD.email}-error` : undefined}
+                />
+                {errors.email && <div id={`${FIELD.email}-error`} role="alert" style={errStyle}>{errors.email}</div>}
               </div>
               <div className="reservation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div>
-                  <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Date</Label>
-                  <Input type="date" min={today} value={form.date} onChange={e => { setForm({ ...form, date: e.target.value }); setErrors({ ...errors, date: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.date ? t.accent : t.shadow}` }} required />
-                  {errors.date && <div style={errStyle}>{errors.date}</div>}
+                  <Label htmlFor={FIELD.date} style={labelStyle}>Date</Label>
+                  <Input
+                    id={FIELD.date}
+                    name="reservation-date"
+                    type="date"
+                    autoComplete="off"
+                    min={today}
+                    value={form.date}
+                    onChange={e => { setForm({ ...form, date: e.target.value }); setErrors({ ...errors, date: undefined }) }}
+                    style={{ ...inputStyle, border: `1px solid ${errors.date ? t.accent : t.shadow}` }}
+                    required
+                    aria-invalid={!!errors.date}
+                    aria-describedby={errors.date ? `${FIELD.date}-error` : undefined}
+                  />
+                  {errors.date && <div id={`${FIELD.date}-error`} role="alert" style={errStyle}>{errors.date}</div>}
                 </div>
                 <div>
-                  <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Heure</Label>
-                  <Input type="time" value={form.time} onChange={e => { setForm({ ...form, time: e.target.value }); setErrors({ ...errors, time: undefined }) }} style={{ ...inputStyle, border: `1px solid ${errors.time ? t.accent : t.shadow}` }} required />
-                  {errors.time && <div style={errStyle}>{errors.time}</div>}
+                  <Label htmlFor={FIELD.time} style={labelStyle}>Heure</Label>
+                  <Input
+                    id={FIELD.time}
+                    name="reservation-time"
+                    type="time"
+                    autoComplete="off"
+                    value={form.time}
+                    onChange={e => { setForm({ ...form, time: e.target.value }); setErrors({ ...errors, time: undefined }) }}
+                    style={{ ...inputStyle, border: `1px solid ${errors.time ? t.accent : t.shadow}` }}
+                    required
+                    aria-invalid={!!errors.time}
+                    aria-describedby={errors.time ? `${FIELD.time}-error` : undefined}
+                  />
+                  {errors.time && <div id={`${FIELD.time}-error`} role="alert" style={errStyle}>{errors.time}</div>}
                 </div>
                 <div>
-                  <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Personnes</Label>
-                  <Select value={form.guests} onValueChange={v => setForm({ ...form, guests: v })}>
+                  <Label id={`${FIELD.guests}-label`} htmlFor={FIELD.guests} style={labelStyle}>Personnes</Label>
+                  <Select
+                    id={FIELD.guests}
+                    aria-labelledby={`${FIELD.guests}-label`}
+                    value={form.guests}
+                    onValueChange={v => setForm({ ...form, guests: v })}
+                  >
                     <SelectTrigger style={inputStyle}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(n => <SelectItem key={n} value={n}>{n}{n === '10' ? '+' : ''}</SelectItem>)}
@@ -119,8 +191,17 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                 </div>
               </div>
               <div>
-                <Label style={{ fontSize: '13px', fontWeight: 600, color: t.muted, marginBottom: '6px' }}>Demande particulière (optionnel)</Label>
-                <Textarea rows={3} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Anniversaire, allergies, table en terrasse…" style={inputStyle} />
+                <Label htmlFor={FIELD.message} style={labelStyle}>Demande particulière (optionnel)</Label>
+                <Textarea
+                  id={FIELD.message}
+                  name="reservation-notes"
+                  autoComplete="off"
+                  rows={3}
+                  value={form.message}
+                  onChange={e => setForm({ ...form, message: e.target.value })}
+                  placeholder="Anniversaire, allergies, table en terrasse…"
+                  style={inputStyle}
+                />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                 <Button type="submit" disabled={loading} aria-label="Réserver la table"
@@ -131,18 +212,19 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                   opacity: loading ? 0.7 : 1,
                   boxShadow: `0 4px 16px ${t.shadowDeep}`,
                   display: 'inline-flex', alignItems: 'center', gap: 8,
+                  minHeight: 44,
                 }}>
                   {loading ? 'Réservation…' : 'Réserver'}
                   {!loading && Icon.arrow(16)}
                 </Button>
                 {sent && (
-                  <span style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span role="status" aria-live="polite" style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {Icon.check(16, t.primary)} Réservation envoyée ! Nous vous confirmons par email.
                   </span>
                 )}
                 {error && (
-                  <span style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    ✗ Échec de la réservation — veuillez réessayer.
+                  <span role="alert" aria-live="assertive" style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Échec de la réservation — veuillez réessayer.
                   </span>
                 )}
               </div>

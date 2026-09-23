@@ -4,13 +4,32 @@ interface SelectProps {
   value: string
   onValueChange: (v: string) => void
   children: React.ReactNode
+  id?: string
+  'aria-labelledby'?: string
+  'aria-label'?: string
+  'aria-invalid'?: boolean | 'true' | 'false'
+  'aria-describedby'?: string
 }
 
-export function Select({ value, onValueChange, children }: SelectProps) {
+export function Select({
+  value,
+  onValueChange,
+  children,
+  id,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-label': ariaLabel,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
+}: SelectProps) {
   const [open, setOpen] = useState(false)
   const items: { value: string; label: string }[] = []
+  let triggerStyle: React.CSSProperties | undefined
 
   React.Children.forEach(children, (child, i) => {
+    if (i === 0 && React.isValidElement(child)) {
+      const props = child.props as { style?: React.CSSProperties }
+      if (props.style) triggerStyle = props.style
+    }
     if (i === 1 && React.isValidElement(child)) {
       React.Children.forEach((child.props as any).children, (item) => {
         if (React.isValidElement(item) && (item.props as any).value) {
@@ -23,19 +42,27 @@ export function Select({ value, onValueChange, children }: SelectProps) {
   const current = items.find(i => i.value === value)
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', ...(triggerStyle || {}) }}>
       <button
         type="button"
+        id={id}
+        aria-labelledby={ariaLabelledBy}
+        aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           width: '100%', cursor: 'pointer', background: 'inherit',
           border: 'inherit', borderRadius: 'inherit', padding: 'inherit',
-          fontSize: 'inherit', fontFamily: 'inherit',
+          fontSize: 'inherit', fontFamily: 'inherit', color: 'inherit',
+          textAlign: 'left',
         }}
       >
         <span>{current?.label || 'Choisir...'}</span>
-        <span style={{ fontSize: 10, opacity: 0.5 }}>▼</span>
+        <span style={{ fontSize: 10, opacity: 0.5 }} aria-hidden="true">▼</span>
       </button>
       {open && (
         <>

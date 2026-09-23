@@ -173,7 +173,7 @@
 |---|---|---|---|---|
 | **J0 — Données confiance** | Renommer marque ; email pro ; réseaux ; republier chrome | Faible (contenu) | Propriétaire | **Fait** (2026-09-23) — marque `Greatlifes` → `Greatlife` + publication chrome v21/v22. Email pro & réseaux : **en attente d’URLs/adresses du propriétaire** (Gmail & réseaux vides laissés tels quels). |
 | **J1 — Bannière & médias** | Voile / disposition ; photos plats manquantes ; alt | Faible–moyen | Atelier + Médias | **Fait partiel** (2026-09-23) — Bannière `fullscreen` → `image_text` ; `imageAlt` renseigné ; `secondaryColor` blanc retiré (contraste crème). Photos plats manquantes (ex. Le Volcan) : **reste à uploader** en Médias (4 photos seulement en base). |
-| **J2 — a11y formulaires & panier** | labels, autocomplete, aria-live, targets 44px, reduced-motion, no emoji empty | Moyen (code) | Couloir sections | À faire |
+| **J2 — a11y formulaires & panier** | labels, autocomplete, aria-live, targets 44px, reduced-motion, no emoji empty | Moyen (code) | Couloir sections | **Fait** (2026-09-23) — `Contact` / `Reservation` / `OrderCart` : `htmlFor`+`id`, `name`/`autocomplete`, `role="alert"`/`aria-live`, cibles ± 44px, empty panier SVG (plus d’emoji), `overscroll-behavior: contain`, dialog panier ; `Reveal` + panier respectent `prefers-reduced-motion` ; `Select` propage `id`/`aria-*` + style trigger ; `transition: all` retiré (Contact, Carte Ajouter). |
 | **J3 — Alignement Visibilité ↔ CMS** | Une seule commande « visible » | Moyen | **Décision propriétaire** (docs/21) | À faire |
 | **J4 — Preuve sociale & local** | Témoignages sur page ; lien Maps/WhatsApp | Moyen | Contenu + éventuel champ URL | À faire |
 | **J5 — Commande éditables** | Créneaux retrait / message panier | Moyen | **Décision schéma** | À faire |
@@ -183,6 +183,8 @@
 **Hors lots UI** : finaliser / vérifier RLS commandes (agent parallèle) par un test manuel « Valider ma commande » après déploiement 037.
 
 **Preuves J0/J1** : `scripts/.work/audit-public-jewel/j0j1-home-desktop-1440.png`, `j0j1-home-mobile-375.png`, `j0j1-proof.json` — nav « Greatlife », pas « Greatlifes » ; disposition Image+texte (photo burger lisible).
+
+**Preuves J2** : `scripts/.work/audit-public-jewel/proof-j2.mjs`, `j2-proof.json`, `j2-contact-desktop.png`, `j2-reservation-desktop.png`, `j2-order-desktop.png` — champs `#contact-*` / `#reservation-*` / `#order-*` labellés + autocomplete ; boutons quantité ≥ 44×44.
 
 ---
 
@@ -207,6 +209,11 @@ Répertoire : `scripts/.work/audit-public-jewel/`
 | `j0j1-home-desktop-1440.png` | Post-lot J0/J1 : marque + bannière Image+texte (desktop) |
 | `j0j1-home-mobile-375.png` | Post-lot J0/J1 : accueil mobile |
 | `j0j1-proof.json` | Probe DOM : `hasGreatlifes: false`, `hasGreatlife: true` |
+| `j2-contact-desktop.png` | Post-J2 : formulaire contact (labels liés) |
+| `j2-reservation-desktop.png` | Post-J2 : formulaire réservation (tel + autocomplete) |
+| `j2-order-desktop.png` | Post-J2 : panier / checkout |
+| `j2-proof.json` | Probe a11y formulaires + cibles 44px |
+| `proof-j2.mjs` | Script de rejouabilité J2 |
 
 ---
 
