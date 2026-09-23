@@ -173,11 +173,12 @@
 |---|---|---|---|---|
 | **J0 — Données confiance** | Renommer marque ; email pro ; réseaux ; republier chrome | Faible (contenu) | Propriétaire | **Fait** (2026-09-23) — marque `Greatlifes` → `Greatlife` + publication chrome v21/v22. Email pro & réseaux : **en attente d’URLs/adresses du propriétaire** (Gmail & réseaux vides laissés tels quels). |
 | **J1 — Bannière & médias** | Voile / disposition ; photos plats manquantes ; alt | Faible–moyen | Atelier + Médias | **Fait partiel** (2026-09-23) — Bannière `fullscreen` → `image_text` ; `imageAlt` renseigné ; `secondaryColor` blanc retiré (contraste crème). Photos plats manquantes (ex. Le Volcan) : **reste à uploader** en Médias (4 photos seulement en base). |
-| **J2 — a11y formulaires & panier** | labels, autocomplete, aria-live, targets 44px, reduced-motion, no emoji empty | Moyen (code) | Couloir sections | **Fait** (2026-09-23) — `Contact` / `Reservation` / `OrderCart` : `htmlFor`+`id`, `name`/`autocomplete`, `role="alert"`/`aria-live`, cibles ± 44px, empty panier SVG (plus d’emoji), `overscroll-behavior: contain`, dialog panier ; `Reveal` + panier respectent `prefers-reduced-motion` ; `Select` propage `id`/`aria-*` + style trigger ; `transition: all` retiré (Contact, Carte Ajouter). |
+| **J2 — a11y formulaires & panier** | labels, autocomplete, aria-live, targets 44px, reduced-motion, no emoji empty | Moyen (code) | Couloir sections | **Fait** (2026-09-23) — `Contact` / `Reservation` / `OrderCart` : `htmlFor`+`id`, `name`/`autocomplete`, `role="alert"`/`aria-live`, cibles ± **48px** (≥44), empty panier SVG (plus d’emoji), `overscroll-behavior: contain`, dialog panier ; `Reveal` + panier respectent `prefers-reduced-motion` ; `Select` propage `id`/`aria-*` + style trigger ; `transition: all` retiré (Contact, Carte Ajouter). |
 | **J3 — Alignement Visibilité ↔ CMS** | Une seule commande « visible » | Moyen | **Décision propriétaire** (docs/21) | À faire |
 | **J4 — Preuve sociale & local** | Témoignages sur page ; lien Maps/WhatsApp | Moyen | Contenu + éventuel champ URL | À faire |
 | **J5 — Commande éditables** | Créneaux retrait / message panier | Moyen | **Décision schéma** | À faire |
 | **J6 — Blocs manquants TDR** | Galerie, FAQ… seulement une fois `implemented` | Fort | docs/18 | À faire |
+| **J6b — Organisation blocs (MVP)** | Structure sous-éléments (listes/groupes) + réordre listes Monter/Descendre ; **pas** d’arbre Gutenberg | Faible | docs/18 §13 | **Fait** (2026-09-23) |
 | **J7 — SEO CMS** | title/description/OG éditables | Moyen | Porte TDR | À faire |
 
 **Hors lots UI** : finaliser / vérifier RLS commandes (agent parallèle) par un test manuel « Valider ma commande » après déploiement 037.
@@ -232,8 +233,8 @@ Répertoire : `scripts/.work/audit-public-jewel/`
 4. **Carte / WhatsApp** : autoriser un champ URL (sans inventer de schéma hors TDR).  
 5. **Créneaux de retrait** : liste éditable vs réutiliser horaires texte.  
 6. **SEO administrable** : oui/non et quel écran.  
-7. **Exposer ou masquer** les types de blocs `implemented: false` dans « Ajouter un bloc ».
-
+7. **Exposer ou masquer** les types de blocs `implemented: false` dans « Ajouter un bloc ».  
+8. **Arbre de blocs imbriqués** (Gutenberg / colonnes libres illimitées) : **refusé pour l’instant** — le MVP reste dispositions + listes + Structure (`docs/18` §13).
 ---
 
 *Document d’audit uniquement — aucun refactor UI massif dans ce lot. Identifiants admin utilisés en session pour cartographie ; **jamais** consignés ici ni dans les JSON de preuve.*

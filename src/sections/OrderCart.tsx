@@ -35,10 +35,12 @@ function CartGlyph({ size = 40, color = 'currentColor' }: { size?: number; color
 }
 
 const qtyBtnStyle = (t: { shadow: string; surface: string; heading: string }): React.CSSProperties => ({
-  width: 44,
-  height: 44,
-  minWidth: 44,
-  minHeight: 44,
+  boxSizing: 'border-box',
+  width: 48,
+  height: 48,
+  minWidth: 48,
+  minHeight: 48,
+  flexShrink: 0,
   borderRadius: 10,
   border: `1px solid ${t.shadow}`,
   background: t.surface,
@@ -49,6 +51,7 @@ const qtyBtnStyle = (t: { shadow: string; surface: string; heading: string }): R
   alignItems: 'center',
   justifyContent: 'center',
   touchAction: 'manipulation',
+  padding: 0,
 })
 
 export function OrderCart() {
