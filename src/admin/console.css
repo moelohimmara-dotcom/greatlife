@@ -12,6 +12,21 @@
   --admin-on-ink-muted: rgba(255, 255, 255, 0.72);
   --admin-on-ink-soft: rgba(255, 255, 255, 0.45);
   /*
+    Barre / chrome inversé (toolbar atelier, onglets actifs, pastilles sombres).
+    Ne JAMAIS réutiliser --admin-ink comme fond : en mode nuit --admin-ink
+    devient la couleur de texte claire (contraste cassé).
+  */
+  --admin-bar-bg: #182019;
+  --admin-bar-fg: #ffffff;
+  --admin-bar-fg-muted: rgba(255, 255, 255, 0.72);
+  --admin-bar-fg-soft: rgba(255, 255, 255, 0.45);
+  --admin-bar-border: rgba(255, 255, 255, 0.18);
+  --admin-bar-hover: rgba(255, 255, 255, 0.1);
+  /* Base des teintes color-mix (clair = blanc papier, nuit = surface). */
+  --admin-tint-base: #ffffff;
+  /* Gouttière autour de l’aperçu public — chrome atelier, pas le thème site. */
+  --admin-canvas-gutter: var(--admin-paper-muted);
+  /*
     Rail / sidebar / bottom-nav — mode clair par défaut (prefs console).
     --admin-rail-fg* = texte sur le rail ; ne pas confondre avec --admin-on-ink.
   */
@@ -60,6 +75,7 @@
 /*
   Fond du canvas navigateur aligné sur le papier admin : si un sous-pixel ou un
   parent laisse voir html/body, ce n’est plus le blanc Tailwind (#fff).
+  La teinte nuit est surchargée plus bas via data-console-theme.
 */
 html:has([data-admin-shell]),
 html:has([data-admin-shell]) body,
@@ -675,7 +691,7 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-ds-badge.is-live {
-  background: color-mix(in srgb, var(--admin-forest) 12%, #fff);
+  background: color-mix(in srgb, var(--admin-forest) 12%, var(--admin-tint-base));
   border-color: color-mix(in srgb, var(--admin-forest) 28%, transparent);
   color: var(--admin-forest);
 }
@@ -704,8 +720,8 @@ html:has([data-admin-shell]) #root {
   margin-left: 8px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--admin-ink);
-  color: var(--admin-paper);
+  background: var(--admin-bar-bg);
+  color: var(--admin-bar-fg);
   font-family: var(--admin-font-ui);
   font-size: 12px;
   font-weight: 700;
@@ -738,7 +754,7 @@ html:has([data-admin-shell]) #root {
   height: 20px;
   padding: 0 7px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--admin-forest) 10%, #fff);
+  background: color-mix(in srgb, var(--admin-forest) 10%, var(--admin-tint-base));
   color: var(--admin-forest);
   font-size: 11px;
   font-weight: 700;
@@ -1747,16 +1763,16 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-chip.is-live {
-  background: color-mix(in srgb, var(--admin-forest) 14%, #fff);
+  background: color-mix(in srgb, var(--admin-forest) 14%, var(--admin-tint-base));
 }
 
 [data-admin-shell] .admin-chip.is-warn {
-  background: color-mix(in srgb, var(--admin-saffron) 22%, #fff);
+  background: color-mix(in srgb, var(--admin-saffron) 22%, var(--admin-tint-base));
   color: color-mix(in srgb, var(--admin-ink) 80%, var(--admin-saffron));
 }
 
 [data-admin-shell] .admin-chip.is-danger {
-  background: color-mix(in srgb, var(--admin-coral) 16%, #fff);
+  background: color-mix(in srgb, var(--admin-coral) 16%, var(--admin-tint-base));
   color: var(--admin-coral);
 }
 
@@ -2953,7 +2969,8 @@ html:has([data-admin-shell]) #root {
   max-height: 100dvh;
   overflow: auto;
   overscroll-behavior: contain;
-  background: var(--admin-ink);
+  background: var(--admin-rail-bg);
+  color: var(--admin-rail-fg);
   box-shadow: -8px 0 24px rgba(24, 32, 25, 0.18);
 }
 
@@ -3010,8 +3027,8 @@ html:has([data-admin-shell]) #root {
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar {
   flex: 0 0 auto;
-  background: var(--admin-ink);
-  color: var(--admin-on-ink);
+  background: var(--admin-bar-bg);
+  color: var(--admin-bar-fg);
   border-bottom: 3px solid var(--admin-lime);
   padding: 8px 16px;
   gap: 16px;
@@ -3020,7 +3037,7 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar-status .admin-wf-cms-save-state {
-  color: var(--admin-on-ink-soft);
+  color: var(--admin-bar-fg-soft);
   white-space: nowrap;
 }
 
@@ -3037,12 +3054,12 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar-center {
-  border-left-color: var(--admin-rail-border-soft);
-  border-right-color: var(--admin-rail-border-soft);
+  border-left-color: var(--admin-bar-border);
+  border-right-color: var(--admin-bar-border);
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar-primary {
-  border-left-color: var(--admin-rail-border-soft);
+  border-left-color: var(--admin-bar-border);
 }
 
 [data-admin-shell] .admin-main-editor .admin-nav-toggle-main.admin-mobile-menu {
@@ -3051,14 +3068,14 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar-title {
-  color: var(--admin-on-ink) !important;
+  color: var(--admin-bar-fg) !important;
   font-family: var(--admin-font-display);
   font-size: 18px;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn {
-  color: var(--admin-on-ink) !important;
-  border-color: var(--admin-rail-border-soft) !important;
+  color: var(--admin-bar-fg) !important;
+  border-color: var(--admin-bar-border) !important;
   background: transparent !important;
   height: 44px !important;
   min-height: 44px !important;
@@ -3066,24 +3083,24 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, #fff 10%, transparent) !important;
+  background: var(--admin-bar-hover) !important;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn[disabled] {
-  color: var(--admin-on-ink-soft) !important;
+  color: var(--admin-bar-fg-soft) !important;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn.admin-editor-locale-btn.is-active,
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-btn[aria-pressed='true'] {
   background: color-mix(in srgb, var(--admin-lime) 22%, transparent) !important;
   border-color: var(--admin-lime) !important;
-  color: #fff !important;
+  color: var(--admin-bar-fg) !important;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-editor-publish {
   background: var(--admin-forest) !important;
   border-color: var(--admin-forest) !important;
-  color: #fff !important;
+  color: var(--admin-on-ink) !important;
 }
 
 [data-admin-shell] .admin-main-editor .admin-editor-toolbar .admin-editor-publish:hover:not(:disabled) {
@@ -3100,13 +3117,13 @@ html:has([data-admin-shell]) #root {
   align-items: stretch;
   height: 44px;
   border-radius: var(--admin-radius-control);
-  border: 1px solid var(--admin-rail-border-soft);
+  border: 1px solid var(--admin-bar-border);
   overflow: hidden;
   flex: 0 0 auto;
 }
 
 [data-admin-shell] .admin-editor-locale-btn + .admin-editor-locale-btn {
-  border-left: 1px solid var(--admin-rail-border-soft) !important;
+  border-left: 1px solid var(--admin-bar-border) !important;
 }
 
 [data-admin-shell] .admin-editor-history {
@@ -3427,7 +3444,8 @@ html:has([data-admin-shell]) #root {
   overflow: hidden;
   min-height: 0;
   min-width: 0;
-  background: var(--admin-paper-muted);
+  /* Chrome atelier autour du canvas — pas le thème public (iframe). */
+  background: var(--admin-canvas-gutter);
 }
 
 [data-admin-shell] .admin-preview-pane {
@@ -3484,7 +3502,7 @@ html:has([data-admin-shell]) #root {
   position: relative;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--admin-aqua) 14%, transparent), transparent 42%),
-    var(--admin-paper-muted);
+    var(--admin-canvas-gutter);
 }
 
 [data-admin-shell] .admin-apercu-loading {
@@ -3502,8 +3520,14 @@ html:has([data-admin-shell]) #root {
   background: var(--admin-surface);
 }
 
+/* Cadre appareil : chrome atelier. L’iframe (data-admin-canvas=public) reste fidèle au site. */
+[data-admin-shell] .admin-main-editor .admin-apercu-cadre iframe[data-admin-canvas='public'] {
+  background: var(--c-cream, #f5efe6);
+  color-scheme: normal;
+}
+
 [data-admin-shell] .admin-chip.is-draft {
-  background: color-mix(in srgb, var(--admin-tangerine) 18%, #fff);
+  background: color-mix(in srgb, var(--admin-tangerine) 18%, var(--admin-tint-base));
   color: color-mix(in srgb, var(--admin-ink) 75%, var(--admin-tangerine));
 }
 
@@ -3525,8 +3549,8 @@ html:has([data-admin-shell]) #root {
 
 [data-admin-shell] .admin-editor-inspector.is-publication,
 [data-admin-shell] .admin-main-editor .admin-publication-panel {
-  background: var(--admin-ink-soft);
-  color: var(--admin-on-ink-muted);
+  background: var(--admin-bar-bg);
+  color: var(--admin-bar-fg-muted);
   border-left: 3px solid var(--admin-tangerine);
   height: 100%;
   min-height: 0;
@@ -3570,7 +3594,7 @@ html:has([data-admin-shell]) #root {
   min-height: 28px;
   padding: 0 10px;
   border-radius: 99px;
-  background: color-mix(in srgb, var(--admin-lime) 28%, #fff);
+  background: color-mix(in srgb, var(--admin-lime) 28%, var(--admin-tint-base));
   color: var(--admin-ink);
   font-size: 12px;
   font-weight: 600;
@@ -4262,9 +4286,9 @@ html:has([data-admin-shell]) #root {
 
 [data-admin-shell] .admin-wf-menu-tabs button.is-active,
 [data-admin-shell] .admin-wf-menu-tabs button:hover {
-  border-color: var(--admin-ink);
-  background: var(--admin-ink);
-  color: #fff;
+  border-color: var(--admin-bar-bg);
+  background: var(--admin-bar-bg);
+  color: var(--admin-bar-fg);
 }
 
 [data-admin-shell] .admin-wf-menu-list,
@@ -6268,8 +6292,8 @@ html:has([data-admin-shell]) #root {
 
 [data-admin-shell] .admin-wf-settings-tabs button.is-active,
 [data-admin-shell] .admin-wf-settings-tabs button:hover {
-  background: var(--admin-ink);
-  color: #fff;
+  background: var(--admin-bar-bg);
+  color: var(--admin-bar-fg);
 }
 
 [data-admin-shell] .admin-wf-settings-check {
@@ -6676,17 +6700,17 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-wf-activity-icon.is-warning {
-  background: color-mix(in srgb, var(--admin-saffron) 22%, #fff);
+  background: color-mix(in srgb, var(--admin-saffron) 22%, var(--admin-tint-base));
   color: #9b6f2b;
 }
 
 [data-admin-shell] .admin-wf-activity-icon.is-security {
-  background: color-mix(in srgb, var(--admin-aqua) 22%, #fff);
+  background: color-mix(in srgb, var(--admin-aqua) 22%, var(--admin-tint-base));
   color: #3d6a7a;
 }
 
 [data-admin-shell] .admin-wf-activity-icon.is-success {
-  background: color-mix(in srgb, var(--admin-forest) 14%, #fff);
+  background: color-mix(in srgb, var(--admin-forest) 14%, var(--admin-tint-base));
   color: var(--admin-forest);
 }
 
@@ -6725,12 +6749,12 @@ html:has([data-admin-shell]) #root {
 }
 
 [data-admin-shell] .admin-wf-activity-badge.is-warning {
-  background: color-mix(in srgb, var(--admin-saffron) 22%, #fff);
+  background: color-mix(in srgb, var(--admin-saffron) 22%, var(--admin-tint-base));
   color: #9b6f2b;
 }
 
 [data-admin-shell] .admin-wf-activity-badge.is-security {
-  background: color-mix(in srgb, var(--admin-aqua) 22%, #fff);
+  background: color-mix(in srgb, var(--admin-aqua) 22%, var(--admin-tint-base));
   color: #3d6a7a;
 }
 
@@ -6785,17 +6809,17 @@ html:has([data-admin-shell]) #root {
   gap: 8px;
   padding: 12px;
   border-radius: var(--admin-radius-control);
-  background: color-mix(in srgb, var(--admin-sage) 55%, #fff);
+  background: color-mix(in srgb, var(--admin-sage) 55%, var(--admin-tint-base));
   color: var(--admin-forest);
 }
 
 [data-admin-shell] .admin-wf-activity-detail-status.is-warning {
-  background: color-mix(in srgb, var(--admin-saffron) 18%, #fff);
+  background: color-mix(in srgb, var(--admin-saffron) 18%, var(--admin-tint-base));
   color: #9b6f2b;
 }
 
 [data-admin-shell] .admin-wf-activity-detail-status.is-security {
-  background: color-mix(in srgb, var(--admin-aqua) 18%, #fff);
+  background: color-mix(in srgb, var(--admin-aqua) 18%, var(--admin-tint-base));
   color: #3d6a7a;
 }
 
@@ -7161,7 +7185,8 @@ html:has([data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]
 
 /*
   Mode nuit — chrome sombre type sidebar forêt.
-  Ne touche pas aux variables --c-* du site public (rootStyle).
+  Ne touche pas aux variables --c-* du site public (rootStyle / iframe aperçu).
+  --admin-ink = texte ; --admin-bar-* = surfaces inversées (restent sombres).
 */
 [data-admin-shell][data-console-theme="nuit"] {
   --admin-ink: #e6efe4;
@@ -7177,6 +7202,14 @@ html:has([data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]
   --admin-forest-mid: #4f9a4e;
   --admin-coral: #e56a5a;
   --admin-saffron: #e0b045;
+  --admin-bar-bg: #0a110d;
+  --admin-bar-fg: #f2f7f0;
+  --admin-bar-fg-muted: rgba(242, 247, 240, 0.78);
+  --admin-bar-fg-soft: rgba(242, 247, 240, 0.48);
+  --admin-bar-border: rgba(242, 247, 240, 0.2);
+  --admin-bar-hover: rgba(242, 247, 240, 0.1);
+  --admin-tint-base: #1e2a21;
+  --admin-canvas-gutter: #152019;
   /* Sidebar / bottom-nav sombres */
   --admin-rail-bg: #0e1511;
   --admin-rail-fg: #f2f7f0;
@@ -7228,6 +7261,47 @@ html:has([data-admin-shell][data-console-theme="nuit"]) #root {
 
 [data-admin-shell][data-console-theme="nuit"] .admin-wf-top-search input {
   color: var(--admin-ink);
+}
+
+/*
+  Champs et cartes modules — contraste a11y en nuit.
+  Les styles inline du site public (PropertyPanel) passent aussi par les jetons
+  --admin-* (voir inputStyle / styleBouton).
+*/
+[data-admin-shell][data-console-theme="nuit"] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+[data-admin-shell][data-console-theme="nuit"] textarea,
+[data-admin-shell][data-console-theme="nuit"] select {
+  background-color: var(--admin-paper-muted);
+  color: var(--admin-ink);
+  border-color: var(--admin-line);
+}
+
+[data-admin-shell][data-console-theme="nuit"] input::placeholder,
+[data-admin-shell][data-console-theme="nuit"] textarea::placeholder {
+  color: color-mix(in srgb, var(--admin-ink) 48%, transparent);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-editor-structure,
+[data-admin-shell][data-console-theme="nuit"] .admin-editor-inspector,
+[data-admin-shell][data-console-theme="nuit"] .admin-block-item,
+[data-admin-shell][data-console-theme="nuit"] .admin-layout-drawer,
+[data-admin-shell][data-console-theme="nuit"] .admin-block-family,
+[data-admin-shell][data-console-theme="nuit"] .admin-carte,
+[data-admin-shell][data-console-theme="nuit"] .admin-empty {
+  background: var(--admin-surface);
+  border-color: var(--admin-line);
+  color: var(--admin-ink);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-ds-badge.is-demo {
+  background: color-mix(in srgb, var(--admin-saffron) 22%, var(--admin-tint-base));
+  border-color: color-mix(in srgb, var(--admin-saffron) 45%, transparent);
+  color: var(--admin-saffron);
+}
+
+[data-admin-shell][data-console-theme="nuit"] .admin-ticket-source {
+  background: color-mix(in srgb, var(--admin-forest) 18%, var(--admin-tint-base));
+  color: var(--admin-forest);
 }
 
 /* Accent des actions (réutilise --admin-forest comme couleur primaire UI) */

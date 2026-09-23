@@ -31,11 +31,11 @@ export function anneauFocus(_t: ThemePalette) {
   return { className: 'admin-focus' }
 }
 
-export function titreColonne(t: ThemePalette): CSSProperties {
+export function titreColonne(_t?: ThemePalette): CSSProperties {
   return {
     fontSize: 13,
     fontWeight: 700,
-    color: t.heading,
+    color: 'var(--admin-ink)',
     marginBottom: ESPACE,
     letterSpacing: 0,
     textTransform: 'none',
@@ -43,21 +43,21 @@ export function titreColonne(t: ThemePalette): CSSProperties {
 }
 
 /** Libellé d’une nature dans Structure (Mise en page, Blocs). */
-export function styleLibelleNature(t: ThemePalette): CSSProperties {
+export function styleLibelleNature(_t?: ThemePalette): CSSProperties {
   return {
     fontSize: 12,
     fontWeight: 700,
-    color: t.muted,
+    color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)',
     marginBottom: ESPACE,
     letterSpacing: '0.02em',
   }
 }
 
 /** Carte d’un tiroir (mise en page ou famille de blocs) : bordure, rayon 10. */
-export function styleCarteTiroir(t: ThemePalette): CSSProperties {
+export function styleCarteTiroir(_t?: ThemePalette): CSSProperties {
   return {
     marginBottom: ESPACE,
-    border: `1px solid ${t.shadow}`,
+    border: '1px solid var(--admin-line)',
     borderRadius: RAYON,
     overflow: 'hidden',
   }
@@ -97,27 +97,29 @@ export function styleBouton(t: ThemePalette, opts: {
 }): CSSProperties {
   const genre = opts.genre ?? 'secondaire'
   const carre = Boolean(opts.carre)
+  /* Chrome console : jetons --admin-* (suivent Clair/Nuit). t reste pour compat API. */
+  void t
   const fonds: Record<GenreBouton, string> = {
-    primaire: t.primary,
-    secondaire: t.surface,
-    actif: `${t.primary}14`,
-    danger: t.surface,
+    primaire: 'var(--admin-forest)',
+    secondaire: 'var(--admin-surface)',
+    actif: 'color-mix(in srgb, var(--admin-forest) 14%, transparent)',
+    danger: 'var(--admin-surface)',
     silencieux: 'transparent',
     nav: 'transparent',
   }
   const textes: Record<GenreBouton, string> = {
-    primaire: '#fff',
-    secondaire: t.text,
-    actif: t.primary,
-    danger: t.accent,
-    silencieux: t.muted,
-    nav: t.text,
+    primaire: 'var(--admin-on-ink)',
+    secondaire: 'var(--admin-ink)',
+    actif: 'var(--admin-forest)',
+    danger: 'var(--admin-coral)',
+    silencieux: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)',
+    nav: 'var(--admin-ink)',
   }
   const bords: Record<GenreBouton, string> = {
-    primaire: t.primary,
-    secondaire: t.shadow,
-    actif: t.primary,
-    danger: `${t.accent}66`,
+    primaire: 'var(--admin-forest)',
+    secondaire: 'var(--admin-line)',
+    actif: 'var(--admin-forest)',
+    danger: 'color-mix(in srgb, var(--admin-coral) 40%, transparent)',
     silencieux: 'transparent',
     nav: 'transparent',
   }
@@ -246,11 +248,11 @@ export function TiroirInspecteur({
             transition: 'transform 0.15s ease',
           }}
         >
-          {Icon.chevronDown(16, t.muted)}
+          {Icon.chevronDown(16, 'var(--admin-ink-soft)')}
         </span>
         {renduIcone && (
           <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
-            {renduIcone(16, t.heading)}
+            {renduIcone(16, 'var(--admin-ink)')}
           </span>
         )}
         <span
@@ -261,7 +263,7 @@ export function TiroirInspecteur({
             textAlign: 'left',
             fontSize: 13,
             fontWeight: 700,
-            color: t.heading,
+            color: 'var(--admin-ink)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -270,7 +272,7 @@ export function TiroirInspecteur({
           {titre}
         </span>
         {compte !== undefined && (
-          <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 600, color: t.muted, flexShrink: 0 }}>
+          <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', flexShrink: 0 }}>
             {compte}
           </span>
         )}

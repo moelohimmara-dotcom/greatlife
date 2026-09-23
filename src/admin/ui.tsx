@@ -66,18 +66,17 @@ export function PageHeader({
   badge?: React.ReactNode
   actions?: React.ReactNode
 }) {
-  const { theme: t } = useSite()
   return (
     <div className="admin-wf-header">
       <div>
         <p className="admin-wf-eyebrow">Greatlife / Administration</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>
-          <h1 className="admin-page-title" style={{ margin: 0, color: t.heading }}>
+          <h1 className="admin-page-title" style={{ margin: 0 }}>
             {title}
           </h1>
           {badge}
         </div>
-        {subtitle && <p className="admin-page-sub" style={{ color: t.muted, margin: '6px 0 0' }}>{subtitle}</p>}
+        {subtitle && <p className="admin-page-sub" style={{ margin: '6px 0 0' }}>{subtitle}</p>}
       </div>
       {actions && <div style={{ display: 'flex', alignItems: 'center', gap: ESPACE, flexWrap: 'wrap' }}>{actions}</div>}
     </div>
@@ -114,30 +113,34 @@ export function StatusPill({
 }
 
 export function EmptyState({ icon, title, subtitle }: { icon?: React.ReactNode; title: string; subtitle?: string }) {
-  const { theme: t } = useSite()
   return (
-    <div className="admin-empty" style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 16, background: t.surfaceAlt, border: `1px dashed ${t.shadow}` }}>
+    <div className="admin-empty" style={{ padding: '40px 20px', textAlign: 'center', borderRadius: 16 }}>
       {icon && <div style={{ opacity: 0.5, marginBottom: 12 }}>{icon}</div>}
-      <div style={{ fontWeight: 600, color: t.heading, fontSize: 16, marginBottom: subtitle ? 4 : 0 }}>{title}</div>
-      {subtitle && <div style={{ color: t.muted, fontSize: 13 }}>{subtitle}</div>}
+      <div style={{ fontWeight: 600, color: 'var(--admin-ink)', fontSize: 16, marginBottom: subtitle ? 4 : 0 }}>{title}</div>
+      {subtitle && <div style={{ color: 'color-mix(in srgb, var(--admin-ink) 58%, transparent)', fontSize: 13 }}>{subtitle}</div>}
     </div>
   )
 }
 
 export function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  const { theme: t } = useSite()
   return (
-    <label htmlFor={htmlFor} style={{ fontSize: '12px', fontWeight: 600, color: t.muted, marginBottom: 6, display: 'block', letterSpacing: '0.01em' }}>
+    <label htmlFor={htmlFor} style={{ fontSize: '12px', fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 62%, transparent)', marginBottom: 6, display: 'block', letterSpacing: '0.01em' }}>
       {children}
     </label>
   )
 }
 
-export function inputStyle(t: ReturnType<typeof useSite>['theme']): React.CSSProperties {
+export function inputStyle(_t?: ReturnType<typeof useSite>['theme']): React.CSSProperties {
   return {
-    background: t.surfaceAlt, border: `1px solid ${t.shadow}`, borderRadius: 10,
-    padding: '11px 14px', fontSize: '14px', color: t.text, width: '100%',
-    fontFamily: 'inherit', boxSizing: 'border-box',
+    background: 'var(--admin-paper-muted)',
+    border: '1px solid var(--admin-line)',
+    borderRadius: 10,
+    padding: '11px 14px',
+    fontSize: '14px',
+    color: 'var(--admin-ink)',
+    width: '100%',
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
     transition: 'border-color 0.2s',
   }
 }

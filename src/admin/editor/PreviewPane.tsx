@@ -779,6 +779,7 @@ export function PreviewPane({
             }}
           >
             <iframe
+              data-admin-canvas="public"
               ref={iframeRef}
               tabIndex={0}
               title={cadre === 'telephone' ? 'Aperçu du site sur téléphone' : 'Aperçu du site sur bureau'}
