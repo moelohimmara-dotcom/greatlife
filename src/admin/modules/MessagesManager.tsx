@@ -222,19 +222,21 @@ export function MessagesManager() {
             <small>non mesuré en base</small>
           </div>
         </div>
-        <div className="admin-toolbar">
-          <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 160 }}>
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" aria-label="Rechercher un message" style={{ ...inp, paddingLeft: 32, fontSize: 13, minHeight: 44 }} />
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} aria-hidden="true">{Icon.search(14, t.muted)}</span>
+        <div className="admin-toolbar admin-msg-toolbar">
+          <div className="admin-msg-search" role="search">
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un message…" aria-label="Rechercher un message" style={{ ...inp, paddingLeft: 36, fontSize: 13, minHeight: 44 }} />
+            <span className="admin-msg-search-icon" aria-hidden="true">{Icon.search(14, t.muted)}</span>
           </div>
-          {([['all', 'Toutes'], ['unhandled', 'Non lus'], ['handled', 'Traités']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
-            <button key={k} type="button" className="admin-filter-chip" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>
-              {l}{' '}
-              <span style={{ opacity: 0.7 }}>
-                {k === 'all' ? messages.length : k === 'unhandled' ? messages.filter((m) => !m.handled).length : messages.filter((m) => m.handled).length}
-              </span>
-            </button>
-          ))}
+          <div className="admin-msg-filters" role="group" aria-label="Filtrer les messages">
+            {([['all', 'Toutes'], ['unhandled', 'Non lus'], ['handled', 'Traités']] as ['all' | 'unhandled' | 'handled', string][]).map(([k, l]) => (
+              <button key={k} type="button" className="admin-filter-chip" aria-pressed={statusFilter === k} onClick={() => setStatusFilter(k)}>
+                {l}
+                <span className="admin-msg-filter-count">
+                  {k === 'all' ? messages.length : k === 'unhandled' ? messages.filter((m) => !m.handled).length : messages.filter((m) => m.handled).length}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
         {selectedIds.size > 0 && (
           <div className="admin-toolbar" style={{ background: 'var(--admin-paper-muted)', padding: 12, borderRadius: 12, border: '1px solid var(--admin-line)' }}>
@@ -251,29 +253,28 @@ export function MessagesManager() {
           <p className="admin-loading">Aucun message dans ce filtre.</p>
         ) : (
           <>
-          <div className="admin-ops-list" style={{ marginTop: 12 }}>
-            <button type="button" onClick={toggleSelectAll} className="admin-ops-row" style={{ fontWeight: 600, color: 'var(--admin-forest)', cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}>
+          <div className="admin-ops-list admin-msg-list">
+            <button type="button" onClick={toggleSelectAll} className="admin-ops-row admin-msg-select-all">
               {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
             </button>
             {pagedMessages.map(m => {
               const i = messages.indexOf(m)
               const checked = Boolean(m.id && selectedIds.has(m.id))
               return (
-              <div key={m.id ?? i} className={`admin-ops-row${!m.handled ? ' is-urgent' : ''}${selectedIdx === i ? ' is-selected' : ''}`}>
-                <label style={{ display: 'flex', alignItems: 'center', minHeight: 44, paddingRight: 4, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={checked} onChange={() => m.id && toggleSelect(m.id)} aria-label={`Sélectionner ${m.nom}`} style={{ width: 18, height: 18 }} />
+              <div key={m.id ?? i} className={`admin-ops-row admin-msg-row${!m.handled ? ' is-urgent' : ''}${selectedIdx === i ? ' is-selected' : ''}`}>
+                <label className="admin-msg-check">
+                  <input type="checkbox" checked={checked} onChange={() => m.id && toggleSelect(m.id)} aria-label={`Sélectionner ${m.nom}`} />
                 </label>
-                <button type="button" onClick={() => { setSelectedIdx(i); setReplyText(''); setSending('idle') }} style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'inherit', padding: 0, minHeight: 44 }}>
+                <button type="button" className="admin-msg-row-body" onClick={() => { setSelectedIdx(i); setReplyText(''); setSending('idle') }}>
                   <div className="admin-ops-title">
-                    {!m.handled && <span className="admin-status-dot" aria-hidden="true" />}
                     {m.nom}
-                    <span className="cms-sr-only">{m.handled ? 'Traité' : 'Non traité'}</span>
-                    {!m.handled && <span className="admin-chip is-danger" style={{ marginLeft: 8 }}>Non traité</span>}
+                    <span className="cms-sr-only">{m.handled ? 'Traité' : 'À traiter'}</span>
+                    {!m.handled && <span className="admin-chip is-danger">À traiter</span>}
                   </div>
-                  <div className="admin-ops-meta" style={{ color: 'var(--admin-forest)' }}>{m.sujet}</div>
-                  <div className="admin-ops-meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.message}</div>
+                  <div className="admin-ops-meta admin-msg-subject">{m.sujet}</div>
+                  <div className="admin-ops-meta admin-msg-preview">{m.message}</div>
                 </button>
-                <span className="admin-mono" style={{ fontSize: 12, opacity: 0.6 }}>{dateFr(m.date)}</span>
+                <span className="admin-mono admin-msg-date">{dateFr(m.date)}</span>
               </div>
               )
             })}
@@ -348,8 +349,9 @@ export function MessagesManager() {
         </div>
       ) : (
         <aside className="admin-msg-empty-pane" aria-label="Conversation">
-          <strong style={{ color: 'var(--admin-ink)', fontSize: 16 }}>Sélectionnez un message</strong>
-          <span>La conversation s’ouvre ici — point corail et libellé « Non traité » pour les non lus.</span>
+          <span className="admin-msg-empty-icon" aria-hidden="true">{Icon.mail(36, 'var(--admin-forest)')}</span>
+          <strong>Sélectionnez un message</strong>
+          <span>Choisissez une demande à gauche pour la lire et y répondre. Les messages à traiter sont marqués d’une barre corail et du libellé « À traiter ».</span>
         </aside>
       )}
     </div>
