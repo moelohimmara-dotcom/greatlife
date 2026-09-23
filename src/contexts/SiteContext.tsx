@@ -68,6 +68,8 @@ export interface MediaSlot {
   filename?: string
   content_type?: string | null
   size_bytes?: number | null
+  alt_text?: string | null
+  caption?: string | null
 }
 
 export interface MessageReply {
@@ -223,6 +225,8 @@ function mediaAssetToSlot(a: MediaAsset): MediaSlot {
     filename: a.filename,
     content_type: a.content_type,
     size_bytes: a.size_bytes,
+    alt_text: a.alt_text,
+    caption: a.caption,
   }
 }
 

@@ -43,7 +43,7 @@ Correctifs P0/P1 + **MVP de guidance** livrés dans le même lot (tip dismissibl
 | M5 | **P1** | Filtres / dossiers &lt; 44 px | Touch targets | **Corrigé** `min-height: 44` |
 | M6 | **P1** | Menu « … » détail sans action | Anti-pattern dead control | **Retiré** |
 | M7 | **P1** | Jargon « Emplacement cible » + dims techniques | TDR §4 vocabulaire restaurateur | **Adouci** (« Où l’afficher », dims métier) |
-| M8 | **P1** | Texte alt / légende non persistés (message technique) | Confiance ; ne pas faire croire à une sauvegarde | Hint `admin-hint-box` clarifié ; **persist = backend** (matrice) |
+| M8 | **P1** | Texte alt / légende non persistés (message technique) | Confiance ; ne pas faire croire à une sauvegarde | **Corrigé (N2)** — persistés en base ; CTA « Enregistrer » honnête |
 | M9 | **P2** | Densité verticale (toolbar + upload + 2 rangées filtres) avant la grille — pire en mobile | First content delayed | **Partiel** (guide/tip) ; collapse upload = lot suivant |
 | M10 | **P2** | Noms de fichiers très longs / chip détail | Truncation / `text-wrap: pretty` | **Amélioré** CSS clamp |
 | M11 | **P2** | Tri « Plus récents » = ordre dépôt (pas de `created_at` sur `MediaSlot`) | Fragile si l’ordre change | Documenté ; flux `created_at` = matrice |
@@ -54,7 +54,7 @@ Correctifs P0/P1 + **MVP de guidance** livrés dans le même lot (tip dismissibl
 | ID | P | Nouveauté | Valeur | Backend ? |
 |---|---|---|---|---|
 | N1 | P0 | Guide in-app (« Comment ça marche » + tip dismissible) | Onboarding restaurateur sans IA | **Non** — livré MVP |
-| N2 | P1 | Persistance texte alternatif + légende | Accessibilité publique réelle | **Oui** — colonnes `media_assets` |
+| N2 | P1 | Persistance texte alternatif + légende | Accessibilité publique réelle | **Livré** — `media_assets.alt_text` + `caption` (041) |
 | N3 | P1 | Multi-import (plusieurs fichiers) | Gain de temps | **Livré** — `input multiple` + dropzone multi + file d’attente / progression |
 | N4 | P1 | Remplacer / prévisualiser avant import | Moins d’erreurs | Front + éventuellement Storage |
 | N5 | P2 | Dossiers libres utilisateur | Organisation perso | **Oui** — schéma dossiers |
@@ -107,7 +107,7 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 | Besoin produit | Front seul | Migration / API | Notes |
 |---|---|---|---|
 | Guide / tips / empty pédagogiques | ✅ | — | Ce lot |
-| Alt + légende persistés | UI champs déjà là | `media_assets.alt_text`, `caption` (+ RLS update) | Ne pas prétendre « Enregistré » tant que absent |
+| Alt + légende persistés | ✅ détail Médias | `media_assets.alt_text`, `caption` (041) + `updateMediaAsset` | N2 livré 2026-09-23 |
 | `created_at` pour tri fiable | brancher `MediaSlot` | déjà en table | Couloir SiteContext / repository |
 | Dossiers libres | UI | table `media_folders` + FK | Porte de phase |
 | Bulk delete | UI multi-select | delete batch Storage + rows | |
@@ -125,9 +125,9 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 
 ## 7. Next
 
-1. Après merge `main` : redéployer Pages et vérifier multi-import (2–3 images) + tip/guide mis à jour.  
-2. Décision propriétaire : prioriser **alt persisté** (N2) vs remplacer/prévisualiser (N4).  
-3. Lot mobile : plier la zone d’import derrière « Ajouter une photo » pour remonter la bibliothèque.
+1. Brancher le site public sur `media_assets.alt_text` (Hero / Carte / Équipe) pour que l’accessibilité soit réelle côté visiteur — aujourd’hui la persistance console est faite, la consommation publique reste à câbler.  
+2. Lot mobile : plier la zone d’import derrière « Ajouter une photo » pour remonter la bibliothèque.  
+3. N4 : remplacer / prévisualiser avant import.
 
 ---
 
@@ -153,11 +153,32 @@ Hors périmètre : chatbot IA (AGENTS.md §18).
 **Livré (front seul)** :
 - Segments clairs : identité + aperçu → **Emplacement sur le site** → **Description** → actions
 - Chip « Non placé / Sur le site » (statut) ; emplacement nommé dans le bloc « Visible ici »
-- CTA primaire « Enregistrer l’emplacement » (désactivé si inchangé) — ne prétend plus sauver l’alt
-- Note session unique pour alt/légende (N2 hors scope)
+- CTA primaire « Enregistrer l’emplacement » (désactivé si inchangé) — ne prétend plus sauver l’alt *(remplacé par N2)*
+- Note session unique pour alt/légende (N2 hors scope) *(retirée par N2)*
 - Empty state pédagogique ; focus champs ; format conseillé sous « Où l’afficher »
 - Métadonnées métier (Image · taille) — plus de `content_type` technique
 
 **Fichiers** : `MediaManager.tsx`, `console.css`.
 
 **Justification UX (ui-ux-pro-max)** : heading hierarchy + form labels + empty states + progressive disclosure (placement persisté vs description session) + touch spacing / focus.
+
+---
+
+## 10. N2 — Alt / légende persistés (2026-09-23)
+
+**Choix propriétaire** : enchaîner N2 après N3.
+
+**Livré** :
+- Migration réversible `041_media_assets_alt_caption.sql` (+ rollback) : colonnes `alt_text`, `caption` sur `media_assets`
+- RLS UPDATE admin déjà en place (011) — pas de nouvelle policy
+- `MediaAsset` / `MediaSlot` + `fetchMedia` exposent les champs
+- `updateMediaAsset(id, { slot?, alt_text?, caption? })` ; `updateMediaSlot` délègue
+- Panneau détail : drafts hydratés depuis la base ; CTA unique **Enregistrer** (emplacement et/ou description) avec feedback loading → succès/erreur
+- Vocabulaire restaurateur ; plus de « brouillon de session »
+- Guide « Comment ça marche » mis à jour
+
+**Hors périmètre N2** : consommation publique de `alt_text` dans les sections (Hero/Carte/Équipe) — à câbler ensuite pour l’a11y visiteur.
+
+**Fichiers** : `supabase/migrations/041_*`, `supabase/rollbacks/041_*`, `src/lib/repository.ts`, `src/contexts/SiteContext.tsx`, `src/admin/modules/MediaManager.tsx`, `src/admin/console.css`, ce doc.
+
+**Justification UX (ui-ux-pro-max)** : form labels + alt text + submit feedback (loading → confirmation) + honesty du CTA.

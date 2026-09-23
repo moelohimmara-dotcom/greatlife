@@ -750,8 +750,26 @@ export interface MediaAsset {
   public_url: string
   content_type: string | null
   size_bytes: number | null
+  alt_text: string | null
+  caption: string | null
   created_at: string
   updated_at: string
+}
+
+function mapMediaAsset(a: Record<string, unknown>): MediaAsset {
+  return {
+    id: String(a.id ?? ''),
+    slot: String(a.slot ?? 'general'),
+    filename: String(a.filename ?? ''),
+    storage_path: String(a.storage_path ?? ''),
+    public_url: String(a.public_url ?? ''),
+    content_type: a.content_type == null ? null : String(a.content_type),
+    size_bytes: a.size_bytes == null ? null : Number(a.size_bytes),
+    alt_text: a.alt_text == null || a.alt_text === '' ? null : String(a.alt_text),
+    caption: a.caption == null || a.caption === '' ? null : String(a.caption),
+    created_at: String(a.created_at ?? ''),
+    updated_at: String(a.updated_at ?? ''),
+  }
 }
 
 export async function fetchMedia(): Promise<{ data: MediaAsset[]; fromDb: boolean }> {
@@ -764,17 +782,7 @@ export async function fetchMedia(): Promise<{ data: MediaAsset[]; fromDb: boolea
       .order('created_at', { ascending: false })
     if (error || !data) return { data: [], fromDb: false }
     return {
-      data: (data as Array<Record<string, unknown>>).map(a => ({
-        id: String(a.id ?? ''),
-        slot: String(a.slot ?? 'general'),
-        filename: String(a.filename ?? ''),
-        storage_path: String(a.storage_path ?? ''),
-        public_url: String(a.public_url ?? ''),
-        content_type: a.content_type == null ? null : String(a.content_type),
-        size_bytes: a.size_bytes == null ? null : Number(a.size_bytes),
-        created_at: String(a.created_at ?? ''),
-        updated_at: String(a.updated_at ?? ''),
-      })),
+      data: (data as Array<Record<string, unknown>>).map(mapMediaAsset),
       fromDb: true,
     }
   } catch {
@@ -866,12 +874,34 @@ export async function deleteMedia(id: string, storagePath?: string): Promise<Sav
 }
 
 export async function updateMediaSlot(id: string, slot: string): Promise<SaveResult> {
+  return updateMediaAsset(id, { slot })
+}
+
+export type MediaAssetPatch = {
+  slot?: string
+  alt_text?: string | null
+  caption?: string | null
+}
+
+/** Met à jour emplacement et/ou description (texte alternatif, légende). */
+export async function updateMediaAsset(id: string, patch: MediaAssetPatch): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  const body: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.slot !== undefined) body.slot = patch.slot
+  if (patch.alt_text !== undefined) {
+    const v = patch.alt_text == null ? null : String(patch.alt_text).trim()
+    body.alt_text = v === '' ? null : v
+  }
+  if (patch.caption !== undefined) {
+    const v = patch.caption == null ? null : String(patch.caption).trim()
+    body.caption = v === '' ? null : v
+  }
+  if (Object.keys(body).length <= 1) return { ok: true }
   try {
     const { error } = await sb
       .from(MEDIA_TABLE)
-      .update({ slot, updated_at: new Date().toISOString() })
+      .update(body)
       .eq('id', id)
     if (error) return { ok: false, error: errMsg(error) }
     return { ok: true }

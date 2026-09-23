@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSite, type MediaSlot } from '@/contexts/SiteContext'
 import { PageHeader, PrimaryButton, GhostButton, inputStyle, EmptyState } from '@/admin/ui'
 import type { MenuItem } from '@/data/menu'
-import { uploadMedia, deleteMedia, updateMediaSlot } from '@/lib/repository'
+import { uploadMedia, deleteMedia, updateMediaAsset } from '@/lib/repository'
 import { resizeImageFile, isResizableImage, RESIZE_PRESETS } from '@/lib/imageResize'
 import { productPhotoSlotId } from '@/lib/productPhotoSlot'
 import { Icon } from '@/lib/icons'
@@ -135,7 +135,7 @@ function MediaGuide({ onClose }: { onClose: () => void }) {
         </li>
         <li>
           <strong>Suivez la file d’attente</strong>
-          {' '}(succès / échecs), puis vérifiez le détail à droite{'\u00a0'}: emplacement, puis Enregistrer si vous changez où ça apparaît.
+          {' '}(succès / échecs), puis ouvrez le détail à droite{'\u00a0'}: emplacement, texte alternatif, légende — puis Enregistrer.
         </li>
         <li>
           Les <strong>dossiers</strong> (Bannière, Carte, Équipe…) regroupent automatiquement vos fichiers selon l’emplacement — ce ne sont pas des dossiers libres comme sur un ordinateur.
@@ -165,6 +165,7 @@ export function MediaManager() {
   const [editSlot, setEditSlot] = useState('')
   const [altDraft, setAltDraft] = useState('')
   const [captionDraft, setCaptionDraft] = useState('')
+  const [savingDetail, setSavingDetail] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   const [tipVisible, setTipVisible] = useState(() => {
     try {
@@ -220,24 +221,32 @@ export function MediaManager() {
   const detailPlace = detailSlot ? slotChoices.find((s) => s.id === detailSlot) : undefined
   const detailUsed = detailSlot ? usageLabel(detailSlot, slotChoices) : 'Non utilisé'
   const detailUnused = detailUsed === 'Non utilisé'
+  const savedAlt = (selected?.alt_text ?? '').trim()
+  const savedCaption = (selected?.caption ?? '').trim()
   const detailSlotDirty = Boolean(selected && detailSlot !== selected.slot)
+  const detailDescDirty = Boolean(
+    selected && (altDraft.trim() !== savedAlt || captionDraft.trim() !== savedCaption),
+  )
+  const detailDirty = detailSlotDirty || detailDescDirty
   const detailKind = selected ? mediaKind(selected) : 'Fichier'
   const detailIsImage = Boolean(selected && (selected.content_type || '').startsWith('image/'))
 
+  const hydrateDetailDrafts = (m: MediaSlot) => {
+    setEditSlot(m.slot || 'general')
+    setAltDraft(m.alt_text ?? '')
+    setCaptionDraft(m.caption ?? '')
+    setConfirmDelete(false)
+  }
+
   const selectAsset = (m: MediaSlot) => {
     setSelectedId(m.id ?? null)
-    setEditSlot(m.slot || 'general')
-    setAltDraft(suggestedAlt(m, slotChoices))
-    setCaptionDraft('')
-    setConfirmDelete(false)
+    hydrateDetailDrafts(m)
   }
 
   useEffect(() => {
     if (!selected) return
     if (selectedId !== selected.id) setSelectedId(selected.id ?? null)
-    setEditSlot(selected.slot || 'general')
-    setAltDraft((prev) => (prev ? prev : suggestedAlt(selected, slotChoices)))
-    setConfirmDelete(false)
+    hydrateDetailDrafts(selected)
   }, [selected?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dismissTip = () => {
@@ -376,24 +385,33 @@ export function MediaManager() {
   }
 
   const handleSaveDetail = async () => {
-    if (!selected?.id) return
+    if (!selected?.id || !detailDirty) return
     const nextSlot = editSlot || selected.slot
-    if (nextSlot === selected.slot) {
-      setStatus({
-        kind: 'ok',
-        msg: 'Emplacement déjà à jour. La description (texte alternatif / légende) reste pour cette session uniquement.',
-      })
-      return
-    }
-    const res = await updateMediaSlot(selected.id, nextSlot)
+    const nextAlt = altDraft.trim()
+    const nextCaption = captionDraft.trim()
+    setSavingDetail(true)
+    setStatus({ kind: 'busy', msg: 'Enregistrement…' })
+    const res = await updateMediaAsset(selected.id, {
+      slot: nextSlot,
+      alt_text: nextAlt || null,
+      caption: nextCaption || null,
+    })
+    setSavingDetail(false)
     if (!res.ok) {
-      setStatus({ kind: 'err', msg: res.error || 'Échec de la mise à jour.' })
+      setStatus({ kind: 'err', msg: res.error || 'Impossible d’enregistrer. Réessayez.' })
       return
     }
     await refreshMedia()
+    const parts: string[] = []
+    if (detailSlotDirty) parts.push('emplacement')
+    if (detailDescDirty) parts.push('description')
     setStatus({
       kind: 'ok',
-      msg: 'Emplacement enregistré. La description reste pour cette session uniquement.',
+      msg: parts.length === 2
+        ? 'Emplacement et description enregistrés.'
+        : parts[0] === 'emplacement'
+          ? 'Emplacement enregistré.'
+          : 'Description enregistrée.',
     })
   }
 
@@ -866,11 +884,8 @@ export function MediaManager() {
               <section className="admin-wf-media-detail-seg" aria-labelledby="media-desc-heading">
                 <div className="admin-wf-media-detail-seg-head">
                   <h3 id="media-desc-heading">Description</h3>
-                  <p>Pour les visiteurs qui ne voient pas l’image (accessibilité).</p>
+                  <p>Pour les visiteurs qui ne voient pas l’image. Mémorisé avec le fichier.</p>
                 </div>
-                <p className="admin-wf-media-session-note" role="note">
-                  Brouillon de session uniquement — pas encore mémorisé. Utile pour préparer le texte avant la prochaine mise à jour.
-                </p>
                 <label className="admin-wf-media-field" htmlFor="media-alt">
                   <span>Texte alternatif</span>
                   <textarea
@@ -878,10 +893,13 @@ export function MediaManager() {
                     value={altDraft}
                     onChange={(e) => setAltDraft(e.target.value)}
                     rows={3}
-                    placeholder="Ex. : Assiette de fruits tropicaux sur la terrasse…"
+                    placeholder={selected ? suggestedAlt(selected, slotChoices) : 'Ex. : Assiette de fruits tropicaux sur la terrasse…'}
                     name="media-alt"
                     autoComplete="off"
                   />
+                  <small className="admin-wf-media-field-hint">
+                    Décrivez ce que montre la photo — utile si l’image ne s’affiche pas.
+                  </small>
                 </label>
                 <label className="admin-wf-media-field" htmlFor="media-caption">
                   <span>Légende <em>(optionnel)</em></span>
@@ -898,8 +916,8 @@ export function MediaManager() {
 
               <footer className="admin-wf-media-detail-actions">
                 <div className="admin-wf-media-detail-actions-primary">
-                  <PrimaryButton disabled={!detailSlotDirty} onClick={handleSaveDetail}>
-                    {Icon.check(14)} Enregistrer l’emplacement
+                  <PrimaryButton disabled={!detailDirty || savingDetail || !isSupabase} onClick={handleSaveDetail}>
+                    {Icon.check(14)} {savingDetail ? 'Enregistrement…' : 'Enregistrer'}
                   </PrimaryButton>
                   <GhostButton color={t.primary} disabled={!selected.url} onClick={copyLink}>
                     {Icon.link(14)} Copier le lien

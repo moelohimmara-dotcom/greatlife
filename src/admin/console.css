@@ -4997,17 +4997,6 @@ html:has([data-admin-shell]) #root {
   color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
 }
 
-[data-admin-shell] .admin-wf-media-session-note {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--admin-line);
-  background: var(--admin-paper-muted);
-  font-size: 12px;
-  line-height: 1.45;
-  color: color-mix(in srgb, var(--admin-ink) 62%, transparent);
-}
-
 [data-admin-shell] .admin-wf-media-field {
   display: grid;
   gap: 6px;
