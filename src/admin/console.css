@@ -6142,6 +6142,68 @@ html:has([data-admin-shell]) #root {
   font-size: 13px;
 }
 
+/* Action prévue bientôt : grisée mais cliquable pour expliquer. */
+[data-admin-shell] .admin-btn-bientot {
+  opacity: 0.55;
+  filter: grayscale(0.25);
+}
+[data-admin-shell] .admin-btn-bientot:hover {
+  opacity: 0.7;
+}
+[data-admin-shell] .admin-btn-bientot-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--admin-saffron, #c4a35a) 22%, transparent);
+  color: color-mix(in srgb, var(--admin-ink) 70%, transparent);
+  vertical-align: middle;
+}
+
+[data-admin-shell] .admin-bientot-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: color-mix(in srgb, var(--admin-ink) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+[data-admin-shell] .admin-bientot-dialog {
+  width: min(420px, 100%);
+  background: var(--admin-paper, #fff);
+  color: var(--admin-ink);
+  border-radius: 16px;
+  border: 1px solid var(--admin-line);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--admin-ink) 18%, transparent);
+  padding: 22px 22px 18px;
+}
+[data-admin-shell] .admin-bientot-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--admin-forest, #2d5a27) 85%, transparent);
+}
+[data-admin-shell] .admin-bientot-dialog h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--admin-ink);
+}
+[data-admin-shell] .admin-bientot-message {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--admin-ink) 72%, transparent);
+}
+
 [data-admin-shell] .admin-wf-resa-client {
   display: flex;
   align-items: center;

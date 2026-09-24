@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { Icon } from '@/lib/icons'
 import { ADMIN_FOREST, ADMIN_INK, ADMIN_MUTED, Bouton, CIBLE, CLASSE_BOUTON, CLASSE_CARTE, ESPACE, HAUTEUR, HAUTEUR_ETAT, RAYON } from '@/admin/editor/chrome'
@@ -227,6 +227,54 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
         {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronLeft(13, page === 1 ? ADMIN_MUTED : ADMIN_FOREST)}</span>, page === 1, () => onPage(Math.max(1, page - 1)), 'Page précédente')}
         <span style={{ fontSize: 12, fontWeight: 600, color: ADMIN_INK, padding: '0 6px' }}>{page} / {pages}</span>
         {btn(<span style={{ display: 'inline-flex', alignItems: 'center' }}>{Icon.chevronRight(13, page === pages ? ADMIN_MUTED : ADMIN_FOREST)}</span>, page === pages, () => onPage(Math.min(pages, page + 1)), 'Page suivante')}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Fenêtre chaleureuse « bientôt » — pour une action visible dans la console
+ * mais pas encore branchée au site / à la base.
+ * Le bouton reste cliquable (grisé) pour expliquer, pas seulement désactivé.
+ */
+export function BientotDialog({
+  open,
+  titre,
+  message,
+  onClose,
+}: {
+  open: boolean
+  titre: string
+  message: string
+  onClose: () => void
+}) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+  return (
+    <div
+      className="admin-bientot-backdrop"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-bientot-titre"
+        className="admin-bientot-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="admin-bientot-eyebrow">Bientôt disponible</p>
+        <h2 id="admin-bientot-titre">{titre}</h2>
+        <p className="admin-bientot-message">{message}</p>
+        <PrimaryButton onClick={onClose}>Compris, merci</PrimaryButton>
       </div>
     </div>
   )

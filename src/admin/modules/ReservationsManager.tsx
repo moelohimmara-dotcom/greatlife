@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Icon } from '@/lib/icons'
-import { PageHeader, EmptyState, inputStyle, GhostButton, PrimaryButton, Pagination } from '@/admin/ui'
+import { PageHeader, EmptyState, inputStyle, GhostButton, PrimaryButton, Pagination, BientotDialog } from '@/admin/ui'
 import { canDo } from '@/data/rbac'
 import {
   updateReservationStatus,
@@ -14,7 +14,23 @@ import { invokeReservationStatusEmail } from '@/lib/supabase'
 import { Bouton } from '@/admin/editor/chrome'
 import { dateFr } from '@/admin/shared'
 
-type ResaView = 'Planning' | 'Liste' | 'Tables'
+type ResaView = 'Planning' | 'Liste'
+
+const BIENTOT_TABLES = {
+  titre: 'Le plan de salle arrive bientôt',
+  message:
+    'Pour l’instant, vos clients réservent via le formulaire du site (date, heure, nombre de personnes). '
+    + 'Vous voyez et confirmez leurs demandes ici. L’attribution d’une table précise et le plan de salle '
+    + 'sont en cours de préparation — on vous préviendra dès que ce sera prêt.',
+} as const
+
+const BIENTOT_ATTRIBUER = {
+  titre: 'Attribution de table bientôt disponible',
+  message:
+    'Cette action n’est pas encore branchée : le site public ne propose pas encore de choisir une table. '
+    + 'En attendant, confirmez la réservation et contactez le client si besoin. '
+    + 'Le plan de salle et l’attribution arriveront dans une prochaine mise à jour.',
+} as const
 
 function initials(nom: string): string {
   return nom
@@ -76,6 +92,7 @@ export function ReservationsManager() {
   const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
   const [creating, setCreating] = useState(false)
   const [newOpen, setNewOpen] = useState(false)
+  const [bientot, setBientot] = useState<null | { titre: string; message: string }>(null)
   const [newForm, setNewForm] = useState({
     nom: '',
     email: '',
@@ -311,10 +328,13 @@ export function ReservationsManager() {
         )}
         <GhostButton
           color={t.muted}
-          title="Aucune table en base pour l’instant"
-          onClick={() => setStatusErr('Le plan de salle n’est pas encore configuré — aucune table à attribuer.')}
+          className="admin-btn-bientot"
+          aria-haspopup="dialog"
+          title="Bientôt disponible"
+          onClick={() => setBientot(BIENTOT_ATTRIBUER)}
         >
           Attribuer une table
+          <span className="admin-btn-bientot-tag">Bientôt</span>
         </GhostButton>
         {selected.status !== 'cancelled' && (
           <GhostButton color="#dc2626" onClick={() => updateStatus(selected.id!, 'cancelled')}>
@@ -475,7 +495,7 @@ export function ReservationsManager() {
               )}
             </div>
             <div className="admin-wf-resa-views" role="group" aria-label="Mode d’affichage">
-              {(['Planning', 'Liste', 'Tables'] as ResaView[]).map((item) => (
+              {(['Planning', 'Liste'] as ResaView[]).map((item) => (
                 <Bouton
                   key={item}
                   genre={view === item ? 'actif' : 'secondaire'}
@@ -485,6 +505,17 @@ export function ReservationsManager() {
                   {item}
                 </Bouton>
               ))}
+              <Bouton
+                genre="secondaire"
+                className="admin-btn-bientot"
+                aria-haspopup="dialog"
+                aria-pressed={false}
+                title="Bientôt disponible"
+                onClick={() => setBientot(BIENTOT_TABLES)}
+              >
+                Tables
+                <span className="admin-btn-bientot-tag">Bientôt</span>
+              </Bouton>
             </div>
           </div>
 
@@ -523,9 +554,7 @@ export function ReservationsManager() {
                 <div>
                   <span className="admin-wf-eyebrow">{view} du service</span>
                   <strong>
-                    {view === 'Tables'
-                      ? 'Plan de salle'
-                      : `${listRows.length} affichée${listRows.length > 1 ? 's' : ''}`}
+                    {`${listRows.length} affichée${listRows.length > 1 ? 's' : ''}`}
                   </strong>
                 </div>
                 <span style={{ fontSize: 12, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)' }}>
@@ -533,13 +562,7 @@ export function ReservationsManager() {
                 </span>
               </div>
 
-              {view === 'Tables' ? (
-                <div className="admin-wf-resa-tables-disabled">
-                  <strong style={{ display: 'block', marginBottom: 6, color: 'var(--admin-ink)' }}>Plan de salle non disponible</strong>
-                  Aucune table n’est définie en base pour l’instant. La vue Tables restera désactivée
-                  jusqu’à ce que le plan de salle soit configuré — pas de plan inventé.
-                </div>
-              ) : listRows.length === 0 ? (
+              {listRows.length === 0 ? (
                 <div className="admin-loading" style={{ padding: '20px 16px' }}>
                   <p style={{ margin: 0 }}>Aucune réservation dans cette vue.</p>
                   {view !== 'Liste' && counts.pending > 0 && (
@@ -604,6 +627,13 @@ export function ReservationsManager() {
           </div>
         </>
       )}
+
+      <BientotDialog
+        open={bientot != null}
+        titre={bientot?.titre ?? ''}
+        message={bientot?.message ?? ''}
+        onClose={() => setBientot(null)}
+      />
     </div>
   )
 }
