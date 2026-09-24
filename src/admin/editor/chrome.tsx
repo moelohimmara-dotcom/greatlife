@@ -24,7 +24,11 @@ export const CLASSE_BOUTON = 'admin-btn'
 /** Carte / tiroir : hover crème via CSS, pas un stroke. */
 export const CLASSE_CARTE = 'admin-carte'
 
-/** Jetons chrome atelier — jamais les couleurs du thème site public. */
+/** Jetons chrome atelier — jamais les couleurs du thème site public (--c-*).
+ *  Les fonds/textes de Structure / inspecteur utilisent --admin-* uniquement.
+ *  --c-surface sur .admin-carte provoquait des cartes sombres illisibles en Clair
+ *  quand le thème restaurant est sombre (régression 2026-09-24).
+ */
 export const ADMIN_INK = 'var(--admin-ink)'
 export const ADMIN_MUTED = 'var(--admin-muted)'
 export const ADMIN_SURFACE = 'var(--admin-surface)'

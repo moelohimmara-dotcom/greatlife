@@ -38,7 +38,7 @@ function IconeMenu() {
 }
 
 export function AdminShell() {
-  const { rootStyle, unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount, dataSource, dataLoading } = useSite()
+  const { unhandledMessagesCount, pendingOrdersCount, pendingReservationsCount, dataSource, dataLoading } = useSite()
   const { user, logout, roleNotice, dismissRoleNotice } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -383,7 +383,7 @@ export function AdminShell() {
       data-admin-drawer={mobileNav ? 'open' : 'closed'}
       /* Collée au viewport : fixed+inset, pas seulement 100dvh (bande blanche sous la console). */
       style={{
-        ...rootStyle,
+        /* Pas de rootStyle site : les --c-* restent dans l'iframe apercu (PreviewPane). */
         position: 'fixed',
         inset: 0,
         display: 'grid',

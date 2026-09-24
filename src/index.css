@@ -261,7 +261,7 @@ html.admin-editor-lock body {
   min-width: 180px;
   padding: 8px;
   border-radius: 10px;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--c-heading, #1a1a1a) 12%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--admin-ink, var(--c-heading, #1a1a1a)) 12%, transparent);
 }
 
 @media (max-width: 1099px) {
@@ -397,13 +397,13 @@ textarea:focus-visible,
 select:focus-visible,
 .admin-focus:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--c-primary, #2D5A27);
+  box-shadow: inset 0 0 0 2px var(--admin-forest, var(--c-primary, #2D5A27));
 }
 
 .admin-range {
   height: 44px;
   margin: 0;
-  accent-color: var(--c-primary, #2D5A27);
+  accent-color: var(--admin-forest, var(--c-primary, #2D5A27));
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -477,8 +477,14 @@ select:focus-visible,
   }
 }
 
+/*
+  Cartes console (Atelier Structure / inspecteur) — UNIQUEMENT jetons --admin-*.
+  Ne jamais utiliser --c-surface / --c-primary ici : ce sont les couleurs du
+  THÈME SITE PUBLIC (souvent sombre). Sur console Clair, le texte reste
+  --admin-ink (foncé) → contraste cassé (cartes Gabarit / Disposition / Contenu).
+*/
 .admin-carte {
-  background-color: var(--c-surface, #fff);
+  background-color: var(--admin-surface, #fff);
   transition: background-color 0.15s ease;
   outline: none;
 }
@@ -487,19 +493,19 @@ select:focus-visible,
   outline: none;
 }
 .admin-carte.is-selected {
-  background-color: color-mix(in srgb, var(--c-primary, #2D5A27) 5%, var(--c-surface, #fff));
-  box-shadow: inset 3px 0 0 var(--c-primary, #2D5A27);
+  background-color: color-mix(in srgb, var(--admin-forest, #2D5A27) 5%, var(--admin-surface, #fff));
+  box-shadow: inset 3px 0 0 var(--admin-forest, #2D5A27);
 }
 /* Bouton + carte : le focus clavier ne remplace pas le trait de sélection. */
 .admin-btn.admin-carte.is-selected:focus-visible {
-  box-shadow: inset 3px 0 0 var(--c-primary, #2D5A27), inset 0 -2px 0 currentColor;
+  box-shadow: inset 3px 0 0 var(--admin-forest, #2D5A27), inset 0 -2px 0 currentColor;
 }
 @media (hover: hover) {
   .admin-carte:hover {
-    background-color: var(--c-surface-alt, #FAF6F0);
+    background-color: var(--admin-paper-muted, #FAF6F0);
   }
   .admin-carte.is-selected:hover {
-    background-color: color-mix(in srgb, var(--c-primary, #2D5A27) 8%, var(--c-surface-alt, #FAF6F0));
+    background-color: color-mix(in srgb, var(--admin-forest, #2D5A27) 8%, var(--admin-paper-muted, #FAF6F0));
   }
 }
 
@@ -534,7 +540,7 @@ select:focus-visible,
 }
 
 ::selection {
-  background: var(--c-primary, #2D5A27);
+  background: var(--admin-forest, var(--c-primary, #2D5A27));
   color: #fff;
 }
 

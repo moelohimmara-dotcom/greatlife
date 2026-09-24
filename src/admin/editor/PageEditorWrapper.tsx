@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import type { PageSection } from '@/cms/model/section'
 import type { PageSeo, PageStatus } from '@/cms/model/page'
@@ -33,7 +32,6 @@ export function PageEditorWrapper({
   onQuitConsole?: () => void
   onOuvrirApparence?: () => void
 }) {
-  const { theme: t } = useSite()
   const { user } = useAuth()
   const [pageId, setPageId] = useState<string | null>(null)
   const [pageLabel, setPageLabel] = useState('Page d’accueil')
@@ -222,7 +220,7 @@ export function PageEditorWrapper({
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: t.muted }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--admin-muted)' }}>
         <div style={{ fontSize: 14, fontWeight: 500 }}>Chargement de l'éditeur…</div>
       </div>
     )
@@ -231,7 +229,7 @@ export function PageEditorWrapper({
   if (error || !pageId || !sections) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-        <div role="alert" style={{ textAlign: 'center', padding: 32, borderRadius: 12, background: t.surface, border: `1px solid ${t.accent}44`, color: t.accent }}>
+        <div role="alert" style={{ textAlign: 'center', padding: 32, borderRadius: 12, background: 'var(--admin-surface)', border: '1px solid var(--admin-line)', color: 'var(--admin-coral)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Erreur de chargement</div>
           <div style={{ fontSize: 13 }}>{error ?? 'Aucune page trouvée.'}</div>
         </div>

@@ -12,7 +12,7 @@
   --admin-on-ink-muted: rgba(255, 255, 255, 0.72);
   --admin-on-ink-soft: rgba(255, 255, 255, 0.45);
   /*
-    Barre / chrome inversé (toolbar atelier, onglets actifs, pastilles sombres).
+    Barre / chrome inverse (onglets actifs, pastilles, toolbar en NUIT seulement).
     Ne JAMAIS réutiliser --admin-ink comme fond : en mode nuit --admin-ink
     devient la couleur de texte claire (contraste cassé).
   */
@@ -3563,8 +3563,8 @@ html:has([data-admin-shell]) #root {
 
 [data-admin-shell] .admin-editor-inspector.is-publication,
 [data-admin-shell] .admin-main-editor .admin-publication-panel {
-  background: var(--admin-bar-bg);
-  color: var(--admin-bar-fg-muted);
+  background: var(--admin-surface);
+  color: var(--admin-muted);
   border-left: 3px solid var(--admin-tangerine);
   height: 100%;
   min-height: 0;
@@ -7176,7 +7176,7 @@ html:has([data-admin-shell]) #root {
 [data-admin-shell] .admin-editor-toolbar-page small {
   font-size: 11px;
   line-height: 1.2;
-  color: var(--admin-on-ink-soft);
+  color: color-mix(in srgb, currentColor 55%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7250,6 +7250,73 @@ html:has([data-admin-shell]:not([data-console-theme])[data-admin-chrome="foret"]
   Ne touche pas aux variables --c-* du site public (rootStyle / iframe aperçu).
   --admin-ink = texte ; --admin-bar-* = surfaces inversées (restent sombres).
 */
+
+/* Clair : toolbar atelier suit le papier console (pas de bandeau inverse illisible / dissonant).
+   Nuit conserve --admin-bar-* via les regles de base ci-dessus. */
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar {
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  border-bottom: 1px solid var(--admin-line);
+  box-shadow: inset 0 -3px 0 var(--admin-lime);
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar-status .admin-wf-cms-save-state,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar-status .admin-wf-cms-save-state {
+  color: var(--admin-muted);
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar-center,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar-center {
+  border-left-color: var(--admin-line);
+  border-right-color: var(--admin-line);
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar-primary,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar-primary {
+  border-left-color: var(--admin-line);
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar-title,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar-title {
+  color: var(--admin-ink) !important;
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar .admin-btn,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar .admin-btn {
+  color: var(--admin-ink) !important;
+  border-color: var(--admin-line) !important;
+  background: transparent !important;
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar .admin-btn:hover:not(:disabled),
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar .admin-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--admin-ink) 6%, transparent) !important;
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar .admin-btn[disabled],
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar .admin-btn[disabled] {
+  color: var(--admin-muted) !important;
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar .admin-btn.admin-editor-locale-btn.is-active,
+[data-admin-shell][data-console-theme="clair"] .admin-main-editor .admin-editor-toolbar .admin-btn[aria-pressed='true'],
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar .admin-btn.admin-editor-locale-btn.is-active,
+[data-admin-shell]:not([data-console-theme]) .admin-main-editor .admin-editor-toolbar .admin-btn[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--admin-forest) 12%, transparent) !important;
+  border-color: var(--admin-forest) !important;
+  color: var(--admin-forest) !important;
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-editor-locale,
+[data-admin-shell]:not([data-console-theme]) .admin-editor-locale {
+  border-color: var(--admin-line);
+}
+
+[data-admin-shell][data-console-theme="clair"] .admin-editor-locale-btn + .admin-editor-locale-btn,
+[data-admin-shell]:not([data-console-theme]) .admin-editor-locale-btn + .admin-editor-locale-btn {
+  border-left-color: var(--admin-line) !important;
+}
 [data-admin-shell][data-console-theme="nuit"] {
   --admin-ink: #e6efe4;
   --admin-ink-soft: #c9d6c6;
@@ -7374,6 +7441,28 @@ html:has([data-admin-shell][data-console-theme="nuit"]) #root {
   background: var(--admin-surface);
   border-color: var(--admin-line);
   color: var(--admin-ink);
+}
+
+/*
+  Clair : même contrainte que la nuit — les cartes Atelier ne doivent JAMAIS
+  peindre avec --c-surface (thème public). Filet si une règle globale --c-*
+  réapparaît (régression index.css .admin-carte).
+*/
+[data-admin-shell] .admin-carte {
+  background-color: var(--admin-surface);
+  color: var(--admin-ink);
+}
+[data-admin-shell] .admin-carte.is-selected {
+  background-color: color-mix(in srgb, var(--admin-forest) 5%, var(--admin-surface));
+  box-shadow: inset 3px 0 0 var(--admin-forest);
+}
+@media (hover: hover) {
+  [data-admin-shell] .admin-carte:hover {
+    background-color: var(--admin-paper-muted);
+  }
+  [data-admin-shell] .admin-carte.is-selected:hover {
+    background-color: color-mix(in srgb, var(--admin-forest) 8%, var(--admin-paper-muted));
+  }
 }
 
 [data-admin-shell][data-console-theme="nuit"] .admin-ds-badge.is-demo {
