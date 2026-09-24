@@ -143,3 +143,37 @@ lot de durcissement 039.
 
 **Statut** : porte de phase, **non démarré**. Ne pas élargir les policies pour
 « arranger » ces sujets.
+
+---
+
+## B-S2. Filet lot1 contrôle C ? référence `0528c544` obsol?te apr?s J2/J4/dispositions
+
+**Constaté le** : 2026-09-24 (triage audit syst?me).
+
+**Mesure** : `npm run verify:lot1` échoue au contrôle C (non-régression HTML)
+pour 9/10 sections (`hero`, `menu`, `story`, `engagements`, `team`, `location`,
+`contact`, `reservation`, `blog`). Seul `testimonials` reste byte-identique ?
+`0528c544`. Les écarts sont **attendus** apr?s le travail J2/J4 et les
+dispositions ? ce n'est pas une régression accidentelle ? ? corriger ? en
+réécrivant le site pour coller ? l'ancien HTML.
+
+**Ce que disent déj? les docs** :
+- `scripts/verify-lot1.mjs` et `AGENTS.md` §15 **épinglent** `PRE_CMS_WIRING_REF
+  = 0528c544` ; une surcharge `BASE_REF` sans `GLIFE_ALLOW_REF_OVERRIDE=1` est
+  **refusée** (garde-fou anti faux-vert, revue 2026-09-20).
+- Le seul changement de SHA documenté est la réécriture d'historique
+  (`9e5efb7` ? `0528c544`, **m?me arbre**) ? pas un rebase de baseline visuelle.
+- `docs/18_DISPOSITIONS_DE_BLOC.md` §6.1 exige encore que la disposition par
+  défaut rende comme `0528c544` ; cette exigence n'a **pas** été révisée apr?s
+  les lots UX intentionnels.
+
+**Décision propriétaire requise** (ne pas inventer ici) :
+1. **Rebaser** `PRE_CMS_WIRING_REF` sur un commit post-J2/J4/dispositions, et
+   mettre ? jour `AGENTS.md` + `docs/18` en m?me temps ; ou
+2. **Restreindre** le contrôle C (ex. disposition par défaut seulement /
+   sections encore figées) ; ou
+3. **Marquer C comme dette connue** / le rendre informatif jusqu'? arbitrage.
+
+**Statut** : dette documentée, **aucune modification de `BASE_REF`** dans ce
+triage. Le rouge du contrôle C reste un signal honn?te tant que l'arbitrage
+n'est pas rendu.

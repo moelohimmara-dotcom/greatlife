@@ -356,7 +356,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
 
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <button type="submit" disabled={submitting || slots.length === 0}
-                          style={{ flex: 1, background: submitting || slots.length === 0 ? t.muted : t.primary, color: '#fff', fontWeight: 700, padding: '14px 24px', borderRadius: '100px', fontSize: '15px', border: 'none', cursor: submitting || slots.length === 0 ? 'not-allowed' : 'pointer', opacity: submitting || slots.length === 0 ? 0.7 : 1, boxShadow: `0 4px 16px ${t.shadowDeep}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, touchAction: 'manipulation' }}>
+                          style={{ flex: 1, background: submitting || slots.length === 0 ? t.muted : t.primary, color: '#FFFFFF', fontWeight: 700, padding: '14px 24px', borderRadius: '100px', fontSize: '16px', border: 'none', cursor: submitting || slots.length === 0 ? 'not-allowed' : 'pointer', opacity: submitting || slots.length === 0 ? 0.7 : 1, boxShadow: `0 4px 16px ${t.shadowDeep}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, touchAction: 'manipulation' }}>
                           {submitting ? 'Envoi…' : slots.length === 0 ? 'Commande indisponible' : 'Valider ma commande'}
                           {!submitting && slots.length > 0 && Icon.arrow(16)}
                         </button>

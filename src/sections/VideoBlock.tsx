@@ -63,7 +63,7 @@ export function VideoBlock({ content: cms, preview }: Partial<SectionComponentPr
   if (!url) {
     if (!preview) return null
     return (
-      <section className="section-pad" style={{ padding: '72px 24px', maxWidth: 900, margin: '0 auto' }}>
+      <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
           Vidéo : collez une adresse (YouTube, Vimeo ou fichier .mp4) dans Modifier.
         </p>
@@ -76,7 +76,7 @@ export function VideoBlock({ content: cms, preview }: Partial<SectionComponentPr
   const iframeSrc = yt ?? vim
 
   return (
-    <section className="section-pad" style={{ padding: '100px 24px', maxWidth: 960, margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '96px 24px', maxWidth: 960, margin: '0 auto' }}>
       {title ? (
         <Reveal>
           <SectionHead title={title} align="center" preview={preview} />
@@ -107,7 +107,7 @@ export function VideoBlock({ content: cms, preview }: Partial<SectionComponentPr
               playsInline
               poster={poster || undefined}
               aria-label={posterAlt}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#1A1F1A' }}
             >
               <source src={url} />
             </video>

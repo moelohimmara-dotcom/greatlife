@@ -38,7 +38,7 @@ function FeaturedCard({ item }: { item: MenuItem }) {
       >
         {!prodImg ? <FoodIcon cat={item.cat} size={48} color={t.heading} /> : null}
       </div>
-      <div style={{ padding: '16px 18px 20px' }}>
+      <div style={{ padding: '16px 16px 20px' }}>
         <h3
           style={{
             fontFamily: 'var(--font-heading, var(--f-heading))',
@@ -51,7 +51,7 @@ function FeaturedCard({ item }: { item: MenuItem }) {
         >
           {item.name}
         </h3>
-        <p style={{ fontSize: 13.5, color: t.muted, lineHeight: 1.5, margin: '0 0 10px' }}>{item.desc}</p>
+        <p style={{ fontSize: 14, color: t.muted, lineHeight: 1.5, margin: '0 0 8px' }}>{item.desc}</p>
         <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 700, color: t.accent, fontSize: 16 }}>
           {item.price}
           <span style={{ fontSize: 11, fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span>
@@ -80,7 +80,7 @@ export function MenuFeatured({ content: cms, data, variant, preview }: Partial<S
   if (featured.length === 0) {
     if (!preview) return null
     return (
-      <section className="section-pad" style={{ padding: '72px 24px', maxWidth: 900, margin: '0 auto' }}>
+      <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
           Plats à la une : indiquez l’identifiant ou le nom de plats de la carte dans Modifier.
         </p>
@@ -94,7 +94,7 @@ export function MenuFeatured({ content: cms, data, variant, preview }: Partial<S
 
   if (disposition === 'carousel') {
     return (
-      <section className="section-pad" data-disposition="carousel" style={{ padding: '100px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <section className="section-pad" data-disposition="carousel" style={{ padding: '96px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Reveal>
           <SectionHead title={title} sub={sub} align="center" preview={preview} />
         </Reveal>
@@ -121,11 +121,11 @@ export function MenuFeatured({ content: cms, data, variant, preview }: Partial<S
   }
 
   return (
-    <section className="section-pad" data-disposition="grid" style={{ padding: '100px 24px', maxWidth: 1200, margin: '0 auto' }}>
+    <section className="section-pad" data-disposition="grid" style={{ padding: '96px 24px', maxWidth: 1200, margin: '0 auto' }}>
       <Reveal>
         <SectionHead title={title} sub={sub} align="center" preview={preview} />
       </Reveal>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {featured.map((item, i) => (
           <Reveal key={item.id ?? item.name} delay={(i % 4) * 0.05}>
             <FeaturedCard item={item} />

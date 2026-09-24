@@ -38,19 +38,19 @@ export function CtaBand({ content: cms, variant, preview }: Partial<SectionCompo
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
-        background: disposition === 'banner' ? '#fff' : t.primary,
-        color: disposition === 'banner' ? t.primary : '#fff',
+        background: disposition === 'banner' ? '#FFFFFF' : t.primary,
+        color: disposition === 'banner' ? t.primary : '#FFFFFF',
         fontWeight: 600,
-        padding: '14px 26px',
+        padding: '16px 24px',
         borderRadius: 100,
-        fontSize: 15,
+        fontSize: 16,
         textDecoration: 'none',
         minHeight: 48,
         touchAction: 'manipulation',
         boxShadow: disposition === 'card' ? `0 4px 16px ${t.shadowDeep}` : undefined,
       }}
     >
-      {label} {Icon.arrow(16, disposition === 'banner' ? t.primary : '#fff')}
+      {label} {Icon.arrow(16, disposition === 'banner' ? t.primary : '#FFFFFF')}
     </a>
   ) : null
 
@@ -60,7 +60,7 @@ export function CtaBand({ content: cms, variant, preview }: Partial<SectionCompo
         <Reveal>
           <div
             style={{
-              padding: '40px 36px',
+              padding: '40px 32px',
               borderRadius: 24,
               background: t.surface,
               border: `1px solid ${t.shadow}`,
@@ -102,9 +102,9 @@ export function CtaBand({ content: cms, variant, preview }: Partial<SectionCompo
       className="section-pad"
       data-disposition="banner"
       style={{
-        padding: '72px 24px',
+        padding: '64px 24px',
         background: `linear-gradient(135deg, ${t.primary}, ${t.primaryDark ?? t.primary})`,
-        color: '#fff',
+        color: '#FFFFFF',
       }}
     >
       <Reveal>
@@ -130,8 +130,8 @@ export function CtaBand({ content: cms, variant, preview }: Partial<SectionCompo
                   fontSize: 'clamp(26px, 3.5vw, 36px)',
                   fontWeight: 700,
                   letterSpacing: '-0.03em',
-                  margin: '0 0 10px',
-                  color: '#fff',
+                  margin: '0 0 8px',
+                  color: '#FFFFFF',
                 }}
               />
             ) : null}

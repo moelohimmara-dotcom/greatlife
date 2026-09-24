@@ -58,7 +58,7 @@ export function ImageText({ content: cms, variant, preview }: Partial<SectionCom
           as="p"
           html={body}
           {...cmsSlotAttrs(preview, 'body')}
-          style={{ fontSize: 17, lineHeight: 1.75, color: t.text, margin: 0 }}
+          style={{ fontSize: 16, lineHeight: 1.75, color: t.text, margin: 0 }}
         />
       ) : null}
     </Reveal>
@@ -68,7 +68,7 @@ export function ImageText({ content: cms, variant, preview }: Partial<SectionCom
     <section
       className="section-pad"
       data-disposition={disposition}
-      style={{ padding: '100px 24px', maxWidth: 1100, margin: '0 auto' }}
+      style={{ padding: '96px 24px', maxWidth: 1100, margin: '0 auto' }}
     >
       <div
         style={{

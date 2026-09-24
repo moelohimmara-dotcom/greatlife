@@ -6,7 +6,7 @@
  *   A. les 7 contrôles du TDR §24 existent, dans l'ordre du TDR
  *   B. un plat sans prix BLOQUE la publication (message imposé par le TDR §24)
  *   C. une carte vide bloque
- *   D. un lien de menu cassé bloque
+ *   D. navigation/liens absents = skipped ; fournis = actifs (blocage si cassés)
  *   E. le contrôle « images » AVERTIT toujours, il ne bloque jamais
  *   F. `publishable` est faux si et seulement s'il reste une erreur
  *   G. aucun message ne contient de jargon interdit (AGENTS.md §9, TDR §2)
@@ -110,10 +110,11 @@ const GOOD_RESTAURANT = {
   hours: '8h–22h',
 }
 /*
- * Liens de menu « cassés » — CONSERVÉS COMME TÉMOINS.
- * Ils servaient à prouver qu'un lien cassé bloquait la publication. Ce
- * comportement a été retiré le 2026-09-19 (voir section D) : ces objets servent
- * maintenant à prouver que les fournir ne change PLUS rien.
+ * Liens de menu « cassés » — TÉMOINS du contrôle n°6.
+ * Contrat actuel (arbitrage propriétaire 2026-09-21) : dès que
+ * `PublicationInput.navigation` est fourni, les contrôles n°2 et n°6
+ * s’exécutent et un lien cassé BLOQUE. Absent = non vérifié (jeux d’essai
+ * historiques). Voir `src/cms/model/publishing/checks.ts` et `types.ts`.
  */
 const BROKEN_ANCHOR_NAV = {
   label: { fr: 'Notre histoire', en: 'Our story' },
@@ -197,28 +198,24 @@ check(emptyMenuReport.blockers.some((f) => f.check === 'menu'), 'une carte sans 
 check(!emptyMenuReport.publishable, 'la publication est refusée')
 
 // ===========================================================================
-console.log('\nD. LES CONTRÔLES n°2 ET n°6 SONT DÉCLARÉS NON VÉRIFIÉS\n')
+console.log('\nD. NAVIGATION / LIENS — absents = non vérifiés ; fournis = actifs\n')
 
 /*
- * POURQUOI CES ASSERTIONS ONT CHANGÉ DE SENS (et pourquoi ce n'est pas un
- * affaiblissement)
- * Avant, cette section exigeait qu'un lien de menu cassé BLOQUE la publication.
- * Ce comportement a été RETIRÉ sur décision du propriétaire le 2026-09-19 : le
- * site public ne rend pas `navigation_items` (`PublicNav` et `Footer` portent
- * des listes écrites en dur) et aucun écran d'administration ne la modifie.
- * Bloquer une publication sur un lien que personne ne voit revenait à valider
- * une fiction.
+ * CONTRAT (arbitrage propriétaire 2026-09-21)
+ * Le chrome public lit l’instantané figé à la publication. Les contrôles n°2
+ * (« Navigation ») et n°6 (« Aucun lien cassé ») s’exécutent dès que
+ * `PublicationInput.navigation` est fourni. Sans cette entrée (jeux d’essai
+ * historiques), ils restent `skipped` — jamais un vert mensonger.
  *
- * Les assertions ci-dessous n'asservissent donc pas le code au hasard : elles
- * vérifient le nouveau contrat ET elles prouvent le retrait — c'est-à-dire que
- * l'ancienne entrée est devenue INERTE, et non qu'on l'a oubliée.
+ * Le retrait du 2026-09-19 (liens inertes tant que le public ne les rendait
+ * pas) est donc SUPERSEDÉ : le filet doit prouver le contrat 2026-09-21.
  */
 const rapportVide = model.runPublicationChecks(makeInput())
 const navCheck = rapportVide.checks.find((c) => c.id === 'navigation')
 const linksCheck = rapportVide.checks.find((c) => c.id === 'links')
 
-check(navCheck?.level === 'skipped', 'le contrôle « Navigation » est déclaré non vérifié, pas « conforme »')
-check(linksCheck?.level === 'skipped', 'le contrôle « Aucun lien cassé » est déclaré non vérifié, pas « conforme »')
+check(navCheck?.level === 'skipped', 'sans navigation : « Navigation » est non vérifié, pas « conforme »')
+check(linksCheck?.level === 'skipped', 'sans navigation : « Aucun lien cassé » est non vérifié, pas « conforme »')
 check(
   Boolean(navCheck?.note) && Boolean(linksCheck?.note),
   'chacun dit POURQUOI il n’a pas été exécuté',
@@ -230,21 +227,29 @@ check(
 )
 check(
   !rapportVide.checks.some((c) => c.level === 'ok' && (c.id === 'navigation' || c.id === 'links')),
-  'aucun des deux n’affiche un vert mensonger',
+  'aucun des deux n’affiche un vert mensonger quand l’entrée manque',
 )
 
-// Témoin du retrait : fournir les anciens liens cassés ne change PLUS rien.
+// Témoin du contrat actuel : fournir des liens cassés DOIT bloquer.
 const avecLiensCasses = model.runPublicationChecks({
   ...makeInput(),
   navigation: [BROKEN_ANCHOR_NAV, UNKNOWN_PAGE_NAV, BLANK_URL_NAV],
 })
 check(
-  avecLiensCasses.publishable === true,
-  'un lien de menu cassé ne bloque plus la publication (retrait assumé, décision du 2026-09-19)',
+  avecLiensCasses.publishable === false,
+  'un lien de menu cassé bloque la publication quand la navigation est fournie (2026-09-21)',
 )
 check(
-  JSON.stringify(avecLiensCasses.checks) === JSON.stringify(rapportVide.checks),
-  'l’entrée « navigation » est INERTE : la fournir ne modifie pas le rapport',
+  avecLiensCasses.blockers.some((f) => f.check === 'links' || f.check === 'navigation'),
+  'le rapport porte au moins un bloqueur navigation ou liens',
+  avecLiensCasses.blockers.map((f) => f.check).join(', '),
+)
+const navAvec = avecLiensCasses.checks.find((c) => c.id === 'navigation')
+const linksAvec = avecLiensCasses.checks.find((c) => c.id === 'links')
+check(
+  navAvec?.level !== 'skipped' && linksAvec?.level !== 'skipped',
+  'fournir la navigation active les contrôles n°2 et n°6 (plus de skipped)',
+  `navigation=${navAvec?.level}, links=${linksAvec?.level}`,
 )
 
 // Les contrôles qui RESTENT doivent toujours mordre — sinon on aurait seulement
@@ -290,7 +295,7 @@ const cases = [
   ['un bloqueur', makeInput({ menu: [{ name: 'X', price: '' }] }), false],
   ['un avertissement seul', makeInput({ restaurant: { ...GOOD_RESTAURANT, phone: '' } }), true],
   ['carte vide', makeInput({ menu: [] }), false],
-  ['un lien de menu cassé (n’est plus bloquant)', { ...makeInput(), navigation: [BROKEN_ANCHOR_NAV] }, true],
+  ['un lien de menu cassé (bloque si navigation fournie)', { ...makeInput(), navigation: [BROKEN_ANCHOR_NAV] }, false],
   ['titre de page absent', makeInput({ page: { slug: '', title: '' } }), false],
 ]
 let coherent = true
@@ -327,9 +332,10 @@ const allMessages = [
   ...priceReport.blockers,
   ...priceReport.warnings,
   ...emptyMenuReport.blockers,
-  // Les rapports des liens de menu ne sont plus listés : ces contrôles ne
-  // produisent plus de message (voir section D). Les messages des contrôles
-  // restants sont tous couverts ci-dessus et ci-dessous.
+  // Messages des contrôles n°2/n°6 : couverts quand la navigation est fournie
+  // (section D). Les messages des contrôles restants sont ci-dessus / ci-dessous.
+  ...avecLiensCasses.blockers,
+  ...avecLiensCasses.warnings,
   ...imageReport.warnings,
   ...hiddenReport.warnings,
 ].map((f) => f.message)

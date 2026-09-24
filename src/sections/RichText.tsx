@@ -24,7 +24,7 @@ export function RichText({ content: cms, preview }: Partial<SectionComponentProp
   }
 
   return (
-    <section className="section-pad" style={{ padding: '88px 24px', maxWidth: 760, margin: '0 auto' }}>
+    <section className="section-pad" style={{ padding: '80px 24px', maxWidth: 760, margin: '0 auto' }}>
       <Reveal>
         {title ? <SectionHead title={title} preview={preview} /> : null}
         {body ? (
@@ -32,7 +32,7 @@ export function RichText({ content: cms, preview }: Partial<SectionComponentProp
             as="div"
             html={body}
             {...cmsSlotAttrs(preview, 'body')}
-            style={{ fontSize: 17, lineHeight: 1.8, color: t.text }}
+            style={{ fontSize: 16, lineHeight: 1.8, color: t.text }}
           />
         ) : null}
       </Reveal>

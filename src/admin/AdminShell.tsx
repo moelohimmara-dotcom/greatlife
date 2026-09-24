@@ -459,17 +459,30 @@ export function AdminShell() {
                     }}
                   />
                 </label>
-                <Bouton
-                  genre="secondaire"
-                  className="admin-topbar-site-btn"
-                  onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
-                  aria-label="Voir le site public"
-                  title="Voir le site public"
-                  style={{ borderColor: 'var(--admin-line)', background: 'var(--admin-surface)' }}
-                >
-                  <span className="admin-topbar-site-label">Voir le site</span>
-                  <span className="admin-topbar-site-short" aria-hidden="true">{Icon.eye(16, 'currentColor')}</span>
-                </Bouton>
+                <div role="group" aria-label="Voir le site public" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Bouton
+                    genre="secondaire"
+                    className="admin-topbar-site-btn"
+                    onClick={() => window.open('/', '_blank', 'noopener,noreferrer')}
+                    aria-label="Voir le site en français"
+                    title="Voir le site en français"
+                    style={{ borderColor: 'var(--admin-line)', background: 'var(--admin-surface)' }}
+                  >
+                    <span className="admin-topbar-site-label">Site FR</span>
+                    <span className="admin-topbar-site-short" aria-hidden="true">{Icon.eye(16, 'currentColor')}</span>
+                  </Bouton>
+                  <Bouton
+                    genre="secondaire"
+                    className="admin-topbar-site-btn"
+                    onClick={() => window.open('/en', '_blank', 'noopener,noreferrer')}
+                    aria-label="Voir le site en anglais"
+                    title="Voir le site en anglais"
+                    style={{ borderColor: 'var(--admin-line)', background: 'var(--admin-surface)' }}
+                  >
+                    <span className="admin-topbar-site-label">Site EN</span>
+                    <span className="admin-topbar-site-short" aria-hidden="true">EN</span>
+                  </Bouton>
+                </div>
                 <button
                   type="button"
                   className="admin-topbar-account"

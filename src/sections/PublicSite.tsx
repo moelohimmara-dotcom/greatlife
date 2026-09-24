@@ -38,7 +38,9 @@ import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import type { SnapshotChrome } from '@/cms/model/publishing'
 import type { LienChrome } from '@/cms/model/sections/site-chrome'
 import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { appliquerSeoDocument, resoudrePageSeo } from '@/cms/model/page-seo'
+import { localeFromPath, type Locale } from '@/cms/model/i18n'
 
 /**
  * Ancres héritées, utilisées uniquement par le chemin legacy (avant bascule CMS).
@@ -65,11 +67,11 @@ const ANCHORS = {
  * Archive sans chrome (avant gel 2026-09-21) → gabarit, jamais le JSON live.
  * `DEFAULT_RESTAURANT` vide ferait un en-tête sans nom : on garde la marque.
  */
-function restaurantDepuisChrome(chrome: SnapshotChrome | null): ResolvedRestaurant {
+function restaurantDepuisChrome(chrome: SnapshotChrome | null, locale: Locale): ResolvedRestaurant {
   if (!chrome) {
-    return resolveRestaurant({ ...DEFAULT_RESTAURANT, name: 'Greatlife' }, 'fr')
+    return resolveRestaurant({ ...DEFAULT_RESTAURANT, name: 'Greatlife' }, locale)
   }
-  return resolveRestaurant(chrome.restaurant, 'fr')
+  return resolveRestaurant(chrome.restaurant, locale)
 }
 
 function typoDepuisChrome(chrome: SnapshotChrome | null): TypoReglages | null {
@@ -97,11 +99,17 @@ function liensDepuisChrome(
 
 export function PublicSite() {
   const { visibility, rootStyle, content } = useSite()
-  const { resolvedSections, loading, enabled, page, chrome } = useCmsSections()
+  const { pathname } = useLocation()
+  const { locale } = localeFromPath(pathname)
+  const { resolvedSections, loading, enabled, page, chrome } = useCmsSections(locale)
 
   useEffect(() => {
     assurerPolicesChargees()
   }, [])
+
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
 
   /*
     SEO public = instantané publié uniquement (TDR §22, J7).
@@ -110,10 +118,10 @@ export function PublicSite() {
   */
   useEffect(() => {
     if (!enabled || !page) return
-    appliquerSeoDocument(document, resoudrePageSeo(page.seo, 'fr'))
-  }, [enabled, page])
+    appliquerSeoDocument(document, resoudrePageSeo(page.seo, locale))
+  }, [enabled, page, locale])
 
-  const restaurantPublie = restaurantDepuisChrome(chrome)
+  const restaurantPublie = restaurantDepuisChrome(chrome, locale)
   const typoPubliee = typoDepuisChrome(chrome)
   const presentationPubliee = chrome
     ? chromeDepuisReglages({ chromePresentation: chrome.chromePresentation })
@@ -128,8 +136,8 @@ export function PublicSite() {
   if (loading) {
     return (
       <CartProvider>
-        <div style={{ ...enveloppe, minHeight: '100vh' }} data-cms-typo="" aria-busy="true">
-          <PublicNav restaurant={restaurantPublie} presentation={{}} liens={[]} />
+        <div style={{ ...enveloppe, minHeight: '100vh' }} data-cms-typo="" aria-busy="true" data-locale={locale}>
+          <PublicNav restaurant={restaurantPublie} presentation={{}} liens={[]} locale={locale} />
         </div>
       </CartProvider>
     )
@@ -140,22 +148,23 @@ export function PublicSite() {
     const layout = normaliserPageLayout(page.layout)
     return (
       <CartProvider>
-        <div style={enveloppe} data-cms-shell={layout} data-cms-typo="">
+        <div style={enveloppe} data-cms-shell={layout} data-cms-typo="" data-locale={locale}>
           <PublicNav
             overlay={miseEnPageSurBanniere(layout)}
             restaurant={restaurantPublie}
             presentation={presentationPubliee}
             liens={chrome ? liensDepuisChrome(chrome.headerLinks) : undefined}
+            locale={locale}
           />
           <PageRenderer
             page={page}
             sections={resolvedSections}
-            locale="fr"
+            locale={locale}
             restaurant={restaurantPublie}
             pied={(
               <Footer
                 restaurant={restaurantPublie}
-                locale="fr"
+                locale={locale}
                 presentation={presentationPubliee}
                 liens={chrome ? liensDepuisChrome(chrome.footerLinks) : undefined}
               />
@@ -187,8 +196,8 @@ export function PublicSite() {
 
   return (
     <CartProvider>
-      <div style={rootStyle} data-cms-typo="">
-          <PublicNav restaurant={restaurantLegacy} presentation={{}} liens={undefined} />
+      <div style={rootStyle} data-cms-typo="" data-locale={locale}>
+          <PublicNav restaurant={restaurantLegacy} presentation={{}} liens={undefined} locale={locale} />
         {visibility.sections.home && <div id={ANCHORS.home}><Hero /></div>}
         {visibility.sections.carte && <div id={ANCHORS.carte}><Carte /></div>}
         {visibility.sections.histoire && <div id={ANCHORS.histoire}><Story /></div>}
@@ -199,7 +208,7 @@ export function PublicSite() {
         <div id={ANCHORS.reservation}><Reservation /></div>
         {visibility.testimonials && <div id={ANCHORS.temoignages}><Testimonials /></div>}
         {visibility.sections.blog && <div id={ANCHORS.blog}><Blog /></div>}
-        <Footer restaurant={restaurantLegacy} presentation={{}} liens={undefined} />
+        <Footer restaurant={restaurantLegacy} locale={locale} presentation={{}} liens={undefined} />
         <OrderCart pickupTimes={restaurantLegacy.pickupTimes} />
       </div>
     </CartProvider>

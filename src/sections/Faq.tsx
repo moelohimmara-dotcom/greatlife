@@ -55,7 +55,7 @@ function FaqAccordionItem({
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              padding: '18px 4px',
+              padding: '16px 4px',
               minHeight: 48,
               fontFamily: 'var(--font-heading, var(--f-heading))',
               fontSize: 18,
@@ -66,7 +66,7 @@ function FaqAccordionItem({
             }}
           >
             <span>{q || 'Question'}</span>
-            <span aria-hidden="true" style={{ fontSize: 22, lineHeight: 1, color: t.primary, flexShrink: 0 }}>
+            <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, color: t.primary, flexShrink: 0 }}>
               {open ? '−' : '+'}
             </span>
           </button>
@@ -75,10 +75,10 @@ function FaqAccordionItem({
           id={panelId}
           role="region"
           hidden={!open}
-          style={{ padding: open ? '0 4px 18px' : 0 }}
+          style={{ padding: open ? '0 4px 16px' : 0 }}
         >
           {open && a ? (
-            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: t.text }}>
+            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: t.text }}>
               <InlineHtml as="span" html={a} />
             </p>
           ) : null}
@@ -96,7 +96,7 @@ export function Faq({ content: cms, variant, preview }: Partial<SectionComponent
   if (items.length === 0) {
     if (!preview) return null
     return (
-      <section className="section-pad" style={{ padding: '72px 24px', maxWidth: 800, margin: '0 auto' }}>
+      <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 800, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
           Aucune question : ajoutez-en dans la colonne Modifier.
         </p>
@@ -111,7 +111,7 @@ export function Faq({ content: cms, variant, preview }: Partial<SectionComponent
 
   if (disposition === 'list') {
     return (
-      <section className="section-pad" data-disposition="list" style={{ padding: '100px 24px', maxWidth: 800, margin: '0 auto' }}>
+      <section className="section-pad" data-disposition="list" style={{ padding: '96px 24px', maxWidth: 800, margin: '0 auto' }}>
         <Reveal>
           <SectionHead title={title} sub={sub} align="center" preview={preview} />
         </Reveal>
@@ -131,7 +131,7 @@ export function Faq({ content: cms, variant, preview }: Partial<SectionComponent
                 >
                   {it.question}
                 </h3>
-                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: t.text }}>
+                <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: t.text }}>
                   <InlineHtml as="span" html={it.answer ?? ''} />
                 </p>
               </article>
@@ -143,7 +143,7 @@ export function Faq({ content: cms, variant, preview }: Partial<SectionComponent
   }
 
   return (
-    <section className="section-pad" data-disposition="accordion" style={{ padding: '100px 24px', maxWidth: 800, margin: '0 auto' }}>
+    <section className="section-pad" data-disposition="accordion" style={{ padding: '96px 24px', maxWidth: 800, margin: '0 auto' }}>
       <Reveal>
         <SectionHead title={title} sub={sub} align="center" preview={preview} />
       </Reveal>

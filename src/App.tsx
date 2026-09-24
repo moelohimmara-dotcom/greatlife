@@ -29,7 +29,10 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            {/* CM-6 : langue dans le préfixe d'URL — `/en` et `/en/…` ; le FR reste `/`. */}
             <Route path="/" element={<PublicSite />} />
+            <Route path="/en" element={<PublicSite />} />
+            <Route path="/en/*" element={<PublicSite />} />
             <Route path="/login" element={<LoginScreen />} />
             <Route path="/admin" element={<ProtectedRoute><AdminShell /></ProtectedRoute>}>
               <Route index element={<DashboardPage />} />

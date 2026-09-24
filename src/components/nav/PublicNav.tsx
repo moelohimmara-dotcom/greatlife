@@ -26,7 +26,7 @@ import {
   type LienChrome,
 } from '@/cms/model/sections/site-chrome'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
-import type { Locale } from '@/cms/model/i18n'
+import { pathFor, type Locale } from '@/cms/model/i18n'
 import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 
 export interface PublicNavProps {
@@ -201,6 +201,7 @@ export function PublicNav({
             <span style={{ width: 48, flexShrink: 0 }} aria-hidden="true" />
             {logo}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {boutonLangue()}
               {boutonCta()}
               {boutonMenu()}
             </div>
@@ -210,6 +211,7 @@ export function PublicNav({
             {logo}
             {menuDesktop}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {boutonLangue()}
               {boutonCta()}
               {boutonMenu()}
             </div>
@@ -247,6 +249,40 @@ export function PublicNav({
       return <a href={href} {...slot} style={styleBarre}>{texte}</a>
     }
     return <div role="status" {...slot} style={styleBarre}>{texte}</div>
+  }
+
+  function boutonLangue() {
+    /* Pas dans l’aperçu Atelier (iframe / sélection) : la langue y est pilotée par FR|EN de la barre. */
+    if (selectable) return null
+    const dansIframe = typeof window !== 'undefined' && window.self !== window.top
+    if (dansIframe) return null
+    const autre: Locale = locale === 'fr' ? 'en' : 'fr'
+    const href = pathFor(autre, '')
+    const libelle = autre === 'en' ? 'EN' : 'FR'
+    const titre = autre === 'en' ? 'Switch to English' : 'Passer en français'
+    return (
+      <a
+        href={href}
+        lang={autre}
+        hrefLang={autre}
+        aria-label={titre}
+        title={titre}
+        className="desktop-nav"
+        style={{
+          fontSize: compact ? 12 : 13,
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          color: couleurLien,
+          textDecoration: 'none',
+          padding: compact ? '4px 8px' : '6px 10px',
+          borderRadius: 8,
+          border: `1px solid ${surBanniere ? 'rgba(255,255,255,0.35)' : t.shadow}`,
+          fontFamily: 'var(--font-body, var(--f-body))',
+        }}
+      >
+        {libelle}
+      </a>
+    )
   }
 
   function boutonCta() {
@@ -368,6 +404,22 @@ export function PublicNav({
               minHeight: 48, boxShadow: softShadowSm(t), touchAction: 'manipulation' }}>
             {libelleCta} {Icon.arrow(16)}
           </a>
+          {!selectable && (
+            <a
+              href={pathFor(locale === 'fr' ? 'en' : 'fr', '')}
+              lang={locale === 'fr' ? 'en' : 'fr'}
+              hrefLang={locale === 'fr' ? 'en' : 'fr'}
+              onClick={() => setDrawerOpen(false)}
+              style={{
+                marginTop: 12, textAlign: 'center', fontSize: 14, fontWeight: 600,
+                color: couleurTexte, textDecoration: 'none', padding: '12px',
+                borderRadius: 12, border: `1px solid ${t.shadow}`, minHeight: 44,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {locale === 'fr' ? 'English' : 'Français'}
+            </a>
+          )}
         </motion.nav>
       </AnimatePresence>
       </>,

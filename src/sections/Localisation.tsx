@@ -191,7 +191,7 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
           ) : (
             <div style={planStyle} aria-hidden="true">
               <svg viewBox="0 0 400 300" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} preserveAspectRatio="xMidYMid slice">
-                <rect x="0" y="0" width="400" height="300" fill={isDark ? '#1a2a3a' : '#E8F0F5'} />
+                <rect x="0" y="0" width="400" height="300" fill={isDark ? t.bg : t.surfaceAlt} />
               </svg>
             </div>
           )}

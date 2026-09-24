@@ -20,7 +20,7 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
   if (items.length === 0) {
     if (!preview) return null
     return (
-      <section className="section-pad" style={{ padding: '72px 24px', maxWidth: 900, margin: '0 auto' }}>
+      <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
           Galerie vide : ajoutez des photos dans la colonne Modifier.
         </p>
@@ -38,7 +38,7 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
     const alt = coalesceAlt(resolveMediaAlt(asset), it.caption, `Photo ${i + 1}`)
     return (
       <Reveal key={`${url}-${i}`} delay={(i % 4) * 0.05}>
-        <figure style={{ margin: 0, borderRadius: 18, overflow: 'hidden', background: t.surfaceAlt, height: '100%' }}>
+        <figure style={{ margin: 0, borderRadius: 20, overflow: 'hidden', background: t.surfaceAlt, height: '100%' }}>
           <div
             role="img"
             aria-label={alt}
@@ -50,7 +50,7 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
             }}
           />
           {it.caption ? (
-            <figcaption style={{ padding: '12px 14px', fontSize: 13, color: t.muted, lineHeight: 1.45 }}>
+            <figcaption style={{ padding: '12px 16px', fontSize: 13, color: t.muted, lineHeight: 1.45 }}>
               <InlineHtml as="span" html={it.caption} />
             </figcaption>
           ) : null}
@@ -61,7 +61,7 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
 
   if (disposition === 'carousel') {
     return (
-      <section className="section-pad" data-disposition="carousel" style={{ padding: '100px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <section className="section-pad" data-disposition="carousel" style={{ padding: '96px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Reveal>
           <SectionHead title={title} sub={sub} align="center" preview={preview} />
         </Reveal>
@@ -87,7 +87,7 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
 
   if (disposition === 'mosaic') {
     return (
-      <section className="section-pad" data-disposition="mosaic" style={{ padding: '100px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <section className="section-pad" data-disposition="mosaic" style={{ padding: '96px 24px', maxWidth: 1200, margin: '0 auto' }}>
         <Reveal>
           <SectionHead title={title} sub={sub} align="center" preview={preview} />
         </Reveal>
@@ -110,11 +110,11 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
   }
 
   return (
-    <section className="section-pad" data-disposition="grid" style={{ padding: '100px 24px', maxWidth: 1200, margin: '0 auto' }}>
+    <section className="section-pad" data-disposition="grid" style={{ padding: '96px 24px', maxWidth: 1200, margin: '0 auto' }}>
       <Reveal>
         <SectionHead title={title} sub={sub} align="center" preview={preview} />
       </Reveal>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {items.map((it, i) => cell(it, i))}
       </div>
     </section>

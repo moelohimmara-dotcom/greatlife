@@ -25,13 +25,13 @@ export function TextBlock({ content: cms, variant, preview }: Partial<SectionCom
   }
 
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'one_column')
-  const bodyStyle = { fontSize: 17, lineHeight: 1.75, color: t.text, margin: 0 as const }
+  const bodyStyle = { fontSize: 16, lineHeight: 1.75, color: t.text, margin: 0 as const }
 
   return (
     <section
       className="section-pad"
       data-disposition={disposition}
-      style={{ padding: '88px 24px', maxWidth: disposition === 'two_columns' ? 1100 : 760, margin: '0 auto' }}
+      style={{ padding: '80px 24px', maxWidth: disposition === 'two_columns' ? 1100 : 760, margin: '0 auto' }}
     >
       <Reveal>
         {title ? <SectionHead title={title} preview={preview} /> : null}
