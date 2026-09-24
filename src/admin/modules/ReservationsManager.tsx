@@ -44,6 +44,23 @@ function formatDayLabel(iso: string): string {
   }
 }
 
+/** Date locale YYYY-MM-DD — évite le décalage UTC de toISOString() près de minuit. */
+function localIsoDate(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function compterParStatut(rows: { status: string }[]) {
+  return {
+    all: rows.length,
+    pending: rows.filter((r) => r.status === 'pending').length,
+    confirmed: rows.filter((r) => r.status === 'confirmed').length,
+    cancelled: rows.filter((r) => r.status === 'cancelled').length,
+  }
+}
+
 export function ReservationsManager() {
   const { theme: t, dataSource, reservations, refreshReservations } = useSite()
   const { user } = useAuth()
@@ -51,7 +68,7 @@ export function ReservationsManager() {
   const [filter, setFilter] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [view, setView] = useState<ResaView>('Planning')
-  const [focusDate, setFocusDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [focusDate, setFocusDate] = useState(() => localIsoDate())
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -63,14 +80,14 @@ export function ReservationsManager() {
     nom: '',
     email: '',
     phone: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: localIsoDate(),
     time: '19:00',
     guests: '2',
     message: '',
   })
 
   const RESA_PAGE = 12
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localIsoDate()
   const statusLabel: Record<string, string> = {
     pending: 'En attente',
     confirmed: 'Confirmée',
@@ -125,15 +142,28 @@ export function ReservationsManager() {
   const listRows = view === 'Liste' ? paged : matches
   const selected = selectedId ? reservations.find((r) => r.id === selectedId) ?? null : null
 
-  const counts = {
-    all: reservations.length,
-    pending: reservations.filter((r) => r.status === 'pending').length,
-    confirmed: reservations.filter((r) => r.status === 'confirmed').length,
-    cancelled: reservations.filter((r) => r.status === 'cancelled').length,
-  }
+  /* Compteurs GLOBAUX = badge sidebar / « À confirmer ».
+     Compteurs DU JOUR = puces de filtre en Planning (sinon badge 3 vs liste vide). */
+  const counts = useMemo(() => compterParStatut(reservations), [reservations])
+  const dayRows = useMemo(
+    () => reservations.filter((r) => r.date === focusDate),
+    [reservations, focusDate],
+  )
+  const dayCounts = useMemo(() => compterParStatut(dayRows), [dayRows])
+  const chipCounts = view === 'Liste' ? counts : dayCounts
+  const pendingHorsJour = counts.pending - dayCounts.pending
   const todayRows = reservations.filter((r) => r.date === today)
   const todayGuests = todayRows.filter((r) => r.status !== 'cancelled').reduce((n, r) => n + r.guests, 0)
   const focusGuests = matches.filter((r) => r.status !== 'cancelled').reduce((n, r) => n + r.guests, 0)
+
+  const appliquerFiltreStatut = (k: string) => {
+    setFilter(k)
+    /* En Planning, une puce « En attente » vide alors que le badge affiche N
+       hors jour → bascule sur Liste pour montrer la vérité globale. */
+    if (view !== 'Liste' && k === 'pending' && dayCounts.pending === 0 && counts.pending > 0) {
+      setView('Liste')
+    }
+  }
 
   const exportCsv = () => {
     const rows = [['Nom', 'Email', 'Téléphone', 'Date', 'Heure', 'Couverts', 'Statut', 'Message', 'Créée le'].join(';')]
@@ -209,7 +239,7 @@ export function ReservationsManager() {
       return
     }
     setCreating(true)
-    const ok = await insertReservation({
+    const res = await insertReservation({
       nom: newForm.nom.trim(),
       email: newForm.email.trim(),
       phone: newForm.phone.trim(),
@@ -219,8 +249,8 @@ export function ReservationsManager() {
       message: newForm.message.trim(),
     })
     setCreating(false)
-    if (!ok) {
-      setStatusErr('Impossible de créer la réservation.')
+    if (!res.ok) {
+      setStatusErr(res.error || 'Impossible de créer la réservation.')
       setTimeout(() => setStatusErr(undefined), 4000)
       return
     }
@@ -397,14 +427,37 @@ export function ReservationsManager() {
             <div>
               <span>À confirmer</span>
               <strong>{counts.pending}</strong>
-              <small>action recommandée</small>
+              <small>toutes dates · même chiffre que le badge</small>
             </div>
             <div className="is-status">
               <strong>●</strong>
-              <span>Service ouvert</span>
-              <small>{counts.confirmed} confirmées</small>
+              <span>Confirmées</span>
+              <small>{counts.confirmed} au total</small>
             </div>
           </div>
+
+          {pendingHorsJour > 0 && view !== 'Liste' && (
+            <section className="admin-wf-alert" aria-label="Alerte réservations" style={{ marginTop: 12 }}>
+              <span aria-hidden="true">{Icon.calendar(20, 'var(--admin-coral)')}</span>
+              <span>
+                <strong>
+                  {pendingHorsJour} réservation{pendingHorsJour > 1 ? 's' : ''} à confirmer hors de ce jour
+                </strong>
+                <small>
+                  Le planning n’affiche que le {formatDayLabel(focusDate)}.
+                  {dayCounts.pending > 0
+                    ? ` ${dayCounts.pending} en attente ici.`
+                    : ' Aucune en attente ce jour-là.'}
+                </small>
+              </span>
+              <Bouton
+                genre="silencieux"
+                onClick={() => { setView('Liste'); setFilter('pending') }}
+              >
+                Voir les alertes
+              </Bouton>
+            </section>
+          )}
 
           <div className="admin-wf-resa-datebar">
             <div className="admin-wf-resa-date-controls">
@@ -438,8 +491,15 @@ export function ReservationsManager() {
           <div className="admin-toolbar">
             <div className="admin-filter-row" role="group" aria-label="Filtrer par statut" style={{ margin: 0, flex: 1 }}>
               {([['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']] as [string, string][]).map(([k, l]) => (
-                <button key={k} type="button" className="admin-filter-chip" aria-pressed={filter === k} onClick={() => setFilter(k)}>
-                  {l} <span style={{ opacity: 0.7 }}>{counts[k as keyof typeof counts] ?? 0}</span>
+                <button
+                  key={k}
+                  type="button"
+                  className="admin-filter-chip"
+                  aria-pressed={filter === k}
+                  title={view === 'Liste' ? 'Compteur sur toutes les dates' : `Compteur du ${focusDate}`}
+                  onClick={() => appliquerFiltreStatut(k)}
+                >
+                  {l} <span style={{ opacity: 0.7 }}>{chipCounts[k as keyof typeof chipCounts] ?? 0}</span>
                 </button>
               ))}
             </div>
@@ -480,7 +540,22 @@ export function ReservationsManager() {
                   jusqu’à ce que le plan de salle soit configuré — pas de plan inventé.
                 </div>
               ) : listRows.length === 0 ? (
-                <p className="admin-loading">Aucune réservation dans cette vue.</p>
+                <div className="admin-loading" style={{ padding: '20px 16px' }}>
+                  <p style={{ margin: 0 }}>Aucune réservation dans cette vue.</p>
+                  {view !== 'Liste' && counts.pending > 0 && (
+                    <p style={{ margin: '8px 0 0', fontSize: 13 }}>
+                      {counts.pending} en attente sur d’autres jours.{' '}
+                      <button
+                        type="button"
+                        className="admin-linkish"
+                        style={{ background: 'none', border: 0, color: 'var(--admin-forest)', cursor: 'pointer', textDecoration: 'underline', padding: 0, font: 'inherit' }}
+                        onClick={() => { setView('Liste'); setFilter('pending') }}
+                      >
+                        Afficher la liste
+                      </button>
+                    </p>
+                  )}
+                </div>
               ) : (
                 <div className="admin-wf-resa-list">
                   {listRows.map((r) => (

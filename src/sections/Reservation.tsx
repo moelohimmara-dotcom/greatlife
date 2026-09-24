@@ -66,7 +66,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
         sujet: 'reservation',
         message: `Réservation — ${form.date} à ${form.time}, ${form.guests} personnes${form.phone ? `, tel: ${form.phone}` : ''}${form.message ? `, message: ${form.message}` : ''}`,
       })
-      if (!insertOk || !emailResult.ok) {
+      if (!insertOk.ok || !emailResult.ok) {
         setError(true)
         setLoading(false)
         return

@@ -23,7 +23,7 @@ export interface SiteConfig {
   rbacOverrides?: unknown
 }
 
-export type SaveResult = { ok: boolean; error?: string }
+export type SaveResult = { ok: boolean; error?: string; id?: string }
 
 /**
  * Résultat d'un enregistrement de plat. Sur succès, `id` porte l'identité
@@ -565,10 +565,14 @@ export interface Reservation {
   created_at?: string
 }
 
-export async function insertReservation(r: Omit<Reservation, 'id' | 'status' | 'created_at'>): Promise<boolean> {
+export async function insertReservation(
+  r: Omit<Reservation, 'id' | 'status' | 'created_at'>
+): Promise<SaveResult> {
   const sb = getSupabase()
-  if (!sb) return false
+  if (!sb) return { ok: false, error: 'Impossible d’envoyer la réservation. Réessayez dans un instant.' }
+  const fallback = 'Impossible d’envoyer la réservation. Vérifiez vos informations et réessayez.'
   try {
+    /* Pas de .select() : anon peut INSERT mais pas SELECT (RLS). */
     const { error } = await sb.from(RESERVATIONS_TABLE).insert({
       nom: r.nom,
       email: r.email,
@@ -577,10 +581,12 @@ export async function insertReservation(r: Omit<Reservation, 'id' | 'status' | '
       time: r.time,
       guests: r.guests,
       message: r.message,
+      status: 'pending',
     })
-    return !error
-  } catch {
-    return false
+    if (error) return { ok: false, error: publicFormError(error, fallback) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: publicFormError(err, fallback) }
   }
 }
 
