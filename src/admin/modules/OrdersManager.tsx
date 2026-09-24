@@ -4,40 +4,25 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Icon } from '@/lib/icons'
 import { PageHeader, EmptyState, inputStyle, GhostButton, Pagination } from '@/admin/ui'
 import { canDo } from '@/data/rbac'
-import { fetchOrders, updateOrderStatus, deleteOrder, logAudit, type Order } from '@/lib/repository'
-import { invokeOrderStatusEmail, getSupabase } from '@/lib/supabase'
+import { updateOrderStatus, deleteOrder, logAudit } from '@/lib/repository'
+import { invokeOrderStatusEmail } from '@/lib/supabase'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Bouton } from '@/admin/editor/chrome'
 import { dateFr } from '@/admin/shared'
 
 export function OrdersManager() {
-  const { theme: t, dataSource } = useSite()
+  const { theme: t, dataSource, orders, refreshOrders } = useSite()
   const { user } = useAuth()
-  const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     if (dataSource !== 'supabase') { setLoading(false); return }
     let active = true
-    let timer: ReturnType<typeof setInterval> | undefined
-    let channel: { unsubscribe: () => void } | undefined
-    const refresh = async () => {
-      const res = await fetchOrders()
-      if (!active || !res.fromDb) return
-      setOrders(res.data)
-      setLoading(false)
-    }
-    refresh()
-    const sb = getSupabase()
-    if (sb) {
-      channel = sb.channel('orders-realtime', { config: { private: false } })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, refresh)
-        .subscribe()
-      timer = setInterval(refresh, 60000)
-    } else {
-      timer = setInterval(refresh, 30000)
-    }
-    return () => { active = false; if (channel) channel.unsubscribe(); if (timer) clearInterval(timer) }
-  }, [dataSource])
+    ;(async () => {
+      await refreshOrders()
+      if (active) setLoading(false)
+    })()
+    return () => { active = false }
+  }, [dataSource, refreshOrders])
   const statusLabel: Record<string, string> = { pending: 'En attente', confirmed: 'Confirmée', preparing: 'En préparation', ready: 'Prête', delivered: 'Récupérée', cancelled: 'Annulée' }
   const STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'] as const
   const [filter, setFilter] = useState<string>('all')
@@ -84,12 +69,13 @@ export function OrdersManager() {
     URL.revokeObjectURL(url)
   }
   const removeOrder = async (id: string) => {
+    const cible = orders.find(o => o.id === id)
     const res = await deleteOrder(id)
     if (!res.ok) { setStatusErr(res.error || 'Échec de la suppression'); setTimeout(() => setStatusErr(undefined), 4000); return }
-    setOrders(prev => prev.filter(o => o.id !== id))
     setConfirmDel(null)
     if (selectedId === id) setSelectedId(null)
-    await logAudit({ actor: user?.email ?? '', action: 'order_delete', target: `Commande ${orders.find(o => o.id === id)?.ref ?? id}`, detail: 'Suppression de commande' })
+    await refreshOrders()
+    await logAudit({ actor: user?.email ?? '', action: 'order_delete', target: `Commande ${cible?.ref ?? id}`, detail: 'Suppression de commande' })
   }
   const [statusSending, setStatusSending] = useState(false)
   const [statusErr, setStatusErr] = useState<string | undefined>(undefined)
@@ -97,8 +83,8 @@ export function OrdersManager() {
     setStatusErr(undefined)
     const res = await updateOrderStatus(id, status)
     if (!res.ok) { setStatusErr(res.error || 'Échec de la mise à jour'); setTimeout(() => setStatusErr(undefined), 4000); return }
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
     const o = orders.find(x => x.id === id)
+    await refreshOrders()
     if (o) await logAudit({ actor: user?.email ?? '', action: 'order_status', target: `Commande ${o.ref}`, detail: `→ ${statusLabel[status] ?? status}` })
     if (o) {
       setStatusSending(true)

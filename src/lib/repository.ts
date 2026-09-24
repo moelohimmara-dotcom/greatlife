@@ -618,8 +618,11 @@ export async function updateReservationStatus(id: string, status: string): Promi
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(RESERVATIONS_TABLE).update({ status }).eq('id', id)
+    const { data, error } = await sb.from(RESERVATIONS_TABLE).update({ status }).eq('id', id).select('id')
     if (error) return { ok: false, error: errMsg(error) }
+    if (!data || data.length === 0) {
+      return { ok: false, error: 'Mise à jour refusée. Vérifiez vos droits ou réessayez.' }
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
@@ -630,8 +633,11 @@ export async function deleteReservation(id: string): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(RESERVATIONS_TABLE).delete().eq('id', id)
+    const { data, error } = await sb.from(RESERVATIONS_TABLE).delete().eq('id', id).select('id')
     if (error) return { ok: false, error: errMsg(error) }
+    if (!data || data.length === 0) {
+      return { ok: false, error: 'Suppression refusée. Vérifiez vos droits ou réessayez.' }
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
@@ -725,8 +731,11 @@ export async function updateOrderStatus(id: string, status: string): Promise<Sav
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(ORDERS_TABLE).update({ status }).eq('id', id)
+    const { data, error } = await sb.from(ORDERS_TABLE).update({ status }).eq('id', id).select('id')
     if (error) return { ok: false, error: errMsg(error) }
+    if (!data || data.length === 0) {
+      return { ok: false, error: 'Mise à jour refusée. Vérifiez vos droits ou réessayez.' }
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
@@ -737,8 +746,13 @@ export async function deleteOrder(id: string): Promise<SaveResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
-    const { error } = await sb.from(ORDERS_TABLE).delete().eq('id', id)
+    /* .select('id') : sans ça, un DELETE bloqué par RLS renvoie ok sans ligne
+       → l'UI retire la carte, le prochain fetch la fait réapparaître. */
+    const { data, error } = await sb.from(ORDERS_TABLE).delete().eq('id', id).select('id')
     if (error) return { ok: false, error: errMsg(error) }
+    if (!data || data.length === 0) {
+      return { ok: false, error: 'Suppression refusée. Vérifiez vos droits ou réessayez.' }
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }
@@ -905,11 +919,17 @@ export async function updateMediaAsset(id: string, patch: MediaAssetPatch): Prom
   }
   if (Object.keys(body).length <= 1) return { ok: true }
   try {
-    const { error } = await sb
+    /* .select('id') : un UPDATE bloqué par RLS renvoie ok sans ligne —
+       l’UI affiche « enregistré » alors que l’emplacement n’a pas bougé. */
+    const { data, error } = await sb
       .from(MEDIA_TABLE)
       .update(body)
       .eq('id', id)
+      .select('id')
     if (error) return { ok: false, error: errMsg(error) }
+    if (!data || data.length === 0) {
+      return { ok: false, error: 'Enregistrement refusé. Vérifiez vos droits ou réessayez.' }
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, error: errMsg(err) }

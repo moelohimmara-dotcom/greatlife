@@ -5,14 +5,12 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, EmptyState, inputStyle, GhostButton, PrimaryButton, Pagination } from '@/admin/ui'
 import { canDo } from '@/data/rbac'
 import {
-  fetchReservations,
   updateReservationStatus,
   deleteReservation,
   insertReservation,
   logAudit,
-  type Reservation,
 } from '@/lib/repository'
-import { invokeReservationStatusEmail, getSupabase } from '@/lib/supabase'
+import { invokeReservationStatusEmail } from '@/lib/supabase'
 import { Bouton } from '@/admin/editor/chrome'
 import { dateFr } from '@/admin/shared'
 
@@ -47,9 +45,8 @@ function formatDayLabel(iso: string): string {
 }
 
 export function ReservationsManager() {
-  const { theme: t, dataSource } = useSite()
+  const { theme: t, dataSource, reservations, refreshReservations } = useSite()
   const { user } = useAuth()
-  const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -86,31 +83,12 @@ export function ReservationsManager() {
       return
     }
     let active = true
-    let timer: ReturnType<typeof setInterval> | undefined
-    let channel: { unsubscribe: () => void } | undefined
-    const refresh = async () => {
-      const res = await fetchReservations()
-      if (!active || !res.fromDb) return
-      setReservations(res.data)
-      setLoading(false)
-    }
-    refresh()
-    const sb = getSupabase()
-    if (sb) {
-      channel = sb
-        .channel('reservations-realtime', { config: { private: false } })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, refresh)
-        .subscribe()
-      timer = setInterval(refresh, 60000)
-    } else {
-      timer = setInterval(refresh, 30000)
-    }
-    return () => {
-      active = false
-      if (channel) channel.unsubscribe()
-      if (timer) clearInterval(timer)
-    }
-  }, [dataSource])
+    ;(async () => {
+      await refreshReservations()
+      if (active) setLoading(false)
+    })()
+    return () => { active = false }
+  }, [dataSource, refreshReservations])
 
   useEffect(() => { setPage(1) }, [filter, query, view, focusDate])
 
@@ -176,19 +154,20 @@ export function ReservationsManager() {
   }
 
   const removeResa = async (id: string) => {
+    const cible = reservations.find((r) => r.id === id)
     const res = await deleteReservation(id)
     if (!res.ok) {
       setStatusErr(res.error || 'Échec de la suppression')
       setTimeout(() => setStatusErr(undefined), 4000)
       return
     }
-    setReservations((prev) => prev.filter((r) => r.id !== id))
     setConfirmDel(null)
     if (selectedId === id) setSelectedId(null)
+    await refreshReservations()
     await logAudit({
       actor: user?.email ?? '',
       action: 'reservation_delete',
-      target: `Réservation ${reservations.find((r) => r.id === id)?.nom ?? id}`,
+      target: `Réservation ${cible?.nom ?? id}`,
       detail: 'Suppression de réservation',
     })
   }
@@ -201,8 +180,8 @@ export function ReservationsManager() {
       setTimeout(() => setStatusErr(undefined), 4000)
       return
     }
-    setReservations((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)))
     const r = reservations.find((x) => x.id === id)
+    await refreshReservations()
     if (r) {
       await logAudit({
         actor: user?.email ?? '',
@@ -247,8 +226,7 @@ export function ReservationsManager() {
     }
     setNewOpen(false)
     setFocusDate(newForm.date)
-    const res = await fetchReservations()
-    if (res.fromDb) setReservations(res.data)
+    await refreshReservations()
     await logAudit({
       actor: user?.email ?? '',
       action: 'reservation_create',

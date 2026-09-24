@@ -58,7 +58,7 @@ const FOLDERS: ReadonlyArray<{ id: string; label: string }> = [
 ]
 
 type MediaFilter = 'Tous' | 'Image' | 'Vidéo' | 'Logo' | 'Non utilisé'
-type SortKey = 'recent' | 'name' | 'size'
+type SortKey = 'recent' | 'oldest' | 'name' | 'size'
 
 export function mediaSlotChoices(menu: MenuItem[], existingSlots: string[]): ReadonlyArray<{ id: string; label: string; dims: string }> {
   const plats = menu
@@ -81,7 +81,13 @@ function labelForMediaSlot(slot: string, choices: ReadonlyArray<{ id: string; la
 function folderForSlot(slot: string): string {
   if (slot === 'logo') return 'logo'
   if (slot === 'hero' || slot === 'hero-video') return 'hero'
-  if (slot.startsWith('product-') || slot.startsWith('plat-')) return 'carte'
+  /* `produit-<uuid>` est le slot canonique des plats (productPhotoSlotId).
+     Les anciens préfixes product-/plat- restent pour le repli historique. */
+  if (
+    slot.startsWith('produit-')
+    || slot.startsWith('product-')
+    || slot.startsWith('plat-')
+  ) return 'carte'
   if (slot.startsWith('equipe')) return 'equipe'
   const known = SITE_MEDIA_SLOTS.find((s) => s.id === slot)
   return known?.folder ?? 'galerie'
@@ -205,16 +211,25 @@ export function MediaManager() {
       const hay = `${m.filename || ''} ${m.slot} ${labelForMediaSlot(m.slot, slotChoices)}`.toLowerCase()
       return hay.includes(q)
     })
-    /* « recent » conserve l’ordre fourni par le dépôt (déjà trié du plus récent). */
+    /* Tri date : created_at BDD (sinon ordre dépôt). */
     rows = [...rows].sort((a, b) => {
       if (sortKey === 'name') return (a.filename || '').localeCompare(b.filename || '', 'fr')
       if (sortKey === 'size') return (b.size_bytes || 0) - (a.size_bytes || 0)
+      const da = a.created_at ? new Date(a.created_at).getTime() : 0
+      const db = b.created_at ? new Date(b.created_at).getTime() : 0
+      if (da || db) return sortKey === 'oldest' ? da - db : db - da
       return 0
     })
     return rows
   }, [dbAssets, folder, filter, query, sortKey, slotChoices])
 
-  const selected = (selectedId ? filtered.find((m) => m.id === selectedId) : null) ?? filtered[0] ?? null
+  /* Ne JAMAIS substituer filtered[0] quand un id est choisi mais hors filtre :
+     après un changement d’emplacement, le fichier quitte le dossier courant —
+     sinon l’UI « saute » sur une autre image et le restaurateur croit que
+     l’enregistrement a échoué / que rien ne s’affiche. */
+  const selected = selectedId
+    ? (dbAssets.find((m) => m.id === selectedId) ?? null)
+    : (filtered[0] ?? null)
   const totalBytes = dbAssets.reduce((n, m) => n + (m.size_bytes || 0), 0)
   const hasActiveFilters = folder !== 'all' || filter !== 'Tous' || query.trim().length > 0
   const libraryEmptyBecauseFilter = filtered.length === 0 && dbAssets.length > 0
@@ -390,30 +405,43 @@ export function MediaManager() {
     const nextSlot = editSlot || selected.slot
     const nextAlt = altDraft.trim()
     const nextCaption = captionDraft.trim()
+    const savedId = selected.id
+    const slotChanged = nextSlot !== selected.slot
     setSavingDetail(true)
     setStatus({ kind: 'busy', msg: 'Enregistrement…' })
-    const res = await updateMediaAsset(selected.id, {
-      slot: nextSlot,
-      alt_text: nextAlt || null,
-      caption: nextCaption || null,
-    })
-    setSavingDetail(false)
-    if (!res.ok) {
-      setStatus({ kind: 'err', msg: res.error || 'Impossible d’enregistrer. Réessayez.' })
-      return
+    try {
+      const res = await updateMediaAsset(savedId, {
+        slot: nextSlot,
+        alt_text: nextAlt || null,
+        caption: nextCaption || null,
+      })
+      if (!res.ok) {
+        setStatus({ kind: 'err', msg: res.error || 'Impossible d’enregistrer. Réessayez.' })
+        return
+      }
+      /* Suivre le fichier dans son dossier après changement d’emplacement. */
+      if (slotChanged) {
+        const destFolder = folderForSlot(nextSlot)
+        if (folder !== 'all' && folder !== destFolder) setFolder(destFolder)
+      }
+      setSelectedId(savedId)
+      await refreshMedia()
+      const parts: string[] = []
+      if (slotChanged) parts.push('emplacement')
+      if (nextAlt !== savedAlt || nextCaption !== savedCaption) parts.push('description')
+      setStatus({
+        kind: 'ok',
+        msg: parts.length === 2
+          ? 'Emplacement et description enregistrés.'
+          : parts[0] === 'emplacement'
+            ? 'Emplacement enregistré.'
+            : 'Description enregistrée.',
+      })
+    } catch {
+      setStatus({ kind: 'err', msg: 'Impossible d’enregistrer. Réessayez.' })
+    } finally {
+      setSavingDetail(false)
     }
-    await refreshMedia()
-    const parts: string[] = []
-    if (detailSlotDirty) parts.push('emplacement')
-    if (detailDescDirty) parts.push('description')
-    setStatus({
-      kind: 'ok',
-      msg: parts.length === 2
-        ? 'Emplacement et description enregistrés.'
-        : parts[0] === 'emplacement'
-          ? 'Emplacement enregistré.'
-          : 'Description enregistrée.',
-    })
   }
 
   const copyLink = async () => {
@@ -722,6 +750,7 @@ export function MediaManager() {
                 style={{ ...inp, minHeight: 44, width: 'auto', padding: '6px 10px', fontSize: 12 }}
               >
                 <option value="recent">Plus récents</option>
+                <option value="oldest">Plus anciens</option>
                 <option value="name">Nom A-Z</option>
                 <option value="size">Taille</option>
               </select>
@@ -917,7 +946,11 @@ export function MediaManager() {
 
               <footer className="admin-wf-media-detail-actions">
                 <div className="admin-wf-media-detail-actions-primary">
-                  <PrimaryButton disabled={!detailDirty || savingDetail || !isSupabase} onClick={handleSaveDetail}>
+                  <PrimaryButton
+                    disabled={!detailDirty || savingDetail || !isSupabase}
+                    busy={savingDetail}
+                    onClick={() => { void handleSaveDetail() }}
+                  >
                     {Icon.check(14)} {savingDetail ? 'Enregistrement…' : 'Enregistrer'}
                   </PrimaryButton>
                   <GhostButton color={t.primary} disabled={!selected.url} onClick={copyLink}>

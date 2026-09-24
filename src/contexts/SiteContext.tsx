@@ -74,6 +74,8 @@ export interface MediaSlot {
   size_bytes?: number | null
   alt_text?: string | null
   caption?: string | null
+  /** Présent pour les lignes `media_assets` (tri « Plus récents »). */
+  created_at?: string
 }
 
 export interface MessageReply {
@@ -146,6 +148,8 @@ interface SiteContextValue {
   saveRbac: (overrides: RbacOverrides | null) => Promise<SaveResult>
   markMessageHandled: (id: string, handled: boolean) => Promise<SaveResult>
   refreshMedia: () => Promise<void>
+  refreshOrders: () => Promise<void>
+  refreshReservations: () => Promise<void>
   adminUsers: AdminUser[]
   refreshAdminUsers: () => Promise<void>
   ordersCount: number
@@ -236,6 +240,7 @@ function mediaAssetToSlot(a: MediaAsset): MediaSlot {
     size_bytes: a.size_bytes,
     alt_text: a.alt_text,
     caption: a.caption,
+    created_at: a.created_at,
   }
 }
 
@@ -581,23 +586,23 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     } catch { /* CMS pas encore prêt */ }
   }
 
-  const refreshOrders = async () => {
+  const refreshOrders = useCallback(async () => {
     const res = await fetchOrders()
     if (res.fromDb) {
       setOrders(res.data)
       setOrdersCount(res.data.length)
       setPendingOrdersCount(compterEnAttente(res.data))
     }
-  }
+  }, [])
 
-  const refreshReservations = async () => {
+  const refreshReservations = useCallback(async () => {
     const res = await fetchReservations()
     if (res.fromDb) {
       setReservations(res.data)
       setReservationsCount(res.data.length)
       setPendingReservationsCount(compterEnAttente(res.data))
     }
-  }
+  }, [])
 
   useEffect(() => {
     const sb = getSupabase()
@@ -634,7 +639,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     rootStyle, isDark, dataSource, dataLoading, saveContentFields,
     refreshMessages, lastMessageCount,
     blogPosts, setBlogPosts, saveApparenceFields, rbacOverrides, setRbacOverridesState, saveRbac, markMessageHandled: handleMarkMessageHandled,
-    refreshMedia, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
+    refreshMedia, refreshOrders, refreshReservations, adminUsers, refreshAdminUsers, ordersCount, reservationsCount,
     pendingOrdersCount, pendingReservationsCount, unhandledMessagesCount,
     orders, reservations,
   }
