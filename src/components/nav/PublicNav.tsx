@@ -287,92 +287,91 @@ export function PublicNav({
 
   function tiroir() {
     /* Portal hors du header : sinon z-index 50 du header crée un stacking context
-       et les cartes (transform) peignent par-dessus le menu (audit mobile P0). */
-    if (typeof document === 'undefined') return null
+       et les cartes (transform) peignent par-dessus le menu (audit mobile P0).
+       Cible = document de la vue (iframe aperçu Atelier) pour ne pas polluer la console. */
+    if (!drawerOpen || !isMobile) return null
+    const doc = vueApercu?.document ?? (typeof document !== 'undefined' ? document : null)
+    if (!doc?.body) return null
     const fondTiroir = headerChoisi || presentation.header?.bg ? couleurs.bg : t.surface
     const couleurTexte = headerChoisi || presentation.header?.text ? couleurs.text : t.text
     return createPortal(
       <>
       <AnimatePresence>
-        {drawerOpen && isMobile && (
-          <motion.div
-            key="nav-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden="true"
-            style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 998,
-              touchAction: 'manipulation',
-            }}
-          />
-        )}
+        <motion.div
+          key="nav-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden="true"
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 998,
+            touchAction: 'manipulation',
+          }}
+        />
       </AnimatePresence>
       <AnimatePresence>
-        {drawerOpen && isMobile && (
-          <motion.nav
-            key="nav-drawer"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            aria-label="Menu mobile"
-            style={{
-              position: 'fixed', top: 0, right: 0, bottom: 0,
-              width: 'min(280px, 88vw)',
-              maxWidth: '100%',
-              background: fondTiroir,
-              boxShadow: `-8px 0 40px ${t.shadowDeep}`,
-              zIndex: 999,
-              padding: 'max(80px, calc(24px + env(safe-area-inset-top, 0px))) 24px calc(32px + env(safe-area-inset-bottom, 0px))',
-              display: 'flex', flexDirection: 'column', gap: '4px',
-              borderLeft: `1px solid ${t.shadow}`,
-              overscrollBehavior: 'contain',
-              overflowY: 'auto',
-              touchAction: 'manipulation',
-            }}
-          >
-            <button aria-label="Fermer" onClick={() => setDrawerOpen(false)}
-              style={{ position: 'absolute', top: 'max(20px, env(safe-area-inset-top, 0px))', right: '20px', width: '44px', height: '44px',
-                borderRadius: '10px', background: t.surfaceAlt, border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.heading, fontSize: '20px',
-                touchAction: 'manipulation' }}>
-              <span aria-hidden="true">✕</span>
-            </button>
-            {liensMenu.map((lien, i) => {
-              const id = lien.target.replace(/^#/, '')
-              const libelle = libelleLien(lien, locale)
-              return (
-              <motion.a key={lien.id} href={hrefLien(lien.target, restaurant?.phone)} onClick={() => setDrawerOpen(false)}
-                aria-current={active === id ? 'true' : undefined}
-                initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                style={{
-                  fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 600,
-                  color: active === id ? couleurAccent : couleurTexte,
-                  textDecoration: 'none', padding: '14px 16px', borderRadius: '12px',
-                  background: active === id ? `${t.primary}0a` : 'transparent',
-                  transition: 'background-color 0.2s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  minHeight: 44,
-                }}>
-                {libelle}
-                {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: couleurAccent }} />}
-              </motion.a>
-              )
-            })}
-            <a href={hrefCta} onClick={() => setDrawerOpen(false)}
-              style={{ marginTop: '16px', textAlign: 'center', fontSize: '15px', fontWeight: 600,
-                color: couleurs.ctaText, background: couleurs.ctaBg, padding: '14px', borderRadius: '100px',
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                minHeight: 48, boxShadow: softShadowSm(t), touchAction: 'manipulation' }}>
-              {libelleCta} {Icon.arrow(16)}
-            </a>
-          </motion.nav>
-        )}
+        <motion.nav
+          key="nav-drawer"
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          aria-label="Menu mobile"
+          style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0,
+            width: 'min(280px, 88vw)',
+            maxWidth: '100%',
+            background: fondTiroir,
+            boxShadow: `-8px 0 40px ${t.shadowDeep}`,
+            zIndex: 999,
+            padding: 'max(80px, calc(24px + env(safe-area-inset-top, 0px))) 24px calc(32px + env(safe-area-inset-bottom, 0px))',
+            display: 'flex', flexDirection: 'column', gap: '4px',
+            borderLeft: `1px solid ${t.shadow}`,
+            overscrollBehavior: 'contain',
+            overflowY: 'auto',
+            touchAction: 'manipulation',
+          }}
+        >
+          <button aria-label="Fermer" onClick={() => setDrawerOpen(false)}
+            style={{ position: 'absolute', top: 'max(20px, env(safe-area-inset-top, 0px))', right: '20px', width: '44px', height: '44px',
+              borderRadius: '10px', background: t.surfaceAlt, border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.heading, fontSize: '20px',
+              touchAction: 'manipulation' }}>
+            <span aria-hidden="true">✕</span>
+          </button>
+          {liensMenu.map((lien, i) => {
+            const id = lien.target.replace(/^#/, '')
+            const libelle = libelleLien(lien, locale)
+            return (
+            <motion.a key={lien.id} href={hrefLien(lien.target, restaurant?.phone)} onClick={() => setDrawerOpen(false)}
+              aria-current={active === id ? 'true' : undefined}
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+              style={{
+                fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '18px', fontWeight: 600,
+                color: active === id ? couleurAccent : couleurTexte,
+                textDecoration: 'none', padding: '14px 16px', borderRadius: '12px',
+                background: active === id ? `${t.primary}0a` : 'transparent',
+                transition: 'background-color 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                minHeight: 44,
+              }}>
+              {libelle}
+              {active === id && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: couleurAccent }} />}
+            </motion.a>
+            )
+          })}
+          <a href={hrefCta} onClick={() => setDrawerOpen(false)}
+            style={{ marginTop: '16px', textAlign: 'center', fontSize: '15px', fontWeight: 600,
+              color: couleurs.ctaText, background: couleurs.ctaBg, padding: '14px', borderRadius: '100px',
+              textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              minHeight: 48, boxShadow: softShadowSm(t), touchAction: 'manipulation' }}>
+            {libelleCta} {Icon.arrow(16)}
+          </a>
+        </motion.nav>
       </AnimatePresence>
       </>,
-      document.body,
+      doc.body,
     )
   }
 }
