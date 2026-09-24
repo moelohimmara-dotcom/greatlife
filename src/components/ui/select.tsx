@@ -57,7 +57,8 @@ export function Select({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           width: '100%', cursor: 'pointer', background: 'inherit',
           border: 'inherit', borderRadius: 'inherit', padding: 'inherit',
-          fontSize: 'inherit', fontFamily: 'inherit', color: 'inherit',
+          fontSize: 'inherit', fontFamily: 'inherit',
+          color: triggerStyle?.color ?? 'var(--admin-ink, inherit)',
           textAlign: 'left',
         }}
       >

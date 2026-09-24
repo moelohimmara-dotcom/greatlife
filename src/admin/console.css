@@ -2140,6 +2140,14 @@ html:has([data-admin-shell]) #root {
   flex-wrap: wrap;
 }
 
+/* Tri / selects ops : jamais t.surfaceAlt (thème site nocturne = fond noir en Clair). */
+[data-admin-shell] .admin-toolbar > div:has([aria-haspopup='listbox']),
+[data-admin-shell] .admin-select-trigger {
+  background: var(--admin-paper-muted) !important;
+  color: var(--admin-ink) !important;
+  border-color: var(--admin-line) !important;
+}
+
 [data-admin-shell] .admin-filter-row {
   display: flex;
   gap: 12px;

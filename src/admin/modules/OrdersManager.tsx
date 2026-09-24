@@ -193,7 +193,21 @@ export function OrdersManager() {
             <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} aria-hidden="true">{Icon.search(15, t.muted)}</span>
           </div>
           <Select value={sortKey} onValueChange={v => setSortKey(v as 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc')}>
-            <SelectTrigger style={{ width: 160, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '9px 12px', fontSize: 13, minHeight: 44 }}><SelectValue /></SelectTrigger>
+            <SelectTrigger
+              className="admin-select-trigger"
+              style={{
+                width: 160,
+                borderColor: 'var(--admin-line)',
+                borderRadius: 12,
+                background: 'var(--admin-paper-muted)',
+                color: 'var(--admin-ink)',
+                padding: '9px 12px',
+                fontSize: 13,
+                minHeight: 44,
+              }}
+            >
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="date_desc">Plus récentes</SelectItem>
               <SelectItem value="date_asc">Plus anciennes</SelectItem>
@@ -308,7 +322,7 @@ export function OrdersManager() {
                   )}
                   <div className="admin-ops-actions" style={{ marginTop: 20, justifyContent: 'flex-start' }}>
                     <Select value={selected.status} onValueChange={v => updateStatus(selected.id!, v)}>
-                      <SelectTrigger aria-label={`Statut de la commande ${selected.ref || selected.nom}`} style={{ width: 160, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[selected.status] ?? selected.status}</SelectTrigger>
+                      <SelectTrigger aria-label={`Statut de la commande ${selected.ref || selected.nom}`} style={{ width: 160, borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-paper-muted)', color: 'var(--admin-ink)', padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[selected.status] ?? selected.status}</SelectTrigger>
                       <SelectContent>
                         {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
                       </SelectContent>
@@ -429,7 +443,7 @@ export function OrdersManager() {
               )}
               <div className="admin-ops-actions" style={{ marginTop: 20, justifyContent: 'flex-start' }}>
                 <Select value={selected.status} onValueChange={v => updateStatus(selected.id!, v)}>
-                  <SelectTrigger aria-label={`Statut de la commande ${selected.ref || selected.nom}`} style={{ width: 160, borderColor: t.shadow, borderRadius: 12, background: t.surfaceAlt, padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[selected.status] ?? selected.status}</SelectTrigger>
+                  <SelectTrigger aria-label={`Statut de la commande ${selected.ref || selected.nom}`} style={{ width: 160, borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-paper-muted)', color: 'var(--admin-ink)', padding: '8px 12px', fontSize: 13, minHeight: 44 }}>{statusLabel[selected.status] ?? selected.status}</SelectTrigger>
                   <SelectContent>
                     {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
                   </SelectContent>
