@@ -106,7 +106,7 @@ export function PageEditor({
   actionError = null,
   onOuvrirApparence,
 }: PageEditorProps) {
-  const { theme: t, content: platSite } = useSite()
+  const { content: platSite } = useSite()
   const editor = useEditor(pageId, initialSections)
   const historique = useBrouillonHistory()
   const restoringRef = useRef(false)
