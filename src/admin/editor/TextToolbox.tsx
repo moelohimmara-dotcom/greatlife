@@ -115,6 +115,14 @@ export function TextToolbox({
   const champRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null)
   const richRef = useRef<HTMLDivElement>(null)
   const lastRich = useRef(value)
+  /**
+   * Graine SSR / premier rendu : le mode `rich` est un contentEditable non
+   * contrôlé (innerHTML via useEffect). Sans ceci, renderToStaticMarkup (et le
+   * HTML initial) n'embarque jamais la valeur — faux négatif verify:point3 et
+   * contenu absent avant hydratation. Le ref reste stable après montage pour
+   * ne pas réécrire le DOM à chaque frappe (curseur).
+   */
+  const richSeedHtml = useRef(value || '')
   const [lienOuvert, setLienOuvert] = useState(false)
   const [hrefSaisi, setHrefSaisi] = useState('https://')
   const [erreurLien, setErreurLien] = useState<string | null>(null)
@@ -508,6 +516,7 @@ export function TextToolbox({
           aria-disabled={disabled || undefined}
           contentEditable={!disabled}
           suppressContentEditableWarning
+          dangerouslySetInnerHTML={{ __html: richSeedHtml.current }}
           onMouseUp={sauverRange}
           onKeyUp={sauverRange}
           onInput={() => {

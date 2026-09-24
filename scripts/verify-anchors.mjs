@@ -19,6 +19,10 @@
  *    (l'ancre réelle est `carte`), 'Équipe' → #équipe (l'ancre est `equipe`).
  *    Deux liens sur cinq étaient morts, et rien ne le voyait : `verify:lot1`
  *    compare le rendu des 10 SECTIONS, et le pied de page n'en fait pas partie.
+ *  - Les listes étaient ensuite en dur dans Footer (`NAV_LINKS`) et PublicNav
+ *    (`links` / `linkIds`). Elles ont migré vers `LIENS_PIED_DEFAUT` /
+ *    `LIENS_ENTETE_DEFAUT` dans `site-chrome.ts` (prop `liens` + `hrefLien`).
+ *    Le filet lit désormais CES constantes — pas les anciens symboles.
  *  - Le pied de page recopiait les coordonnées du restaurant, dont une valeur
  *    CANONIQUE. La règle cherchait « Kaloum » — l'ANCIENNE valeur : faux vert.
  *  - Les cibles des boutons du Hero viennent du CONTENU ÉDITABLE et n'étaient
@@ -87,16 +91,16 @@ function codeSeul(source) {
 }
 
 /**
- * Contenu d'un tableau DÉCLARÉ (`const NAV_LINKS = [ … ]`).
+ * Contenu d'un tableau DÉCLARÉ (`const NOM = [ … ]` ou `export const NOM = [ … ]`).
  * On part de l'ASSIGNATION : le type peut contenir des crochets
- * (`ReadonlyArray<readonly [string, string]>`), et s'y arrêter faisait rendre le
- * contenu du TYPE au lieu de celui de la liste — un bloc vide, donc « 0 ancre »,
- * donc un échec trompeur sur un fichier correct.
+ * (`readonly Omit<…>[]`), et s'y arrêter faisait rendre le contenu du TYPE
+ * au lieu de celui de la liste — un bloc vide, donc « 0 ancre », donc un
+ * échec trompeur sur un fichier correct.
  * Si la valeur n'est pas un tableau, on rend une chaîne vide : la garde
  * anti-vide fera son travail.
  */
 function blocDeclare(source, nom) {
-  const m = new RegExp(`const\\s+${nom}\\b`).exec(source)
+  const m = new RegExp(`(?:export\\s+)?const\\s+${nom}\\b`).exec(source)
   if (!m) return ''
   const egal = source.indexOf('=', m.index)
   if (egal === -1) return ''
@@ -114,15 +118,29 @@ function blocDeclare(source, nom) {
   return ''
 }
 
-/** Ancres écrites dans un composant, extraites de ses listes déclarées. */
-function ancresUtilisees(source, { paires = [], simples = [] } = {}) {
+/**
+ * Cible d'un lien chrome utilisable comme ancre de page (hors téléphone / URL).
+ * Aligné sur le filtre de PublicNav (`linkIds`) et sur `hrefLien`.
+ */
+function estAncrePage(cible) {
+  if (typeof cible !== 'string' || !cible.trim()) return false
+  const id = cible.trim().replace(/^#/, '')
+  if (!id || id === 'phone' || id === 'tel') return false
+  if (estUrl(id) || id.startsWith('tel') || id.startsWith('/') || id.startsWith('http')) return false
+  return true
+}
+
+/**
+ * Ancres des listes de repli CMS (`LIENS_ENTETE_DEFAUT` / `LIENS_PIED_DEFAUT`).
+ * Source de vérité depuis le passage au chrome éditable : Footer et PublicNav
+ * consomment ces constantes via la prop `liens`, plus de `NAV_LINKS` / `links`.
+ */
+function ancresDepuisLiensDefaut(source, nomConstante) {
   const corps = codeSeul(source)
-  const blocPaires = paires.map((n) => blocDeclare(corps, n)).join('\n')
-  const blocSimples = simples.map((n) => blocDeclare(corps, n)).join('\n')
-  const enPaires = [...blocPaires.matchAll(/\['[^']*',\s*'([^']+)'\]/g)].map((m) => m[1])
-  const enSimples = [...blocSimples.matchAll(/'([^']+)'/g)].map((m) => m[1])
-  const litteraux = [...corps.matchAll(/href="#([^"{}]+)"/g)].map((m) => m[1])
-  return [...new Set([...enPaires, ...enSimples, ...litteraux])]
+  const bloc = blocDeclare(corps, nomConstante)
+  if (!bloc) return []
+  const cibles = [...bloc.matchAll(/\btarget:\s*'([^']+)'/g)].map((m) => m[1].replace(/^#/, ''))
+  return [...new Set(cibles.filter(estAncrePage))]
 }
 
 /** Constantes de repli d'un composant : `const NOM = 'valeur'`. */
@@ -214,20 +232,41 @@ if (!publiee) {
 }
 
 // ============================================ B. liens ECRITS dans le site
-const COMPOSANTS = [
-  { nom: 'Pied de page (Footer)', chemin: 'src/sections/Footer.tsx', listes: { paires: ['NAV_LINKS'] }, minimum: 2 },
-  { nom: 'Barre de navigation (PublicNav)', chemin: 'src/components/nav/PublicNav.tsx', listes: { paires: ['links'], simples: ['linkIds'] }, minimum: 2 },
+/**
+ * Source de vérité : gabarits chrome CMS (`site-chrome.ts`).
+ * Footer / PublicNav les appliquent via `liens` + `hrefLien` — on vérifie aussi
+ * que chaque consommateur importe encore sa constante (sinon le filet passerait
+ * sur un gabarit mort).
+ */
+const CHROME_PATH = 'src/cms/model/sections/site-chrome.ts'
+const DEFAUTS_CHROME = [
+  {
+    nom: 'Pied de page (LIENS_PIED_DEFAUT)',
+    constante: 'LIENS_PIED_DEFAUT',
+    minimum: 2,
+    consommateur: { nom: 'Footer', chemin: 'src/sections/Footer.tsx', symbole: 'LIENS_PIED_DEFAUT' },
+  },
+  {
+    nom: 'Barre de navigation (LIENS_ENTETE_DEFAUT)',
+    constante: 'LIENS_ENTETE_DEFAUT',
+    minimum: 2,
+    consommateur: { nom: 'PublicNav', chemin: 'src/components/nav/PublicNav.tsx', symbole: 'LIENS_ENTETE_DEFAUT' },
+  },
 ]
 
 console.log('\n' + '='.repeat(72))
-console.log('B. LES LIENS ÉCRITS DANS LES COMPOSANTS DU SITE')
+console.log('B. LES LIENS ÉCRITS DANS LE CADRE DU SITE (chrome CMS)')
 console.log('='.repeat(72))
 
 let fautif = false
-const sources = {}
-for (const c of COMPOSANTS) {
-  sources[c.chemin] = readFileSync(`${ROOT}/${c.chemin}`, 'utf8')
-  const utilisees = ancresUtilisees(sources[c.chemin], c.listes)
+const sources = {
+  [CHROME_PATH]: readFileSync(`${ROOT}/${CHROME_PATH}`, 'utf8'),
+  'src/sections/Footer.tsx': readFileSync(`${ROOT}/src/sections/Footer.tsx`, 'utf8'),
+  'src/components/nav/PublicNav.tsx': readFileSync(`${ROOT}/src/components/nav/PublicNav.tsx`, 'utf8'),
+}
+
+for (const c of DEFAUTS_CHROME) {
+  const utilisees = ancresDepuisLiensDefaut(sources[CHROME_PATH], c.constante)
   console.log(`  ${c.nom} : ${utilisees.length > 0 ? utilisees.join(', ') : '(aucune)'}`)
 
   if (utilisees.length < c.minimum) {
@@ -242,6 +281,17 @@ for (const c of COMPOSANTS) {
     fautif = true
   } else {
     console.log('    toutes mènent à une section réellement servie')
+  }
+
+  const srcConso = sources[c.consommateur.chemin]
+  const importe = new RegExp(`\\b${c.consommateur.symbole}\\b`).test(codeSeul(srcConso))
+  const utiliseHref = /\bhrefLien\b/.test(codeSeul(srcConso))
+  if (!importe || !utiliseHref) {
+    console.log(`    ECHEC : ${c.consommateur.nom} ne consomme plus ${c.consommateur.symbole}/hrefLien`)
+    console.log('    (le gabarit serait vérifié sans être branché au rendu public).')
+    fautif = true
+  } else {
+    console.log(`    ${c.consommateur.nom} consomme ${c.consommateur.symbole} + hrefLien`)
   }
 }
 
@@ -374,29 +424,43 @@ const mesurer = (nom, condition) => {
 }
 
 const FOOTER = sources['src/sections/Footer.tsx']
-const TETE = /const NAV_LINKS[^\n]*\n/
+const CHROME = sources[CHROME_PATH]
+const TETE_PIED = /export const LIENS_PIED_DEFAUT[^\n]*\n/
+const CONST_PIED = DEFAUTS_CHROME[0].constante
+const MIN_PIED = DEFAUTS_CHROME[0].minimum
 
-const avecAncreFausse = FOOTER.replace(TETE, "const NAV_LINKS: ReadonlyArray<readonly [string, string]> = [\n  ['Faux', 'ancre-qui-nexiste-pas'],")
+const avecAncreFausse = CHROME.replace(
+  TETE_PIED,
+  "export const LIENS_PIED_DEFAUT = [\n  { id: 'faux', label: { fr: 'Faux', en: 'Fake' }, target: 'ancre-qui-nexiste-pas', visible: true, isCta: false },\n",
+)
 mesurer(
   'une ancre inventée est détectée',
-  ancresUtilisees(avecAncreFausse, COMPOSANTS[0].listes).some((a) => !reelles.includes(a)),
+  ancresDepuisLiensDefaut(avecAncreFausse, CONST_PIED).some((a) => !reelles.includes(a)),
 )
 
-const avecDefautOrigine = FOOTER.replace(TETE, "const NAV_LINKS: ReadonlyArray<readonly [string, string]> = [\n  ['La carte', 'lacarte'],\n  ['Équipe', 'équipe'],")
-const manquantes = ancresUtilisees(avecDefautOrigine, COMPOSANTS[0].listes).filter((a) => !reelles.includes(a))
+const avecDefautOrigine = CHROME.replace(
+  TETE_PIED,
+  "export const LIENS_PIED_DEFAUT = [\n  { id: 'carte', label: { fr: 'La carte', en: 'Menu' }, target: 'lacarte', visible: true, isCta: false },\n  { id: 'equipe', label: { fr: 'Équipe', en: 'Team' }, target: 'équipe', visible: true, isCta: false },\n",
+)
+const manquantes = ancresDepuisLiensDefaut(avecDefautOrigine, CONST_PIED).filter((a) => !reelles.includes(a))
 mesurer(`le défaut d’origine (#lacarte, #équipe) est détecté — ${manquantes.join(', ')}`, manquantes.length === 2)
 
 const adresse = textesDe(restaurant.address)[0] ?? ''
-const avecAdresse = FOOTER.replace('© 2026 Greatlife ·', `© Copyright ${adresse} ·`)
+// Le copyright n’est plus un littéral « © 2026 Greatlife · » : année dynamique +
+// nom du restaurant. On injecte l’adresse dans une chaîne réellement présente.
+const avecAdresse = FOOTER.replace(
+  '© {new Date().getFullYear()}',
+  `© Copyright ${adresse} · {new Date().getFullYear()}`,
+)
 mesurer(`la valeur canonique de l’adresse (« ${adresse} ») est détectée`, coordonneesEnDur(avecAdresse, canoniques).length > 0)
 
 const avecTelephone = FOOTER.replace('{coordonnees.map(', '{["+224 620 00 00 00"].map(')
 mesurer('un ancien numéro en dur est détecté', coordonneesEnDur(avecTelephone, canoniques).length > 0)
 
-const refonte = FOOTER.replace(TETE, 'const NAV_LINKS = { carte: 1, blog: 1 }\n')
+const refonte = CHROME.replace(TETE_PIED, 'export const LIENS_PIED_DEFAUT = { carte: 1, blog: 1 }\n')
 mesurer(
   'une refonte qui fait disparaître la liste est détectée (pas de vert sur du vide)',
-  ancresUtilisees(refonte, COMPOSANTS[0].listes).length < COMPOSANTS[0].minimum,
+  ancresDepuisLiensDefaut(refonte, CONST_PIED).length < MIN_PIED,
 )
 
 // Cible de Hero fausse : c'est le contrôle NOUVEAU, il doit mordre — et la

@@ -647,6 +647,79 @@ function MultilineField({ field, value, locale, onChange, idPrefix, locked, prof
   const { theme: t } = useSite()
   const inputId = champId(idPrefix, field.name, `ml-${locale}`)
   const hint = locale === 'fr' ? 'Texte en français' : 'Text in English'
+  const markupProfile = profile ?? 'rich'
+
+  /*
+    Même branche bilingue que `TextField` (commit 5a71857). Elle a disparu quand
+    le panneau est passé en « locale active + TextToolbox » : un objet `{ fr, en }`
+    ne montrait plus qu'une zone, et verify:i18n (I6) échouait (delta=0).
+
+    ⚠️ SON ABSENCE A DÉTRUIT DES DONNÉES EN PRODUCTION
+    Sans cette branche, le composant écrivait une CHAÎNE SIMPLE là où la valeur
+    était un objet `{ fr, en }` : `onChange(e.target.value)`. Conséquences :
+      - la version ANGLAISE était perdue, définitivement et sans le moindre
+        avertissement ;
+      - le validateur restait muet, puisqu'il ne teste `isTranslation` que sur
+        les objets — une chaîne lui échappait ;
+      - et comme le public lit l'instantané figé, RIEN ne changeait à l'écran :
+        le restaurateur ne pouvait pas s'en apercevoir.
+    Mesuré : `hero.subtitle` et `story.body` avaient été abîmés ainsi.
+
+    Un champ traduisible se présente donc en DEUX zones (FR + EN) dès que la
+    valeur est un objet de traduction. `inlineMarkup` conserve TextToolbox
+    (édition riche) — une instance par langue, pas seulement la locale active.
+  */
+  if (field.translatable !== false && isTranslationObject(value)) {
+    const obj = asTranslation(value)
+    if (field.inlineMarkup) {
+      return (
+        <div style={{ marginBottom: 14 }}>
+          {(['fr', 'en'] as const).map((lang) => (
+            <TextToolbox
+              key={lang}
+              id={champId(idPrefix, field.name, `ml-${lang}`)}
+              label={`${field.label}${field.required ? ' *' : ''}`}
+              localeHint={lang === 'fr' ? 'Texte en français' : 'Text in English'}
+              help={lang === 'en' ? field.help : undefined}
+              multiline
+              disabled={locked}
+              profile={markupProfile}
+              slotColor={lang === 'fr' ? slotColor : undefined}
+              inheritedColor={lang === 'fr' ? inheritedColor : undefined}
+              onSlotColorChange={lang === 'fr' ? onSlotColorChange : undefined}
+              cibleApercu={lang === locale ? cibleApercu : null}
+              value={obj[lang]}
+              onChange={(next) => onChange({ ...obj, [lang]: next })}
+            />
+          ))}
+        </div>
+      )
+    }
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <FieldLabel htmlFor={champId(idPrefix, field.name, 'ml-fr')}>
+          {field.label}{field.required ? ' *' : ''}
+        </FieldLabel>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['fr', 'en'] as const).map((lang) => (
+            <textarea
+              key={lang}
+              id={champId(idPrefix, field.name, `ml-${lang}`)}
+              value={obj[lang]}
+              disabled={locked}
+              onChange={(e) => onChange({ ...obj, [lang]: e.target.value })}
+              rows={3}
+              placeholder={lang.toUpperCase()}
+              aria-label={lang === 'fr' ? 'Texte en français' : 'Text in English'}
+              style={{ ...inputStyle(t), flex: 1, fontSize: 13, resize: 'vertical', minHeight: 72 }}
+              {...anneauFocus(t)}
+            />
+          ))}
+        </div>
+        {field.help && <div style={{ fontSize: 12, color: ADMIN_MUTED, marginTop: 4 }}>{field.help}</div>}
+      </div>
+    )
+  }
 
   if (field.translatable !== false) {
     const obj = asTranslation(value)
@@ -659,7 +732,7 @@ function MultilineField({ field, value, locale, onChange, idPrefix, locked, prof
           help={field.help}
           multiline
           disabled={locked}
-          profile={profile ?? 'rich'}
+          profile={markupProfile}
           slotColor={slotColor}
           inheritedColor={inheritedColor}
           onSlotColorChange={onSlotColorChange}

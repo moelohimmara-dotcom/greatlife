@@ -94,7 +94,10 @@ const H = await bundleFile('i18n-harness', `
   export { validateSectionContent }
 `, { 'import.meta.env': JSON.stringify({ VITE_SUPABASE_URL: URL, VITE_SUPABASE_ANON_KEY: ENV.VITE_SUPABASE_ANON_KEY }) })
 
-const zones = (html) => (html.match(/<textarea\b/g) ?? []).length
+/** Une zone éditable = textarea plain OU textbox rich (TextToolbox contentEditable). */
+const zones = (html) =>
+  (html.match(/<textarea\b/g) ?? []).length +
+  (html.match(/role="textbox"/g) ?? []).length
 
 const failures = []
 function check(ok, label, detail) {
