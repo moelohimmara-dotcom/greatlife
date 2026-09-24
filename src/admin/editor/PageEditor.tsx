@@ -192,9 +192,37 @@ export function PageEditor({
   slotSelRef.current = slotSel
   const [cibleApercu, setCibleApercu] = useState<CibleApercu | null>(null)
   const [focusDepuisApercu, setFocusDepuisApercu] = useState(false)
+  /** Écran réduit : une seule vue à la fois (Structure | Aperçu | Modifier). */
+  const [mobileCompact, setMobileCompact] = useState(false)
+  const [mobilePane, setMobilePane] = useState<'structure' | 'apercu' | 'modifier'>('structure')
+  const mobileCompactRef = useRef(false)
+  mobileCompactRef.current = mobileCompact
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1100px)')
+    const apply = () => setMobileCompact(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+
+  const ouvrirModifierSiMobile = useCallback(() => {
+    if (mobileCompactRef.current) setMobilePane('modifier')
+  }, [])
+
+  useEffect(() => {
+    if (!mobileCompact) return
+    if (showPublication || showSeo) setMobilePane('modifier')
+  }, [mobileCompact, showPublication, showSeo])
+
+  useEffect(() => {
+    if (!mobileCompact) return
+    if (apercuElargi) setMobilePane('apercu')
+  }, [mobileCompact, apercuElargi])
 
   const appliquerPointeur = useCallback((id: string, detail?: { slot: string | null; shift: boolean; toggle?: boolean }) => {
     setFocusDepuisApercu(true)
+    ouvrirModifierSiMobile()
     if (editor.groupMode && id !== 'cms-header' && id !== 'cms-footer') {
       if (!detail?.slot) return
       setChrome(null)
@@ -253,7 +281,7 @@ export function PageEditor({
       shift: Boolean(detail?.shift),
       toggle: Boolean(detail?.toggle),
     }))
-  }, [editor, noterHistorique])
+  }, [editor, noterHistorique, ouvrirModifierSiMobile])
 
   const viderSelectionEmplacements = useCallback(() => {
     setSlotSel((prev) => ({ ...prev, slots: [], groupId: null }))
@@ -592,7 +620,10 @@ export function PageEditor({
   }, [])
 
   return (
-    <div className="admin-page-editor">
+    <div
+      className="admin-page-editor"
+      data-mobile-pane={mobileCompact ? mobilePane : undefined}
+    >
       {/* Quatre rôles : navigation/identité | statut | langue+historique | actions. */}
       <div className="admin-editor-toolbar" role="toolbar" aria-label="Atelier du site">
         <div className="admin-editor-toolbar-start" role="group" aria-label="Page">
@@ -865,6 +896,7 @@ export function PageEditor({
                 slots: [],
                 groupId: null,
               })
+              if (index !== null) ouvrirModifierSiMobile()
             }}
             onSelectSlot={(index, slot, shift) => {
               setFocusDepuisApercu(false)
@@ -882,6 +914,7 @@ export function PageEditor({
                 shift,
                 toggle: false,
               }))
+              ouvrirModifierSiMobile()
             }}
             onSelectGroup={(index, groupId) => {
               setChrome(null)
@@ -894,11 +927,13 @@ export function PageEditor({
                 groupId,
                 shift: false,
               }))
+              ouvrirModifierSiMobile()
             }}
             onSelectChrome={(id) => {
               setChrome(id)
               editor.select(null)
               setSlotSel({ surface: id, sectionId: null, slots: [], groupId: null })
+              ouvrirModifierSiMobile()
             }}
             onReorder={(from, to) => { noterHistorique('immediate'); editor.reorder(from, to) }}
             onToggleVisibility={(index) => { noterHistorique('immediate'); editor.toggleVisibility(index) }}
@@ -1067,6 +1102,33 @@ export function PageEditor({
           onClose={() => setShowPicker(false)}
         />
       )}
+
+      {mobileCompact ? (
+        <nav className="admin-editor-mobile-tabs" role="tablist" aria-label="Vues de l’atelier">
+          {([
+            { id: 'structure' as const, label: 'Structure' },
+            { id: 'apercu' as const, label: 'Aperçu' },
+            { id: 'modifier' as const, label: 'Modifier' },
+          ]).map((tab) => {
+            const actif = mobilePane === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={actif}
+                className={actif ? 'admin-editor-mobile-tab is-active' : 'admin-editor-mobile-tab'}
+                onClick={() => {
+                  setMobilePane(tab.id)
+                  if (tab.id !== 'apercu') setApercuElargi(false)
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      ) : null}
     </div>
   )
 }
