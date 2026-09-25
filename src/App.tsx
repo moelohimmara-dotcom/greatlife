@@ -20,6 +20,7 @@ import {
   PreferencesPage,
   FormulairesPage,
   UtilisateursPage,
+  MonComptePage,
   JournalPage,
 } from '@/admin/AdminPanel'
 
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="preferences" element={<PreferencesPage />} />
               <Route path="formulaires" element={<FormulairesPage />} />
               <Route path="utilisateurs" element={<UtilisateursPage />} />
+              <Route path="mon-compte" element={<MonComptePage />} />
               <Route path="journal" element={<JournalPage />} />
             </Route>
           </Routes>

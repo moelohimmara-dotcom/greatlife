@@ -327,6 +327,18 @@ export function AdminShell() {
             etendu={!compact}
             carre={compact}
             genre="secondaire"
+            onClick={() => go('account')}
+            title="Mon compte — email et mot de passe"
+            aria-label="Ouvrir Mon compte"
+            className="admin-nav-foot-btn admin-nav-foot-settings"
+          >
+            <span aria-hidden="true">{Icon.users(16, 'var(--admin-rail-fg)')}</span>
+            {!compact && <span>Mon compte</span>}
+          </Bouton>
+          <Bouton
+            etendu={!compact}
+            carre={compact}
+            genre="secondaire"
             onClick={() => go('consolePrefs')}
             title="Préférences de la console"
             aria-label="Ouvrir les préférences de la console"

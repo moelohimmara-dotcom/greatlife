@@ -96,10 +96,19 @@ Cartes de stats : nb produits, messages (dont non traités), commandes (dont en 
 - Active/désactive les sections publiques (`visibility.sections.*`) et les toggles (vertusPanel, suggestions, testimonials, badges).
 - Sauvegarde via `saveSiteConfigToDb`.
 
-### 11. Utilisateurs & rôles (`UsersRoles`, ligne 707)
+### 11. Utilisateurs & rôles (`UsersRoles`)
 - CRUD `admin_users` : `upsertAdminUser`, `deleteAdminUser`, `fetchAdminUsers`.
+- **Invitation** : lien magique Supabase (`sendMagicLink`) + notification email (`invokeReplyEmail`).
+- **Inviter un testeur** : rôle `guest` (Testeur / Lecteur) avec email réel + mot de passe fort via Edge Function `manage-admin-auth`.
+- **Identifiants** : bouton pour remplacer email temporaire + mot de passe (même Edge Function).
 - Affiche aussi la matrice `ROLES` (référence).
-- ⚠️ Créer un utilisateur ici ne le crée **pas** dans Supabase Auth — il faut aussi le créer dans *Authentication → Users*. La table ne fait que lier email ↔ rôle.
+- ⚠️ Sans la fonction `manage-admin-auth` déployée, le repli enregistre le rôle et envoie un lien magique.
+
+### 11.bis Mon compte (`AccountSettings`, `/admin/mon-compte`)
+- Changer son **mot de passe** (`auth.updateUser`) et demander un **nouvel email**.
+- Propriétaire : remplacement immédiat email + mot de passe (Edge Function).
+- Règles : ≥ 12 caractères, majuscule, minuscule, chiffre, caractère spécial ; mots de passe démo historiques refusés.
+- Mode démo : message explicite (pas d’Auth).
 
 ### 12. Formulaires & emails (`FormsConfig`, ligne 937)
 - Édite l'auto-réponse (`autoReply`), les emails de contact/réservation.

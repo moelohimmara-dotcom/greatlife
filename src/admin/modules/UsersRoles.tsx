@@ -5,7 +5,8 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { ROLES, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { upsertAdminUser, deleteAdminUser, fetchAuditLog, logAudit, updateAdminUserStatus, setUserInvitedAt, type AuditEntry } from '@/lib/repository'
-import { invokeReplyEmail, sendMagicLink } from '@/lib/supabase'
+import { invokeReplyEmail, sendMagicLink, invokeManageAdminAuth } from '@/lib/supabase'
+import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/password'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -32,7 +33,16 @@ export function UsersRoles() {
 
   const isSupabase = dataSource === 'supabase'
   const [status, setStatus] = useState<{ kind: 'idle' | 'ok' | 'err' | 'busy'; msg: string }>({ kind: 'idle', msg: '' })
-  const [editing, setEditing] = useState<{ id?: string; email: string; name: string; role: string } | null>(null)
+  const [editing, setEditing] = useState<{
+    id?: string
+    email: string
+    name: string
+    role: string
+    password: string
+    confirm: string
+    previousEmail?: string
+    mode: 'user' | 'tester' | 'credentials'
+  } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const inp = inputStyle(t)
 
@@ -207,14 +217,52 @@ Cette réinitialisation a été effectuée par ${currentUser?.name ?? currentUse
     }
   }
 
-  const startAdd = () => setEditing({ email: '', name: '', role: 'guest' })
+  const startAdd = () => setEditing({ email: '', name: '', role: 'guest', password: '', confirm: '', mode: 'user' })
+  const startInviteTester = () =>
+    setEditing({ email: '', name: '', role: 'guest', password: '', confirm: '', mode: 'tester' })
   const startEdit = (u: { id: string; email: string; name: string; role: string }) =>
-    setEditing({ id: u.id, email: u.email, name: u.name, role: u.role })
+    setEditing({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      password: '',
+      confirm: '',
+      previousEmail: u.email,
+      mode: 'user',
+    })
+  const startReplaceCredentials = (u: { id: string; email: string; name: string; role: string }) =>
+    setEditing({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      password: '',
+      confirm: '',
+      previousEmail: u.email,
+      mode: 'credentials',
+    })
 
   const saveEdit = async () => {
     if (!editing) return
     if (!editing.email.trim() || !editing.name.trim()) {
       setStatus({ kind: 'err', msg: 'Email et nom requis.' }); return
+    }
+    if (!isValidEmail(editing.email)) {
+      setStatus({ kind: 'err', msg: 'Adresse email invalide.' }); return
+    }
+    const wantsPassword = editing.password.trim().length > 0 || editing.mode === 'tester' || editing.mode === 'credentials'
+    if (wantsPassword) {
+      if (!editing.password.trim()) {
+        setStatus({ kind: 'err', msg: 'Mot de passe requis pour créer ou remplacer les identifiants.' }); return
+      }
+      const pwd = evaluatePassword(editing.password, editing.email)
+      if (!pwd.ok) {
+        setStatus({ kind: 'err', msg: pwd.errors[0] || 'Mot de passe trop faible.' }); return
+      }
+      if (editing.password !== editing.confirm) {
+        setStatus({ kind: 'err', msg: 'Les deux mots de passe ne correspondent pas.' }); return
+      }
     }
     const isSelfEdit = !!editing.id && editing.email.trim().toLowerCase() === currentEmail
     if (isSelfEdit && isOwner && editing.role !== 'owner') {
@@ -227,31 +275,109 @@ Cette réinitialisation a été effectuée par ${currentUser?.name ?? currentUse
         setStatus({ kind: 'err', msg: 'Impossible : il faut au moins un propriétaire.' }); return
       }
     }
+
+    const dest = editing.email.trim().toLowerCase()
+    const role = editing.mode === 'tester' ? 'guest' : editing.role
+
+    // Création / remplacement d'identifiants Auth (email + mdp) via Edge Function.
+    if (wantsPassword && isSupabase) {
+      setStatus({ kind: 'busy', msg: editing.mode === 'tester' ? 'Invitation du testeur…' : 'Enregistrement des identifiants…' })
+      const authRes = await invokeManageAdminAuth({
+        action: editing.mode === 'tester' ? 'invite-tester' : 'set-credentials',
+        email: dest,
+        name: editing.name.trim(),
+        password: editing.password,
+        role,
+        previousEmail: editing.previousEmail && editing.previousEmail.toLowerCase() !== dest
+          ? editing.previousEmail.toLowerCase()
+          : editing.mode === 'credentials'
+            ? editing.previousEmail?.toLowerCase()
+            : undefined,
+        sendInviteEmail: editing.mode === 'tester' || !editing.id,
+      })
+      if (!authRes.ok) {
+        // Repli gracieux : on enregistre quand même la ligne admin_users + magic link.
+        setStatus({ kind: 'busy', msg: `Identifiants Auth indisponibles (${emailErrLabel(authRes.error)}). Enregistrement du rôle + lien magique…` })
+        const res = await upsertAdminUser({
+          id: editing.id,
+          email: dest,
+          name: editing.name.trim(),
+          role,
+        })
+        if (!res.ok) {
+          setStatus({ kind: 'err', msg: res.error || authRes.error || 'Échec.' })
+          return
+        }
+        let magic: { ok: boolean; error?: string } = { ok: false }
+        magic = await sendMagicLink(dest)
+        if (magic.ok) await setUserInvitedAt(dest)
+        setEditing(null)
+        await refreshAdminUsers()
+        setStatus({
+          kind: magic.ok ? 'ok' : 'err',
+          msg: magic.ok
+            ? `Rôle enregistré pour ${dest}. Lien magique envoyé (le mot de passe n’a pas pu être posé : ${emailErrLabel(authRes.error)}).`
+            : `Rôle enregistré, mais ni mot de passe ni invitation (${emailErrLabel(authRes.error)} / ${emailErrLabel(magic.error)}).`,
+        })
+        return
+      }
+      logAudit({
+        actor: currentUser?.email ?? '',
+        action: editing.mode === 'tester' ? 'user_invite_tester' : editing.id ? 'user_credentials_update' : 'user_create',
+        target: dest,
+        detail: `Rôle : ${ROLE_LABELS[role] ?? role}`,
+      })
+      setEditing(null)
+      await refreshAdminUsers()
+      refreshRole().catch(() => {})
+      const base = editing.mode === 'tester'
+        ? `Testeur invité : ${dest}.`
+        : editing.mode === 'credentials'
+          ? `Identifiants mis à jour pour ${dest}.`
+          : editing.id
+            ? 'Utilisateur modifié.'
+            : 'Utilisateur créé avec email et mot de passe.'
+      if (authRes.inviteSent) {
+        setStatus({ kind: 'ok', msg: `${base} Courriel d’invitation envoyé.` })
+      } else if (authRes.inviteError) {
+        setStatus({ kind: 'ok', msg: `${base} Invitation email non envoyée (${emailErrLabel(authRes.inviteError)}).` })
+      } else {
+        setStatus({ kind: 'ok', msg: base })
+      }
+      return
+    }
+
+    if (wantsPassword && !isSupabase) {
+      setStatus({ kind: 'err', msg: 'Mode démo — impossible de poser un mot de passe Auth. Connectez Supabase.' })
+      return
+    }
+
     setStatus({ kind: 'busy', msg: 'Enregistrement…' })
     const res = await upsertAdminUser({
       id: editing.id,
-      email: editing.email.trim().toLowerCase(),
+      email: dest,
       name: editing.name.trim(),
-      role: editing.role,
+      role,
     })
     if (res.ok) {
       logAudit({
         actor: currentUser?.email ?? '',
         action: editing.id ? 'user_role_update' : 'user_create',
-        target: editing.email.trim().toLowerCase(),
-        detail: `Rôle : ${ROLE_LABELS[editing.role] ?? editing.role}`,
+        target: dest,
+        detail: `Rôle : ${ROLE_LABELS[role] ?? role}`,
       })
-      const dest = editing.email.trim().toLowerCase()
-      const rs = roleSummary(editing.role)
+      const rs = roleSummary(role)
       const dateStr = new Date().toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })
       const mail = await invokeReplyEmail({
         to: dest,
-        subject: 'Greatlife - Votre accès au panneau d\'administration',
+        subject: editing.mode === 'tester'
+          ? 'Greatlife - Invitation testeur'
+          : 'Greatlife - Votre accès au panneau d\'administration',
         replyMessage: `Bonjour ${editing.name.trim()},
 
 Votre compte d'administration Greatlife a été ${editing.id ? 'modifié' : 'créé'}.
 
-Rôle attribué : ${ROLE_LABELS[editing.role] ?? editing.role}${ROLE_DESCRIPTIONS[editing.role] ? '\n' + ROLE_DESCRIPTIONS[editing.role] : ''}
+Rôle attribué : ${ROLE_LABELS[role] ?? role}${ROLE_DESCRIPTIONS[role] ? '\n' + ROLE_DESCRIPTIONS[role] : ''}
 Récapitulatif de votre rôle : ${rs.modulesWrite} module(s) en écriture, ${rs.modulesRead} en lecture, ${rs.actionsGranted}/${rs.actionsTotal} actions autorisées.
 
 Pour accéder au panneau d'administration, cliquez sur le lien suivant :
@@ -370,11 +496,20 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
     <div className="admin-page-wide">
       <PageHeader
         title="Utilisateurs & rôles"
-        subtitle="Contrôlez qui peut consulter ou modifier chaque espace."
+        subtitle="Contrôlez qui peut consulter ou modifier chaque espace. Invitez un testeur ou remplacez des identifiants temporaires."
         actions={(
-          <PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>
-            {Icon.plus(14, '#fff')} Inviter un utilisateur
-          </PrimaryButton>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <GhostButton
+              color={t.primary}
+              onClick={startInviteTester}
+              disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}
+            >
+              {Icon.mail(14, t.primary)} Inviter un testeur
+            </GhostButton>
+            <PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>
+              {Icon.plus(14, '#fff')} Inviter un utilisateur
+            </PrimaryButton>
+          </div>
         )}
       />
 
@@ -429,30 +564,92 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
 
         {editing && (
           <div className="admin-detail-panel" style={{ position: 'static', maxHeight: 'none', marginBottom: 12 }}>
+            <div className="admin-wf-eyebrow" style={{ marginBottom: 8 }}>
+              {editing.mode === 'tester'
+                ? 'Invitation testeur'
+                : editing.mode === 'credentials'
+                  ? 'Remplacer les identifiants'
+                  : editing.id
+                    ? 'Modifier l’utilisateur'
+                    : 'Nouvel utilisateur'}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <FieldLabel>Nom</FieldLabel>
                 <Input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} style={inp} placeholder="Nom complet" />
               </div>
               <div style={{ display: 'grid', gap: 6 }}>
-                <FieldLabel>Email</FieldLabel>
-                <Input value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} style={inp} placeholder="email@greatlife.gn" />
+                <FieldLabel>Email{editing.mode === 'credentials' ? ' (réel)' : ''}</FieldLabel>
+                <Input
+                  type="email"
+                  value={editing.email}
+                  onChange={e => setEditing({ ...editing, email: e.target.value })}
+                  style={inp}
+                  placeholder="email@exemple.com"
+                />
               </div>
             </div>
-            <div style={{ display: 'grid', gap: 6, maxWidth: 260, marginTop: 12 }}>
-              <FieldLabel>Rôle</FieldLabel>
-              <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
-                <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-paper-muted)', padding: '11px 14px', fontSize: 14 }}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {ROLE_DESCRIPTIONS[editing.role] && (
-                <span className="admin-page-sub">{ROLE_DESCRIPTIONS[editing.role]}</span>
-              )}
+            {editing.mode !== 'tester' && (
+              <div style={{ display: 'grid', gap: 6, maxWidth: 260, marginTop: 12 }}>
+                <FieldLabel>Rôle</FieldLabel>
+                <Select value={editing.role} onValueChange={v => setEditing({ ...editing, role: v })}>
+                  <SelectTrigger style={{ borderColor: 'var(--admin-line)', borderRadius: 12, background: 'var(--admin-paper-muted)', padding: '11px 14px', fontSize: 14 }}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {ROLE_DESCRIPTIONS[editing.role] && (
+                  <span className="admin-page-sub">{ROLE_DESCRIPTIONS[editing.role]}</span>
+                )}
+              </div>
+            )}
+            {editing.mode === 'tester' && (
+              <p className="admin-page-sub" style={{ marginTop: 12 }}>
+                Le testeur reçoit le rôle « {ROLE_LABELS.guest} » : consultation seule, idéal pour une revue avant ouverture.
+              </p>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <FieldLabel>
+                  Mot de passe{editing.mode === 'user' && !editing.id ? ' (optionnel — sinon lien magique)' : ''}
+                </FieldLabel>
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  value={editing.password}
+                  onChange={e => setEditing({ ...editing, password: e.target.value })}
+                  style={inp}
+                  placeholder="••••••••••••"
+                />
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <FieldLabel>Confirmer le mot de passe</FieldLabel>
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  value={editing.confirm}
+                  onChange={e => setEditing({ ...editing, confirm: e.target.value })}
+                  style={inp}
+                  placeholder="••••••••••••"
+                />
+              </div>
             </div>
+            {(editing.password.length > 0 || editing.mode === 'tester' || editing.mode === 'credentials') && (
+              <div style={{ marginTop: 10 }}>
+                <p className="admin-page-sub" style={{ marginBottom: 6 }}>{passwordRulesSummary()}</p>
+                <ul className="admin-ops-meta" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
+                  {evaluatePassword(editing.password, editing.email).checks.map(c => (
+                    <li key={c.id} style={{ color: c.ok ? 'var(--admin-forest)' : 'inherit' }}>
+                      {c.ok ? '✓' : '○'} {c.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="admin-ops-actions" style={{ marginTop: 12, justifyContent: 'flex-start' }}>
-              <PrimaryButton onClick={saveEdit}>Enregistrer</PrimaryButton>
+              <PrimaryButton onClick={saveEdit} disabled={status.kind === 'busy'}>
+                {editing.mode === 'tester' ? 'Envoyer l’invitation' : editing.mode === 'credentials' ? 'Remplacer les identifiants' : 'Enregistrer'}
+              </PrimaryButton>
               <GhostButton color={t.muted} onClick={() => setEditing(null)}>Annuler</GhostButton>
             </div>
           </div>
@@ -496,6 +693,11 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                         <GhostButton color={u.active === false ? '#16a34a' : '#b8860b'} disabled={busyId === u.id} onClick={() => toggleActive(u)}>{u.active === false ? 'Réactiver' : 'Suspendre'}</GhostButton>
                       )}
                       <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
+                      {isSupabase && canDo('users', 'update', currentUser?.role ?? '') && (
+                        <GhostButton color={t.accent || t.primary} disabled={busyId === u.id || !!editing} onClick={() => startReplaceCredentials(u)}>
+                          Identifiants
+                        </GhostButton>
+                      )}
                       <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>
                       <GhostButton color={t.muted} onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}>{expandedId === u.id ? 'Masquer' : 'Détails'}</GhostButton>
                     </span>

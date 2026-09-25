@@ -20,6 +20,7 @@ import { FormsConfig } from '@/admin/modules/FormsConfig'
 import { SettingsEditor } from '@/admin/modules/SettingsEditor'
 import { ConsolePrefsEditor } from '@/admin/modules/ConsolePrefsEditor'
 import { AuditManager } from '@/admin/modules/AuditManager'
+import { AccountSettings } from '@/admin/modules/AccountSettings'
 
 function ModuleFrame({ module, children }: { module: AdminModuleKey; children: React.ReactNode }) {
   const { user } = useAuth()
@@ -126,6 +127,10 @@ export function FormulairesPage() {
 
 export function UtilisateursPage() {
   return <ModuleFrame module="users"><UsersRoles /></ModuleFrame>
+}
+
+export function MonComptePage() {
+  return <ModuleFrame module="account"><AccountSettings /></ModuleFrame>
 }
 
 export function JournalPage() {

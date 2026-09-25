@@ -68,6 +68,117 @@ export async function sendMagicLink(
   }
 }
 
+/** Change le mot de passe du compte connecté (session requise). */
+export async function updateOwnPassword(
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb.auth.updateUser({ password })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
+/**
+ * Demande un changement d'email pour le compte connecté.
+ * Supabase envoie un courriel de confirmation à la nouvelle adresse.
+ */
+export async function updateOwnEmail(
+  email: string
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb.auth.updateUser({
+      email: email.trim().toLowerCase(),
+    })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
+/** Envoie un lien de réinitialisation de mot de passe (écran de connexion). */
+export async function requestPasswordReset(
+  email: string
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/login?reset=1`,
+    })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
+export type ManageAdminAuthResult = {
+  ok: boolean
+  error?: string
+  email?: string
+  role?: string
+  inviteSent?: boolean
+  inviteError?: string
+  replaced?: boolean
+}
+
+/**
+ * Owner uniquement — crée / remplace des identifiants via Edge Function
+ * (service_role côté serveur, jamais dans le navigateur).
+ */
+export async function invokeManageAdminAuth(payload: {
+  action: 'set-credentials' | 'invite-tester'
+  email: string
+  name?: string
+  password: string
+  role?: string
+  previousEmail?: string
+  sendInviteEmail?: boolean
+}): Promise<ManageAdminAuthResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'not-configured' }
+  try {
+    const { data, error } = await sb.functions.invoke('manage-admin-auth', {
+      body: payload,
+    })
+    if (error) {
+      const msg = error.message || 'invoke-failed'
+      if (/failed to send|functions?http|404|not found|non-2xx/i.test(msg)) {
+        return {
+          ok: false,
+          error:
+            'Fonction manage-admin-auth indisponible. Déployez-la dans Supabase (Functions) ou utilisez le lien magique.',
+        }
+      }
+      return { ok: false, error: msg }
+    }
+    if (data && (data as { error?: string }).error) {
+      return { ok: false, error: (data as { error: string }).error }
+    }
+    if (data && (data as { ok?: boolean }).ok === false) {
+      return { ok: false, error: (data as { error?: string }).error || 'Échec' }
+    }
+    return {
+      ok: true,
+      email: (data as { email?: string })?.email,
+      role: (data as { role?: string })?.role,
+      inviteSent: Boolean((data as { inviteSent?: boolean })?.inviteSent),
+      inviteError: (data as { inviteError?: string })?.inviteError,
+      replaced: Boolean((data as { replaced?: boolean })?.replaced),
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'network' }
+  }
+}
+
 export async function invokeReplyEmail(payload: {
   to: string
   subject: string
