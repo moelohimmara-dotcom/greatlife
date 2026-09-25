@@ -130,9 +130,44 @@ export type ManageAdminAuthResult = {
   replaced?: boolean
 }
 
+/** Lit le corps JSON d'une FunctionsHttpError (Response dans error.context). */
+async function readFunctionsErrorBody(error: unknown): Promise<{
+  message?: string
+  status?: number
+  bodyError?: string
+}> {
+  const err = error as {
+    message?: string
+    context?: Response | { status?: number; json?: () => Promise<unknown> }
+  } | null
+  const message = err?.message || 'invoke-failed'
+  const ctx = err?.context
+  const status =
+    ctx && typeof ctx === 'object' && 'status' in ctx && typeof ctx.status === 'number'
+      ? ctx.status
+      : undefined
+  let bodyError: string | undefined
+  if (ctx && typeof (ctx as Response).json === 'function') {
+    try {
+      // Cloner : le corps ne peut être lu qu'une fois.
+      const clone = typeof (ctx as Response).clone === 'function'
+        ? (ctx as Response).clone()
+        : (ctx as Response)
+      const parsed = (await clone.json()) as { error?: string; message?: string; ok?: boolean }
+      bodyError = parsed?.error || parsed?.message
+    } catch {
+      /* corps non JSON — on garde le message générique */
+    }
+  }
+  return { message, status, bodyError }
+}
+
 /**
  * Owner uniquement — crée / remplace des identifiants via Edge Function
  * (service_role côté serveur, jamais dans le navigateur).
+ *
+ * Important : un FunctionsHttpError « non-2xx » n'est PAS une fonction absente.
+ * Le corps JSON (ex. « Acces non autorise ») doit remonter tel quel à l'UI.
  */
 export async function invokeManageAdminAuth(payload: {
   action: 'set-credentials' | 'invite-tester'
@@ -146,19 +181,40 @@ export async function invokeManageAdminAuth(payload: {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'not-configured' }
   try {
+    const { data: sessionData } = await sb.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+    if (!accessToken) {
+      return { ok: false, error: 'Authentification requise' }
+    }
+
     const { data, error } = await sb.functions.invoke('manage-admin-auth', {
       body: payload,
+      headers: { Authorization: `Bearer ${accessToken}` },
     })
     if (error) {
-      const msg = error.message || 'invoke-failed'
-      if (/failed to send|functions?http|404|not found|non-2xx/i.test(msg)) {
+      const parsed = await readFunctionsErrorBody(error)
+      const message = parsed.message ?? 'invoke-failed'
+      const { status, bodyError } = parsed
+      if (bodyError) {
+        return { ok: false, error: bodyError }
+      }
+      // Indisponibilité réelle uniquement : réseau / 404. Ne jamais traiter
+      // le message générique « non-2xx » comme « fonction absente ».
+      if (/failed to send/i.test(message) || status === 404) {
         return {
           ok: false,
           error:
             'Fonction manage-admin-auth indisponible. Déployez-la dans Supabase (Functions) ou utilisez le lien magique.',
         }
       }
-      return { ok: false, error: msg }
+      if (status === 401) return { ok: false, error: 'Authentification requise' }
+      if (status === 403) return { ok: false, error: 'Acces non autorise' }
+      return {
+        ok: false,
+        error: message.includes('non-2xx')
+          ? 'Échec de la mise à jour des identifiants.'
+          : message,
+      }
     }
     if (data && (data as { error?: string }).error) {
       return { ok: false, error: (data as { error: string }).error }

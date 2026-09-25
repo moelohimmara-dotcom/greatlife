@@ -5,7 +5,7 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/password'
 import { updateOwnPassword, updateOwnEmail, isSupabaseConfigured, invokeManageAdminAuth } from '@/lib/supabase'
-import { upsertAdminUser, logAudit } from '@/lib/repository'
+import { logAudit } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
 import { ROLE_LABELS } from '@/data/rbac'
 
@@ -86,18 +86,14 @@ export function AccountSettings() {
       setStatus({ kind: 'err', msg: res.error || 'Échec du changement d’email.' })
       return
     }
-    if (user) {
-      await upsertAdminUser({
-        email: next,
-        name: user.name,
-        role: user.role,
-      })
-    }
+    // Ne pas INSERT une 2ᵉ ligne admin_users : Auth n'a pas encore basculé
+    // l'email (confirmation requise). La ligne sera mise à jour après confirmation
+    // ou via « Remplacer email + mot de passe » (Edge Function, owner).
     logAudit({
       actor: user?.email ?? '',
       action: 'user_email_update_request',
       target: next,
-      detail: `Ancien email : ${user?.email ?? ''}`,
+      detail: `Ancien email : ${user?.email ?? ''} — confirmation en attente`,
     })
     refreshRole().catch(() => {})
     setStatus({
@@ -146,7 +142,14 @@ export function AccountSettings() {
       previousEmail: user.email,
     })
     if (!res.ok) {
-      setStatus({ kind: 'err', msg: res.error || 'Échec du remplacement.' })
+      const raw = res.error || 'Échec du remplacement.'
+      const msg =
+        raw === 'Acces non autorise' || raw === 'Accès non autorisé'
+          ? 'Accès refusé : votre compte n’a pas le rôle Propriétaire en base (admin_users). Reconnectez-vous avec le compte owner, ou demandez une promotion de rôle.'
+          : raw === 'Authentification requise' || raw === 'Session admin invalide'
+            ? 'Session expirée — reconnectez-vous puis réessayez.'
+            : raw
+      setStatus({ kind: 'err', msg })
       return
     }
     logAudit({
@@ -281,10 +284,15 @@ export function AccountSettings() {
             Effacer
           </GhostButton>
         </div>
-        {user?.role === 'owner' && (
+        {user?.role === 'owner' ? (
           <p className="admin-page-sub" style={{ marginTop: 10 }}>
             « Remplacer email + mot de passe » applique immédiatement les deux champs (identifiants temporaires → réels).
-            Nécessite la fonction Edge <code>manage-admin-auth</code> déployée.
+            Réservé au compte dont le rôle en base est <strong>Propriétaire</strong>.
+          </p>
+        ) : (
+          <p className="admin-page-sub" style={{ marginTop: 10 }}>
+            Votre rôle actuel « {ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? '—'} » permet de changer email ou mot de passe séparément.
+            Le remplacement immédiat des deux champs est réservé au propriétaire.
           </p>
         )}
       </section>

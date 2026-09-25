@@ -35,6 +35,10 @@ function ModuleFrame({ module, children }: { module: AdminModuleKey; children: R
     les clics : filtres, export et navigation restent utilisables.
   */
   const consultatif = module === 'dashboard' || module === 'audit'
+  // Mon compte / préférences console : self-service — ne jamais geler les clics
+  // via un override RBAC (sinon « paramètres proprio » paraissent cassés).
+  const selfService = module === 'account' || module === 'consolePrefs'
+  const gelees = readOnly && !consultatif && !selfService
   const editeurPleinEcran = module === 'content'
   const remplissageEditeur = editeurPleinEcran
     ? {
@@ -47,11 +51,11 @@ function ModuleFrame({ module, children }: { module: AdminModuleKey; children: R
     : undefined
   return (
     <div className="admin-module-frame" style={remplissageEditeur}>
-      {readOnly && !consultatif && <AccessBanner />}
+      {gelees && <AccessBanner />}
       <div
         style={{
           position: 'relative',
-          pointerEvents: readOnly && !consultatif ? 'none' : 'auto',
+          pointerEvents: gelees ? 'none' : 'auto',
           ...remplissageEditeur,
         }}
       >

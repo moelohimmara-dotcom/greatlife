@@ -20,7 +20,10 @@ export function emailErrLabel(err?: string): string {
   if (err === 'network') return 'erreur réseau'
   if (err === 'no-credentials') return 'secrets SMTP manquants (SMTP_USER/SMTP_PASS)'
   if (err === 'Authentification requise' || err === 'Session admin invalide') return 'authentification admin requise'
-  if (err === 'Acces non autorise' || err === 'Accès non autorisé') return 'accès non autorisé'
+  if (err === 'Acces non autorise' || err === 'Accès non autorisé') {
+    return 'accès non autorisé (rôle Propriétaire requis en base admin_users)'
+  }
+  if (/indisponible|déployez/i.test(err)) return err
   return err
 }
 
@@ -91,7 +94,9 @@ export function UsersRoles() {
     return roles ? roles.includes(role) : false
   }
   const isLocked = (m: string, role: string): boolean =>
-    m === 'users' && role === 'owner'
+    (m === 'users' && role === 'owner') ||
+    // Self-service : ne pas retirer l'écriture sur Mon compte / Préférences.
+    (m === 'account' || m === 'consolePrefs')
   const togglePerm = (m: string, a: CrudAction, role: string) => {
     if (!isOwner) return
     if (isLocked(m, role)) return
