@@ -78,7 +78,7 @@ export const ALL_MODULES = Object.keys(MODULE_ACCESS)
 export const MODULE_GROUPS: [string, string[]][] = [
   ['Opérations', ['dashboard', 'orders', 'reservations', 'messages']],
   ['Contenu', ['content', 'menu', 'blog', 'media', 'team']],
-  ['Configuration', ['theme', 'visibility', 'consolePrefs', 'settings', 'forms', 'users', 'account', 'audit']],
+  ['Configuration', ['theme', 'visibility', 'account', 'consolePrefs', 'settings', 'forms', 'users', 'audit']],
 ]
 
 export type RbacOverrides = Record<string, Partial<Record<CrudAction, string[]>>>

@@ -89,11 +89,11 @@ export const NAV_GROUPS: [string, [AdminModuleKey, string, string][]][] = [
     ['visibility', 'Visibilité', 'eye'],
   ]],
   ['Système', [
+    ['account', 'Mon compte', 'settings'],
     ['consolePrefs', 'Préférences de la console', 'layout'],
     ['settings', 'Réglages du restaurant', 'settings'],
     ['forms', 'Formulaires & notifications', 'settings'],
     ['users', 'Utilisateurs & rôles', 'users'],
-    ['account', 'Mon compte', 'settings'],
     ['audit', "Journal d'activité", 'eye'],
   ]],
 ]
@@ -115,6 +115,7 @@ export const MOBILE_TAB_LABELS: Partial<Record<AdminModuleKey, string>> = {
 }
 
 export const MOBILE_MORE_KEYS: AdminModuleKey[] = [
+  'account',
   'content',
   'media',
   'blog',
@@ -125,7 +126,6 @@ export const MOBILE_MORE_KEYS: AdminModuleKey[] = [
   'visibility',
   'forms',
   'users',
-  'account',
   'audit',
 ]
 
