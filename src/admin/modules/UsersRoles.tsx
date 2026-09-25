@@ -23,6 +23,9 @@ export function emailErrLabel(err?: string): string {
   if (err === 'Acces non autorise' || err === 'Accès non autorisé') {
     return 'accès non autorisé (rôle Propriétaire requis en base admin_users)'
   }
+  if (/admin_users_email_key|duplicate key|unique constraint|déjà utilisé par un autre compte admin/i.test(err)) {
+    return 'Cet email est déjà utilisé par un autre compte admin'
+  }
   if (/indisponible|déployez/i.test(err)) return err
   return err
 }

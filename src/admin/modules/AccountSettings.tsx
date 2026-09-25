@@ -144,7 +144,9 @@ export function AccountSettings() {
     if (!res.ok) {
       const raw = res.error || 'Échec du remplacement.'
       const msg =
-        raw === 'Acces non autorise' || raw === 'Accès non autorisé'
+        /admin_users_email_key|duplicate key|unique constraint/i.test(raw)
+          ? 'Cet email est déjà utilisé par un autre compte admin'
+          : raw === 'Acces non autorise' || raw === 'Accès non autorisé'
           ? 'Accès refusé : votre compte n’a pas le rôle Propriétaire en base (admin_users). Reconnectez-vous avec le compte owner, ou demandez une promotion de rôle.'
           : raw === 'Authentification requise' || raw === 'Session admin invalide'
             ? 'Session expirée — reconnectez-vous puis réessayez.'

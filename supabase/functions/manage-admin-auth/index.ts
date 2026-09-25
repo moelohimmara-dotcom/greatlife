@@ -135,6 +135,25 @@ async function requireOwner(req: Request) {
   return { admin, callerEmail: adminEmail.toLowerCase() };
 }
 
+const EMAIL_TAKEN_FR = "Cet email est déjà utilisé par un autre compte admin";
+
+class AdminEmailConflictError extends Error {
+  constructor(message = EMAIL_TAKEN_FR) {
+    super(message);
+    this.name = "AdminEmailConflictError";
+  }
+}
+
+function isUniqueEmailViolation(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const msg = error.message || "";
+  return (
+    error.code === "23505" ||
+    /admin_users_email_key/i.test(msg) ||
+    /duplicate key value violates unique constraint/i.test(msg)
+  );
+}
+
 async function findAuthUserByEmail(
   admin: ReturnType<typeof createClient>,
   email: string,
@@ -152,6 +171,30 @@ async function findAuthUserByEmail(
   return null;
 }
 
+/** Recherche exacte case-insensitive (évite les faux positifs ilike `_` / `%`). */
+async function findAdminRowByEmail(
+  admin: ReturnType<typeof createClient>,
+  email: string,
+): Promise<{ id: string; email: string; role: string } | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  const { data: rows, error } = await admin
+    .from("admin_users")
+    .select("id, email, role")
+    .ilike("email", normalized);
+  if (error) throw error;
+  const exact = (rows || []).find(
+    (r: { email?: string }) => (r.email || "").toLowerCase() === normalized,
+  );
+  return exact
+    ? { id: exact.id, email: exact.email, role: exact.role }
+    : null;
+}
+
+/**
+ * Met à jour la ligne admin existante (previous / caller / email cible).
+ * N'INSERT que pour un vrai nouveau compte — jamais une 2ᵉ ligne pour le même owner.
+ */
 async function upsertAdminRow(
   admin: ReturnType<typeof createClient>,
   opts: {
@@ -159,11 +202,13 @@ async function upsertAdminRow(
     name: string;
     role: string;
     previousEmail?: string;
+    callerEmail?: string;
     markInvited?: boolean;
   },
 ) {
   const email = opts.email.trim().toLowerCase();
   const previous = (opts.previousEmail || "").trim().toLowerCase();
+  const caller = (opts.callerEmail || "").trim().toLowerCase();
   const patch: Record<string, unknown> = {
     email,
     name: opts.name.trim() || email.split("@")[0],
@@ -172,31 +217,45 @@ async function upsertAdminRow(
   };
   if (opts.markInvited) patch.invited_at = new Date().toISOString();
 
-  if (previous && previous !== email) {
-    const { data: existing } = await admin
-      .from("admin_users")
-      .select("id")
-      .ilike("email", previous)
-      .maybeSingle();
-    if (existing?.id) {
-      const { error } = await admin.from("admin_users").update(patch).eq("id", existing.id);
-      if (error) throw error;
-      return;
-    }
+  let targetId: string | null = null;
+
+  // 1) Ligne à remplacer (email temporaire → réel)
+  if (previous) {
+    const prevRow = await findAdminRowByEmail(admin, previous);
+    if (prevRow) targetId = prevRow.id;
+  }
+  // 2) Repli self-service uniquement (Mon compte) — jamais quand on crée un autre admin
+  const selfService =
+    Boolean(previous) || (Boolean(caller) && caller === email);
+  if (!targetId && selfService && caller) {
+    const callerRow = await findAdminRowByEmail(admin, caller);
+    if (callerRow) targetId = callerRow.id;
   }
 
-  const { data: byEmail } = await admin
-    .from("admin_users")
-    .select("id")
-    .ilike("email", email)
-    .maybeSingle();
-  if (byEmail?.id) {
-    const { error } = await admin.from("admin_users").update(patch).eq("id", byEmail.id);
-    if (error) throw error;
-    return;
+  // 3) Ligne déjà sur l'email cible
+  const emailRow = await findAdminRowByEmail(admin, email);
+  if (emailRow) {
+    if (targetId && emailRow.id !== targetId) {
+      throw new AdminEmailConflictError();
+    }
+    targetId = emailRow.id;
   }
+
+  if (targetId) {
+    const { error } = await admin.from("admin_users").update(patch).eq("id", targetId);
+    if (error) {
+      if (isUniqueEmailViolation(error)) throw new AdminEmailConflictError();
+      throw error;
+    }
+    return { updated: true as const };
+  }
+
   const { error } = await admin.from("admin_users").insert(patch);
-  if (error) throw error;
+  if (error) {
+    if (isUniqueEmailViolation(error)) throw new AdminEmailConflictError();
+    throw error;
+  }
+  return { updated: false as const };
 }
 
 serve(async (req: Request) => {
@@ -244,10 +303,26 @@ serve(async (req: Request) => {
     }
 
     // Remplacement d'identifiants : chercher l'ancien compte Auth si fourni.
+    // Même email (password-only) : on met à jour le compte existant, sans INSERT admin.
     const lookupEmail = previousEmail || email;
     let authUser = await findAuthUserByEmail(admin, lookupEmail);
     if (!authUser && previousEmail && previousEmail !== email) {
       authUser = await findAuthUserByEmail(admin, email);
+    }
+
+    const emailChanging = Boolean(previousEmail && previousEmail !== email);
+
+    // Conflit admin_users avant de toucher Auth (changement d'email self-service)
+    if (emailChanging) {
+      const occupied = await findAdminRowByEmail(admin, email);
+      const previousRow = await findAdminRowByEmail(admin, previousEmail);
+      if (occupied && previousRow && occupied.id !== previousRow.id) {
+        return corsResponse(
+          req,
+          JSON.stringify({ ok: false, error: EMAIL_TAKEN_FR }),
+          409,
+        );
+      }
     }
 
     if (authUser) {
@@ -255,17 +330,18 @@ serve(async (req: Request) => {
         password,
         email_confirm: true,
       };
-      if (previousEmail && previousEmail !== email) update.email = email;
-      else if (!previousEmail) {
-        // Même email : on peut aussi forcer la confirmation.
-        update.email = email;
-      }
+      if (emailChanging) update.email = email;
       const { error } = await admin.auth.admin.updateUserById(authUser.id, update);
       if (error) {
+        const msg = error.message || "Mise à jour Auth impossible";
+        const conflict = /already.*(registered|been|exists)|duplicate|unique/i.test(msg);
         return corsResponse(
           req,
-          JSON.stringify({ ok: false, error: error.message || "Mise à jour Auth impossible" }),
-          400,
+          JSON.stringify({
+            ok: false,
+            error: conflict ? EMAIL_TAKEN_FR : msg,
+          }),
+          conflict ? 409 : 400,
         );
       }
     } else {
@@ -276,10 +352,15 @@ serve(async (req: Request) => {
         user_metadata: { name: name || email.split("@")[0] },
       });
       if (error) {
+        const msg = error.message || "Création Auth impossible";
+        const conflict = /already.*(registered|been|exists)|duplicate|unique/i.test(msg);
         return corsResponse(
           req,
-          JSON.stringify({ ok: false, error: error.message || "Création Auth impossible" }),
-          400,
+          JSON.stringify({
+            ok: false,
+            error: conflict ? EMAIL_TAKEN_FR : msg,
+          }),
+          conflict ? 409 : 400,
         );
       }
       if (!data.user) {
@@ -292,6 +373,7 @@ serve(async (req: Request) => {
       name: name || email.split("@")[0],
       role,
       previousEmail: previousEmail || undefined,
+      callerEmail,
       markInvited: action === "invite-tester" || body.sendInviteEmail === true,
     });
 
@@ -334,6 +416,24 @@ serve(async (req: Request) => {
     );
   } catch (err) {
     console.error("manage-admin-auth error:", err);
+    if (
+      err instanceof AdminEmailConflictError ||
+      (err && typeof err === "object" && "message" in err &&
+        (err as { message: string }).message === EMAIL_TAKEN_FR)
+    ) {
+      return corsResponse(
+        req,
+        JSON.stringify({ ok: false, error: EMAIL_TAKEN_FR }),
+        409,
+      );
+    }
+    if (isUniqueEmailViolation(err as { code?: string; message?: string })) {
+      return corsResponse(
+        req,
+        JSON.stringify({ ok: false, error: EMAIL_TAKEN_FR }),
+        409,
+      );
+    }
     return corsResponse(
       req,
       JSON.stringify({ ok: false, error: "Erreur serveur" }),

@@ -1024,21 +1024,42 @@ export async function upsertAdminUser(
 ): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'not-configured' }
+  const emailTaken = 'Cet email est déjà utilisé par un autre compte admin'
+  const isDup = (msg: string) =>
+    /admin_users_email_key|duplicate key|unique constraint/i.test(msg)
   try {
+    const email = user.email.trim().toLowerCase()
     if (user.id) {
       const { error } = await sb
         .from(ADMIN_USERS_TABLE)
-        .update({ email: user.email, name: user.name, role: user.role })
+        .update({ email, name: user.name, role: user.role })
         .eq('id', user.id)
+      if (error && isDup(error.message)) return { ok: false, error: emailTaken }
+      return { ok: !error, error: error?.message }
+    }
+    // Éviter un INSERT qui duplique : mettre à jour la ligne existante si l'email matche.
+    const { data: rows } = await sb
+      .from(ADMIN_USERS_TABLE)
+      .select('id, email')
+      .ilike('email', email)
+    const existing = (rows || []).find(
+      (r) => String(r.email || '').toLowerCase() === email,
+    )
+    if (existing?.id) {
+      const { error } = await sb
+        .from(ADMIN_USERS_TABLE)
+        .update({ email, name: user.name, role: user.role })
+        .eq('id', existing.id)
+      if (error && isDup(error.message)) return { ok: false, error: emailTaken }
       return { ok: !error, error: error?.message }
     }
     const { error } = await sb.from(ADMIN_USERS_TABLE).insert({
-      email: user.email,
+      email,
       name: user.name,
       role: user.role,
     })
-    if (error && /duplicate key|unique constraint/i.test(error.message)) {
-      return { ok: false, error: 'Un utilisateur avec cet email existe déjà.' }
+    if (error && isDup(error.message)) {
+      return { ok: false, error: emailTaken }
     }
     return { ok: !error, error: error?.message }
   } catch (err) {
