@@ -43,25 +43,39 @@ const SHOW_DIFF = process.env.SHOW_DIFF === '1'
 const SELFTEST = process.argv.includes('--selftest')
 
 /**
- * Dernier commit AVANT le branchement des composants sur le CMS.
- * C'est la seule référence qui donne un sens au contrôle de non-régression :
- * elle porte le rendu historique du site public.
+ * Référence de non-régression du rendu public.
+ *
+ * ORIGINE — dernier commit AVANT le branchement des composants sur le CMS :
+ * c'est elle qui donnait au contrôle son sens premier, elle portait le rendu
+ * historique du site public.
  *
  * ⚠️ CE SHA A CHANGE SANS QUE LE CONTENU CHANGE.
  * L'historique a été réécrit (`git filter-repo`) pour retirer un mot de passe
  * committé par erreur : TOUS les SHA ont été recalculés. L'ancienne valeur
  * `9e5efb7` n'existe plus et faisait échouer ce contrôle.
  *
- * La référence a été retrouvée par son ARBRE, pas par son message :
- * l'ancien `9e5efb7` et l'actuel `0528c544` portent tous deux l'arbre
- * `11b9928767a22d9008957f3d60585512731a1913`. Le rendu comparé est donc
- * rigoureusement le même — la preuve de non-régression reste valable.
+ * La référence de l'époque a été retrouvée par son ARBRE, pas par son
+ * message : l'ancien `9e5efb7` et l'ancien `0528c544` portaient tous deux
+ * l'arbre `11b9928767a22d9008957f3d60585512731a1913`.
+ *
+ * RÉÉPINGLAGE DU 2026-09-26 — arbitrage du propriétaire (AGENTS.md §15,
+ * constat N-21 de docs/19_CHANTIERS.md).
+ * Les lots J2→J7, les dispositions de bloc et la bascule i18n ont changé le
+ * rendu VOLONTAIREMENT : comparer à l'ère pré-CMS rougissait en permanence
+ * sur 9 sections sur 10 et ne protégeait plus rien. La référence est
+ * désormais `3dbd3f2`, dernière révision dont le rendu est IDENTIQUE au rendu
+ * accepté aujourd'hui (prouvé caractère par caractère sur les 10 sections,
+ * `npm run verify:lot1` au vert) et dont les sources de section DIFFÈRENT
+ * encore de l'arbre courant — sans quoi la garde anti-tautologie refuserait
+ * la comparaison (« la référence doit être ANTÉRIEURE au branchement »).
+ * Le contrôle protège désormais les changements de rendu FUTURS : toute
+ * section dont le rendu dérive de cette référence rougit.
  *
  * Si l'historique est réécrit de nouveau, il faudra refaire cette recherche :
  *   git log --all --format='%H|%T|%s'
- * et retrouver la ligne portant cet arbre.
+ * et retrouver la ligne portant l'arbre de la référence.
  */
-const PRE_CMS_WIRING_REF = '0528c5443c6107ffcfb03bd6eab697138ca6b9bc'
+const PRE_CMS_WIRING_REF = '3dbd3f2494d9c2c2faf610da6ba78c9667c311fd'
 
 /*
   LA RÉFÉRENCE DE NON-RÉGRESSION NE DOIT PAS ÊTRE SURCHARGEABLE PAR MÉGARDE
