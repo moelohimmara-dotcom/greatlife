@@ -5,7 +5,7 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { ROLES, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { upsertAdminUser, deleteAdminUser, fetchAuditLog, logAudit, updateAdminUserStatus, setUserInvitedAt, type AuditEntry } from '@/lib/repository'
-import { invokeReplyEmail, sendMagicLink, invokeManageAdminAuth, isAuthRefusal } from '@/lib/supabase'
+import { invokeReplyEmail, sendMagicLink, invokeManageAdminAuth, isAuthRefusal, invokeDeleteAdminUser } from '@/lib/supabase'
 import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/password'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -121,8 +121,10 @@ export function UsersRoles() {
     const res = await saveRbac(pendingOverrides)
     setRbacBusy(false)
     if (res.ok) {
-      let mailFail = 0
-      let mailTotal = 0
+      // Notifications RÉUNIES puis envoyées en arrière-plan : un SMTP en panne
+      // ne doit pas faire croire que les droits sont perdus — ils sont déjà
+      // enregistrés ci-dessus (saveRbac a réussi).
+      const jobs: Array<{ to: string; subject: string; replyMessage: string }> = []
       for (const m of ALL_MODULES) for (const a of CRUD_ACTIONS) {
         const p = pendingOverrides[m]?.[a]
         const s = savedOverrides?.[m]?.[a] ?? MODULE_ACCESS[m].actions[a]
@@ -138,10 +140,9 @@ export function UsersRoles() {
             const permLabel = a === 'create' ? 'Création' : a === 'update' ? 'Modification' : a === 'delete' ? 'Suppression' : 'Publication'
             const permText = `${permLabel} sur le module « ${MODULE_ACCESS[m].module} » ${granted ? 'vous a été accordée' : 'vous a été retirée'}.`
             for (const u of adminUsers.filter(u => u.role === role)) {
-              mailTotal++
               const rs = roleSummary(role)
               const dateStr = new Date().toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })
-              const r = await invokeReplyEmail({
+              jobs.push({
                 to: u.email,
                 subject: `Greatlife - Mise à jour de vos permissions (${ROLE_LABELS[role] ?? role})`,
                 replyMessage: `Bonjour ${u.name},
@@ -159,21 +160,21 @@ ${ADMIN_URL}
 Cette modification a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
-                replyFromName: 'Greatlife',
               })
-              if (!r.ok) mailFail++
             }
           }
         }
       }
       setPendingOverrides(null)
       const okMsg = 'Permissions enregistrées.'
-      if (mailTotal === 0) {
+      if (jobs.length === 0) {
         setRbacStatus({ kind: 'ok', msg: okMsg })
-      } else if (mailFail === 0) {
-        setRbacStatus({ kind: 'ok', msg: `${okMsg} ${mailTotal} email(s) de notification envoyé(s).` })
       } else {
-        setRbacStatus({ kind: 'err', msg: `${okMsg} — ${mailFail}/${mailTotal} email(s) non envoyé(s) (vérifiez les secrets SMTP et l'Edge Function).` })
+        setRbacStatus({ kind: 'ok', msg: `${okMsg} ${jobs.length} notification(s) en cours d'envoi…` })
+        void Promise.allSettled(jobs.map(j => invokeReplyEmail({ ...j, replyFromName: 'Greatlife' }))).then(out => {
+          const fails = out.reduce((n, o) => n + (o.status === 'fulfilled' && o.value.ok ? 0 : 1), 0)
+          if (fails > 0) setRbacStatus({ kind: 'err', msg: `${okMsg} — ${fails}/${jobs.length} notification(s) non envoyée(s) (vérifiez les secrets SMTP et l'Edge Function).` })
+        })
       }
       refreshRole().catch(() => {})
     } else {
@@ -189,11 +190,10 @@ Cette modification a été effectuée par ${currentUser?.name ?? currentUser?.em
     setRbacBusy(false)
     if (res.ok) {
       logAudit({ actor: currentUser?.email ?? '', action: 'rbac_reset', target: 'Matrice globale', detail: 'Réinitialisation' })
-      let mailFail = 0
-      for (const u of adminUsers) {
+      const jobs = adminUsers.map(u => {
         const rs = roleSummary(u.role)
         const dateStr = new Date().toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })
-        const r = await invokeReplyEmail({
+        return {
           to: u.email,
           subject: 'Greatlife - Réinitialisation des permissions',
           replyMessage: `Bonjour ${u.name},
@@ -209,15 +209,18 @@ ${ADMIN_URL}
 Cette réinitialisation a été effectuée par ${currentUser?.name ?? currentUser?.email ?? 'un administrateur'} le ${dateStr}. Si vous n'êtes pas à l'origine de cette demande, contactez le propriétaire.
 
 — L'équipe Greatlife`,
-          replyFromName: 'Greatlife',
-        })
-        if (!r.ok) mailFail++
-      }
+        }
+      })
       const okMsg = 'Permissions réinitialisées (valeurs par défaut).'
-      if (mailFail === 0) {
-        setRbacStatus({ kind: 'ok', msg: `${okMsg} ${adminUsers.length} email(s) envoyé(s).` })
+      if (jobs.length === 0) {
+        setRbacStatus({ kind: 'ok', msg: okMsg })
       } else {
-        setRbacStatus({ kind: 'err', msg: `${okMsg} — ${mailFail}/${adminUsers.length} email(s) non envoyé(s) (vérifiez les secrets SMTP et l'Edge Function).` })
+        // Notifications en arrière-plan : la réinitialisation est déjà enregistrée.
+        setRbacStatus({ kind: 'ok', msg: `${okMsg} ${jobs.length} notification(s) en cours d'envoi…` })
+        void Promise.allSettled(jobs.map(j => invokeReplyEmail({ ...j, replyFromName: 'Greatlife' }))).then(out => {
+          const fails = out.reduce((n, o) => n + (o.status === 'fulfilled' && o.value.ok ? 0 : 1), 0)
+          if (fails > 0) setRbacStatus({ kind: 'err', msg: `${okMsg} — ${fails}/${jobs.length} notification(s) non envoyée(s) (vérifiez les secrets SMTP et l'Edge Function).` })
+        })
       }
       refreshRole().catch(() => {})
     } else {
@@ -428,6 +431,32 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
     if (target?.role === 'owner' && adminUsers.filter(u => u.role === 'owner').length <= 1) {
       setStatus({ kind: 'err', msg: 'Impossible : il faut au moins un propriétaire.' }); return
     }
+    // Suppression COMPLÈTE via Edge Function (compte Auth + ligne, owner).
+    // Plus de compte Auth orphelin qui survit à la suppression.
+    if (isSupabase) {
+      setBusyId(id)
+      setStatus({ kind: 'busy', msg: `Suppression de ${name}…` })
+      const del = await invokeDeleteAdminUser(id)
+      setBusyId(null)
+      if (del.ok) {
+        logAudit({
+          actor: currentUser?.email ?? '',
+          action: 'user_delete',
+          target: name,
+          detail: 'Compte Auth + ligne admin supprimés',
+        })
+        await refreshAdminUsers()
+        setStatus({ kind: 'ok', msg: `${name} supprimé (compte et accès).` })
+        return
+      }
+      if (isAuthRefusal(del.error)) {
+        setStatus({ kind: 'err', msg: `Accès refusé (${emailErrLabel(del.error)}). Rien n’a été supprimé.` })
+        return
+      }
+      // Fonction indisponible seulement : repli sur la ligne seule. Le compte
+      // Auth orphelin est refusé à la connexion, faute de rôle en base.
+      setStatus({ kind: 'busy', msg: `Service de comptes indisponible (${emailErrLabel(del.error)}). Suppression de l’accès…` })
+    }
     setBusyId(id)
     const res = await deleteAdminUser(id)
     setBusyId(null)
@@ -436,10 +465,10 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         actor: currentUser?.email ?? '',
         action: 'user_delete',
         target: name,
-        detail: 'Suppression utilisateur',
+        detail: isSupabase ? 'Suppression accès seul (repli, compte Auth à purger)' : 'Suppression utilisateur',
       })
       await refreshAdminUsers()
-      setStatus({ kind: 'ok', msg: `${name} supprimé.` })
+      setStatus({ kind: 'ok', msg: isSupabase ? `${name} retiré (compte Auth à purger manuellement).` : `${name} supprimé.` })
     } else {
       setStatus({ kind: 'err', msg: res.error || 'Échec de la suppression.' })
     }
@@ -521,7 +550,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
               {Icon.mail(14, t.primary)} Inviter un testeur
             </GhostButton>
             <PrimaryButton onClick={startAdd} disabled={!isSupabase || !!editing || !canDo('users', 'create', currentUser?.role ?? '')}>
-              {Icon.plus(14, '#fff')} Inviter un utilisateur
+              {Icon.plus(14, '#fff')} Ajouter un utilisateur
             </PrimaryButton>
           </div>
         )}
@@ -670,7 +699,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
         )}
 
         {adminUsers.length === 0 ? (
-          <p className="admin-loading">Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Inviter un utilisateur ».' : ''}</p>
+          <p className="admin-loading">Aucun utilisateur en base. {isSupabase ? 'Cliquez sur « Ajouter un utilisateur ».' : ''}</p>
         ) : (
           <div className="admin-wf-table admin-wf-users-table" role="table" aria-label="Liste des utilisateurs">
             <div className="admin-wf-table-row is-head admin-wf-users-row" role="row">
@@ -709,7 +738,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                       <GhostButton color={t.primary} disabled={!isSupabase || busyId === u.id || !canDo('users', 'update', currentUser?.role ?? '')} onClick={() => startEdit(u)}>Modifier</GhostButton>
                       {isSupabase && canDo('users', 'update', currentUser?.role ?? '') && (
                         <GhostButton color={t.accent || t.primary} disabled={busyId === u.id || !!editing} onClick={() => startReplaceCredentials(u)}>
-                          Identifiants
+                          Email & mot de passe
                         </GhostButton>
                       )}
                       <GhostButton color="#dc2626" disabled={!isSupabase || isSelf || busyId === u.id || !canDo('users', 'delete', currentUser?.role ?? '')} onClick={() => remove(u.id, u.name)}>{busyId === u.id ? '…' : 'Supprimer'}</GhostButton>

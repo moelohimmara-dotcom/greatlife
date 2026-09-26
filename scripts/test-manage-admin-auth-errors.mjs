@@ -106,6 +106,74 @@ describe('repository upsertAdminUser', () => {
   })
 })
 
+describe('lot utilisateurs-2 : surcharges hors ligne publique', () => {
+  it('la migration 045 crée rbac_overrides sans lecture anonyme', () => {
+    const mig = readFileSync(
+      `${ROOT}/supabase/migrations/045_rbac_overrides_table.sql`,
+      'utf8',
+    )
+    assert.match(mig, /CREATE TABLE IF NOT EXISTS public\.rbac_overrides/)
+    assert.match(mig, /FOR SELECT TO authenticated/)
+    assert.equal(
+      /TO anon/.test(mig),
+      false,
+      'aucune lecture anonyme des surcharges',
+    )
+    assert.match(mig, /value - 'rbacOverrides'/)
+    // Rollback présent et documenté comme non-restaurateur (sinon = fuite).
+    const roll = readFileSync(
+      `${ROOT}/supabase/rollbacks/045_rollback.sql`,
+      'utf8',
+    )
+    assert.match(roll, /DROP TABLE IF EXISTS public\.rbac_overrides/)
+  })
+
+  it("saveSiteConfig n'écrit plus les surcharges dans site_config", () => {
+    const src = readFileSync(`${ROOT}/src/lib/repository.ts`, 'utf8')
+    const fnStart = src.indexOf('export async function saveSiteConfig')
+    const fnEnd = src.indexOf("const RBAC_TABLE = 'rbac_overrides'")
+    const body = src.slice(fnStart, fnEnd)
+    assert.equal(
+      body.includes('rbacOverrides'),
+      false,
+      'saveSiteConfig ne doit plus toucher aux surcharges',
+    )
+    assert.match(src, /export async function fetchRbacOverrides/)
+    assert.match(src, /export async function saveRbacOverrides/)
+    assert.match(src, /export async function clearSiteConfigRbac/)
+  })
+
+  it('SiteContext lit la table dédiée et nettoie site_config', () => {
+    const src = readFileSync(`${ROOT}/src/contexts/SiteContext.tsx`, 'utf8')
+    assert.match(src, /fetchRbacOverrides\(\)/)
+    assert.match(src, /saveRbacOverrides\(/)
+    assert.match(src, /clearSiteConfigRbac\(\)/)
+  })
+
+  it('la suppression Auth complète existe côté Edge', () => {
+    const src = readFileSync(
+      `${ROOT}/supabase/functions/manage-admin-auth/index.ts`,
+      'utf8',
+    )
+    assert.match(src, /delete-user/)
+    assert.match(src, /admin\.auth\.admin\.deleteUser\(/)
+    assert.match(src, /au moins un propriétaire/)
+    assert.match(src, /votre propre compte/)
+  })
+
+  it("l'écran supprime le compte Auth puis la ligne, sans repli sur 401/403", () => {
+    const src = readFileSync(
+      `${ROOT}/src/admin/modules/UsersRoles.tsx`,
+      'utf8',
+    )
+    assert.match(src, /invokeDeleteAdminUser\(id\)/)
+    assert.match(src, /isAuthRefusal\(del\.error\)/)
+    assert.match(src, /Email & mot de passe/)
+    assert.match(src, /Ajouter un utilisateur/)
+    assert.match(src, /allSettled/)
+  })
+})
+
 describe('revue finale : garde exacte et replis bornés', () => {
   it('la garde owner exige un match exact (pas de repli première ligne)', () => {
     const src = readFileSync(

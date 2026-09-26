@@ -128,6 +128,7 @@ export type ManageAdminAuthResult = {
   inviteSent?: boolean
   inviteError?: string
   replaced?: boolean
+  deleted?: boolean
 }
 
 /** Lit le corps JSON d'une FunctionsHttpError (Response dans error.context). */
@@ -170,13 +171,14 @@ async function readFunctionsErrorBody(error: unknown): Promise<{
  * Le corps JSON (ex. « Acces non autorise ») doit remonter tel quel à l'UI.
  */
 export async function invokeManageAdminAuth(payload: {
-  action: 'set-credentials' | 'invite-tester'
-  email: string
+  action: 'set-credentials' | 'invite-tester' | 'delete-user'
+  email?: string
   name?: string
-  password: string
+  password?: string
   role?: string
   previousEmail?: string
   sendInviteEmail?: boolean
+  userId?: string
 }): Promise<ManageAdminAuthResult> {
   const sb = getSupabase()
   if (!sb) return { ok: false, error: 'not-configured' }
@@ -229,10 +231,21 @@ export async function invokeManageAdminAuth(payload: {
       inviteSent: Boolean((data as { inviteSent?: boolean })?.inviteSent),
       inviteError: (data as { inviteError?: string })?.inviteError,
       replaced: Boolean((data as { replaced?: boolean })?.replaced),
+      deleted: Boolean((data as { deleted?: boolean })?.deleted),
     }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'network' }
   }
+}
+
+/**
+ * Suppression COMPLÈTE d'un compte (Auth + ligne) via Edge Function,
+ * owner uniquement. Le compte Auth ne survit plus en orphelin.
+ */
+export async function invokeDeleteAdminUser(
+  userId: string,
+): Promise<ManageAdminAuthResult> {
+  return invokeManageAdminAuth({ action: 'delete-user', userId })
 }
 
 /**

@@ -98,7 +98,7 @@ function validatePassword(password: string, email: string): string | null {
 }
 
 interface AuthPayload {
-  action?: "set-credentials" | "invite-tester";
+  action?: "set-credentials" | "invite-tester" | "delete-user";
   email?: string;
   name?: string;
   password?: string;
@@ -106,6 +106,8 @@ interface AuthPayload {
   /** Email actuel à remplacer (identifiants temporaires → réels). */
   previousEmail?: string;
   sendInviteEmail?: boolean;
+  /** Identifiant admin_users à supprimer (action delete-user). */
+  userId?: string;
 }
 
 async function requireOwner(req: Request) {
@@ -269,7 +271,7 @@ serve(async (req: Request) => {
   try {
     const body = (await req.json()) as AuthPayload;
     const action = body.action || "set-credentials";
-    if (action !== "set-credentials" && action !== "invite-tester") {
+    if (action !== "set-credentials" && action !== "invite-tester" && action !== "delete-user") {
       return corsResponse(req, JSON.stringify({ ok: false, error: "Action inconnue" }), 400);
     }
 
@@ -279,6 +281,48 @@ serve(async (req: Request) => {
       admin: ReturnType<typeof createClient>;
       callerEmail: string;
     };
+
+    /*
+      Suppression COMPLÈTE (plus de compte Auth orphelin) : le compte Auth
+      est supprimé par son email de ligne, puis la ligne admin_users.
+      Garde anti-verrouillage : jamais le dernier propriétaire, jamais soi-même
+      (la console bloque déjà ces cas, ceci est la ceinture côté serveur).
+    */
+    if (action === "delete-user") {
+      const userId = (body.userId || "").trim();
+      if (!userId) {
+        return corsResponse(req, JSON.stringify({ ok: false, error: "Identifiant manquant" }), 400);
+      }
+      const { data: targetRows } = await admin
+        .from("admin_users")
+        .select("id, email, role")
+        .eq("id", userId);
+      const target = (targetRows || [])[0] as { id: string; email: string; role: string } | undefined;
+      if (!target) {
+        return corsResponse(req, JSON.stringify({ ok: false, error: "Utilisateur introuvable" }), 404);
+      }
+      if (target.email.toLowerCase() === callerEmail) {
+        return corsResponse(req, JSON.stringify({ ok: false, error: "Vous ne pouvez pas supprimer votre propre compte" }), 400);
+      }
+      if (target.role === "owner") {
+        const { data: owners } = await admin.from("admin_users").select("id").eq("role", "owner");
+        if (!owners || owners.length <= 1) {
+          return corsResponse(req, JSON.stringify({ ok: false, error: "Impossible : il faut au moins un propriétaire" }), 400);
+        }
+      }
+      const authUser = await findAuthUserByEmail(admin, target.email);
+      if (authUser) {
+        const { error: delAuthErr } = await admin.auth.admin.deleteUser(authUser.id);
+        if (delAuthErr) {
+          return corsResponse(req, JSON.stringify({ ok: false, error: "Suppression Auth impossible" }), 400);
+        }
+      }
+      const { error: delRowErr } = await admin.from("admin_users").delete().eq("id", userId);
+      if (delRowErr) {
+        return corsResponse(req, JSON.stringify({ ok: false, error: "Suppression de la ligne impossible" }), 400);
+      }
+      return corsResponse(req, JSON.stringify({ ok: true, deleted: true, email: target.email, actor: callerEmail }));
+    }
 
     const email = (body.email || "").trim().toLowerCase();
     const name = (body.name || "").trim();
