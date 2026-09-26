@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useSite } from '@/contexts/SiteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { ESPACE, HAUTEUR } from '@/admin/ui'
-import { lireNavPref, type AdminNavPref } from '@/admin/admin-nav'
+import { lireNavPref, lireTiroirsNav, ecrireTiroirNav, type AdminNavPref } from '@/admin/admin-nav'
 import {
   appliquerConsolePrefsAuShell,
   CONSOLE_PREFS_EVENT,
@@ -24,6 +24,12 @@ import {
   moduleFromPathname,
   type AdminModuleKey,
 } from '@/admin/routes'
+
+/** Écrans dont la MAISON est le tiroir du bloc propriétaire, pas la navigation. */
+const LIBELLES_HORS_NAV: Partial<Record<AdminModuleKey, string>> = {
+  account: 'Mon compte',
+  consolePrefs: 'Préférences de la console',
+}
 
 function menuEstMobile() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
@@ -47,6 +53,15 @@ export function AdminShell() {
   const [plusOpen, setPlusOpen] = useState(false)
   /** Tiroir « compte » ouvert : le bloc propriétaire en est le parent. */
   const [tiroirCompte, setTiroirCompte] = useState<'sidebar' | 'topbar' | null>(null)
+  /** Segments pliables de la navigation — mémoire persistée (voir admin-nav.ts). */
+  const [tiroirsNav, setTiroirsNav] = useState<Record<string, boolean>>(lireTiroirsNav)
+  const basculerTiroir = (segment: string) => {
+    setTiroirsNav((t) => {
+      const suivant = { ...t, [segment]: !(t[segment] ?? true) }
+      ecrireTiroirNav(segment, suivant[segment])
+      return suivant
+    })
+  }
   const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
   const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
   const shellRef = useRef<HTMLDivElement>(null)
@@ -85,6 +100,19 @@ export function AdminShell() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [tiroirCompte])
+
+  /*
+    PARTIE « INTELLIGENTE » DU TIROIR.
+    On ne se perd jamais : la navigation rouvre automatiquement le segment qui
+    contient l'écran courant (patron Linear / Notion). L'utilisateur reste libre
+    de le replier ensuite — son choix est alors mémorisé jusqu'à la prochaine
+    navigation dans ce segment.
+  */
+  useEffect(() => {
+    const segment = NAV_GROUPS.find(([, items]) => items.some(([k]) => k === active))?.[0]
+    if (!segment) return
+    setTiroirsNav((t) => (t[segment] === false ? { ...t, [segment]: true } : t))
+  }, [active])
 
   useEffect(() => {
     const apply = () => {
@@ -310,10 +338,31 @@ export function AdminShell() {
           const visible = items.filter(([k]) => canAccessModule(k, user?.role ?? ''))
           if (visible.length === 0) return null
           const groupId = `${navId}-group-${groupIndex}`
+          const itemsId = `${groupId}-items`
+          // Le rail d'icônes reste PLAT : un accordéon dans 64 px n'a aucun sens (VS Code).
+          const ouvert = compact ? true : (tiroirsNav[groupLabel] ?? true)
           return (
             <div key={groupLabel} className="admin-nav-section" role="group" aria-labelledby={groupId}>
-              <div id={groupId} className="admin-nav-group">{groupLabel}</div>
-              <div className={`admin-nav-section-items${compact ? ' is-compact' : ''}`}>
+              {compact ? (
+                <div id={groupId} className="admin-nav-group">{groupLabel}</div>
+              ) : (
+                <button
+                  type="button"
+                  id={groupId}
+                  className="admin-nav-group admin-nav-group-btn"
+                  aria-expanded={ouvert}
+                  aria-controls={itemsId}
+                  onClick={() => basculerTiroir(groupLabel)}
+                  title={`${ouvert ? 'Replier' : 'Déplier'} le segment ${groupLabel}`}
+                >
+                  <span aria-hidden="true" className={`admin-nav-group-chevron${ouvert ? ' is-ouvert' : ''}`}>
+                    {Icon.chevronRight(12, 'currentColor')}
+                  </span>
+                  <span className="admin-nav-group-label">{groupLabel}</span>
+                </button>
+              )}
+              {(compact || ouvert) && (
+              <div id={itemsId} className={`admin-nav-section-items${compact ? ' is-compact' : ''}`}>
                 {visible.map(([k, l, icon]) => (
                   <NavLink
                     key={k}
@@ -359,6 +408,7 @@ export function AdminShell() {
                   </NavLink>
                 ))}
               </div>
+              )}
             </div>
           )
         })}
@@ -473,6 +523,7 @@ export function AdminShell() {
                   <span aria-hidden="true">{Icon.chevronRight(14, 'var(--admin-ink)')}</span>
                   <strong>
                     {NAV_GROUPS.flatMap(([, items]) => items).find(([k]) => k === active)?.[1]
+                      ?? LIBELLES_HORS_NAV[active]
                       ?? 'Console'}
                   </strong>
                 </div>

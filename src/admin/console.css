@@ -7961,3 +7961,45 @@ html:has([data-admin-shell][data-console-theme="nuit"]) #root {
   right: 0;
   min-width: 220px;
 }
+
+/* Segments pliables de la navigation (« tiroirs intelligents »).
+   Patron Linear / Notion : en-tête-bouton, chevron qui pivote, contenu masqué
+   sans être démonté quand le segment est replié (flèches clavier stables). */
+[data-admin-shell] button.admin-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--admin-rail-fg-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-admin-shell] button.admin-nav-group:hover {
+  background: color-mix(in srgb, var(--admin-rail-fg-muted) 12%, transparent);
+}
+
+[data-admin-shell] button.admin-nav-group:focus-visible {
+  outline: 2px solid var(--admin-forest);
+  outline-offset: 1px;
+}
+
+[data-admin-shell] .admin-nav-group-chevron {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 150ms ease;
+}
+
+[data-admin-shell] .admin-nav-group-chevron.is-ouvert {
+  transform: rotate(90deg);
+}
