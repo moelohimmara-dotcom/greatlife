@@ -235,6 +235,15 @@ export async function invokeManageAdminAuth(payload: {
   }
 }
 
+/**
+ * Un refus d'autorisation (401/403) ne doit JAMAIS déclencher un repli :
+ * sinon un accès refusé passerait pour une réussite.
+ */
+export function isAuthRefusal(error?: string): boolean {
+  if (!error) return false
+  return /authentification requise|session admin invalide|acces non autorise|accès non autorisé/i.test(error)
+}
+
 export async function invokeReplyEmail(payload: {
   to: string
   subject: string

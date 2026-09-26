@@ -128,7 +128,7 @@ async function requireOwner(req: Request) {
     .ilike("email", adminEmail);
   const adminRow = (adminRows || []).find(
     (r: { email?: string }) => (r.email || "").toLowerCase() === adminEmail.toLowerCase(),
-  ) || adminRows?.[0];
+  ) ?? null;
   if (!adminRow || adminRow.role !== "owner" || adminRow.active !== true) {
     return { error: corsResponse(req, JSON.stringify({ ok: false, error: "Acces non autorise" }), 403) };
   }
