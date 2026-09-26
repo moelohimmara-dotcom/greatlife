@@ -5,7 +5,7 @@ import { FONTS } from '@/config/fonts'
 import type { FontPair } from '@/config/fonts'
 import { MENU } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
-import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteContentFields, updateSiteConfigFields, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult, type Order, type Reservation } from '@/lib/repository'
+import { fetchMenu, fetchContent, fetchMessages, fetchBlogPosts, updateSiteContentFields, updateSiteConfigFields, markMessageHandled, fetchMedia, fetchAdminUsers, fetchOrders, fetchReservations, fetchRbacOverrides, saveRbacOverrides, clearSiteConfigRbac, type BlogPost, type SiteConfig, type MediaAsset, type AdminUser, type SaveResult, type Order, type Reservation } from '@/lib/repository'
 import { getSupabase } from '@/lib/supabase'
 import { setRbacOverrides, type RbacOverrides } from '@/data/rbac'
 import { variablesCss } from '@/config/charte'
@@ -405,7 +405,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (estMonte.current) setDataLoading(false)
     }, 15_000)
     try {
-      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes] = await Promise.all([
+      const [menuRes, contentRes, messagesRes, blogRes, mediaRes, adminRes, ordersRes, resaRes, rbacRes] = await Promise.all([
         fetchMenu(),
         fetchContent(),
         fetchMessages(),
@@ -414,6 +414,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         fetchAdminUsers(),
         fetchOrders(),
         fetchReservations(),
+        fetchRbacOverrides(),
       ])
       if (!estMonte.current) return
       const anyDb = menuRes.fromDb || contentRes.fromDb || messagesRes.fromDb || blogRes.fromDb || mediaRes.fromDb || adminRes.fromDb || ordersRes.fromDb || resaRes.fromDb
@@ -421,6 +422,15 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       if (menuRes.fromDb && menuRes.data.length > 0) setMenu(menuRes.data)
       if (contentRes.fromDb && contentRes.data) {
         appliquerContenuDeLaBase(contentRes.data)
+      }
+      /*
+        Surcharges RBAC hors ligne publique (B-S1) : la table dédiée gagne ;
+        `site_config` n'est lue qu'en repli (migration 045 non appliquée).
+      */
+      if (rbacRes.fromDb && rbacRes.data) {
+        const ov = rbacRes.data as unknown as RbacOverrides
+        setRbacOverridesState(ov)
+        setRbacOverrides(ov)
       }
       if (messagesRes.fromDb && messagesRes.data.length > 0) {
         setMessages(messagesRes.data)
@@ -510,11 +520,15 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     setRbacOverridesState(overrides)
     setRbacOverrides(overrides)
     /*
-      RBAC par domaine : ne plus passer par `saveSiteConfig(config)`, qui
-      REMPLACEAIT site_config.value entier (et le `content` global au passage).
-      Seul l'annuaire de rôles est écrit ici.
+      RBAC par domaine, hors ligne publique (fuite B-S1 fermée) :
+      `rbac_overrides` (migration 045, sans lecture anonyme) reçoit les
+      surcharges ; `site_config` est nettoyée au passage (best-effort :
+      la migration l'a déjà fait, ceci couvre tout reliquat).
     */
-    return updateSiteConfigFields({ rbacOverrides: overrides ?? undefined })
+    const saved = await saveRbacOverrides((overrides ?? {}) as Record<string, unknown>)
+    if (!saved.ok) return saved
+    await clearSiteConfigRbac()
+    return { ok: true }
   }
 
   const handleMarkMessageHandled = async (id: string, handled: boolean) => {

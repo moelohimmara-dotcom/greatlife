@@ -349,12 +349,87 @@ export async function updateSiteConfigFields(
 export async function saveSiteConfig(config: SiteConfig): Promise<SaveResult> {
   const contenu = await updateSiteContentFields(config.content)
   if (!contenu.ok) return contenu
+  // Les surcharges RBAC ne transitent PLUS par la ligne publique `site_config`
+  // (fuite B-S1) : elles vivent dans `rbac_overrides` (voir saveRbacOverrides).
+  // L'import les route via `saveRbac` après cet appel.
   return updateSiteConfigFields({
     themeId: config.themeId,
     fontId: config.fontId,
     visibility: config.visibility,
-    ...(config.rbacOverrides !== undefined ? { rbacOverrides: config.rbacOverrides } : {}),
   })
+}
+
+const RBAC_TABLE = 'rbac_overrides'
+const RBAC_KEY = 'global'
+
+/**
+ * Surcharges de la matrice d'accès, hors de la ligne publique.
+ * Table `rbac_overrides` (migration 045) : aucune lecture anonyme.
+ */
+export async function fetchRbacOverrides(): Promise<{
+  data: Record<string, unknown> | null
+  fromDb: boolean
+}> {
+  const sb = getSupabase()
+  if (!sb) return { data: null, fromDb: false }
+  try {
+    const { data, error } = await sb
+      .from(RBAC_TABLE)
+      .select('value')
+      .eq('key', RBAC_KEY)
+      .maybeSingle()
+    if (error || !data) return { data: null, fromDb: false }
+    const v = (data.value ?? {}) as Record<string, unknown>
+    return { data: Object.keys(v).length > 0 ? v : null, fromDb: true }
+  } catch {
+    return { data: null, fromDb: false }
+  }
+}
+
+export async function saveRbacOverrides(
+  value: Record<string, unknown> | null,
+): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { error } = await sb.from(RBAC_TABLE).upsert(
+      { key: RBAC_KEY, value: value ?? {}, updated_at: new Date().toISOString() },
+      { onConflict: 'key' },
+    )
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
+}
+
+/**
+ * Ferme la fuite B-S1 pour les lignes déjà en base : retire `rbacOverrides`
+ * de `site_config` (la migration 045 l'a fait ; ceci couvre les écritures
+ * entre la migration et le déploiement, et tout reliquat).
+ */
+export async function clearSiteConfigRbac(): Promise<SaveResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, error: 'Supabase non configuré' }
+  try {
+    const { data: existing, error: readErr } = await sb
+      .from(CONTENT_TABLE)
+      .select('value')
+      .eq('key', CONTENT_KEY)
+      .maybeSingle()
+    if (readErr) return { ok: false, error: errMsg(readErr) }
+    const currentValue = ((existing?.value ?? {}) as Record<string, unknown>)
+    if (!('rbacOverrides' in currentValue)) return { ok: true }
+    delete currentValue.rbacOverrides
+    const { error } = await sb.from(CONTENT_TABLE).upsert(
+      { key: CONTENT_KEY, value: currentValue, updated_at: new Date().toISOString() },
+      { onConflict: 'key' },
+    )
+    if (error) return { ok: false, error: errMsg(error) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: errMsg(err) }
+  }
 }
 
 export async function fetchMessages(): Promise<{
