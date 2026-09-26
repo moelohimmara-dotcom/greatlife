@@ -1,4 +1,5 @@
 import { useSite } from '@/contexts/SiteContext'
+import { traduire } from '@/i18n/ui'
 import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import { softShadowSm } from '@/components/ui/shadows'
 import {
@@ -73,7 +74,7 @@ export function Footer({
 
   const blocLiens = (
     <div {...(selectable ? { 'data-cms-slot': 'nav' } : {})} style={{ textAlign: centre || bandeau ? 'center' : 'left' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: texte }}>Navigation</div>
+      <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: texte }}>{traduire()('footer.nav')}</div>
       <div style={{ display: bandeau ? 'flex' : 'block', flexWrap: 'wrap', gap: bandeau ? '8px 20px' : undefined, justifyContent: 'center' }}>
         {liens.map((lien) => (
           <a key={lien.id} href={hrefLien(lien.target, restaurant.phone)} style={{ display: bandeau ? 'inline' : 'block', fontSize: 14, color: lienCouleur, textDecoration: 'none', marginBottom: bandeau ? 0 : 6, transition: 'color 0.2s' }}
@@ -85,7 +86,7 @@ export function Footer({
 
   const blocContact = (
     <div {...(selectable ? { 'data-cms-slot': 'contact' } : {})} style={{ textAlign: centre || bandeau ? 'center' : 'left' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: texte }}>Contact</div>
+      <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: texte }}>{traduire()('footer.contact')}</div>
       <div style={{ fontSize: 14, opacity: 0.85, lineHeight: 1.8, color: texte }}>
         {coordonnees.map((valeur, i) => (
           <span key={valeur}>

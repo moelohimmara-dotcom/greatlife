@@ -52,7 +52,7 @@ export function SettingsEditor() {
     return () => { actif = false }
   }, [dataSource])
 
-  const set = (k: string, v: string) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
+  const set = (k: string, v: string | boolean) => { setContent({ ...content, [k]: v }); setSaveStatus('idle'); setSaveErr(undefined) }
   const inp = inputStyle(t)
   const save = async () => {
     if (dataSource !== 'supabase') { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000); return }
@@ -70,6 +70,7 @@ export function SettingsEditor() {
       emailContact: content.emailContact,
       emailReservation: content.emailReservation,
       pickupTimes: normaliserPickupTimes(content.pickupTimes),
+      englishEnabled: content.englishEnabled,
     })
     setSaveStatus(res.ok ? 'saved' : 'error'); setSaveErr(res.error)
     setTimeout(() => setSaveStatus('idle'), 4000)
@@ -204,6 +205,23 @@ export function SettingsEditor() {
                 <div><FieldLabel>Instagram</FieldLabel><Input value={content.socialInstagram} onChange={e => set('socialInstagram', e.target.value)} style={inp} /></div>
                 <div><FieldLabel>Facebook</FieldLabel><Input value={content.socialFacebook} onChange={e => set('socialFacebook', e.target.value)} style={inp} /></div>
               </div>
+            </>
+          ))}
+          {fieldCard('Langues du site', 'Ouvrez votre site en anglais', content.englishEnabled ? '1/1' : '0/1', (
+            <>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--admin-ink-soft)', lineHeight: 1.5 }}>
+                Activez la version anglaise : vos visiteurs voient le sélecteur FR/EN et la page
+                /en affiche tout le site en anglais. Les textes anglais se remplissent dans les
+                onglets « Site EN » de chaque écran ; un champ non traduit reste en français.
+              </p>
+              <label className="admin-wf-prefs-toggle" style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={content.englishEnabled}
+                  onChange={e => set('englishEnabled', e.target.checked)}
+                />
+                <span>Version anglaise activée — {content.englishEnabled ? 'OUI' : 'non'}</span>
+              </label>
             </>
           ))}
           <section className="admin-wf-panel">

@@ -15,6 +15,9 @@ import { CATEGORY_ORDER } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 function MenuCard({ item }: { item: MenuItem }) {
   const { theme: t, visibility } = useSite()
@@ -47,7 +50,7 @@ function MenuCard({ item }: { item: MenuItem }) {
             display: 'flex', alignItems: 'center', gap: 4,
             background: t.gold, color: '#fff', padding: '4px 10px', borderRadius: '100px',
             fontSize: '11px', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          }}>{Icon.star(10)} Signature</div>
+          }}>{Icon.star(10)} {tr('hero.badgeLabel')}</div>
         )}
       </div>
       <div style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
@@ -62,16 +65,16 @@ function MenuCard({ item }: { item: MenuItem }) {
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {visibility.vertusPanel && (
-              <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`Vertus nutritionnelles de ${item.name}`}
+              <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={tr('menu.benefitsAria', { name: item.name })}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   fontSize: '12px', fontWeight: 600, color: t.primary,
                   background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0',
                 }}>
-                {open ? 'Fermer' : 'Vertus'} {open ? '−' : Icon.plus(12, t.primary)}
+                {open ? tr('menu.close') : tr('menu.benefits')} {open ? '−' : Icon.plus(12, t.primary)}
               </button>
             )}
-            <button onClick={handleAdd} aria-label={`Ajouter ${item.name} à ma commande`}
+            <button onClick={handleAdd} aria-label={tr('menu.addAria', { name: item.name })}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 fontSize: '12.5px', fontWeight: 700,
@@ -81,7 +84,7 @@ function MenuCard({ item }: { item: MenuItem }) {
                 color: added ? '#fff' : t.primary, transition: 'background-color 0.2s, color 0.2s, border-color 0.2s',
                 minHeight: 44, touchAction: 'manipulation',
               }}>
-              {added ? Icon.check(14, '#fff') : Icon.plus(14, t.primary)} {added ? 'Ajouté' : 'Ajouter'}
+              {added ? Icon.check(14, '#fff') : Icon.plus(14, t.primary)} {added ? tr('menu.added') : tr('menu.add')}
             </button>
           </div>
         </div>
@@ -96,7 +99,7 @@ function MenuCard({ item }: { item: MenuItem }) {
                 fontSize: '12.5px', lineHeight: 1.55, color: t.text,
               }}>
                 <div style={{ fontWeight: 700, color: t.primary, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {Icon.leaf(14, t.primary)} Vertus nutritionnelles
+                  {Icon.leaf(14, t.primary)} {tr('menu.benefitsTitle')}
                 </div>
                 {item.vertus}
               </div>
@@ -116,10 +119,10 @@ export function Carte({ content: cms, data, variant, preview }: Partial<SectionC
   // TDR §16 : les plats viennent du module Menu, jamais recopiés dans le bloc.
   // Le CMS les transmet par `data` ; sinon on garde la source historique.
   const menu = pick(data?.menu as MenuItem[] | undefined, legacyMenu)
-  const title = pick(cmsText(cms, 'title'), 'La transgression saine')
+  const title = pick(cmsText(cms, 'title'), tr('menu.title'))
   const subtitle = pick(
     cmsText(cms, 'subtitle'),
-    'Burgers, frites, milkshakes — en version bio, avec les fruits tropicaux de notre terroir. Chaque plat porte ses vertus affichées.',
+    tr('menu.subtitle'),
   )
 
   // Plafond global du nombre de plats affichés. Champ vide = tout afficher.
@@ -196,7 +199,7 @@ export function Carte({ content: cms, data, variant, preview }: Partial<SectionC
     >
       <Reveal><SectionHead title={title} sub={subtitle} align="center" preview={preview} /></Reveal>
       {disposition === 'tabs' ? (
-        <div role="tablist" aria-label="Catégories de la carte" style={{
+        <div role="tablist" aria-label={tr('menu.tabsAria')} style={{
           display: 'flex', gap: 4, marginBottom: 28, overflowX: 'auto',
           borderBottom: `1px solid ${t.shadow}`,
         }}>
@@ -220,7 +223,7 @@ export function Carte({ content: cms, data, variant, preview }: Partial<SectionC
           ))}
         </div>
       ) : (
-        <div role="group" aria-label="Catégories de la carte" style={{
+        <div role="group" aria-label={tr('menu.tabsAria')} style={{
           display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28, justifyContent: 'center',
         }}>
           {visible.map((cat) => (

@@ -9,9 +9,9 @@ import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
+import { traduire } from '@/i18n/ui'
 
-/** Pastilles historiques, conservées par position (repli avant bascule CMS). */
-const LEGACY_CHIPS = ['Bio accessible', 'Circuit court', 'Transparence totale']
+const tr = traduire()
 
 const DISPOSITIONS = ['image_left', 'image_right'] as const
 
@@ -26,8 +26,8 @@ export function Story({ content: cms, variant, preview }: Partial<SectionCompone
   const title = pick(cmsText(cms, 'title'), legacy.storyTitle)
   const body = pick(cmsText(cms, 'body'), legacy.story)
   const signature = pick(cmsText(cms, 'signature'), 'Mister Marcket')
-  const signerole = pick(cmsText(cms, 'signerole'), 'Le fondateur')
-  const chipLabels = pick(cmsTextList(cms, 'chips'), LEGACY_CHIPS)
+  const signerole = pick(cmsText(cms, 'signerole'), tr('story.signerole'))
+  const chipLabels = pick(cmsTextList(cms, 'chips'), tr('story.chips').split(' | '))
 
   const chipIcons = [Icon.coin(16, t.accent), Icon.leaf(16, t.primary), Icon.search(16, t.gold)]
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'image_left')

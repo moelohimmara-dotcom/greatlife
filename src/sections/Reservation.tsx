@@ -15,6 +15,9 @@ import { invokeContactEmail } from '@/lib/supabase'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 const DISPOSITIONS = ['card', 'wide'] as const
 
@@ -31,10 +34,10 @@ const FIELD = {
 export function Reservation({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t } = useSite()
 
-  const title = pick(cmsText(cms, 'title'), 'Réservez votre table')
+  const title = pick(cmsText(cms, 'title'), tr('resa.title'))
   const subtitle = pick(
     cmsText(cms, 'subtitle'),
-    'Réservez en quelques secondes — confirmation par email.',
+    tr('resa.subtitle'),
   )
 
   const [form, setForm] = useState({ nom: '', email: '', phone: '', date: '', time: '12:00', guests: '2', message: '' })
@@ -44,11 +47,11 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   const validate = () => {
     const e: Record<string, string | undefined> = {}
-    if (!form.nom.trim()) e.nom = 'Votre nom est requis'
-    if (!form.email.trim()) e.email = 'Votre email est requis'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide'
-    if (!form.date.trim()) e.date = 'La date est requise'
-    if (!form.time.trim()) e.time = 'L\'heure est requise'
+    if (!form.nom.trim()) e.nom = tr('form.errName')
+    if (!form.email.trim()) e.email = tr('form.errEmail')
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = tr('form.errEmailInvalid')
+    if (!form.date.trim()) e.date = tr('form.errDate')
+    if (!form.time.trim()) e.time = tr('form.errTime')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -94,7 +97,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }} noValidate>
               <div className="reservation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <Label htmlFor={FIELD.nom} style={labelStyle}>Nom</Label>
+                  <Label htmlFor={FIELD.nom} style={labelStyle}>{tr('form.name')}</Label>
                   <Input
                     id={FIELD.nom}
                     name="name"
@@ -109,7 +112,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                   {errors.nom && <div id={`${FIELD.nom}-error`} role="alert" style={errStyle}>{errors.nom}</div>}
                 </div>
                 <div>
-                  <Label htmlFor={FIELD.phone} style={labelStyle}>Téléphone</Label>
+                  <Label htmlFor={FIELD.phone} style={labelStyle}>{tr('form.phone')}</Label>
                   <Input
                     id={FIELD.phone}
                     name="tel"
@@ -124,7 +127,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                 </div>
               </div>
               <div>
-                <Label htmlFor={FIELD.email} style={labelStyle}>Email</Label>
+                <Label htmlFor={FIELD.email} style={labelStyle}>{tr('form.email')}</Label>
                 <Input
                   id={FIELD.email}
                   name="email"
@@ -143,7 +146,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
               </div>
               <div className="reservation-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                 <div>
-                  <Label htmlFor={FIELD.date} style={labelStyle}>Date</Label>
+                  <Label htmlFor={FIELD.date} style={labelStyle}>{tr('form.date')}</Label>
                   <Input
                     id={FIELD.date}
                     name="reservation-date"
@@ -160,7 +163,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                   {errors.date && <div id={`${FIELD.date}-error`} role="alert" style={errStyle}>{errors.date}</div>}
                 </div>
                 <div>
-                  <Label htmlFor={FIELD.time} style={labelStyle}>Heure</Label>
+                  <Label htmlFor={FIELD.time} style={labelStyle}>{tr('form.time')}</Label>
                   <Input
                     id={FIELD.time}
                     name="reservation-time"
@@ -176,7 +179,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                   {errors.time && <div id={`${FIELD.time}-error`} role="alert" style={errStyle}>{errors.time}</div>}
                 </div>
                 <div>
-                  <Label id={`${FIELD.guests}-label`} htmlFor={FIELD.guests} style={labelStyle}>Personnes</Label>
+                  <Label id={`${FIELD.guests}-label`} htmlFor={FIELD.guests} style={labelStyle}>{tr('form.guests')}</Label>
                   <Select
                     id={FIELD.guests}
                     aria-labelledby={`${FIELD.guests}-label`}
@@ -191,7 +194,7 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                 </div>
               </div>
               <div>
-                <Label htmlFor={FIELD.message} style={labelStyle}>Demande particulière (optionnel)</Label>
+                <Label htmlFor={FIELD.message} style={labelStyle}>{tr('form.notes')}</Label>
                 <Textarea
                   id={FIELD.message}
                   name="reservation-notes"
@@ -199,12 +202,12 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                   rows={3}
                   value={form.message}
                   onChange={e => setForm({ ...form, message: e.target.value })}
-                  placeholder="Anniversaire, allergies, table en terrasse…"
+                  placeholder={tr('resa.notesPlaceholder')}
                   style={inputStyle}
                 />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <Button type="submit" disabled={loading} aria-label="Réserver la table"
+                <Button type="submit" disabled={loading} aria-label={tr('resa.submitAria')}
                   style={{
                   background: loading ? t.muted : t.primary, color: '#fff', fontWeight: 600,
                   padding: '12px 28px', borderRadius: '100px', fontSize: '15px',
@@ -214,17 +217,17 @@ export function Reservation({ content: cms, variant, preview }: Partial<SectionC
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   minHeight: 44,
                 }}>
-                  {loading ? 'Réservation…' : 'Réserver'}
+                  {loading ? tr('resa.submitting') : tr('resa.submit')}
                   {!loading && Icon.arrow(16)}
                 </Button>
                 {sent && (
                   <span role="status" aria-live="polite" style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {Icon.check(16, t.primary)} Réservation envoyée ! Nous vous confirmons par email.
+                    {Icon.check(16, t.primary)} {tr('resa.ok')}
                   </span>
                 )}
                 {error && (
                   <span role="alert" aria-live="assertive" style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    Échec de la réservation — veuillez réessayer.
+                    {tr('resa.ko')}
                   </span>
                 )}
               </div>

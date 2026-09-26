@@ -7,6 +7,9 @@ import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { resolveMediaAlt } from '@/lib/mediaAlt'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 interface TeamMember {
   name: string
@@ -30,11 +33,8 @@ export function Team({ content: cms, variant, preview }: Partial<SectionComponen
   const source: TeamMember[] = pick(cmsList<TeamMember>(cms, 'members'), legacy.team)
   const team = source.map((m, i) => ({ ...m, color: palette[i % palette.length] }))
 
-  const title = pick(cmsText(cms, 'title'), 'Les visages de Greatlife')
-  const sub = pick(
-    cmsText(cms, 'subtitle'),
-    'Une équipe qui croit que manger bien devrait être simple, accessible et délicieux.',
-  )
+  const title = pick(cmsText(cms, 'title'), tr('team.title'))
+  const sub = pick(cmsText(cms, 'subtitle'), tr('team.subtitle'))
 
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'grid')
 

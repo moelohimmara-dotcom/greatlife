@@ -10,9 +10,9 @@ import { normaliserDisposition as choisirDisposition } from '@/cms/renderer/disp
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { sanitiserHex, voileBanniere } from '@/cms/model/sections/couleur'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
+import { traduire } from '@/i18n/ui'
 
-/** Pastilles historiques — servent de repli tant que le CMS n'est pas activé. */
-const LEGACY_CHIPS = ['100% bio', 'Emballages éco', 'Prix accessibles']
+const tr = traduire()
 
 /**
  * Ancre des boutons historiques. ⚠️ Le bouton secondaire pointait vers
@@ -216,25 +216,25 @@ export function Hero({ content: cms, variant, preview }: Partial<SectionComponen
   const tagline = pick(cmsText(cms, 'tagline'), legacy.slogan)
   const title = pick(cmsText(cms, 'title'), legacy.heroTitle)
   const subtitle = pick(cmsText(cms, 'subtitle'), legacy.heroSub)
-  const chipLabels = pick(cmsTextList(cms, 'chips'), LEGACY_CHIPS)
+  const chipLabels = pick(cmsTextList(cms, 'chips'), tr('hero.chips').split(' | '))
   const cmsImage = cmsText(cms, 'image')
   const heroAsset = (cmsImage ? findMediaByUrl(media, cmsImage) : undefined) ?? legacyHero
   const heroImg = cmsImage ?? legacyHero?.url
   // Alt section CMS → alt médiathèque → nom de fichier (pas de texte inventé).
   const imageAlt = coalesceAlt(cmsText(cms, 'imageAlt'), resolveMediaAlt(heroAsset)) || undefined
-  const pill = pick(cmsText(cms, 'pill'), 'Bio')
+  const pill = pick(cmsText(cms, 'pill'), tr('hero.pill'))
 
   const badge = cmsGroup(cms, 'badge')
-  const badgeLabel = pick(cmsText(badge, 'label'), 'Signature')
-  const badgeName = pick(cmsText(badge, 'name'), 'Le Greatlife')
+  const badgeLabel = pick(cmsText(badge, 'label'), tr('hero.badgeLabel'))
+  const badgeName = pick(cmsText(badge, 'name'), tr('hero.badgeName'))
   const badgeValue = pick(cmsText(badge, 'value'), '48 000 FG')
 
   const primaryCta = cmsGroup(cms, 'primaryCta')
-  const primaryLabel = pick(cmsText(primaryCta, 'label'), 'Découvrir la carte')
+  const primaryLabel = pick(cmsText(primaryCta, 'label'), tr('hero.ctaPrimary'))
   const primaryHref = anchorHref(pick(cmsText(primaryCta, 'target'), LEGACY_PRIMARY_TARGET))
 
   const secondaryCta = cmsGroup(cms, 'secondaryCta')
-  const secondaryLabel = pick(cmsText(secondaryCta, 'label'), 'Réserver une table')
+  const secondaryLabel = pick(cmsText(secondaryCta, 'label'), tr('hero.ctaSecondary'))
   const secondaryHref = anchorHref(pick(cmsText(secondaryCta, 'target'), LEGACY_SECONDARY_TARGET))
 
   const videoUrl = cmsText(cms, 'video') ?? legacyHeroVideo?.url ?? ''

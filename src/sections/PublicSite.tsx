@@ -38,9 +38,10 @@ import type { ResolvedRestaurant } from '@/cms/repository/settings'
 import type { SnapshotChrome } from '@/cms/model/publishing'
 import type { LienChrome } from '@/cms/model/sections/site-chrome'
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { appliquerSeoDocument, resoudrePageSeo } from '@/cms/model/page-seo'
 import { localeFromPath, type Locale } from '@/cms/model/i18n'
+import { fixerLangueActive } from '@/i18n/ui'
 
 /**
  * Ancres héritées, utilisées uniquement par le chemin legacy (avant bascule CMS).
@@ -98,9 +99,20 @@ function liensDepuisChrome(
 }
 
 export function PublicSite() {
-  const { visibility, rootStyle, content } = useSite()
+  const { visibility, rootStyle, content, dataLoading } = useSite()
   const { pathname } = useLocation()
   const { locale } = localeFromPath(pathname)
+  /*
+    VERSION ANGLAISE — réglage SITE activé depuis la console (Réglages globaux).
+    Tant qu'il n'est pas activé, /en n'existe pas : on renvoie le visiteur à la
+    racine et le sélecteur de langue reste masqué. C'est un réglage comme un
+    numéro de téléphone : son activation est immédiate, elle ne passe pas par
+    la publication (contrairement au contenu éditorial, §8).
+  */
+  // La langue de l'interface suit l'URL : les libellés FR/EN des sections
+  // (traduire()) la consultent au moment de chaque rendu.
+  fixerLangueActive(locale)
+  const anglaisActif = content.englishEnabled === true
   const { resolvedSections, loading, enabled, page, chrome } = useCmsSections(locale)
 
   useEffect(() => {
@@ -133,17 +145,23 @@ export function PublicSite() {
   */
   const enveloppe = { ...rootStyle, ...styleTypo(typoPubliee) }
 
-  if (loading) {
+  if (loading || dataLoading) {
     return (
       <CartProvider>
         <div style={{ ...enveloppe, minHeight: '100vh' }} data-cms-typo="" aria-busy="true" data-locale={locale}>
-          <PublicNav restaurant={restaurantPublie} presentation={{}} liens={[]} locale={locale} />
+          <PublicNav restaurant={restaurantPublie} presentation={{}} liens={[]} locale={locale} anglaisActif={anglaisActif} />
         </div>
       </CartProvider>
     )
   }
 
-  // --- Chemin CMS : la page est publiée, on rend ses sections ---
+  /*
+  Une fois les réglages chargés : /en n'existe que si la version anglaise est
+  activée. Sinon, retour à la racine (voir le commentaire du calcul plus haut).
+*/
+if (locale === 'en' && !anglaisActif) return <Navigate to="/" replace />
+
+// --- Chemin CMS : la page est publiée, on rend ses sections ---
   if (enabled && page && resolvedSections.length > 0) {
     const layout = normaliserPageLayout(page.layout)
     return (
@@ -155,6 +173,7 @@ export function PublicSite() {
             presentation={presentationPubliee}
             liens={chrome ? liensDepuisChrome(chrome.headerLinks) : undefined}
             locale={locale}
+            anglaisActif={anglaisActif}
           />
           <PageRenderer
             page={page}
@@ -197,7 +216,7 @@ export function PublicSite() {
   return (
     <CartProvider>
       <div style={rootStyle} data-cms-typo="" data-locale={locale}>
-          <PublicNav restaurant={restaurantLegacy} presentation={{}} liens={undefined} locale={locale} />
+          <PublicNav restaurant={restaurantLegacy} presentation={{}} liens={undefined} locale={locale} anglaisActif={anglaisActif} />
         {visibility.sections.home && <div id={ANCHORS.home}><Hero /></div>}
         {visibility.sections.carte && <div id={ANCHORS.carte}><Carte /></div>}
         {visibility.sections.histoire && <div id={ANCHORS.histoire}><Story /></div>}

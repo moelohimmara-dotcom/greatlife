@@ -7,6 +7,7 @@ import { useScrollSpy } from '@/hooks/useScrollSpy'
 import { softShadowSm } from '@/components/ui/shadows'
 import { Icon } from '@/lib/icons'
 import { resolveI18n } from '@/cms/model/i18n'
+import { traduire } from '@/i18n/ui'
 import {
   CHROME_HEADER_ID,
   LIENS_ENTETE_DEFAUT,
@@ -32,6 +33,8 @@ import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 export interface PublicNavProps {
   overlay?: boolean
   locale?: Locale
+  /** Version anglaise activée depuis la console : sans elle, pas de sélecteur. */
+  anglaisActif?: boolean
   restaurant?: ResolvedRestaurant
   liens?: LienChrome[]
   presentation?: ChromePresentation
@@ -46,6 +49,7 @@ function liensParDefaut(): LienChrome[] {
 export function PublicNav({
   overlay = false,
   locale = 'fr',
+  anglaisActif = false,
   restaurant: restaurantProp,
   liens: liensProp,
   presentation: presentationProp,
@@ -138,13 +142,13 @@ export function PublicNav({
   ) || nomRestaurant
 
   const logoTexte = (
-    <a href="#home" aria-label={`${nomRestaurant} — accueil`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, fontSize: `calc(${tailleLogo}px * var(--font-scale, 1))`, color: couleurLogo, textDecoration: 'none', letterSpacing: '-0.02em' }}>
+    <a href="#home" aria-label={`${nomRestaurant} ${traduire(locale)('nav.homeAria')}`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, fontSize: `calc(${tailleLogo}px * var(--font-scale, 1))`, color: couleurLogo, textDecoration: 'none', letterSpacing: '-0.02em' }}>
       {marque.avant}{marque.accent ? <span style={{ color: surBanniere ? t.accentSoft : couleurAccent }}>{marque.accent}</span> : null}
     </a>
   )
 
   const logo = logoUrl && !logoCasse ? (
-    <a href="#home" aria-label={`${nomRestaurant} — accueil`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+    <a href="#home" aria-label={`${nomRestaurant} ${traduire(locale)('nav.homeAria')}`} {...(selectable ? { 'data-cms-slot': 'brand' } : {})} style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
       <img
         src={logoUrl}
         alt={logoAlt}
@@ -155,7 +159,7 @@ export function PublicNav({
   ) : logoTexte
 
   const menuDesktop = (
-    <nav className="desktop-nav" aria-label="Navigation principale" {...(selectable ? { 'data-cms-slot': 'nav' } : {})} style={{ display: centre && !isMobile ? 'flex' : 'flex', gap: compact ? 18 : 28, alignItems: 'center', justifyContent: centre ? 'center' : undefined, flexWrap: 'wrap' }}>
+    <nav className="desktop-nav" aria-label={traduire(locale)('nav.mainAria')} {...(selectable ? { 'data-cms-slot': 'nav' } : {})} style={{ display: centre && !isMobile ? 'flex' : 'flex', gap: compact ? 18 : 28, alignItems: 'center', justifyContent: centre ? 'center' : undefined, flexWrap: 'wrap' }}>
       {liensMenu.map((lien) => {
         const id = lien.target.replace(/^#/, '')
         const libelle = libelleLien(lien, locale)
@@ -252,14 +256,19 @@ export function PublicNav({
   }
 
   function boutonLangue() {
-    /* Pas dans l’aperçu Atelier (iframe / sélection) : la langue y est pilotée par FR|EN de la barre. */
+    /*
+      Sélecteur de langue : visible SEULEMENT si la version anglaise est activée
+      depuis la console (Réglages globaux → Langues du site). Ni dans l’aperçu
+      Atelier (iframe / sélection) : la langue y est pilotée par FR|EN de la barre.
+    */
+    if (!anglaisActif) return null
     if (selectable) return null
     const dansIframe = typeof window !== 'undefined' && window.self !== window.top
     if (dansIframe) return null
     const autre: Locale = locale === 'fr' ? 'en' : 'fr'
     const href = pathFor(autre, '')
     const libelle = autre === 'en' ? 'EN' : 'FR'
-    const titre = autre === 'en' ? 'Switch to English' : 'Passer en français'
+    const titre = autre === 'en' ? traduire(locale)('nav.switchToEn') : traduire(locale)('nav.switchToFr')
     return (
       <a
         href={href}
@@ -303,7 +312,7 @@ export function PublicNav({
 
   function boutonMenu() {
     return (
-          <button className="mobile-nav-toggle" aria-label={drawerOpen ? 'Fermer le menu' : 'Ouvrir le menu'} aria-expanded={drawerOpen}
+          <button className="mobile-nav-toggle" aria-label={drawerOpen ? traduire(locale)('nav.closeMenu') : traduire(locale)('nav.openMenu')} aria-expanded={drawerOpen}
             onClick={() => setDrawerOpen(!drawerOpen)}
             style={{
               display: isMobile ? 'flex' : 'none',
@@ -353,7 +362,7 @@ export function PublicNav({
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          aria-label="Menu mobile"
+          aria-label={traduire(locale)('nav.mobileAria')}
           style={{
             position: 'fixed', top: 0, right: 0, bottom: 0,
             width: 'min(280px, 88vw)',
@@ -369,7 +378,7 @@ export function PublicNav({
             touchAction: 'manipulation',
           }}
         >
-          <button aria-label="Fermer" onClick={() => setDrawerOpen(false)}
+          <button aria-label={traduire(locale)('nav.close')} onClick={() => setDrawerOpen(false)}
             style={{ position: 'absolute', top: 'max(20px, env(safe-area-inset-top, 0px))', right: '20px', width: '44px', height: '44px',
               borderRadius: '10px', background: t.surfaceAlt, border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.heading, fontSize: '20px',

@@ -8,6 +8,9 @@ import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 interface EngagementItem {
   icon?: string
@@ -30,8 +33,8 @@ export function Engagements({ content: cms, variant, preview }: Partial<SectionC
     return [render(28, iconColor(i)), e.title ?? '', e.desc ?? '']
   })
 
-  const title = pick(cmsText(cms, 'title'), 'Ce qui nous distingue')
-  const sub = pick(cmsText(cms, 'subtitle'), 'Six engagements concrets qui font de Greatlife un fast-food à part.')
+  const title = pick(cmsText(cms, 'title'), tr('engagements.title'))
+  const sub = pick(cmsText(cms, 'subtitle'), tr('engagements.subtitle'))
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'grid')
 
   if (disposition === 'list') {

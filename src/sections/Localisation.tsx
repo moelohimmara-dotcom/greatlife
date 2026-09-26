@@ -9,13 +9,16 @@ import { lienMapsRecherche, lienTel, lienWhatsApp } from '@/lib/contactLinks'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 const DISPOSITIONS = ['card', 'wide'] as const
 
 export function Localisation({ content: cms, restaurant, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, isDark, content: legacy } = useSite()
 
-  const title = pick(cmsText(cms, 'title'), 'Nous trouver')
+  const title = pick(cmsText(cms, 'title'), tr('loc.title'))
   const subtitle = pick(cmsText(cms, 'subtitle'), legacy.address || '')
 
   // TDR §16 : les coordonnées du restaurant sont une source unique, saisie une
@@ -60,13 +63,13 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
           {address}
         </a>
       ) : address,
-      sub: mapsHref ? 'Ouvrir dans Maps' : 'Adresse du restaurant',
+      sub: mapsHref ? tr('loc.openMaps') : tr('loc.addressSub'),
     },
     {
       key: 'hours',
       icon: Icon.clock(20, t.accent),
       title: hours,
-      sub: 'Service continu toute la journée',
+      sub: tr('loc.hoursSub'),
     },
     {
       key: 'phone',
@@ -74,7 +77,7 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
       title: telHref ? (
         <a href={telHref} style={lienStyle}>{phone}</a>
       ) : phone,
-      sub: waHref ? 'Appeler' : 'Téléphone',
+      sub: waHref ? tr('loc.call') : tr('loc.phoneSub'),
     },
     ...(waHref
       ? [{
@@ -85,7 +88,7 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
               WhatsApp
             </a>
           ),
-          sub: 'Écrire sur WhatsApp',
+          sub: tr('loc.whatsappSub'),
         } satisfies Ligne]
       : []),
     {
@@ -94,7 +97,7 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
       title: email ? (
         <a href={`mailto:${email}`} style={lienStyle}>{email}</a>
       ) : email,
-      sub: 'Réservations & commandes',
+      sub: tr('loc.emailSub'),
     },
   ]
 
@@ -148,7 +151,7 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
               href={mapsHref}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Voir ${address || 'le restaurant'} sur la carte`}
+              aria-label={tr('loc.mapAria', { address: address || 'le restaurant' })}
               style={planStyle}
             >
             <svg viewBox="0 0 400 300" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -165,8 +168,8 @@ export function Localisation({ content: cms, restaurant, variant, preview }: Par
               <path d="M 180 50 L 190 230" stroke={isDark ? '#4a5a48' : '#C4B89E'} strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.4" />
               <path d="M 260 50 L 270 240" stroke={isDark ? '#4a5a48' : '#C4B89E'} strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.4" />
               <ellipse cx="120" cy="160" rx="25" ry="18" fill={isDark ? '#2a4a28' : '#D0E8C8'} opacity="0.6" />
-              <text x="120" y="163" textAnchor="middle" fontSize="7" fill={isDark ? '#6a8a68' : '#7A9A6A'} fontWeight="600">Jardin</text>
-              <text x="30" y="270" fontSize="8" fill={isDark ? '#5a7a8a' : '#9AB0BA'} fontWeight="500" fontStyle="italic">Atlantique</text>
+              <text x="120" y="163" textAnchor="middle" fontSize="7" fill={isDark ? '#6a8a68' : '#7A9A6A'} fontWeight="600">{tr('loc.mapGarden')}</text>
+              <text x="30" y="270" fontSize="8" fill={isDark ? '#5a7a8a' : '#9AB0BA'} fontWeight="500" fontStyle="italic">{tr('loc.mapSea')}</text>
               <text x="200" y="25" textAnchor="middle" fontSize="10" fill={isDark ? '#8a9a88' : '#9A9080'} fontWeight="700" letterSpacing="2">KALOUM</text>
               <g>
                 <circle cx="210" cy="130" r="18" fill={t.accent} opacity="0.15">

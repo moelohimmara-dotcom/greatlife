@@ -52,6 +52,7 @@ const DOMAINES = [
       'socialFacebook', 'socialInstagram', 'socialWhatsapp',
       'emailContact', 'emailReservation',
       'pickupTimes',
+      'englishEnabled',
     ],
   },
 ]

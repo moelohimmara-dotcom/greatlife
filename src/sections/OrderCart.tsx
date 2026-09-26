@@ -10,6 +10,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { insertOrder } from '@/lib/repository'
 import { invokeContactEmail, getSupabase } from '@/lib/supabase'
 import { normaliserPickupTimes } from '@/cms/repository/settings'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 const FIELD = {
   nom: 'order-nom',
@@ -18,9 +21,6 @@ const FIELD = {
   pickup: 'order-pickup',
   notes: 'order-notes',
 } as const
-
-const MSG_AUCUN_CRENEAU =
-  'Aucun créneau de retrait n’est proposé pour le moment. Contactez le restaurant ou réessayez plus tard.'
 
 function genRef(): string {
   return 'GL' + Date.now().toString(36).toUpperCase().slice(-6) + Math.random().toString(36).toUpperCase().slice(2, 4)
@@ -85,19 +85,19 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
 
   const validate = () => {
     const e: Record<string, string | undefined> = {}
-    if (!form.nom.trim()) e.nom = 'Votre nom est requis'
-    if (!form.email.trim()) e.email = 'Votre email est requis'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide'
-    if (slots.length === 0) e.pickup = MSG_AUCUN_CRENEAU
-    else if (!form.pickup_time || !slots.includes(form.pickup_time)) e.pickup = 'Choisissez une heure de retrait'
+    if (!form.nom.trim()) e.nom = tr('form.errName')
+    if (!form.email.trim()) e.email = tr('form.errEmail')
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = tr('form.errEmailInvalid')
+    if (slots.length === 0) e.pickup = tr('cart.noSlot')
+    else if (!form.pickup_time || !slots.includes(form.pickup_time)) e.pickup = tr('cart.errPickup')
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (items.length === 0) { setErrMsg('Votre panier est vide'); setResult('err'); return }
-    if (slots.length === 0) { setErrMsg(MSG_AUCUN_CRENEAU); setResult('err'); return }
+    if (items.length === 0) { setErrMsg(tr('cart.empty')); setResult('err'); return }
+    if (slots.length === 0) { setErrMsg(tr('cart.noSlot')); setResult('err'); return }
     if (!validate()) return
     setSubmitting(true)
     setResult('idle')
@@ -117,7 +117,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
         notes: form.notes,
       })
       if (!res.ok) {
-        setErrMsg(res.error || 'Impossible d’envoyer la commande. Vérifiez vos informations et réessayez.')
+        setErrMsg(res.error || tr('cart.ko'))
         setResult('err')
         setSubmitting(false)
         return
@@ -153,7 +153,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
             exit={reduceMotion ? undefined : { opacity: 0, y: 20, scale: 0.9 }}
             transition={{ duration: motionDur ?? 0.25, ease: [0.16, 1, 0.3, 1] }}
             onClick={() => setOpen(true)}
-            aria-label={`Voir mon panier de commande, ${count} article${count > 1 ? 's' : ''}`}
+            aria-label={`${tr('cart.cartAria', { count })}${count > 1 ? 's' : ''}`}
             style={{
               position: 'fixed', bottom: '24px', right: '24px', zIndex: 100,
               display: 'inline-flex', alignItems: 'center', gap: 10,
@@ -169,7 +169,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
               <CartGlyph size={22} color="#fff" />
               <span style={{ position: 'absolute', top: -8, right: -10, background: t.accent, color: '#fff', fontSize: '11px', fontWeight: 700, minWidth: 20, height: 20, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }} aria-hidden="true">{count}</span>
             </span>
-            Ma commande · {totalLabel} FG
+            {tr('cart.title')} · {totalLabel} FG
           </motion.button>
         )}
       </AnimatePresence>
@@ -199,12 +199,12 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
             >
               <div style={{ padding: '20px 24px', borderBottom: `1px solid ${t.shadow}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: t.surface, zIndex: 2, borderRadius: '20px 20px 0 0' }}>
                 <h3 id="order-cart-title" style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: '20px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  Ma commande
+                  {tr('cart.title')}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  aria-label="Fermer le panier"
+                  aria-label={tr('cart.closeAria')}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: t.muted, padding: 0, width: 44, height: 44, minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation' }}
                 >
                   {Icon.x(20, t.muted)}
@@ -215,13 +215,13 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                 {result === 'ok' && (
                   <div role="status" aria-live="polite" style={{ padding: '16px', borderRadius: 14, background: `${t.primary}12`, border: `1px solid ${t.primary}33`, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                     {Icon.check(20, t.primary)}
-                    <div style={{ fontSize: '14px', color: t.primary, fontWeight: 600 }}>Commande envoyée ! Nous vous confirmons par email. Un email de confirmation arrive dans votre boîte.</div>
+                    <div style={{ fontSize: '14px', color: t.primary, fontWeight: 600 }}>{tr('cart.ok')}</div>
                   </div>
                 )}
                 {result === 'err' && (
                   <div role="alert" aria-live="assertive" style={{ padding: '16px', borderRadius: 14, background: `${t.accent}12`, border: `1px solid ${t.accent}33`, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 18, color: t.accent }} aria-hidden="true">✗</span>
-                    <div style={{ fontSize: '14px', color: t.accent, fontWeight: 600 }}>{errMsg || 'Impossible d’envoyer la commande. Vérifiez vos informations et réessayez.'}</div>
+                    <div style={{ fontSize: '14px', color: t.accent, fontWeight: 600 }}>{errMsg || tr('cart.ko')}</div>
                   </div>
                 )}
 
@@ -230,8 +230,8 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                     <div style={{ opacity: 0.45, marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
                       <CartGlyph size={40} color={t.muted} />
                     </div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: t.heading, marginBottom: 4 }}>Votre panier est vide</div>
-                    <div style={{ fontSize: '13px' }}>Ajoutez des articles depuis la carte pour commander.</div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: t.heading, marginBottom: 4 }}>{tr('cart.empty')}</div>
+                    <div style={{ fontSize: '13px' }}>{tr('cart.emptyHint')}</div>
                   </div>
                 ) : (
                   <>
@@ -240,16 +240,16 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                         <div key={it.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: t.surfaceAlt, border: `1px solid ${t.shadow}` }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{it.name}</div>
-                            <div style={{ fontSize: '12px', color: t.muted }}>{it.price} FG l'unité</div>
+                            <div style={{ fontSize: '12px', color: t.muted }}>{it.price} {tr('cart.unit')}</div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <button type="button" onClick={() => setQty(it.name, it.qty - 1)} aria-label={`Diminuer ${it.name}`} style={qtyBtnStyle(t)}>−</button>
+                            <button type="button" onClick={() => setQty(it.name, it.qty - 1)} aria-label={tr('cart.decreaseAria', { name: it.name })} style={qtyBtnStyle(t)}>−</button>
                             <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 700, color: t.heading }} aria-live="polite" aria-atomic="true">{it.qty}</span>
-                            <button type="button" onClick={() => setQty(it.name, it.qty + 1)} aria-label={`Augmenter ${it.name}`} style={qtyBtnStyle(t)}>+</button>
+                            <button type="button" onClick={() => setQty(it.name, it.qty + 1)} aria-label={tr('cart.increaseAria', { name: it.name })} style={qtyBtnStyle(t)}>+</button>
                             <button
                               type="button"
                               onClick={() => remove(it.name)}
-                              aria-label={`Retirer ${it.name}`}
+                              aria-label={tr('cart.removeAria', { name: it.name })}
                               style={{ ...qtyBtnStyle(t), border: 'none', background: 'transparent', color: t.accent }}
                             >
                               {Icon.trash(16, t.accent)}
@@ -262,7 +262,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                     <form onSubmit={submit} style={{ display: 'grid', gap: '14px' }} noValidate>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                         <div>
-                          <Label htmlFor={FIELD.nom} style={labelStyle}>Nom</Label>
+                          <Label htmlFor={FIELD.nom} style={labelStyle}>{tr('form.name')}</Label>
                           <Input
                             id={FIELD.nom}
                             name="name"
@@ -277,7 +277,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                           {errors.nom && <div id={`${FIELD.nom}-error`} role="alert" style={errStyle}>{errors.nom}</div>}
                         </div>
                         <div>
-                          <Label htmlFor={FIELD.phone} style={labelStyle}>Téléphone</Label>
+                          <Label htmlFor={FIELD.phone} style={labelStyle}>{tr('form.phone')}</Label>
                           <Input
                             id={FIELD.phone}
                             name="tel"
@@ -292,7 +292,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor={FIELD.email} style={labelStyle}>Email</Label>
+                        <Label htmlFor={FIELD.email} style={labelStyle}>{tr('form.email')}</Label>
                         <Input
                           id={FIELD.email}
                           name="email"
@@ -310,7 +310,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                         {errors.email && <div id={`${FIELD.email}-error`} role="alert" style={errStyle}>{errors.email}</div>}
                       </div>
                       <div>
-                        <Label id={`${FIELD.pickup}-label`} htmlFor={FIELD.pickup} style={labelStyle}>Heure de retrait</Label>
+                        <Label id={`${FIELD.pickup}-label`} htmlFor={FIELD.pickup} style={labelStyle}>{tr('cart.pickup')}</Label>
                         {slots.length === 0 ? (
                           <div
                             id={FIELD.pickup}
@@ -318,7 +318,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                             aria-live="polite"
                             style={{ ...inputStyle, color: t.accent, fontWeight: 600, lineHeight: 1.45 }}
                           >
-                            {MSG_AUCUN_CRENEAU}
+                            {tr('cart.noSlot')}
                           </div>
                         ) : (
                           <Select
@@ -336,7 +336,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                         {errors.pickup && <div id={`${FIELD.pickup}-error`} role="alert" style={errStyle}>{errors.pickup}</div>}
                       </div>
                       <div>
-                        <Label htmlFor={FIELD.notes} style={labelStyle}>Notes (optionnel)</Label>
+                        <Label htmlFor={FIELD.notes} style={labelStyle}>{tr('cart.notes')}</Label>
                         <Textarea
                           id={FIELD.notes}
                           name="order-notes"
@@ -344,23 +344,23 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
                           rows={2}
                           value={form.notes}
                           onChange={e => setForm({ ...form, notes: e.target.value })}
-                          placeholder="Sans oignon, allergie, etc."
+                          placeholder={tr('cart.notesPlaceholder')}
                           style={inputStyle}
                         />
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 14, background: `linear-gradient(135deg, ${t.primary}10, ${t.gold}08)`, border: `1px solid ${t.primary}20` }}>
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>Total</span>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{tr('cart.total')}</span>
                         <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '22px', fontWeight: 700, color: t.accent }}>{totalLabel}<span style={{ fontSize: '12px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span></span>
                       </div>
 
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <button type="submit" disabled={submitting || slots.length === 0}
                           style={{ flex: 1, background: submitting || slots.length === 0 ? t.muted : t.primary, color: '#FFFFFF', fontWeight: 700, padding: '14px 24px', borderRadius: '100px', fontSize: '16px', border: 'none', cursor: submitting || slots.length === 0 ? 'not-allowed' : 'pointer', opacity: submitting || slots.length === 0 ? 0.7 : 1, boxShadow: `0 4px 16px ${t.shadowDeep}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, touchAction: 'manipulation' }}>
-                          {submitting ? 'Envoi…' : slots.length === 0 ? 'Commande indisponible' : 'Valider ma commande'}
+                          {submitting ? tr('cart.sending') : slots.length === 0 ? tr('cart.unavailable') : tr('cart.submit')}
                           {!submitting && slots.length > 0 && Icon.arrow(16)}
                         </button>
-                        <button type="button" onClick={() => { if (confirm('Vider le panier ?')) clear() }} style={{ padding: '14px 18px', borderRadius: '100px', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer', fontSize: '14px', fontWeight: 600, minHeight: 48, touchAction: 'manipulation' }}>Vider</button>
+                        <button type="button" onClick={() => { if (confirm(tr('cart.clearConfirm'))) clear() }} style={{ padding: '14px 18px', borderRadius: '100px', border: `1px solid ${t.shadow}`, background: 'transparent', color: t.muted, cursor: 'pointer', fontSize: '14px', fontWeight: 600, minHeight: 48, touchAction: 'manipulation' }}>{tr('cart.clear')}</button>
                       </div>
                     </form>
                   </>

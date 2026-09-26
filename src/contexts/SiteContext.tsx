@@ -35,6 +35,12 @@ export interface SiteContent {
   testimonials: Testimonial[]
   /** Créneaux de retrait (panier) — miroir plat de `restaurant.pickupTimes` (J5). */
   pickupTimes: string[]
+  /**
+   * Version anglaise du site (`/en`) activée depuis la console.
+   * Réglage SITE (pas du contenu éditorial) : son activation est immédiate,
+   * comme un numéro de téléphone — elle ne passe pas par la publication.
+   */
+  englishEnabled: boolean
 }
 
 /*
@@ -53,6 +59,7 @@ const CLES_SITE_CONTENT: (keyof SiteContent)[] = [
   'socialFacebook', 'socialInstagram', 'socialWhatsapp',
   'team', 'engagements', 'testimonials',
   'pickupTimes',
+  'englishEnabled',
 ]
 
 export interface SiteVisibility {
@@ -213,6 +220,7 @@ const DEFAULT_CONTENT: SiteContent = {
   ],
   testimonials: [],
   pickupTimes: [],
+  englishEnabled: false,
   autoReply: 'Bonjour {nom}, merci pour votre message à Greatlife ! Nous revenons vers vous sous 24h. — L\'équipe Greatlife',
 }
 

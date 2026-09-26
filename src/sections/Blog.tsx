@@ -9,6 +9,9 @@ import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { findMediaBySlot, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 const FALLBACK_POSTS: BlogPost[] = [
   { title: 'Pourquoi le corossol mérite sa place dans votre assiette', excerpt: 'Découverte d\'un superfruit guinéen aux vertus digestives reconnues.', body: '', category: 'Découverte', published: true },
@@ -22,10 +25,10 @@ export function Blog({ content: cms, data, variant, preview }: Partial<SectionCo
   const { theme: t, blogPosts, media } = useSite()
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  const title = pick(cmsText(cms, 'title'), 'Le journal Greatlife')
+  const title = pick(cmsText(cms, 'title'), tr('blog.title'))
   const subtitle = pick(
     cmsText(cms, 'subtitle'),
-    'Recettes, coulisses et rencontres avec nos producteurs.',
+    tr('blog.subtitle'),
   )
 
   // TDR §16 : les articles viennent du module Blog, jamais recopiés dans le bloc.
@@ -82,7 +85,7 @@ export function Blog({ content: cms, data, variant, preview }: Partial<SectionCo
                     <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
                     {post.body && (
                       <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        {expanded === post.title ? 'Réduire' : 'Lire la suite'}
+                        {expanded === post.title ? tr('blog.less') : tr('blog.more')}
                       </button>
                     )}
                     {expanded === post.title && post.body && (
@@ -161,14 +164,14 @@ export function Blog({ content: cms, data, variant, preview }: Partial<SectionCo
                 <p style={{ fontSize: '13.5px', color: t.muted, lineHeight: 1.55, margin: 0 }}>{post.meta_description || post.excerpt}</p>
                 {post.body && (
                   <button onClick={() => setExpanded(expanded === post.title ? null : post.title)} style={{ marginTop: '10px', fontSize: '12px', fontWeight: 600, color: t.primary, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    {expanded === post.title ? 'Réduire' : 'Lire la suite'}
+                    {expanded === post.title ? tr('blog.less') : tr('blog.more')}
                   </button>
                 )}
                 {expanded === post.title && post.body && (
                   <div style={{ marginTop: '12px', fontSize: '13.5px', color: t.text, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{post.body}</div>
                 )}
                 {!post.body && (
-                  <div style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '13px', fontWeight: 600, color: t.primary }}>Lire {Icon.arrow(14, t.primary)}</div>
+                  <div style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '13px', fontWeight: 600, color: t.primary }}>{tr('blog.read')}{Icon.arrow(14, t.primary)}</div>
                 )}
               </div>
             </OrganicCard>

@@ -14,14 +14,12 @@ import { insertMessage } from '@/lib/repository'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 /** Motifs du formulaire, tels quels avant la bascule CMS. */
-const LEGACY_SUBJECTS = [
-  { value: 'contact', label: 'Message général' },
-  { value: 'reservation', label: 'Réservation de table' },
-  { value: 'commande', label: 'Commande en ligne' },
-  { value: 'recrutement', label: 'Recrutement' },
-]
+const LEGACY_SUBJECT_VALUES = ['contact', 'reservation', 'commande', 'recrutement']
 
 interface Subject {
   value: string
@@ -40,12 +38,14 @@ const FIELD = {
 export function Contact({ content: cms, variant, preview }: Partial<SectionComponentProps> = {}) {
   const { theme: t, setMessages } = useSite()
 
-  const title = pick(cmsText(cms, 'title'), 'Écrivez-nous')
+  const title = pick(cmsText(cms, 'title'), tr('contact.title'))
   const subtitle = pick(
     cmsText(cms, 'subtitle'),
-    'Réservation, commande, question — on vous répond sous 24h.',
+    tr('contact.subtitle'),
   )
-  const subjects: Subject[] = pick(cmsList<Subject>(cms, 'subjects'), LEGACY_SUBJECTS)
+  const sujets = tr('contact.subjects').split(' | ')
+  const legacySubjects: Subject[] = LEGACY_SUBJECT_VALUES.map((value, i) => ({ value, label: sujets[i] }))
+  const subjects: Subject[] = pick(cmsList<Subject>(cms, 'subjects'), legacySubjects)
 
   // Le motif par défaut doit exister dans la liste, sinon le menu s'affiche vide.
   const defaultSubject = subjects.some((s) => s.value === 'contact')
@@ -59,10 +59,10 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   const validate = () => {
     const e: Record<string, string | undefined> = {}
-    if (!form.nom.trim()) e.nom = 'Votre nom est requis'
-    if (!form.email.trim()) e.email = 'Votre email est requis'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email invalide'
-    if (!form.message.trim()) e.message = 'Votre message est vide'
+    if (!form.nom.trim()) e.nom = tr('form.errName')
+    if (!form.email.trim()) e.email = tr('form.errEmail')
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = tr('form.errEmailInvalid')
+    if (!form.message.trim()) e.message = tr('form.errMessage')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -103,7 +103,7 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
             <form onSubmit={submit} style={{ display: 'grid', gap: '16px' }} noValidate>
               <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <Label htmlFor={FIELD.nom} style={labelStyle}>Nom</Label>
+                  <Label htmlFor={FIELD.nom} style={labelStyle}>{tr('form.name')}</Label>
                   <Input
                     id={FIELD.nom}
                     name="name"
@@ -118,7 +118,7 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
                   {errors.nom && <div id={`${FIELD.nom}-error`} role="alert" style={errStyle}>{errors.nom}</div>}
                 </div>
                 <div>
-                  <Label htmlFor={FIELD.email} style={labelStyle}>Email</Label>
+                  <Label htmlFor={FIELD.email} style={labelStyle}>{tr('form.email')}</Label>
                   <Input
                     id={FIELD.email}
                     name="email"
@@ -137,7 +137,7 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
                 </div>
               </div>
               <div>
-                <Label id={`${FIELD.sujet}-label`} htmlFor={FIELD.sujet} style={labelStyle}>Type de demande</Label>
+                <Label id={`${FIELD.sujet}-label`} htmlFor={FIELD.sujet} style={labelStyle}>{tr('form.subject')}</Label>
                 <Select
                   id={FIELD.sujet}
                   aria-labelledby={`${FIELD.sujet}-label`}
@@ -151,7 +151,7 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
                 </Select>
               </div>
               <div>
-                <Label htmlFor={FIELD.message} style={labelStyle}>Message</Label>
+                <Label htmlFor={FIELD.message} style={labelStyle}>{tr('form.message')}</Label>
                 <Textarea
                   id={FIELD.message}
                   name="message"
@@ -167,7 +167,7 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
                 {errors.message && <div id={`${FIELD.message}-error`} role="alert" style={errStyle}>{errors.message}</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                <Button type="submit" disabled={loading} aria-label="Envoyer le message"
+                <Button type="submit" disabled={loading} aria-label={tr('contact.sendAria')}
                   style={{
                   background: loading ? t.muted : t.primary, color: '#fff', fontWeight: 600,
                   padding: '12px 28px', borderRadius: '100px', fontSize: '15px',
@@ -177,12 +177,12 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   minHeight: 44,
                 }}>
-                  {loading ? 'Envoi en cours…' : 'Envoyer'}
+                  {loading ? tr('contact.sending') : tr('contact.send')}
                   {!loading && Icon.arrow(16)}
                 </Button>
                 <Button type="button" onClick={() => { setForm(
 { nom: '', email: '', sujet: defaultSubject, message: '' }); setErrors({}) }}
-                  aria-label="Effacer le formulaire"
+                  aria-label={tr('contact.resetAria')}
                   style={{
                   background: 'transparent', color: t.muted, fontWeight: 600,
                   padding: '12px 20px', borderRadius: '100px', fontSize: '14px',
@@ -192,16 +192,16 @@ export function Contact({ content: cms, variant, preview }: Partial<SectionCompo
                   minHeight: 44,
                 }} onMouseEnter={e => { e.currentTarget.style.color = t.text; e.currentTarget.style.borderColor = t.primary + '40' }}
                   onMouseLeave={e => { e.currentTarget.style.color = t.muted; e.currentTarget.style.borderColor = t.shadow }}>
-                  Effacer
+                  {tr('contact.clear')}
                 </Button>
                 {sent && (
                   <span role="status" aria-live="polite" style={{ fontSize: '13px', color: t.primary, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {Icon.check(16, t.primary)} Envoyé ! Auto-réponse transmise au client.
+                    {Icon.check(16, t.primary)} {tr('contact.ok')}
                   </span>
                 )}
                 {error && (
                   <span role="alert" aria-live="assertive" style={{ fontSize: '13px', color: t.accent, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    Échec de l'envoi — veuillez réessayer.
+                    {tr('contact.ko')}
                   </span>
                 )}
               </div>

@@ -6,6 +6,9 @@ import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 interface TestimonialCms {
   name?: string
@@ -30,8 +33,8 @@ export function Testimonials({ content: cms, variant, preview }: Partial<Section
   // Un bloc d'avis vide ne s'affiche pas — la visibilité est aussi gérée en base.
   if (source.length === 0) return null
 
-  const title = pick(cmsText(cms, 'title'), 'Ils ont goûté Greatlife')
-  const sub = pick(cmsText(cms, 'subtitle'), 'Ce que disent nos clients.')
+  const title = pick(cmsText(cms, 'title'), tr('testimonials.title'))
+  const sub = pick(cmsText(cms, 'subtitle'), tr('testimonials.subtitle'))
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'cards')
 
   if (disposition === 'quotes') {
@@ -44,7 +47,7 @@ export function Testimonials({ content: cms, variant, preview }: Partial<Section
           {source.map((tm, i) => (
             <Reveal key={i} delay={(i % 3) * 0.06}>
               <blockquote style={{ margin: 0, textAlign: 'center' }}>
-                <p style={{ fontSize: '18px', color: t.text, lineHeight: 1.7, margin: 0, fontFamily: 'var(--font-heading, var(--f-heading))', fontStyle: 'italic' }}>« <InlineHtml as="span" html={tm.text} /> »</p>
+                <p style={{ fontSize: '18px', color: t.text, lineHeight: 1.7, margin: 0, fontFamily: 'var(--font-heading, var(--f-heading))', fontStyle: 'italic' }}>{tr('ui.quoteOpen')}<InlineHtml as="span" html={tm.text} />{tr('ui.quoteClose')}</p>
                 <footer style={{ marginTop: 14, fontSize: 14, fontWeight: 600, color: t.heading }}>— {tm.author}</footer>
               </blockquote>
             </Reveal>
