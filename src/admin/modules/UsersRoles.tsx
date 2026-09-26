@@ -5,7 +5,7 @@ import { Icon } from '@/lib/icons'
 import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { ROLES, canDo, ROLE_LABELS, ROLE_DESCRIPTIONS, ALL_MODULES, permLevelFor, MODULE_ACCESS, CRUD_ACTIONS, computeEffectiveAccess, roleSummary, type RbacOverrides, type CrudAction } from '@/data/rbac'
 import { upsertAdminUser, deleteAdminUser, fetchAuditLog, logAudit, updateAdminUserStatus, setUserInvitedAt, type AuditEntry } from '@/lib/repository'
-import { invokeReplyEmail, sendMagicLink, invokeManageAdminAuth } from '@/lib/supabase'
+import { invokeReplyEmail, sendMagicLink, invokeManageAdminAuth, isAuthRefusal } from '@/lib/supabase'
 import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/password'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -304,7 +304,13 @@ Cette réinitialisation a été effectuée par ${currentUser?.name ?? currentUse
         sendInviteEmail: editing.mode === 'tester' || !editing.id,
       })
       if (!authRes.ok) {
-        // Repli gracieux : on enregistre quand même la ligne admin_users + magic link.
+        // Un refus d'autorisation (401/403) est une erreur dure : aucun rôle
+        // enregistré, aucun lien magique — sinon un refus passerait pour un succès.
+        if (isAuthRefusal(authRes.error)) {
+          setStatus({ kind: 'err', msg: `Accès refusé (${emailErrLabel(authRes.error)}). Aucun rôle enregistré.` })
+          return
+        }
+        // Repli gracieux (fonction indisponible seulement) : on enregistre quand même la ligne admin_users + magic link.
         setStatus({ kind: 'busy', msg: `Identifiants Auth indisponibles (${emailErrLabel(authRes.error)}). Enregistrement du rôle + lien magique…` })
         const res = await upsertAdminUser({
           id: editing.id,

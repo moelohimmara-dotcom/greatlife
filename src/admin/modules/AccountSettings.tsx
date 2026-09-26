@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Icon } from '@/lib/icons'
 import { PageHeader, FieldLabel, inputStyle, GhostButton, PrimaryButton } from '@/admin/ui'
 import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/password'
-import { updateOwnPassword, updateOwnEmail, isSupabaseConfigured, invokeManageAdminAuth } from '@/lib/supabase'
+import { updateOwnPassword, updateOwnEmail, isSupabaseConfigured, invokeManageAdminAuth, isAuthRefusal } from '@/lib/supabase'
 import { logAudit } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
 import { ROLE_LABELS } from '@/data/rbac'
@@ -79,7 +79,12 @@ export function AccountSettings() {
         previousEmail: user.email,
       })
       if (!res.ok) {
-        // Repli session si la fonction refuse / est indisponible
+        // Repli session uniquement si la fonction est indisponible ;
+        // jamais sur refus d'autorisation (401/403), sinon un refus passerait pour un succès.
+        if (isAuthRefusal(res.error)) {
+          setStatus({ kind: 'err', msg: mapAuthError(res.error || 'Échec de la mise à jour.') })
+          return
+        }
         const fallback = await updateOwnPassword(password)
         if (!fallback.ok) {
           setStatus({ kind: 'err', msg: mapAuthError(res.error || fallback.error || 'Échec de la mise à jour.') })
@@ -110,6 +115,13 @@ export function AccountSettings() {
       setStatus({
         kind: 'err',
         msg: 'Mode démo local — le changement d’email nécessite Supabase Auth.',
+      })
+      return
+    }
+    if (!isOwner) {
+      setStatus({
+        kind: 'err',
+        msg: 'Seul le propriétaire peut changer un email : votre ligne de rôle ne suivrait pas et vous perdriez l’accès. Demandez au propriétaire.',
       })
       return
     }

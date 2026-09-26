@@ -16,11 +16,18 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 describe('source invokeManageAdminAuth', () => {
   it('ne classe plus non-2xx comme indisponible dans le code source', () => {
     const src = readFileSync(`${ROOT}/src/lib/supabase.ts`, 'utf8')
-    const bad = /failed to send\|functions\?http\|404\|not found\|non-2xx/i
+    // Alternation réelle : « non-2xx » accolé à « indisponible » = l'ancien bug.
+    const bad = /non-2xx[\s\S]{0,120}indisponible|indisponible[\s\S]{0,120}non-2xx/i
     assert.equal(
       bad.test(src),
       false,
       'supabase.ts ne doit plus traiter non-2xx comme « fonction indisponible »',
+    )
+    // Contrôle anti-vacuité : le motif détecte bien l'ancienne ligne fautive.
+    assert.match(
+      'non-2xx → fonction indisponible (404 not found, failed to send)',
+      /failed to send|functions\?http|404|not found|non-2xx/i,
+      'le motif de détection ne doit pas être vide',
     )
     assert.match(src, /readFunctionsErrorBody|non-2xx/)
     assert.match(src, /getSession/)
@@ -96,5 +103,44 @@ describe('repository upsertAdminUser', () => {
     assert.match(body, /Cet email est déjà utilisé par un autre compte admin/)
     assert.match(body, /\.ilike\('email'/)
     assert.ok(body.includes('.update(') && body.includes('.insert('))
+  })
+})
+
+describe('revue finale : garde exacte et replis bornés', () => {
+  it('la garde owner exige un match exact (pas de repli première ligne)', () => {
+    const src = readFileSync(
+      `${ROOT}/supabase/functions/manage-admin-auth/index.ts`,
+      'utf8',
+    )
+    assert.equal(
+      src.includes('|| adminRows'),
+      false,
+      'aucun repli sur la première ligne sans correspondance exacte',
+    )
+    assert.match(src, /isAuthRefusal|Acces non autorise/)
+  })
+
+  it('un refus 401/403 ne déclenche aucun repli (AccountSettings)', () => {
+    const src = readFileSync(
+      `${ROOT}/src/admin/modules/AccountSettings.tsx`,
+      'utf8',
+    )
+    assert.match(src, /isAuthRefusal\(res\.error/)
+  })
+
+  it('un refus 401/403 ne déclenche aucun repli (UsersRoles)', () => {
+    const src = readFileSync(
+      `${ROOT}/src/admin/modules/UsersRoles.tsx`,
+      'utf8',
+    )
+    assert.match(src, /isAuthRefusal\(authRes\.error/)
+  })
+
+  it('le changement d’email non-owner est bloqué avant Auth', () => {
+    const src = readFileSync(
+      `${ROOT}/src/admin/modules/AccountSettings.tsx`,
+      'utf8',
+    )
+    assert.match(src, /Seul le propriétaire peut changer un email/)
   })
 })
