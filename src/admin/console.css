@@ -375,6 +375,26 @@ html:has([data-admin-shell]) #root {
   padding: 2px 2px 0;
 }
 
+[data-admin-shell] button.admin-nav-account-btn {
+  width: 100%;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+[data-admin-shell] button.admin-nav-account-btn:hover,
+[data-admin-shell] button.admin-nav-account-btn:focus-visible {
+  background: var(--admin-rail-hover);
+  border-color: var(--admin-rail-border-soft);
+  outline: none;
+}
+
 [data-admin-shell] .admin-nav-account-avatar {
   display: grid;
   place-items: center;
@@ -439,6 +459,18 @@ html:has([data-admin-shell]) #root {
   color: var(--admin-rail-fg) !important;
   border-color: var(--admin-rail-border-soft) !important;
   gap: 8px;
+}
+
+[data-admin-shell] .admin-rail .admin-nav-foot-btn.admin-nav-foot-account {
+  background: var(--admin-forest) !important;
+  color: var(--admin-rail-active-fg) !important;
+  border-color: var(--admin-forest) !important;
+  font-weight: 650;
+}
+
+[data-admin-shell] .admin-rail .admin-nav-foot-btn.admin-nav-foot-account:hover {
+  filter: brightness(1.06);
+  background: var(--admin-forest) !important;
 }
 
 [data-admin-shell] .admin-rail .admin-nav-foot-btn.admin-nav-foot-logout {

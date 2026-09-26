@@ -11,6 +11,9 @@
 
 **Demandé le** : 2026-09-19, par le propriétaire.
 
+
+**Statut** : **implémenté** (module Mon compte + invitation testeur + Edge Function `manage-admin-auth`). Voir `docs/admin-panel.md`.
+
 **Besoin** : pouvoir **changer et réinitialiser son mot de passe depuis la
 console du CMS**, sans passer par le tableau de bord Supabase ni par un autre
 outil.

@@ -85,10 +85,12 @@ async function resolveUserFromTable(email: string): Promise<AdminLookup> {
   // Sans Supabase configuré, aucune vérification serveur n'est possible.
   if (!sb) return { ok: false }
   try {
+    // ilike : aligné sur is_admin() (migration 020) — une divergence de casse
+    // ne doit plus faire disparaître le rôle propriétaire.
     const { data, error } = await sb
       .from('admin_users')
       .select('*')
-      .eq('email', email)
+      .ilike('email', email)
       .maybeSingle()
     if (error) return { ok: false }
     // Aucune ligne : le compte n'a aucun rôle en base → accès refusé.

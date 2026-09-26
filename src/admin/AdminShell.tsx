@@ -12,7 +12,7 @@ import {
 } from '@/admin/console-prefs'
 import '@/admin/console.css'
 import { Icon } from '@/lib/icons'
-import { canAccessModule, ROLE_LABELS } from '@/data/rbac'
+import { canAccessModule } from '@/data/rbac'
 import { Bouton } from '@/admin/editor/chrome'
 import {
   NAV_GROUPS,
@@ -209,7 +209,6 @@ export function AdminShell() {
 
   const pendingTotal = (NOTIF.orders || 0) + (NOTIF.reservations || 0) + (NOTIF.messages || 0)
   const accountInitials = (user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()
-  const roleLabel = ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role
 
   const renderNav = (compact: boolean, navId: string) => (
     <aside
@@ -314,15 +313,33 @@ export function AdminShell() {
 
       <div className={`admin-nav-foot${compact ? ' is-compact' : ''}`}>
         {!compact && (
-          <div className="admin-nav-account">
+          <button
+            type="button"
+            className="admin-nav-account admin-nav-account-btn"
+            onClick={() => go('account')}
+            title="Mon compte — email et mot de passe"
+            aria-label="Ouvrir Mon compte"
+          >
             <span className="admin-nav-account-avatar" aria-hidden="true">{accountInitials}</span>
             <span className="admin-nav-account-copy">
               <strong>{user?.name || 'Compte'}</strong>
-              <small>{roleLabel}</small>
+              <small>Email &amp; mot de passe</small>
             </span>
-          </div>
+          </button>
         )}
         <div className={`admin-profile-actions${compact ? ' is-compact' : ''}`}>
+          <Bouton
+            etendu={!compact}
+            carre={compact}
+            genre="primaire"
+            onClick={() => go('account')}
+            title="Mon compte — email et mot de passe"
+            aria-label="Ouvrir Mon compte"
+            className="admin-nav-foot-btn admin-nav-foot-settings admin-nav-foot-account"
+          >
+            <span aria-hidden="true">{Icon.lock(16, 'currentColor')}</span>
+            {!compact && <span>Mon compte</span>}
+          </Bouton>
           <Bouton
             etendu={!compact}
             carre={compact}
@@ -486,16 +503,16 @@ export function AdminShell() {
                 <button
                   type="button"
                   className="admin-topbar-account"
-                  onClick={() => go('consolePrefs')}
-                  title="Compte et préférences de la console"
-                  aria-label={`Compte ${user?.name ?? 'administrateur'}, ouvrir les préférences`}
+                  onClick={() => go('account')}
+                  title="Mon compte — email et mot de passe"
+                  aria-label={`Compte ${user?.name ?? 'administrateur'}, ouvrir Mon compte`}
                 >
                   <span className="admin-topbar-account-avatar" aria-hidden="true">
                     {(user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()}
                   </span>
                   <span className="admin-topbar-account-copy">
                     <strong>{user?.name || 'Compte'}</strong>
-                    <small>{ROLE_LABELS[user?.role ?? 'guest'] ?? user?.role}</small>
+                    <small>Mon compte</small>
                   </span>
                 </button>
               </div>

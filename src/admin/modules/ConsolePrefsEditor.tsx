@@ -140,13 +140,23 @@ export function ConsolePrefsEditor() {
           <strong>Mémorisé sur cet appareil</strong>
           <small>Ces choix ne changent pas le thème vu par vos clients.</small>
         </div>
-        <Link
-          className="admin-chip is-live"
-          to={pathForModule('settings')}
-          style={{ textDecoration: 'none' }}
-        >
-          Réglages du restaurant
-        </Link>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <Link
+            className="admin-chip is-live"
+            to={pathForModule('account')}
+            style={{ textDecoration: 'none' }}
+            title="Changer l’email ou le mot de passe"
+          >
+            Mon compte · mot de passe
+          </Link>
+          <Link
+            className="admin-chip is-live"
+            to={pathForModule('settings')}
+            style={{ textDecoration: 'none' }}
+          >
+            Réglages du restaurant
+          </Link>
+        </div>
       </div>
 
       <div className="admin-wf-prefs-grid">

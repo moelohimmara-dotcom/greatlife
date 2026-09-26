@@ -13,7 +13,7 @@ export const ROLES: RoleDef[] = [
   { id: 'chef', name: 'Chef / Resp. carte' },
   { id: 'editor', name: 'R\u00e9dacteur blog' },
   { id: 'marketing', name: 'Marketing' },
-  { id: 'guest', name: 'Invit\u00e9 / Lecteur' },
+  { id: 'guest', name: 'Testeur / Lecteur' },
 ]
 
 export const ROLE_LABELS: Record<string, string> = ROLES.reduce((acc, r) => {
@@ -27,7 +27,7 @@ export const ROLE_DESCRIPTIONS: Record<string, string> = {
   chef: 'Responsable de la carte : créer, modifier et supprimer les plats et prix.',
   editor: 'Rédacteur du blog : créer et modifier les articles, gérer les médias liés.',
   marketing: 'Campagnes et contenus : médias, blog (lecture des formulaires).',
-  guest: 'Lecteur : consultation seule des contenus publics.',
+  guest: 'Testeur / lecteur : consultation seule des contenus publics (idéal pour une revue avant ouverture).',
 }
 
 export const ADMIN_PANEL_ROLES = ROLES.map(r => r.id)
@@ -66,6 +66,7 @@ export const MODULE_ACCESS: Record<string, ModuleAccess> = {
   media: { module: 'M\u00e9dias', roles: ['owner', 'manager', 'editor', 'marketing'], actions: { create: ['owner', 'manager', 'editor', 'marketing'], update: ['owner', 'manager', 'editor', 'marketing'], delete: ['owner', 'manager', 'editor', 'marketing'] } },
   visibility: { module: 'Visibilit\u00e9', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'] } },
   users: { module: 'Utilisateurs & r\u00f4les', roles: ['owner'], actions: { create: ['owner'], update: ['owner'], delete: ['owner'] } },
+  account: { module: 'Mon compte', roles: ROLES.map(r => r.id), actions: { update: ROLES.map(r => r.id) } },
   forms: { module: 'Formulaires & emails', roles: ['owner', 'manager', 'marketing'], actions: { update: ['owner', 'manager'] } },
   consolePrefs: { module: 'Pr\u00e9f\u00e9rences de la console', roles: ROLES.map(r => r.id), actions: { update: ROLES.map(r => r.id) } },
   settings: { module: 'R\u00e9glages globaux', roles: ['owner', 'manager'], actions: { update: ['owner', 'manager'] } },
@@ -77,7 +78,7 @@ export const ALL_MODULES = Object.keys(MODULE_ACCESS)
 export const MODULE_GROUPS: [string, string[]][] = [
   ['Opérations', ['dashboard', 'orders', 'reservations', 'messages']],
   ['Contenu', ['content', 'menu', 'blog', 'media', 'team']],
-  ['Configuration', ['theme', 'visibility', 'consolePrefs', 'settings', 'forms', 'users', 'audit']],
+  ['Configuration', ['theme', 'visibility', 'account', 'consolePrefs', 'settings', 'forms', 'users', 'audit']],
 ]
 
 export type RbacOverrides = Record<string, Partial<Record<CrudAction, string[]>>>

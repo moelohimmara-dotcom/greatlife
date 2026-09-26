@@ -103,9 +103,19 @@ L'email de destination des messages de contact vient de `site_content.emailConta
 ```bash
 # Via Supabase CLI (si configuré)
 supabase functions deploy send-contact-email --project-ref atsujzoozqnjelngqkab
+supabase functions deploy manage-admin-auth --project-ref atsujzoozqnjelngqkab
 
 # Ou via le dashboard Supabase → Functions → éditer en ligne
 ```
+
+### Edge Function `manage-admin-auth`
+
+Gestion des **identifiants admin** (créer / remplacer email + mot de passe, inviter un testeur). Appelée depuis `invokeManageAdminAuth` (`src/lib/supabase.ts`). **Owner uniquement** (JWT + `admin_users.role = owner`). Utilise `SUPABASE_SERVICE_ROLE_KEY` côté serveur — jamais exposée au navigateur.
+
+| Action | Effet |
+|---|---|
+| `set-credentials` | `createUser` ou `updateUserById` + upsert `admin_users` |
+| `invite-tester` | même chose avec rôle `guest`, puis `inviteUserByEmail` / OTP |
 
 ### Ajouter une nouvelle action d'email
 

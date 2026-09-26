@@ -14,6 +14,7 @@ export const ADMIN_MODULES = [
   'consolePrefs',
   'forms',
   'users',
+  'account',
   'audit',
 ] as const
 
@@ -35,6 +36,7 @@ export const MODULE_PATH: Record<AdminModuleKey, string> = {
   consolePrefs: '/admin/preferences',
   forms: '/admin/formulaires',
   users: '/admin/utilisateurs',
+  account: '/admin/mon-compte',
   audit: '/admin/journal',
 }
 
@@ -54,6 +56,7 @@ export const SLUG_TO_MODULE: Record<string, AdminModuleKey> = {
   preferences: 'consolePrefs',
   formulaires: 'forms',
   utilisateurs: 'users',
+  'mon-compte': 'account',
   journal: 'audit',
 }
 
@@ -86,6 +89,7 @@ export const NAV_GROUPS: [string, [AdminModuleKey, string, string][]][] = [
     ['visibility', 'Visibilité', 'eye'],
   ]],
   ['Système', [
+    ['account', 'Mon compte', 'settings'],
     ['consolePrefs', 'Préférences de la console', 'layout'],
     ['settings', 'Réglages du restaurant', 'settings'],
     ['forms', 'Formulaires & notifications', 'settings'],
@@ -111,6 +115,7 @@ export const MOBILE_TAB_LABELS: Partial<Record<AdminModuleKey, string>> = {
 }
 
 export const MOBILE_MORE_KEYS: AdminModuleKey[] = [
+  'account',
   'content',
   'media',
   'blog',
@@ -135,5 +140,6 @@ export const MOBILE_MORE_LABELS: Partial<Record<AdminModuleKey, string>> = {
   visibility: 'Visibilité',
   forms: 'Formulaires',
   users: 'Utilisateurs',
+  account: 'Mon compte',
   audit: 'Journal',
 }
