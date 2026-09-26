@@ -429,15 +429,26 @@ serve(async (req: Request) => {
       const { error: invErr } = await admin.auth.admin.inviteUserByEmail(email, {
         redirectTo,
       });
-      // inviteUserByEmail échoue si l'utilisateur existe déjà — ce n'est pas bloquant
-      // puisque le mot de passe vient d'être posé. On tente alors un OTP magique.
-      if (invErr) {
+      // Limite d'envoi Auth atteinte : ne PAS retenter aussitôt (chaque envoi
+      // compte). Le compte est créé avec son mot de passe — seul l'e-mail
+      // attendra. Le bouton « Renvoyer » de la console le renverra plus tard.
+      const rateLimited = (m?: string) =>
+        !!m && /rate.?limit|too many|429|exceeded/i.test(m);
+      if (rateLimited(invErr?.message)) {
+        inviteError =
+          "Limite d'envoi d'e-mails atteinte — le compte est créé, renvoyez l'invitation dans quelques minutes.";
+      } else if (invErr) {
+        // inviteUserByEmail échoue si l'utilisateur existe déjà — ce n'est pas
+        // bloquant puisque le mot de passe vient d'être posé. On tente alors
+        // un OTP magique.
         const { error: otpErr } = await admin.auth.signInWithOtp({
           email,
           options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
         });
         if (otpErr) {
-          inviteError = otpErr.message || invErr.message;
+          inviteError = rateLimited(otpErr.message)
+            ? "Limite d'envoi d'e-mails atteinte — le compte est créé, renvoyez l'invitation dans quelques minutes."
+            : (otpErr.message || invErr.message);
         } else {
           inviteSent = true;
         }

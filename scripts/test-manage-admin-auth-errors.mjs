@@ -161,6 +161,16 @@ describe('lot utilisateurs-2 : surcharges hors ligne publique', () => {
     assert.match(src, /votre propre compte/)
   })
 
+  it("limite d'envoi : pas de double envoi, message FR de réessai", () => {
+    const src = readFileSync(
+      `${ROOT}/supabase/functions/manage-admin-auth/index.ts`,
+      'utf8',
+    )
+    assert.match(src, /rateLimited/)
+    assert.match(src, /ne PAS retenter aussitôt/)
+    assert.match(src, /renvoyez l'invitation dans quelques minutes/)
+  })
+
   it("l'écran supprime le compte Auth puis la ligne, sans repli sur 401/403", () => {
     const src = readFileSync(
       `${ROOT}/src/admin/modules/UsersRoles.tsx`,
