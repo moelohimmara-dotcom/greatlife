@@ -7,6 +7,7 @@ import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/pass
 import { updateOwnPassword, updateOwnEmail, isSupabaseConfigured, invokeManageAdminAuth, isAuthRefusal } from '@/lib/supabase'
 import { logAudit } from '@/lib/repository'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { ROLE_LABELS } from '@/data/rbac'
 
 /**
@@ -281,7 +282,7 @@ export function AccountSettings() {
         <div style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
           <div style={{ display: 'grid', gap: 6 }}>
             <FieldLabel>Nouveau mot de passe</FieldLabel>
-            <Input
+            <PasswordInput
               type="password"
               autoComplete="new-password"
               value={password}
@@ -293,7 +294,7 @@ export function AccountSettings() {
           </div>
           <div style={{ display: 'grid', gap: 6 }}>
             <FieldLabel>Confirmation du mot de passe</FieldLabel>
-            <Input
+            <PasswordInput
               type="password"
               autoComplete="new-password"
               value={confirm}
@@ -363,7 +364,7 @@ export function AccountSettings() {
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               <FieldLabel>Nouveau mot de passe</FieldLabel>
-              <Input
+              <PasswordInput
                 type="password"
                 autoComplete="new-password"
                 value={replacePassword}
@@ -375,7 +376,7 @@ export function AccountSettings() {
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               <FieldLabel>Confirmation du mot de passe</FieldLabel>
-              <Input
+              <PasswordInput
                 type="password"
                 autoComplete="new-password"
                 value={replaceConfirm}

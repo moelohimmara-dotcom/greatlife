@@ -7934,3 +7934,30 @@ html:has([data-admin-shell][data-console-theme="nuit"]) #root {
     transition: none;
   }
 }
+
+/* Tiroir « compte » — le bloc propriétaire en est le parent (disclosure).
+   Le tiroir s'ouvre AU-DESSUS du bloc : il reste visible dans une barre basse. */
+[data-admin-shell] .admin-nav-foot {
+  position: relative;
+}
+
+[data-admin-shell] .admin-compte-drawer {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 8px);
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  box-shadow: var(--admin-shadow);
+  z-index: 50;
+}
+
+[data-admin-shell] .admin-compte-drawer-top {
+  left: auto;
+  right: 0;
+  min-width: 220px;
+}

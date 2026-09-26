@@ -12,7 +12,7 @@ import {
 } from '@/admin/console-prefs'
 import '@/admin/console.css'
 import { Icon } from '@/lib/icons'
-import { canAccessModule } from '@/data/rbac'
+import { canAccessModule, ROLE_LABELS } from '@/data/rbac'
 import { Bouton } from '@/admin/editor/chrome'
 import {
   NAV_GROUPS,
@@ -45,6 +45,8 @@ export function AdminShell() {
   const active = moduleFromPathname(location.pathname)
   const [mobileNav, setMobileNav] = useState(false)
   const [plusOpen, setPlusOpen] = useState(false)
+  /** Tiroir « compte » ouvert : le bloc propriétaire en est le parent. */
+  const [tiroirCompte, setTiroirCompte] = useState<'sidebar' | 'topbar' | null>(null)
   const [navPref, setNavPref] = useState<AdminNavPref>(lireNavPref)
   const [editorRail, setEditorRail] = useState(() => lireNavPref() === 'rail')
   const shellRef = useRef<HTMLDivElement>(null)
@@ -54,11 +56,12 @@ export function AdminShell() {
   const editorFocus = active === 'content'
   const editorHidesNav = editorFocus && !editorRail
   const rail = editorFocus || navPref === 'rail'
-  const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
+  const handleLogout = () => { setTiroirCompte(null); logout(); navigate('/login', { replace: true }) }
   const go = (k: AdminModuleKey) => {
     navigate(pathForModule(k))
     setMobileNav(false)
     setPlusOpen(false)
+    setTiroirCompte(null)
   }
   const NOTIF: Record<string, number> = { messages: unhandledMessagesCount, orders: pendingOrdersCount, reservations: pendingReservationsCount }
 
@@ -75,6 +78,13 @@ export function AdminShell() {
   useEffect(() => {
     if (editorFocus) setEditorRail(navPref === 'rail')
   }, [editorFocus, navPref])
+
+  useEffect(() => {
+    if (!tiroirCompte) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTiroirCompte(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [tiroirCompte])
 
   useEffect(() => {
     const apply = () => {
@@ -209,6 +219,49 @@ export function AdminShell() {
 
   const pendingTotal = (NOTIF.orders || 0) + (NOTIF.reservations || 0) + (NOTIF.messages || 0)
   const accountInitials = (user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()
+  const roleLibelle = user?.role ? (ROLE_LABELS[user.role] ?? user.role) : 'Email & mot de passe'
+
+  /** Le contenu du tiroir : les actions rattachées au bloc propriétaire. */
+  const actionsCompte = (etendu: boolean) => (
+    <>
+      <Bouton
+        etendu={etendu}
+        carre={!etendu}
+        genre="primaire"
+        onClick={() => { setTiroirCompte(null); go('account') }}
+        title="Mon compte — email et mot de passe"
+        aria-label="Ouvrir Mon compte"
+        className="admin-nav-foot-btn admin-nav-foot-account"
+      >
+        <span aria-hidden="true">{Icon.lock(16, 'currentColor')}</span>
+        {etendu && <span>Mon compte</span>}
+      </Bouton>
+      <Bouton
+        etendu={etendu}
+        carre={!etendu}
+        genre="secondaire"
+        onClick={() => { setTiroirCompte(null); go('consolePrefs') }}
+        title="Préférences de la console"
+        aria-label="Ouvrir les préférences de la console"
+        className="admin-nav-foot-btn admin-nav-foot-settings"
+      >
+        <span aria-hidden="true">{Icon.layout(16, 'var(--admin-rail-fg)')}</span>
+        {etendu && <span>Préférences</span>}
+      </Bouton>
+      <Bouton
+        etendu={etendu}
+        carre={!etendu}
+        genre="danger"
+        onClick={() => { setTiroirCompte(null); handleLogout() }}
+        title="Déconnexion"
+        aria-label="Se déconnecter"
+        className="admin-nav-foot-btn admin-nav-foot-logout"
+      >
+        <span aria-hidden="true">{Icon.logout(16, 'var(--admin-coral)')}</span>
+        {etendu && <span>Déconnexion</span>}
+      </Bouton>
+    </>
+  )
 
   const renderNav = (compact: boolean, navId: string) => (
     <aside
@@ -312,59 +365,32 @@ export function AdminShell() {
       </nav>
 
       <div className={`admin-nav-foot${compact ? ' is-compact' : ''}`}>
-        {!compact && (
-          <button
-            type="button"
-            className="admin-nav-account admin-nav-account-btn"
-            onClick={() => go('account')}
-            title="Mon compte — email et mot de passe"
-            aria-label="Ouvrir Mon compte"
-          >
-            <span className="admin-nav-account-avatar" aria-hidden="true">{accountInitials}</span>
+                {/* Bloc propriétaire : le PARENT du tiroir « compte » (disclosure ARIA).
+            Bonne pratique : un seul point d'entrée, dépliable, refermable par Échap. */}
+        <button
+          type="button"
+          className="admin-nav-account admin-nav-account-btn"
+          aria-expanded={tiroirCompte === 'sidebar'}
+          aria-controls="admin-tiroir-compte-sidebar"
+          onClick={() => setTiroirCompte((t) => (t === 'sidebar' ? null : 'sidebar'))}
+          title="Votre compte — mon compte, préférences, déconnexion"
+        >
+          <span className="admin-nav-account-avatar" aria-hidden="true">{accountInitials}</span>
+          {!compact && (
             <span className="admin-nav-account-copy">
               <strong>{user?.name || 'Compte'}</strong>
-              <small>Email &amp; mot de passe</small>
+              <small>{roleLibelle}</small>
             </span>
-          </button>
+          )}
+          <span aria-hidden="true" style={{ marginInlineStart: 'auto', display: 'inline-flex' }}>
+            {tiroirCompte === 'sidebar' ? Icon.chevronDown(14, 'currentColor') : Icon.chevronUp(14, 'currentColor')}
+          </span>
+        </button>
+        {tiroirCompte === 'sidebar' && (
+          <div id="admin-tiroir-compte-sidebar" role="group" aria-label="Actions du compte" className="admin-compte-drawer">
+            {actionsCompte(!compact)}
+          </div>
         )}
-        <div className={`admin-profile-actions${compact ? ' is-compact' : ''}`}>
-          <Bouton
-            etendu={!compact}
-            carre={compact}
-            genre="primaire"
-            onClick={() => go('account')}
-            title="Mon compte — email et mot de passe"
-            aria-label="Ouvrir Mon compte"
-            className="admin-nav-foot-btn admin-nav-foot-settings admin-nav-foot-account"
-          >
-            <span aria-hidden="true">{Icon.lock(16, 'currentColor')}</span>
-            {!compact && <span>Mon compte</span>}
-          </Bouton>
-          <Bouton
-            etendu={!compact}
-            carre={compact}
-            genre="secondaire"
-            onClick={() => go('consolePrefs')}
-            title="Préférences de la console"
-            aria-label="Ouvrir les préférences de la console"
-            className="admin-nav-foot-btn admin-nav-foot-settings"
-          >
-            <span aria-hidden="true">{Icon.layout(16, 'var(--admin-rail-fg)')}</span>
-            {!compact && <span>Préférences</span>}
-          </Bouton>
-          <Bouton
-            etendu={!compact}
-            carre={compact}
-            genre="danger"
-            onClick={handleLogout}
-            title="Déconnexion"
-            aria-label="Se déconnecter"
-            className="admin-nav-foot-btn admin-nav-foot-logout"
-          >
-            <span aria-hidden="true">{Icon.logout(16, 'var(--admin-coral)')}</span>
-            {!compact && <span>Déconnexion</span>}
-          </Bouton>
-        </div>
       </div>
     </aside>
   )
@@ -500,21 +526,32 @@ export function AdminShell() {
                     <span className="admin-topbar-site-short" aria-hidden="true">EN</span>
                   </Bouton>
                 </div>
-                <button
-                  type="button"
-                  className="admin-topbar-account"
-                  onClick={() => go('account')}
-                  title="Mon compte — email et mot de passe"
-                  aria-label={`Compte ${user?.name ?? 'administrateur'}, ouvrir Mon compte`}
-                >
-                  <span className="admin-topbar-account-avatar" aria-hidden="true">
-                    {(user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="admin-topbar-account-copy">
-                    <strong>{user?.name || 'Compte'}</strong>
-                    <small>Mon compte</small>
-                  </span>
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    className="admin-topbar-account"
+                    aria-expanded={tiroirCompte === 'topbar'}
+                    aria-controls="admin-tiroir-compte-topbar"
+                    onClick={() => setTiroirCompte((t) => (t === 'topbar' ? null : 'topbar'))}
+                    title="Votre compte — mon compte, préférences, déconnexion"
+                  >
+                    <span className="admin-topbar-account-avatar" aria-hidden="true">
+                      {(user?.name || user?.email || 'GL').slice(0, 2).toUpperCase()}
+                    </span>
+                    <span className="admin-topbar-account-copy">
+                      <strong>{user?.name || 'Compte'}</strong>
+                      <small>{roleLibelle}</small>
+                    </span>
+                    <span aria-hidden="true" style={{ display: 'inline-flex', marginLeft: 6 }}>
+                      {tiroirCompte === 'topbar' ? Icon.chevronDown(14, 'currentColor') : Icon.chevronUp(14, 'currentColor')}
+                    </span>
+                  </button>
+                  {tiroirCompte === 'topbar' && (
+                    <div id="admin-tiroir-compte-topbar" role="group" aria-label="Actions du compte" className="admin-compte-drawer admin-compte-drawer-top">
+                      {actionsCompte(true)}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

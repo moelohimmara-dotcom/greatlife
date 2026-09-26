@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { OrganicCard } from '@/components/ui/OrganicCard'
 import { Icon } from '@/lib/icons'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Label } from '@/components/ui/label'
 import { Bouton } from '@/admin/editor/chrome'
 import { requestPasswordReset, updateOwnPassword, getSupabase, isSupabaseConfigured } from '@/lib/supabase'
@@ -146,7 +147,7 @@ export function LoginScreen() {
               </div>
               <div>
                 <Label style={{ fontSize: '13px', fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', marginBottom: '6px' }}>Mot de passe</Label>
-                <Input type="password" name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
+                <PasswordInput type="password" name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
                   style={{ background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)', borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: 'var(--admin-ink)', width: '100%' }} />
               </div>
               {(error || info) && (
@@ -196,12 +197,12 @@ export function LoginScreen() {
             <form onSubmit={submitRecovery} style={{ display: 'grid', gap: '16px' }}>
               <div>
                 <Label style={{ fontSize: '13px', fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', marginBottom: '6px' }}>Nouveau mot de passe</Label>
-                <Input type="password" name="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••••" required
+                <PasswordInput type="password" name="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••••" required
                   style={{ background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)', borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: 'var(--admin-ink)', width: '100%' }} />
               </div>
               <div>
                 <Label style={{ fontSize: '13px', fontWeight: 600, color: 'color-mix(in srgb, var(--admin-ink) 55%, transparent)', marginBottom: '6px' }}>Confirmer</Label>
-                <Input type="password" name="confirm" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••••••" required
+                <PasswordInput type="password" name="confirm" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••••••" required
                   style={{ background: 'var(--admin-paper-muted)', border: '1px solid var(--admin-line)', borderRadius: '12px', padding: '12px 14px', fontSize: '14px', color: 'var(--admin-ink)', width: '100%' }} />
               </div>
               {password.length > 0 && (

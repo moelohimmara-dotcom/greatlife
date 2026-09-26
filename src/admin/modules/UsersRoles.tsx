@@ -8,6 +8,7 @@ import { upsertAdminUser, deleteAdminUser, fetchAuditLog, logAudit, updateAdminU
 import { invokeReplyEmail, sendMagicLink, invokeManageAdminAuth, isAuthRefusal, invokeDeleteAdminUser } from '@/lib/supabase'
 import { isValidEmail, evaluatePassword, passwordRulesSummary } from '@/lib/password'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { dateFr, ADMIN_URL } from '@/admin/shared'
@@ -656,7 +657,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
                 <FieldLabel>
                   Mot de passe{editing.mode === 'user' && !editing.id ? ' (optionnel — sinon lien magique)' : ''}
                 </FieldLabel>
-                <Input
+                <PasswordInput
                   type="password"
                   autoComplete="new-password"
                   value={editing.password}
@@ -667,7 +668,7 @@ Un lien de connexion sécurisé à usage unique vous a également été envoyé 
               </div>
               <div style={{ display: 'grid', gap: 6 }}>
                 <FieldLabel>Confirmer le mot de passe</FieldLabel>
-                <Input
+                <PasswordInput
                   type="password"
                   autoComplete="new-password"
                   value={editing.confirm}
