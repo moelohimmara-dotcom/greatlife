@@ -79,10 +79,17 @@ const CONTRAINTES = [
     defaut: "la coquille grandit avec son contenu, donc le document défile et emporte la barre",
     casse: (s) => s.replace(/position: 'fixed',\s*inset: 0,/, "position: 'relative',"),
     tient: (s) => {
-      // Style multi-lignes après spread rootStyle
-      const i = s.indexOf('...rootStyle')
+      /*
+        Bloc de la coquille : on s'ancre sur l'élément PORTEUSE, jamais sur un
+        spread du style. Le `...rootStyle` de l'époque a été retiré par a931ece
+        (2026-09-24) pour isoler les jetons console de l'aperçu — le filet
+        continuait à l'exiger et rougissait sur un code pourtant conforme
+        (dérive mesurée le 2026-09-26). La contrainte réelle, elle, n'a pas
+        bougé : la coquille porte fixed + inset + overflow hidden.
+      */
+      const i = s.indexOf('data-admin-shell')
       if (i < 0) return false
-      const bloc = s.slice(i, i + 500)
+      const bloc = s.slice(i, i + 800)
       return bloc.includes("position: 'fixed'") && bloc.includes('inset: 0') && bloc.includes("overflow: 'hidden'")
     },
   },
@@ -111,14 +118,14 @@ const CONTRAINTES = [
     id: 'barre-bornee',
     quoi: "l'`aside` et son `nav` sont bornés (minHeight: 0)",
     defaut: "le `nav` s'allonge au lieu de défiler : la barre fait 1179 px pour 674 px de fenêtre",
-    casse: (s) => s.replace("column', height: '100%', minHeight: 0 }}>", "column', height: '100%' }}>"),
+    casse: (s) => s.replace("column', height: '100%', minHeight: 0 }}", "column', height: '100%' }}"),
     tient: (s) => /<aside[\s\S]{0,300}?minHeight: 0 \}/.test(s) && /<nav[\s\S]{0,300}?minHeight: 0/.test(s),
   },
   {
     id: 'nav-defile',
     quoi: 'le `nav` défile dans sa propre colonne',
     defaut: 'sans `overflow: auto` sur le nav, les entrées basses deviennent inatteignables',
-    casse: (s) => s.replace("flex: 1, overflow: 'auto', minHeight: 0 }}>", "flex: 1, minHeight: 0 }}>"),
+    casse: (s) => s.replace("flex: 1, overflow: 'auto', minHeight: 0 }}", "flex: 1, minHeight: 0 }}"),
     tient: (s) => /<nav[\s\S]{0,300}?overflow: 'auto'/.test(s),
   },
   {
