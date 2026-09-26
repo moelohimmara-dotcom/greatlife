@@ -1,5 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { MENU, type MenuItem } from '@/data/menu'
+import type { Bilingue } from '@/cms/model/i18n'
 import type { SiteContent, ContactMessage, MessageReply } from '@/contexts/SiteContext'
 import { fusionBilingue, clefsMiroirRestaurant, fusionnePatch } from '@/cms/model/contenu-patch'
 
@@ -53,6 +54,11 @@ interface MenuRow {
   vertus: string
   badges: string[] | Record<string, unknown> | null
   sort_order: number | null
+  /** Migration 046 — traductions par langue ({fr, en}) ; colonnes absentes
+   *  avant la migration, nulles tant que le plat n'est pas traduit. */
+  name_i18n?: Bilingue | null
+  description_i18n?: Bilingue | null
+  vertus_i18n?: Bilingue | null
 }
 
 function rowToMenuItem(row: MenuRow): MenuItem {
@@ -69,6 +75,11 @@ function rowToMenuItem(row: MenuRow): MenuItem {
     desc: row.description ?? '',
     vertus: row.vertus ?? '',
     badges,
+    // Repli assuré par `libellesPlat` : les colonnes historiques restent la
+    // source française, *_i18n n'apporte que les autres langues.
+    name_i18n: row.name_i18n ?? null,
+    desc_i18n: row.description_i18n ?? null,
+    vertus_i18n: row.vertus_i18n ?? null,
   }
 }
 
@@ -104,6 +115,10 @@ export async function upsertMenuItem(item: MenuItem): Promise<MenuItemSaveResult
   if (!sb) return { ok: false, error: 'Supabase non configuré' }
   try {
     // `id` est retiré du corps : sur insertion il est attribué par la base.
+    // Les colonnes *_i18n (migration 046) ne sont PAS écrites ici : l'éditeur
+    // écrit toujours les textes FR historiques (name/description/vertus), qui
+    // restent la source française au rendu — l'édition anglaise des plats
+    // viendra plus tard.
     const { id, ...fields } = item
     const payload = {
       cat: fields.cat,

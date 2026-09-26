@@ -149,6 +149,39 @@ export const RESSOURCES = {
     'cart.unit': 'FG l\'unité',
     'nav.switchToEn': 'Switch to English',
     'nav.switchToFr': 'Passer en français',
+
+    // --- Libellés des sections « blocs simples » (états vides, replis de titre) ---
+    'menu.featuredEmpty': 'Plats à la une : indiquez l’identifiant ou le nom de plats de la carte dans Modifier.',
+    'menu.featuredTitle': 'À la une',
+    'faq.empty': 'Aucune question : ajoutez-en dans la colonne Modifier.',
+    'faq.fallbackQuestion': 'Question',
+    'faq.title': 'Questions fréquentes',
+    'video.empty': 'Vidéo : collez une adresse (YouTube, Vimeo ou fichier .mp4) dans Modifier.',
+    'video.fallbackTitle': 'Vidéo',
+    'video.badUrl': 'Adresse non reconnue. Utilisez YouTube, Vimeo ou un fichier .mp4 / .webm.',
+    'gallery.empty': 'Galerie vide : ajoutez des photos dans la colonne Modifier.',
+    'gallery.title': 'Galerie',
+    'gallery.photoN': 'Photo {{n}}',
+    'cta.empty': 'Appel à l’action vide : ajoutez un titre ou un bouton dans Modifier.',
+    'imageText.empty': 'Bloc image et texte vide : ajoutez une photo ou un texte dans Modifier.',
+    'richText.empty': 'Contenu libre vide : rédigez dans la colonne Modifier.',
+    'textBlock.empty': 'Bloc texte vide : saisissez un titre ou un texte dans Modifier.',
+    'hero.videoHint': 'Disposition « Vidéo » : ajoutez une vidéo dans la colonne Modifier pour qu’elle se lance ici.',
+    // Devise affichée près des prix : code identique dans les deux langues,
+    // sorti du code pour rester modifiable comme les autres libellés.
+    'cart.currency': 'FG',
+
+    // --- Libellés de catégorie de la carte (valeurs de `cat`, données) ---
+    'menu.catBurgers': 'Burgers',
+    'menu.catWraps': 'Wraps',
+    'menu.catSalades': 'Salades',
+    'menu.catFrites': 'Frites & côtés',
+    'menu.catMilkshakes': 'Milkshakes & smoothies',
+    'menu.catPetitDejeuner': 'Petit-déjeuner',
+    'menu.catDesserts': 'Desserts',
+    'menu.catBoissonsChaudes': 'Boissons chaudes',
+    'menu.catMenuEnfant': 'Menu enfant',
+    'menu.catSuggestions': 'Suggestions',
   },
 
   en: {
@@ -271,6 +304,39 @@ export const RESSOURCES = {
     'cart.unit': 'FG each',
     'nav.switchToEn': 'Switch to English',
     'nav.switchToFr': 'Switch to French',
+
+    // --- Libellés des sections « blocs simples » (états vides, replis de titre) ---
+    'menu.featuredEmpty': 'Featured dishes: enter the ID or name of dishes from the menu in Edit.',
+    'menu.featuredTitle': 'Featured',
+    'faq.empty': 'No questions yet: add some in the Edit column.',
+    'faq.fallbackQuestion': 'Question',
+    'faq.title': 'Frequently asked questions',
+    'video.empty': 'Video: paste a link (YouTube, Vimeo or .mp4 file) in Edit.',
+    'video.fallbackTitle': 'Video',
+    'video.badUrl': 'Unrecognised link. Use YouTube, Vimeo or a .mp4 / .webm file.',
+    'gallery.empty': 'Empty gallery: add photos in the Edit column.',
+    'gallery.title': 'Gallery',
+    'gallery.photoN': 'Photo {{n}}',
+    'cta.empty': 'Empty call to action: add a title or a button in Edit.',
+    'imageText.empty': 'Empty image and text block: add a photo or some text in Edit.',
+    'richText.empty': 'Empty rich content: write in the Edit column.',
+    'textBlock.empty': 'Empty text block: enter a title or some text in Edit.',
+    'hero.videoHint': '“Video” layout: add a video in the Edit column so it plays here.',
+    // Devise affichée près des prix : code identique dans les deux langues,
+    // sorti du code pour rester modifiable comme les autres libellés.
+    'cart.currency': 'FG',
+
+    // --- Libellés de catégorie de la carte (valeurs de `cat`, données) ---
+    'menu.catBurgers': 'Burgers',
+    'menu.catWraps': 'Wraps',
+    'menu.catSalades': 'Salads',
+    'menu.catFrites': 'Fries & sides',
+    'menu.catMilkshakes': 'Milkshakes & smoothies',
+    'menu.catPetitDejeuner': 'Breakfast',
+    'menu.catDesserts': 'Desserts',
+    'menu.catBoissonsChaudes': 'Hot drinks',
+    'menu.catMenuEnfant': 'Kids menu',
+    'menu.catSuggestions': 'Seasonal specials',
   },
 } as const
 

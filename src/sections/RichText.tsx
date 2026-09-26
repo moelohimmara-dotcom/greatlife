@@ -5,6 +5,9 @@ import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText } from '@/cms/renderer/compat'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 /** Contenu libre — même rendu qu’un texte une colonne (registre `rich_text`). */
 export function RichText({ content: cms, preview }: Partial<SectionComponentProps> = {}) {
@@ -17,7 +20,7 @@ export function RichText({ content: cms, preview }: Partial<SectionComponentProp
     return (
       <section className="section-pad" style={{ padding: '48px 24px', maxWidth: 800, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Contenu libre vide : rédigez dans la colonne Modifier.
+          {tr('richText.empty')}
         </p>
       </section>
     )

@@ -7,6 +7,9 @@ import { cmsText } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
 
 const DISPOSITIONS = ['image_left', 'image_right'] as const
@@ -24,7 +27,7 @@ export function ImageText({ content: cms, variant, preview }: Partial<SectionCom
     return (
       <section className="section-pad" style={{ padding: '48px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Bloc image et texte vide : ajoutez une photo ou un texte dans Modifier.
+          {tr('imageText.empty')}
         </p>
       </section>
     )

@@ -5,10 +5,14 @@ import { SectionHead } from '@/components/ui/SectionHead'
 import { FoodIcon } from '@/lib/icons/FoodIcon'
 import { productPhotoCandidates } from '@/lib/productPhotoSlot'
 import { resolveMediaAlt } from '@/lib/mediaAlt'
-import type { MenuItem } from '@/data/menu'
+import { libellesPlat, type MenuItem } from '@/data/menu'
+import type { Locale } from '@/cms/model/i18n'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText, pick } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 interface FeaturedRef {
   ref?: string
@@ -16,11 +20,12 @@ interface FeaturedRef {
 
 const DISPOSITIONS = ['grid', 'carousel'] as const
 
-function FeaturedCard({ item }: { item: MenuItem }) {
+function FeaturedCard({ item, locale }: { item: MenuItem; locale?: Locale }) {
   const { theme: t } = useSite()
+  const { name, desc } = libellesPlat(item, locale)
   const prodAsset = useFirstMediaAsset(productPhotoCandidates(item))
   const prodImg = prodAsset?.url
-  const prodAlt = resolveMediaAlt(prodAsset, item.name)
+  const prodAlt = resolveMediaAlt(prodAsset, name)
 
   return (
     <OrganicCard hover style={{ padding: 0, overflow: 'hidden', height: '100%' }}>
@@ -49,12 +54,12 @@ function FeaturedCard({ item }: { item: MenuItem }) {
             letterSpacing: '-0.02em',
           }}
         >
-          {item.name}
+          {name}
         </h3>
-        <p style={{ fontSize: 14, color: t.muted, lineHeight: 1.5, margin: '0 0 8px' }}>{item.desc}</p>
+        <p style={{ fontSize: 14, color: t.muted, lineHeight: 1.5, margin: '0 0 8px' }}>{desc}</p>
         <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 700, color: t.accent, fontSize: 16 }}>
           {item.price}
-          <span style={{ fontSize: 11, fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: t.muted, marginLeft: 4 }}>{tr('cart.currency')}</span>
         </span>
       </div>
     </OrganicCard>
@@ -65,7 +70,7 @@ function FeaturedCard({ item }: { item: MenuItem }) {
  * Plats choisis dans la carte (TDR §16) — références uniquement, jamais de copie de prix.
  * `ref` accepte l’id stable du plat ou son nom (repli tant que l’éditeur n’a pas de sélecteur dédié).
  */
-export function MenuFeatured({ content: cms, data, variant, preview }: Partial<SectionComponentProps> = {}) {
+export function MenuFeatured({ content: cms, data, variant, preview, locale }: Partial<SectionComponentProps> = {}) {
   const { menu: legacyMenu, theme: t } = useSite()
   const menu = pick(data?.menu as MenuItem[] | undefined, legacyMenu)
   const refs = (cmsList<FeaturedRef>(cms, 'items') ?? [])
@@ -82,13 +87,13 @@ export function MenuFeatured({ content: cms, data, variant, preview }: Partial<S
     return (
       <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Plats à la une : indiquez l’identifiant ou le nom de plats de la carte dans Modifier.
+          {tr('menu.featuredEmpty')}
         </p>
       </section>
     )
   }
 
-  const title = cmsText(cms, 'title') ?? 'À la une'
+  const title = cmsText(cms, 'title') ?? tr('menu.featuredTitle')
   const sub = cmsText(cms, 'subtitle')
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'grid')
 
@@ -111,7 +116,7 @@ export function MenuFeatured({ content: cms, data, variant, preview }: Partial<S
           {featured.map((item, i) => (
             <div key={item.id ?? item.name} style={{ flex: '0 0 min(78%, 300px)', scrollSnapAlign: 'start' }}>
               <Reveal delay={(i % 4) * 0.05}>
-                <FeaturedCard item={item} />
+                <FeaturedCard item={item} locale={locale} />
               </Reveal>
             </div>
           ))}
@@ -128,7 +133,7 @@ export function MenuFeatured({ content: cms, data, variant, preview }: Partial<S
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
         {featured.map((item, i) => (
           <Reveal key={item.id ?? item.name} delay={(i % 4) * 0.05}>
-            <FeaturedCard item={item} />
+            <FeaturedCard item={item} locale={locale} />
           </Reveal>
         ))}
       </div>

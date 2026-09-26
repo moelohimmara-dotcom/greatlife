@@ -6,6 +6,9 @@ import { cmsList, cmsText } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 interface GalleryItem {
   media?: string
@@ -22,20 +25,20 @@ export function Gallery({ content: cms, variant, preview }: Partial<SectionCompo
     return (
       <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Galerie vide : ajoutez des photos dans la colonne Modifier.
+          {tr('gallery.empty')}
         </p>
       </section>
     )
   }
 
-  const title = cmsText(cms, 'title') ?? 'Galerie'
+  const title = cmsText(cms, 'title') ?? tr('gallery.title')
   const sub = cmsText(cms, 'subtitle')
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'grid')
 
   const cell = (it: GalleryItem, i: number, tall?: boolean) => {
     const url = (it.media ?? '').trim()
     const asset = findMediaByUrl(media, url)
-    const alt = coalesceAlt(resolveMediaAlt(asset), it.caption, `Photo ${i + 1}`)
+    const alt = coalesceAlt(resolveMediaAlt(asset), it.caption, tr('gallery.photoN', { n: i + 1 }))
     return (
       <Reveal key={`${url}-${i}`} delay={(i % 4) * 0.05}>
         <figure style={{ margin: 0, borderRadius: 20, overflow: 'hidden', background: t.surfaceAlt, height: '100%' }}>

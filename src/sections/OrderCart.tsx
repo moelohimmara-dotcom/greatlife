@@ -169,7 +169,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
               <CartGlyph size={22} color="#fff" />
               <span style={{ position: 'absolute', top: -8, right: -10, background: t.accent, color: '#fff', fontSize: '11px', fontWeight: 700, minWidth: 20, height: 20, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }} aria-hidden="true">{count}</span>
             </span>
-            {tr('cart.title')} · {totalLabel} FG
+            {tr('cart.title')} · {totalLabel} {tr('cart.currency')}
           </motion.button>
         )}
       </AnimatePresence>
@@ -351,7 +351,7 @@ export function OrderCart({ pickupTimes = [] }: { pickupTimes?: readonly string[
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 14, background: `linear-gradient(135deg, ${t.primary}10, ${t.gold}08)`, border: `1px solid ${t.primary}20` }}>
                         <span style={{ fontSize: '14px', fontWeight: 600, color: t.heading }}>{tr('cart.total')}</span>
-                        <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '22px', fontWeight: 700, color: t.accent }}>{totalLabel}<span style={{ fontSize: '12px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span></span>
+                        <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontSize: '22px', fontWeight: 700, color: t.accent }}>{totalLabel}<span style={{ fontSize: '12px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>{tr('cart.currency')}</span></span>
                       </div>
 
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

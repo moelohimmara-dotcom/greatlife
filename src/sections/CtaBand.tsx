@@ -6,6 +6,9 @@ import { anchorHref, cmsGroup, cmsText } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 const DISPOSITIONS = ['banner', 'card'] as const
 
@@ -23,7 +26,7 @@ export function CtaBand({ content: cms, variant, preview }: Partial<SectionCompo
     return (
       <section className="section-pad" style={{ padding: '48px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Appel à l’action vide : ajoutez un titre ou un bouton dans Modifier.
+          {tr('cta.empty')}
         </p>
       </section>
     )

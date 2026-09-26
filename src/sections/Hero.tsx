@@ -140,7 +140,7 @@ function HeroPleinEcran({
             lineHeight: 1.45,
             maxWidth: 420,
           }}>
-            Disposition « Vidéo » : ajoutez une vidéo dans la colonne Modifier pour qu’elle se lance ici.
+            {tr('hero.videoHint')}
           </p>
         )}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>

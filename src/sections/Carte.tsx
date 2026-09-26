@@ -11,24 +11,49 @@ import { Reveal } from '@/components/ui/Reveal'
 import { SectionHead } from '@/components/ui/SectionHead'
 import { Icon } from '@/lib/icons'
 import { FoodIcon } from '@/lib/icons/FoodIcon'
-import { CATEGORY_ORDER } from '@/data/menu'
+import { CATEGORY_ORDER, libellesPlat } from '@/data/menu'
 import type { MenuItem } from '@/data/menu'
+import type { Locale } from '@/cms/model/i18n'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsNumber, cmsText, pick } from '@/cms/renderer/compat'
-import { traduire } from '@/i18n/ui'
+import { traduire, type CleI18n } from '@/i18n/ui'
 
 const tr = traduire()
 
-function MenuCard({ item }: { item: MenuItem }) {
+/**
+ * Libellés de catégorie dans la langue du visiteur. L'identité reste la valeur
+ * FR de `cat` (donnée écrite par la console) ; seul l'affichage est traduit.
+ * Une catégorie hors liste s'affiche telle quelle.
+ */
+const CLE_CATEGORIE: Record<string, CleI18n> = {
+  Burgers: 'menu.catBurgers',
+  Wraps: 'menu.catWraps',
+  Salades: 'menu.catSalades',
+  'Frites & côtés': 'menu.catFrites',
+  'Milkshakes & smoothies': 'menu.catMilkshakes',
+  'Petit-déjeuner': 'menu.catPetitDejeuner',
+  Desserts: 'menu.catDesserts',
+  'Boissons chaudes': 'menu.catBoissonsChaudes',
+  'Menu enfant': 'menu.catMenuEnfant',
+  Suggestions: 'menu.catSuggestions',
+}
+
+const libelleCategorie = (cat: string): string => {
+  const cle = CLE_CATEGORIE[cat]
+  return cle ? tr(cle) : cat
+}
+
+function MenuCard({ item, locale }: { item: MenuItem; locale?: Locale }) {
   const { theme: t, visibility } = useSite()
   const { add } = useCart()
   const [open, setOpen] = useState(false)
   const [added, setAdded] = useState(false)
+  const { name, desc, vertus } = libellesPlat(item, locale)
   const prodAsset = useFirstMediaAsset(productPhotoCandidates(item))
   const prodImg = prodAsset?.url
-  const prodAlt = resolveMediaAlt(prodAsset, item.name)
+  const prodAlt = resolveMediaAlt(prodAsset, name)
   const handleAdd = () => {
-    add(item.name, item.price)
+    add(name, item.price)
     setAdded(true)
     setTimeout(() => setAdded(false), 1400)
   }
@@ -54,18 +79,18 @@ function MenuCard({ item }: { item: MenuItem }) {
         )}
       </div>
       <div style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-        <h4 style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: 'calc(19px * var(--font-scale, 1))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, margin: 0, letterSpacing: '-0.02em' }}>{item.name}</h4>
-        <p style={{ fontSize: '13.5px', fontFamily: 'var(--font-body, var(--f-body))', color: t.muted, lineHeight: 1.5, margin: 0, flex: 1 }}>{item.desc}</p>
+        <h4 style={{ fontFamily: 'var(--font-heading, var(--f-heading))', color: t.heading, fontSize: 'calc(19px * var(--font-scale, 1))', fontWeight: 'var(--font-heading-weight, 700)' as unknown as number, margin: 0, letterSpacing: '-0.02em' }}>{name}</h4>
+        <p style={{ fontSize: '13.5px', fontFamily: 'var(--font-body, var(--f-body))', color: t.muted, lineHeight: 1.5, margin: 0, flex: 1 }}>{desc}</p>
         {visibility.badges && item.badges.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{item.badges.map(b => <BadgePill key={b} b={b} />)}</div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--font-heading, var(--f-heading))', fontWeight: 700, color: t.accent, fontSize: '18px', letterSpacing: '-0.01em' }}>
-            {item.price}<span style={{ fontSize: '11px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>FG</span>
+            {item.price}<span style={{ fontSize: '11px', fontWeight: 500, color: t.muted, marginLeft: 4 }}>{tr('cart.currency')}</span>
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {visibility.vertusPanel && (
-              <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={tr('menu.benefitsAria', { name: item.name })}
+              <button onClick={() => setOpen(!open)} aria-expanded={open} aria-label={tr('menu.benefitsAria', { name })}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   fontSize: '12px', fontWeight: 600, color: t.primary,
@@ -74,7 +99,7 @@ function MenuCard({ item }: { item: MenuItem }) {
                 {open ? tr('menu.close') : tr('menu.benefits')} {open ? '−' : Icon.plus(12, t.primary)}
               </button>
             )}
-            <button onClick={handleAdd} aria-label={tr('menu.addAria', { name: item.name })}
+            <button onClick={handleAdd} aria-label={tr('menu.addAria', { name })}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 fontSize: '12.5px', fontWeight: 700,
@@ -101,7 +126,7 @@ function MenuCard({ item }: { item: MenuItem }) {
                 <div style={{ fontWeight: 700, color: t.primary, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   {Icon.leaf(14, t.primary)} {tr('menu.benefitsTitle')}
                 </div>
-                {item.vertus}
+                {vertus}
               </div>
             </motion.div>
           )}
@@ -113,7 +138,7 @@ function MenuCard({ item }: { item: MenuItem }) {
 
 const DISPOSITIONS = ['full', 'by_category', 'tabs'] as const
 
-export function Carte({ content: cms, data, variant, preview }: Partial<SectionComponentProps> = {}) {
+export function Carte({ content: cms, data, variant, preview, locale }: Partial<SectionComponentProps> = {}) {
   const { menu: legacyMenu, visibility, theme: t } = useSite()
 
   // TDR §16 : les plats viennent du module Menu, jamais recopiés dans le bloc.
@@ -160,14 +185,14 @@ export function Carte({ content: cms, data, variant, preview }: Partial<SectionC
             fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em',
             marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px',
           }}>
-            {cat}
+            {libelleCategorie(cat)}
             <span style={{ flex: 1, height: '1px', background: t.shadow }} />
           </h3>
         </Reveal>
         <div className="menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
           {items.map((it, i) => (
             <Reveal key={it.name} delay={(i % 4) * 0.06}>
-              <MenuCard item={it} />
+              <MenuCard item={it} locale={locale} />
             </Reveal>
           ))}
         </div>
@@ -218,7 +243,7 @@ export function Carte({ content: cms, data, variant, preview }: Partial<SectionC
                 marginBottom: -1, whiteSpace: 'nowrap',
               }}
             >
-              {cat}
+              {libelleCategorie(cat)}
             </button>
           ))}
         </div>
@@ -239,7 +264,7 @@ export function Carte({ content: cms, data, variant, preview }: Partial<SectionC
                 color: cat === choisie ? '#fff' : t.text,
               }}
             >
-              {cat}
+              {libelleCategorie(cat)}
             </button>
           ))}
         </div>

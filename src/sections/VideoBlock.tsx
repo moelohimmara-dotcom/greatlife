@@ -4,6 +4,9 @@ import { SectionHead } from '@/components/ui/SectionHead'
 import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsText } from '@/cms/renderer/compat'
 import { coalesceAlt, findMediaByUrl, resolveMediaAlt } from '@/lib/mediaAlt'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 /** Adresse https/http uniquement — pas de javascript: ni de chemins relatifs opaques. */
 function urlPublique(raw: string | undefined): string | null {
@@ -65,7 +68,7 @@ export function VideoBlock({ content: cms, preview }: Partial<SectionComponentPr
     return (
       <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Vidéo : collez une adresse (YouTube, Vimeo ou fichier .mp4) dans Modifier.
+          {tr('video.empty')}
         </p>
       </section>
     )
@@ -95,7 +98,7 @@ export function VideoBlock({ content: cms, preview }: Partial<SectionComponentPr
           {iframeSrc ? (
             <iframe
               src={iframeSrc}
-              title={title || 'Vidéo'}
+              title={title || tr('video.fallbackTitle')}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               loading="lazy"
@@ -113,7 +116,7 @@ export function VideoBlock({ content: cms, preview }: Partial<SectionComponentPr
             </video>
           ) : (
             <p style={{ padding: 24, margin: 0, color: t.muted, fontSize: 14, textAlign: 'center' }}>
-              Adresse non reconnue. Utilisez YouTube, Vimeo ou un fichier .mp4 / .webm.
+              {tr('video.badUrl')}
             </p>
           )}
         </div>

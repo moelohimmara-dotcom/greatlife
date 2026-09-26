@@ -6,6 +6,9 @@ import { cmsText } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
 import { cmsSlotAttrs } from '@/cms/model/subblocks'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 const DISPOSITIONS = ['one_column', 'two_columns'] as const
 
@@ -18,7 +21,7 @@ export function TextBlock({ content: cms, variant, preview }: Partial<SectionCom
     return (
       <section className="section-pad" style={{ padding: '48px 24px', maxWidth: 800, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Bloc texte vide : saisissez un titre ou un texte dans Modifier.
+          {tr('textBlock.empty')}
         </p>
       </section>
     )

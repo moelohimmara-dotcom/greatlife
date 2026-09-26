@@ -6,6 +6,9 @@ import type { SectionComponentProps } from '@/cms/renderer'
 import { cmsList, cmsText } from '@/cms/renderer/compat'
 import { normaliserDisposition } from '@/cms/renderer/disposition'
 import { InlineHtml } from '@/cms/renderer/InlineHtml'
+import { traduire } from '@/i18n/ui'
+
+const tr = traduire()
 
 interface FaqItem {
   question?: string
@@ -65,7 +68,7 @@ function FaqAccordionItem({
               touchAction: 'manipulation',
             }}
           >
-            <span>{q || 'Question'}</span>
+            <span>{q || tr('faq.fallbackQuestion')}</span>
             <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, color: t.primary, flexShrink: 0 }}>
               {open ? '−' : '+'}
             </span>
@@ -98,13 +101,13 @@ export function Faq({ content: cms, variant, preview }: Partial<SectionComponent
     return (
       <section className="section-pad" style={{ padding: '64px 24px', maxWidth: 800, margin: '0 auto' }}>
         <p style={{ margin: 0, fontSize: 14, color: t.muted, textAlign: 'center' }}>
-          Aucune question : ajoutez-en dans la colonne Modifier.
+          {tr('faq.empty')}
         </p>
       </section>
     )
   }
 
-  const title = cmsText(cms, 'title') ?? 'Questions fréquentes'
+  const title = cmsText(cms, 'title') ?? tr('faq.title')
   const sub = cmsText(cms, 'subtitle')
   const disposition = normaliserDisposition(variant, DISPOSITIONS, 'accordion')
   const [ouvert, setOuvert] = useState<number | null>(0)

@@ -1,3 +1,5 @@
+import { resolveI18n, type Bilingue, type Locale } from '@/cms/model/i18n'
+
 export const CATEGORY_ORDER = [
   'Burgers', 'Wraps', 'Salades', 'Frites & côtés', 'Milkshakes & smoothies',
   'Petit-déjeuner', 'Desserts', 'Boissons chaudes', 'Menu enfant', 'Suggestions',
@@ -24,6 +26,38 @@ export interface MenuItem {
   desc: string
   vertus: string
   badges: string[]
+  /** Colonnes bilingues `menu_items.*_i18n` (migration 046) : absentes avant la
+   *  migration, ou nulles tant que le plat n'est pas traduit. */
+  name_i18n?: Bilingue | null
+  desc_i18n?: Bilingue | null
+  vertus_i18n?: Bilingue | null
+}
+
+/**
+ * Textes d'un plat dans la langue du visiteur.
+ *
+ * Le FRANÇAIS reste piloté par les colonnes historiques (`name`, `desc`,
+ * `vertus`) : ce sont les seules qu'écrit la console aujourd'hui, et un miroir
+ * `fr` dans les colonnes `*_i18n` ne serait pas rafraîchi à l'enregistrement —
+ * renommer un plat afficherait alors l'ancien nom partout. Les autres langues
+ * lisent `*_i18n` ; jamais de trou : le français sert de repli (CM-5).
+ *
+ * L'édition anglaise des plats dans la console viendra plus tard ; elle devra
+ * alors écrire `*_i18n` sans toucher aux colonnes FR historiques.
+ */
+export function libellesPlat(item: MenuItem, locale?: Locale): { name: string; desc: string; vertus: string } {
+  return {
+    name: textePlat(item.name_i18n, item.name, locale),
+    desc: textePlat(item.desc_i18n, item.desc, locale),
+    vertus: textePlat(item.vertus_i18n, item.vertus, locale),
+  }
+}
+
+function textePlat(traductions: Bilingue | null | undefined, francais: string, locale?: Locale): string {
+  // Seule une valeur objet est lue comme traductions : une valeur jsonb
+  // parasite ne doit jamais vider l'affichage.
+  const trad = traductions && typeof traductions === 'object' ? traductions : {}
+  return resolveI18n({ ...trad, fr: francais }, locale) || francais
 }
 
 export const MENU: MenuItem[] = [
