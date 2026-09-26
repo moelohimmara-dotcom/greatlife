@@ -96,7 +96,7 @@ Chaîne de publication (instantané publié, `033`), filets `verify:lot1`,
 | **N-18** | La **coquille de la console** ne tenait pas : la barre latérale défilait avec la page et sortait de l'écran | fiabilité | 🟥 **MESURÉ le 2026-09-21** : barre de **1179 px** (parfois **1451 px**) pour une fenêtre de 674 px ; bloc « Déconnexion / Voir le site » **hors écran** ; `window.scrollTo(0,400)` faisait passer le haut de la barre de **0 à −400 px** ; `main.scrollTop = 400` restait à **0**. CAUSE : un enfant de grille/flex a pour taille minimale celle de son contenu (`min-height: auto`) — sans `minHeight: 0`, `overflow: auto` reste inerte et le parent grandit à la place. **CORRIGÉ** : coquille bornée à `100dvh`, lignes de grille en `minmax(0, 1fr)`, `minHeight: 0` sur `main`/barre/enveloppe/`nav`. **VÉRIFIÉ en production** à 4 hauteurs de fenêtre : `barre_h = vh` exactement, `doc_scrollH = vh`, « Déconnexion » atteignable partout, `scrollTo(0,400)` → `scrollY = 0`, `main.scrollTop = 400` → **400**. Filet `npm run verify:coquille` (7/7, **sensibilité OUI** sur les 7 contraintes) |
 | **N-19** | **Aucune charte écrite** : pas de fichier de jetons, d'où 47 `#dc2626` (le `red-600` de Tailwind, étranger au projet), deux échelles de rayons disjointes, 80 valeurs de `padding` en console et un jeton `gold` illisible sur 3 palettes sur 4 | fiabilité | 🟥 **MESURÉ le 2026-09-21** (voir `docs/22_DIAGNOSTIC_CONSOLE.md`) : aucune couleur de **danger/succès/avertissement** dans les palettes ; et une couleur de danger UNIQUE est impossible — `#dc2626` donne 4,83:1 sur le blanc de « gourmand » mais **3,00:1** sur le sombre de « premium ». **ÉCRIT** : `src/config/charte.ts` (échelles + rôles + dérogation par surface), `themes.ts` en devient les thèmes, `variablesCss` devient le producteur UNIQUE des variables, et `npm run verify:charte` (2 contrôles, **sensibilité OUI**) verrouille la dette. **VÉRIFIÉ en production** : 18 variables `--c-*` posées sur le site ET la console, `--c-danger` = `#A81E14`. ⚠️ **Reste à faire (N-20)** : les composants ne consomment pas encore les échelles |
 | **N-20** | Les **échelles de la charte ne sont pas encore consommées** par les composants : elles existent et sont verrouillées, mais 191 espacements et 82 couleurs brutes subsistent dans la console | fiabilité | Mesuré par `verify:charte` : `CONSOLE` = 82 couleurs hors rôle, 7 rayons hors échelle, 50 polices hors échelle, 191 espacements hors échelle. Le cliquet empêche d'aggraver ; il ne réduit pas. Coût de migration déjà mesuré : rayons **95 % déjà sur l'échelle** (écart moyen 1,1 px), polices **84 %** (1,1 px), espacements **37 %** mais écart moyen **1,7 px**, maximum 4 px |
-| **N-21** | `verify:lot1` contrôle C rouge sur 9 sections vs `0528c544` après J2/J4/dispositions — **faux rouge produit**, pas une régression à réécrire | fiabilité | Voir `docs/17_BACKLOG.md` **B-S2**. Ne pas rebaser `BASE_REF` sans arbitrage propriétaire (AGENTS.md §15 / garde-fou override). |
+| **N-21** | `verify:lot1` contrôle C rouge sur 9 sections vs `0528c544` après J2/J4/dispositions — **faux rouge produit**, pas une régression à réécrire | fiabilité | ✅ **CLOS le 2026-09-26 par arbitrage propriétaire** (AGENTS.md §15) : les changements J2→J7, dispositions et i18n étaient volontaires. `PRE_CMS_WIRING_REF` réépinglé sur **`3dbd3f2`** — dernière révision au rendu **identique au rendu accepté** (prouvé caractère par caractère sur les 10 sections) et dont les sources de section diffèrent encore de l'arbre courant, la garde anti-tautologie restant satisfaite. `verify:lot1` : **VERT** (10 sections, 10 composants). Le filet protège désormais les changements de rendu futurs. |
 
 
 ---
@@ -234,7 +234,34 @@ La campagne Structure / chrome / refonte kit / Vue d’ensemble est consignées 
 
 ---
 
-## 9. Journal de campagne console & CMS (sept. 2026)
+## 10. Journée du 2026-09-26 — filets réparés, N-21 clos, vérité de déploiement
 
-La campagne Structure / chrome / refonte kit / Vue d’ensemble est consignées dans
-**`docs/23_JOURNAL_CONSOLE_CMS_2026-09.md`** (commits, décisions, écarts, déploiement).
+**Ce qui a été fait** (commits `7a8163b`, `36bef9e`, poussés sur `main`) :
+
+1. **`verify:coquille` — dérive réparée.** Le filet exigeait encore le spread `...rootStyle`,
+   retiré volontairement par `a931ece` (24/09) : `bornage-fenetre` rougissait sur un code
+   pourtant conforme (`AdminShell.tsx:404-411` porte bien `fixed` + `inset` + `overflow: hidden`).
+   Les mutations de `barre-bornee` et `nav-defile` étaient elles aussi décalées par le
+   reformatage. **Sensibilité 7/7 de nouveau OUI.**
+2. **`test:snapshot` et `test:identite` — écrits.** Ils étaient déclarés dans `package.json`
+   depuis `b7f820f` (21/09) **sans que leurs fichiers n'aient jamais existé** : ces deux filets
+   ne tournaient jamais. C'est fait : 8 tests sur le noyau de publication (`asPublished`,
+   R8, refus de format inconnu, aller-retour, chrome figé), 9 tests sur la source unique des
+   coordonnées (le défaut B-2 : un plat vide n'écrase plus la valeur publiée).
+3. **N-21 clos** (voir §4.3) — réépinglage arbitré de la référence de non-régression.
+4. **Vérité de déploiement vérifiée** avant toute action de production : le bundle compilé est
+   **identique** (nom de hachage et taille) à celui servi par Cloudflare ; l'Edge Function
+   `manage-admin-auth` v9 a été déployée à 09:58:48, 27 s après le commit `00e1c42` —
+   **rien n'était en attente**, aucun déploiement de complaisance n'a eu lieu.
+5. **Page d'accueil GitHub corrigée** : le champ `homepage` de `moelohimmara-dotcom/greatlife`
+   pointait sur `greatlife-rose.vercel.app`, une copie Vercel en **mode démo** (aucune variable
+   Supabase à son build). Il pointe désormais sur `https://greatlife-conakry.pages.dev`.
+6. **Jeton d'invalidation de cache clos** : `public/assets/index-BLdAmITw.js.map` retiré après
+   mesure (l'URL ne sert plus l'ancienne source map exposée) — voir
+   `docs/cache-tombstone-index-BLdAmITw.md`.
+
+**Reste à la charge du propriétaire** : rotation des trois jetons transmis en clair pendant la
+session (GitHub, Cloudflare, Supabase) ; test manuel de connexion sur `/login` (seul niveau de
+vérification encore ouvert). **Reste ouvert** : `N-1`, `N-2`, `N-8`, `N-12`, `N-20`, et les
+contenus mineurs signalés par `verify:lot3` (2 titres de blog non traduits en anglais,
+2 sections sans image).

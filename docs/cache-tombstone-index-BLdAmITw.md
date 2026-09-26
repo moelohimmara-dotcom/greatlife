@@ -37,6 +37,19 @@ Dès que `GET /assets/index-BLdAmITw.js.map` ne renvoie plus l'ancienne carte �
 soit le jeton inerte, soit le repli SPA (`index.html`). Aucun build courant ne référence ce nom
 de fichier : sa suppression est sans effet fonctionnel.
 
+## ✅ RETIRÉ le 2026-09-26 — critère vérifié avant suppression
+
+**Mesure faite le 2026-09-26 12:15 UTC**, avant toute suppression :
+
+| | Avant | Mesure du jour |
+|---|---|---|
+| `GET /assets/index-BLdAmITw.js.map` | `200`, **1 907 001 octets**, la source map exposée (`CF-Cache-Status: HIT`) | `200`, **485 octets**, `content-type: application/json`, contenu = le jeton inerte |
+
+L'ancienne carte n'est donc **plus servie** : le critère de retrait est rempli. Les fichiers
+`public/assets/index-BLdAmITw.js.map` et `public/assets/README-index-BLdAmITw.md` ont été
+retirés du dépôt ; l'URL répondra désormais par le repli SPA, ce que le critère accepte
+explicitement. Le présent document reste la trace de l'incident et de sa fermeture.
+
 ## Portée plus large
 
 Ce n'est pas seulement ce fichier qui posait problème : **tous les `.map` générés par les
